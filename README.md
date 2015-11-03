@@ -1,14 +1,12 @@
-# THe README file
+# The README file
 Trying out Git
 *Create a file in a folder
 
 Tell git about your git account
 *** Please tell me who you are.
 
-Run
-
-  git config --global user.email "you@example.com"
-  git config --global user.name "Your Name"
+>> git config --global user.email "you@example.com"
+>> git config --global user.name "Your Name"
 
 
 In the folder
@@ -39,6 +37,22 @@ Add a branch
 Switch to a branch
 Now any changes will be registered in test_branch
 >> git checkout test_branch
+
+Merging two branches
+>> git checkout master
+>> git merge test_branch
+
+
+
+Playing with Github
+To pull down a repository from the web, use:
+>> git clone <url from git>
+
+Github-pages can host a series of webpages - accessable through settings
+
+
+
+
 
 
 
