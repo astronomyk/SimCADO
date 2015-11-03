@@ -50,6 +50,12 @@ To pull down a repository from the web, use:
 
 Github-pages can host a series of webpages - accessable through settings
 
+Add the local repository to a github repository
+>> git remote add origin https://github.com/gastronomyk/SimCADO.git
+
+Pushing this upto Github
+>> git push -u origin master
+
 
 
 
