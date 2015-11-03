@@ -48,6 +48,8 @@ Playing with Github
 To pull down a repository from the web, use:
 >> git clone <url from git>
 
+
+
 Github-pages can host a series of webpages - accessable through settings
 
 Add the local repository to a github repository
@@ -55,6 +57,8 @@ Add the local repository to a github repository
 
 Pushing this upto Github
 >> git push -u origin master
+
+Look in to this a bit more
 
 
 
