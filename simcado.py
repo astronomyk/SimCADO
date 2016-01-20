@@ -8,7 +8,7 @@
 
 # Coding Style (so that Kieran sticks to it):
 # my_variable_name
-# myFunctionName() 
+# my_function_name() 
 # MyClassName
 
 
@@ -115,10 +115,21 @@ instance of the OpticalTrain
 Info about the Telescope and the Instrument
 """
 
-    #def __init__(self, optical_train = None):
+    #def __init__(self, optical_train, kwargs**):
     """
     """
 	
+    #def make_adc_cube(self, atmosphere_model, kwargs**):
+    """
+    """
+    
+    # def make_ao_psf(self, kwargs**):
+    """
+    """
+    
+    # def collapse(self, labels)
+    
+    
 ########################################################################
 #    ThroughputCurve
 ########################################################################
@@ -128,7 +139,7 @@ Info about the Telescope and the Instrument
 Generate a 
 """
 
-    #def __init__(self, optical_train = None, kwargs**):
+    #def __init__(self, optical_train, kwargs**):
     """
     Import all the spectral curves that are listed in the optical_train
     or those in the kwargs (filenames, labels)
@@ -163,7 +174,7 @@ Generate whatever we need to apply the plane effects
 - distortion
 """
 
-    #def __init__(self, optical_train = None):
+    #def __init__(self, optical_train, kwargs**):
     """
     if optical_train is not None:
     - import the distortion map, if there is one
@@ -196,7 +207,7 @@ Generate whatever we need to apply the plane effects
     - everything from NG_HxRG?
 """
 
-    #def __init__(self, optical_train=None, kwargs**):
+    #def __init__(self, optical_train, kwargs**):
     """
     Leave this for Oliver
     # use NG_HxRG to generate the various arrays needed?
@@ -211,7 +222,7 @@ Generate whatever we need to apply the plane effects
 
 
 ########################################################################
-#    SpectralCurve and PSFLayer
+#    Base Classes: SpectralCurve and PSFLayer
 ########################################################################
 
 #class SpectralCurve:
@@ -219,10 +230,11 @@ Generate whatever we need to apply the plane effects
 Info about the a spectral curve element
 """
 
-    #def __init__(self, from_file = True, lam = None, lam_unit = None, 
-    #             val = None, val_unit = None, label = None):
+    #def __init__(self, filename = None, label = None,
+    #             lam = None, lam_unit = None, 
+    #             val = None, val_unit = None):
     """
-    If from_file == True: load in the file -- test for ascii or fits
+    If filename is not None: load in the file -- test for ascii or fits
     Else: use the values given by the user
     
     List of self variables
