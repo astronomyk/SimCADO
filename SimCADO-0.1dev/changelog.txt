@@ -1,0 +1,3 @@
+### 22.01.2015 - Kieran
+Reshuffled some of the files around on GitHub in anticipation of the main 
+programming effort
