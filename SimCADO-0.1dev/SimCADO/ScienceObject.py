@@ -25,10 +25,24 @@
 # - area
 # - exptime
 #
+# It should also contain an image of the flattened cube. The image contains
+# info about where the brightest pixels are and where the empty pixels are. 
 #
+# A ScienceObject contains methods for each effect encountered along the 
+# optical train. These methods will be applied to the copy of the useful parts
+# of the original FITS file.
 #
+# - __init__(UserCommands)
+#   Pull out the useful section the input cube and then convert it to photons
 #
-#
+# - add_atmosphere(AtmosphereModel)
+#   AtmosphereModel contains the transmission curve for the atmosphere and the
+#     background photons. 
+#   The number of photons in each ScienceObject spaxel should be reduced based 
+#     on the rebinned transmission curve.
+#   Background photons should be added to each spaxel based on a rebinned
+#     emission curve
+#   
 #
 #
 #
