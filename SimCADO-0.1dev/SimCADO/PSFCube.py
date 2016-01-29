@@ -1,3 +1,27 @@
+###############################################################################
+# PSFCube
+#
+# Deliverables
+#
+#
+#
+#
+#
+#
+#
+# Classes:
+#   
+#
+# Methods:
+#   
+#
+#
+#
+#
+#
+
+
+
 # There are two types of psf object here:
 #     - a cube
 #     - a single psf image

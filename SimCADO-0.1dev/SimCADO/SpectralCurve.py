@@ -1,3 +1,27 @@
+###############################################################################
+# SpectralCurve
+#
+# Deliverables
+#
+#
+#
+#
+#
+#
+#
+# Classes:
+#   AtmosphereModel(object)
+#
+# Methods:
+#   atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
+#                          lat=-24.5, h=3064):
+#
+#
+#
+#
+#
+
+
 from astropy import units as u
 from astropy.io import fits
 import numpy as np
