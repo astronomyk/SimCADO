@@ -25,7 +25,7 @@
 # The bins are defined by a central wavelength, however a cube should also
 # contain the edges of each bin so that transmission and emission can be 
 # re-binned properly.
-#   - lam_bin_centres
+#   - lam_bin_centers
 #   - lam_bin_edges
 #   - lam_res
 #

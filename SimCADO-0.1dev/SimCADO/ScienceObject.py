@@ -2,7 +2,37 @@
 # ScienceObject
 #
 # DESCRIPTION
+# The ScienceObject should appear in the form of a FITS cube which stays on
+# disk and is never fully read into RAM. A 4x oversampled 4k x 4k image with
+# using float32 in python takes up 2GB of RAM. Therefore the simplest way to 
+# avoid memory problems is to never read in the full data cube to begin with.
+# We can get around this problem by reading in the spectral channels one by one.
+# The ScienceObject must therefore only contain a pointer to a copy of the 
+# relevant layers of the FITS file, which can be manipulated and collapsed.
 #
+# ScienceObject will need to contain spatial and wavelength information:
+# - pix_res
+# - pix_width
+# - pix_height
+# - lam_res
+# - lam_bin_centers
+# - lam_bin_edges
+#
+# ScienceObject will be in photons/s/m2/pixel_fov/wavelength_slice. Therefore
+# ScienceObject will also need to know the telescope collecting area and 
+# integration time to convert the cube into photons/spaxel. The following info
+# should be pulled from the UserCommands dictionary:
+# - area
+# - exptime
+#
+#
+#
+#
+#
+#
+#
+#
+# spectral layers 
 #
 #
 #
