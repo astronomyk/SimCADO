@@ -13,8 +13,12 @@
 #   
 #
 # Methods:
-#   
-#
+#  read_config(config_file)
+#  update_config(config_file, config_dict)
+#  unify(x, unit, length=1)
+#  parallactic_angle(ha, de, lat=-24.589167)
+#  parallactic_angle_2(ha, de, lat=-24.589167)
+#  moffat(r, alpha, beta)
 #
 #
 #

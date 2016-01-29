@@ -1,25 +1,60 @@
 ###############################################################################
-# PSFCube
+# === PSFCube ===
 #
-# Deliverables
+# DESCRIPTION
 #
+# "If you want to bake an apple pie from scratch, 
+#     first you must create the universe" - Carl Sagan
 #
+# To generate a PSFCube we need to start by generating a single PSF. 
+# We need to know the spatial characteristics of the PSF:
+#   - pix_width
+#   - pix_height
+#   - pix_res
+#   - kernel
 #
+# The types of PSF offered: Moffat, Gaussian2D, Airy, Delta, Line, User
+# For each of the PSF types we need to create a method to create the PSF
+#   - PSFMoffat     (???)
+#   - PSFGaussian2D (fwhm, eccentricity=0, angle=0)	
+#   - PSFAiry       (fwhm, eccentricity=0, angle=0)
+#   - PSFDelta      (x=0, y=0)
+#   - PSFLine       (x0, x1, y0, y1, angle=0)
+#   - PSFUser       (filename,ext_no=0)
 #
+# To generate a PSF cube we need to know the spectral bins and the type of PSF. 
+# The bins are defined by a central wavelength, however a cube should also
+# contain the edges of each bin so that transmission and emission can be 
+# re-binned properly.
+#   - lam_bin_centres
+#   - lam_bin_edges
+#   - lam_res
+#
+# A PSF instance will have these additional arguments:
+#   - array ... a 2D array to hold the PSF image
+# A PSFCube instance will have these additional arguments:
+#   - cube ... a (l,x,y) 3D array to hold the PSF cube
+#
+# As far as input goes, PSFCube should be able to accept a dictionary with the
+# keywords necessary to build the cube.
+#
+# Notes: 
+# All wavelength values are given in [µm]
+# All pixel dimensions are given in [arcsec]
+# All angles are given in [deg]
 #
 #
 #
 # Classes:
-#   
+#  PSF(object)
+#
+#  PSFCube(object)
+#
 #
 # Methods:
-#   
 #
 #
 #
-#
-#
-
 
 
 # There are two types of psf object here:

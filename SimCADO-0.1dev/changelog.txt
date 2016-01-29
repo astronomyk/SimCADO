@@ -1,5 +1,5 @@
 ### 29.01.2015 - Kieran
-Updated the README
+Updated the README and object files
 
 ### 22.01.2015 - Kieran
 Reshuffled some of the files around on GitHub in anticipation of the main 

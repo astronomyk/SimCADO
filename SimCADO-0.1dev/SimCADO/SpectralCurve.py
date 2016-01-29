@@ -10,7 +10,9 @@
 #
 #
 # Classes:
-#   
+#  SpectralCurve(object) 
+#  Emission(SpectralCurve)
+#  Throughput(SpectralCurve)
 #
 # Methods:
 #   
@@ -177,7 +179,3 @@ class Throughput(SpectralCurve):
             self.val = np.interp(lam.value, self.lam_orig.value, self.val_orig)
         else:
             self.val = np.interp(lam, self.lam_orig, self.val_orig)
-
-        
-        
-            

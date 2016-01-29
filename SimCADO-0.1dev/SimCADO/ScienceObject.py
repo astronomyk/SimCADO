@@ -10,7 +10,8 @@
 #
 #
 # Classes:
-#   
+#  LightCube(object)
+#  
 #
 # Methods:
 #   
