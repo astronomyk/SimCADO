@@ -1,24 +1,53 @@
 ###############################################################################
 # SpectralCurve
 #
-# Deliverables
+# DESCRIPTION
 #
+# "If you pay peanuts, you get monkeys"
 #
+# A SpectralCurve is the base class for either a transmission curve or an 
+# emission curve. The main attributes are 2 equal length arrays holding the 
+# centres of each wavelength bin and the corresponding value - an energy or a 
+# transmission factor [0-1]
+#  - lam
+#  - val 
 #
+# SpectralCurve should be overloaded on the + and * operators. Although a rebin
+# method would be good, this is unique to the subclasses. E.g. a 
+# TransmissionCurve rebin would involve averaging the "val" values, while a
+# SpectralCurve rebin would involve summing up the "val" values.
+# 
+# SpectralCurve also needs the file path of the data:
+#  - filename
 #
+# A TransmissionCurve doesn't need anything else on top of the SpectralCurve,
+# however the EmissionCurve must know which units are being used so that it
+# can immediately convert the energy into photons. In order to do this the 
+# EmissionCurve needs the following extra info from the UserCommands dictionary
+#  - spatial area [m2]
+#  - angular area [arcsec2]
+#  - integration time [s]
 #
+# As stated above each subclass should have its own rebin(lam_res) method 
 #
+# Notes:
+# All wavelength values are in [µm]
+# All other values are either transmission [0-1] or number of photons [>=0]
 #
 # Classes:
 #  SpectralCurve(object) 
-#  Emission(SpectralCurve)
-#  Throughput(SpectralCurve)
+#  - from_file(filename)
+#  - from_list([ThroughputCurve])
+#  - from_skycalc(filename)
+#
+# Subclasses:
+# Emission(SpectralCurve)
+# - rebin(lam)
+# Throughput(SpectralCurve)
+# - rebin(lam)
 #
 # Methods:
 #   
-#
-#
-#
 #
 #
 

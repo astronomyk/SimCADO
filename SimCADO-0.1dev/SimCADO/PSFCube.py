@@ -1,4 +1,3 @@
-###############################################################################
 # === PSFCube ===
 #
 # DESCRIPTION
@@ -6,7 +5,7 @@
 # "If you want to bake an apple pie from scratch, 
 #     first you must create the universe" - Carl Sagan
 #
-# To generate a PSFCube we need to start by generating a single PSF. 
+# We need to start by generating a single PSF in order to generate a PSFCube.
 # We need to know the spatial characteristics of the PSF:
 #   - pix_width
 #   - pix_height
@@ -15,12 +14,12 @@
 #
 # The types of PSF offered: Moffat, Gaussian2D, Airy, Delta, Line, User
 # For each of the PSF types we need to create a method to create the PSF
-#   - PSFMoffat     (???)
-#   - PSFGaussian2D (fwhm, eccentricity=0, angle=0)	
-#   - PSFAiry       (fwhm, eccentricity=0, angle=0)
-#   - PSFDelta      (x=0, y=0)
-#   - PSFLine       (x0, x1, y0, y1, angle=0)
-#   - PSFUser       (filename,ext_no=0)
+#   - psf_moffat      (???)
+#   - psf_gaussian_2D (fwhm, eccentricity=0, angle=0)	
+#   - psf_airy        (fwhm, eccentricity=0, angle=0)
+#   - psf_delta       (x=0, y=0)
+#   - psf_line        (x0, x1, y0, y1, angle=0)
+#   - psf_user        (filename,ext_no=0)
 #
 # To generate a PSF cube we need to know the spectral bins and the type of PSF. 
 # The bins are defined by a central wavelength, however a cube should also
@@ -44,12 +43,25 @@
 # All angles are given in [deg]
 #
 #
-#
 # Classes:
 #  PSF(object)
+#  - psf_moffat(???)
+#  - psf_gaussian_2D(fwhm, eccentricity=0, angle=0)	
+#  - psf_airy(fwhm, eccentricity=0, angle=0)
+#  - psf_delta(x=0, y=0)
+#  - psf_line(x0, x1, y0, y1, angle=0)
+#  - psf_user(filename,ext_no=0)
+#
 #
 #  PSFCube(object)
+#  - generate_cube()
+#  - combine_cubes()
 #
+# Subclasses:
+#  PSFCubeADC(PSFCube)
+#  PSFCubeFromFile(PSFCube)
+#  PSFCubeAnalytic(PSFCube)
+#  
 #
 # Methods:
 #
