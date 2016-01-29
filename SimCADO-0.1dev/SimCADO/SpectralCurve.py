@@ -10,11 +10,10 @@
 #
 #
 # Classes:
-#   AtmosphereModel(object)
+#   
 #
 # Methods:
-#   atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
-#                          lat=-24.5, h=3064):
+#   
 #
 #
 #
