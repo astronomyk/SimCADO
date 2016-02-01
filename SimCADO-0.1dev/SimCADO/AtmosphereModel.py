@@ -1,7 +1,9 @@
-# === AtmosphereModel ===
+###############################################################################
+# AtmosphereModel
 #
 # DESCRIPTION
-# AtmosphereModel holds the information that  
+# AtmosphereModel holds the transmission and emission curves as well as info
+# on the environment variables: Temp, Pres, Rel Hum, z0.
 #
 #
 #

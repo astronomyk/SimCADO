@@ -1,4 +1,5 @@
-# === PlaneEffect ===
+###############################################################################
+# PlaneEffect
 #
 # DESCRIPTION
 # The PlaneEffect object is used to simulate effects that occur on all spectral
