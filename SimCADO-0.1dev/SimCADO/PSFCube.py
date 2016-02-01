@@ -52,7 +52,6 @@
 #  - psf_line(x0, x1, y0, y1, angle=0)
 #  - psf_user(filename,ext_no=0)
 #
-#
 #  PSFCube(object)
 #  - generate_cube()
 #  - combine_cubes()
