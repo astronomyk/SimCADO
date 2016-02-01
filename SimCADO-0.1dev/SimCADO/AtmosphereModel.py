@@ -1,8 +1,7 @@
-###############################################################################
-# AtmosphereModel
+# === AtmosphereModel ===
 #
-# Deliverables
-#
+# DESCRIPTION
+# AtmosphereModel holds the information that  
 #
 #
 #
