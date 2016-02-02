@@ -1,12 +1,7 @@
 ###############################################################################
-# AtmosphereModel
+# utils.py
 #
 # DESCRIPTION
-#
-#
-#
-#
-#
 #
 #
 # Classes:
@@ -19,9 +14,6 @@
 #  parallactic_angle(ha, de, lat=-24.589167)
 #  parallactic_angle_2(ha, de, lat=-24.589167)
 #  moffat(r, alpha, beta)
-#
-#
-#
 #
 
 
@@ -69,7 +61,8 @@ def read_config(config_file):
                 content = line
                 comment = ""
             param, value = content.split(None, 1)
-            config_dict[param] = value.strip()
+            try: config_dict[param] = float(value.strip())
+			except: config_dict[param] = value.strip()
 
     return config_dict
 

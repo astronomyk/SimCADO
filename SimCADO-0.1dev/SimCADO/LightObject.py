@@ -118,8 +118,10 @@ class LightObject(object):
 		self.header = hdr
 		
 		self.lam_res = hdr["CDELT3"]
-		self.lam_min = hdr["CRPIX3"] + hdr["CRVAL3"] * hdr["CDELT3"]
-		self.lam_max = hdr[]
+		self.lam_min = hdr["CRPIX3"] - hdr["CRVAL3"] * hdr["CDELT3"]
+		self.lam_max = hdr["CRPIX3"] + hdr["CRVAL3"] * hdr["CDELT3"]
+		
+		self.lam_bin_min = cmds["OBS_LAM_MIN"]
 		
 		self.lam_bin_centers
 		self.lam_bin_edges
@@ -162,3 +164,9 @@ class LightObject(object):
         self.info['background'] = 'applied'
 
         
+
+		
+def generate_light_object():
+	"""
+	put in what ever functions generate a FITS file with a 2D LightObject
+	"""
