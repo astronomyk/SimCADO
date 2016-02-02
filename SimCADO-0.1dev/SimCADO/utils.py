@@ -1,7 +1,7 @@
 ###############################################################################
 # AtmosphereModel
 #
-# Deliverables
+# DESCRIPTION
 #
 #
 #
@@ -173,3 +173,7 @@ def parallactic_angle_2(ha, de, lat=-24.589167):
 
 def moffat(r, alpha, beta):
     return (beta - 1)/(np.pi * alpha**2) * (1 + (r/alpha)**2)**(-beta)
+
+	
+	
+	

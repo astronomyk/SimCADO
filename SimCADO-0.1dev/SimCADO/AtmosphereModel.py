@@ -3,19 +3,22 @@
 #
 # DESCRIPTION
 # AtmosphereModel holds the transmission and emission curves as well as info
-# on the environment variables: Temp, Pres, Rel Hum, z0.
-#
-#
-#
-#
-#
-#
+# on the environment variables: Temp, Pres, Rel Hum, z0. It should be able to 
+# decide whether a skycalc file is being read, of a series of 2 ascii files.
+# 
+# This script also contains a series of helpful functions. 
+# - atmospheric_refraction() computes the angular difference between the 
+#     apparent position of a star seen from the ground and its true position.
+# 
 # Classes:
 #   AtmosphereModel(object)
+#   - __init__(UserCommands)
+#   - reshape(lam)
+#   -
 #
 # Methods:
-#   atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
-#                          lat=-24.5, h=3064):
+#   atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750, lat=-24.5,
+#                          h=3064):
 #
 #
 #

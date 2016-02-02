@@ -16,7 +16,11 @@
 # Methods:
 #
 #
+# 1. Read in UserCommands
+#    Create UserCommands objects for: optical train and observing run
+#    The observing run will be used for science, atmo and mirror photons
 #
+# 2. Create OpticalTrain, 
+#    which in turn creates all the individual objects
 #
-#
-#
+# 3. Create 
