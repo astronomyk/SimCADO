@@ -218,6 +218,11 @@ class Throughput(SpectralCurve):
 
 class TransmissionCurve(object):
 	def __init__(self, filename, res=0.001):
+		"""
+		Very basic class to read in a text file for a transmission curve
+		TransmissionCurve(filename, res=0.001 [um])		
+		"""
+		
 		data = ascii.read(filename)
 		self.lam_orig = data[data.colnames[0]]
 		self.val_orig = data[data.colnames[1]]
@@ -230,6 +235,8 @@ class TransmissionCurve(object):
 		tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], min_step)
 		tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
 		
+		# if bins is a single number, use it as the bin width
+		# else as the bin centers
 		print(bins)
 		if not hasattr(bins, "__len__"): 
 			tmp_lam = np.arange(self.lam_orig[0], self.lam_orig[-1], bins)

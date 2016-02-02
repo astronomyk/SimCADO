@@ -78,6 +78,8 @@
 # Both PSF and PSFCube can be created from a single model or through
 # convolution of a list of PSF components
 
+import numpy as np
+
 from astropy import units as u
 from astropy.convolution import (Gaussian2DKernel, AiryDisk2DKernel,
                                  Moffat2DKernel)
@@ -108,7 +110,7 @@ class PSFCube(object):
         rel_hum = float(config_dict['ATMO_REL_HUMIDITY'])
 
         ## CHECK: better called OBS_ZENITH_DIST
-        z0 = float(config_dict['ATMO_ZENITH_DIST'])
+        z0 = float(config_dict['OBS_ZENITH_DIST'])
         temp = float(config_dict['ATMO_TEMPERATURE'])
         pres = float(config_dict['ATMO_PRESSURE'])
 
@@ -126,7 +128,7 @@ class PSFCube(object):
         ## pixel shifts are defined with respect to last slice
         pixel_shift = (angle_shift - angle_shift[-1]).to(u.mas) / res
 
-        ## Rotate by the parallactice angle
+        ## Rotate by the parallactic angle
         x = -pixel_shift * np.sin(nadir_angle.to(u.rad)) * (1. - effectiveness)
         y = -pixel_shift * np.cos(nadir_angle.to(u.rad)) * (1. - effectiveness)
 
@@ -309,7 +311,7 @@ class PSF(object):
 
         ## create airy, gaussian or point source PSFs
         if "airy" in kernel:
-            print "Making airy"
+            print("Making airy")
             self.info['description'] = "Airy PSF, FWHM = %.1f %s" \
                                        % (self.fwhm.value, self.fwhm.unit)
             length = int(max(16 * self.fwhm / self.res, min_size))
@@ -318,7 +320,7 @@ class PSF(object):
             n = (self.fwhm / 2.35) / self.res * gauss2airy
             self.psf = AiryDisk2DKernel(n, x_size=length, y_size=length).array
         elif "gauss" in kernel:
-            print "Making gauss"
+            print("Making gauss")
             self.info['description'] = "Gaussian PSF, FWHM = %.1f %s" \
                                        % (self.fwhm.value, self.fwhm.unit)
             length = int(max(8 * self.fwhm / self.res, min_size))
@@ -329,7 +331,7 @@ class PSF(object):
             self.psf = Gaussian2DKernel(n, x_size=length, y_size=length,
                                         mode='oversample').array
         elif "moffat" in kernel:
-            print "Making Moffat"
+            print("Making Moffat")
             ## CHECK: make this a parameter?
             beta = 4.765 ### Trujillo et al. 2001
             alpha = self.fwhm/(2 * np.sqrt(2**(1/beta) - 1))
