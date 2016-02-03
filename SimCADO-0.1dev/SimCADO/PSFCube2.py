@@ -130,7 +130,7 @@ class PSF(object):
         self.array = array
         self.array[self.array <=0] = threshold
         self.array = self.array / np.sum(self.array)
-        
+        self.size = self.array.shape[0]
         
     def convolve(self, kernel): 
         """
@@ -139,14 +139,40 @@ class PSF(object):
         - ## TODO the option to convolve with a 2D ndarray ##
         - ## TODO resize the kernel if the pixel scales are different ##
         """
-        self.array = convolve_fft(self.array, kernel.array)
+        self.set_array(convolve_fft(self.array, kernel.array))
 
     def add():
         pass
     
     def mult():
         pass
+    
+    
+    def resize(self, new_size):
+        """Reshape the PSF
+
+        The target shape is new_size x new_size
+        """
+        # make sure the new size is always an odd number
+        if new_size % 2 == 0:
+            new_size += 1
+
+        new_arr = np.zeros((new_size, new_size))
+        aw, bw = self.array.shape[0], new_size
+
+        # if the new array is larger, place old array in the centre of the 
+        # empty array. Otherwise, cut the centre out of the old array
+        if bw > aw:
+            new_arr[bw/2 - aw/2 : bw/2 + aw/2 + 1, 
+                    bw/2 - aw/2 : bw/2 + aw/2 + 1] = self.array
+        else:
+            new_arr = self.array[aw/2 - bw/2 : aw/2 + bw/2 + 1, 
+                                 aw/2 - bw/2 : aw/2 + bw/2 + 1]
         
+        self.set_array(new_arr)
+    
+    
+    
     
 class DeltaPSF(PSF):
     """
@@ -222,7 +248,7 @@ class AiryPSF(PSF):
             size = round(kwargs["size"] / 2) * 2 + 1
         else: 
             size = 1
-        size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, size)))
+        size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, self.size)))
 
         super(AiryPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Airy"
@@ -233,7 +259,7 @@ class AiryPSF(PSF):
         gauss2airy = 2.76064 
                                
         n = (self.fwhm / 2.35) / self.pix_res * gauss2airy
-        self.set_array(AiryDisk2DKernel(n, x_size=size, y_size=size,
+        self.set_array(AiryDisk2DKernel(n, x_size=self.size, y_size=self.size,
                                         mode='oversample').array)
     
 class GaussianPSF(PSF):
@@ -269,7 +295,7 @@ class GaussianPSF(PSF):
                                     % (self.fwhm)
                                                                   
         n = (self.fwhm / 2.35) / self.pix_res
-        self.set_array(Gaussian2DKernel(n, x_size=size, y_size=size,
+        self.set_array(Gaussian2DKernel(n, x_size=self.size, y_size=self.size,
                                         mode='oversample').array)
         
         
@@ -309,34 +335,22 @@ class MoffatPSF(PSF):
         self.info["Type"] = "Moffat"
         self.info['description'] = "Moffat PSF, FWHM = %.1f, alpha = %.1f"\
                                        % (self.fwhm, alpha)
-        n = alpha / pix_res
 
-        if size > 100:
+        if self.size > 100:
             mode = "linear_interp"
         else:
             mode = "oversample"
-        self.set_array(Moffat2DKernel(alpha, beta, x_size=size, 
-                                      y_size=size, mode=mode).array)
+        self.set_array(Moffat2DKernel(alpha, beta, x_size=self.size, 
+                                      y_size=self.size, mode=mode).array)
  
 
+class CombinedPSF(PSF):
 
 
-
-
-
-
-
-
-
-
-
-
-
-        
         
         
     @classmethod
-    def gen_from_list(self, psf_list):
+    def __init__(self, psf_list):
         """Generate a master psf through convolution of a list of psfs"""
         import copy
 
@@ -362,30 +376,7 @@ class MoffatPSF(PSF):
 
 
        
-    def resize(self, new_size):
-        """Make all slices the same size
 
-        The target shape is new_size x new_size
-        """
-        # make sure the new size is always an odd number
-        if new_size % 2 == 0:
-            new_size += 1
-
-        for slice in self.cube:
-            # create an empty square array of new size
-            # get side length of the original array
-            new_arr = np.zeros((new_size, new_size))
-            aw, bw = slice.psf.shape[0], new_size
-
-            # place old array in the centre of the empty array
-            new_arr[bw/2 - aw/2 : bw/2 + aw/2 + 1, bw/2-aw/2 : bw/2 + aw/2 + 1] \
-                = slice.psf
-            slice.psf = new_arr
-
-        self.size = [slice.psf.shape[0] for slice in self.cube]
-            
-              
-                 
                  
                  
                  
