@@ -305,9 +305,9 @@ class PSF(object):
 		
 		self = PSF()
 		self.lam = utils.unify(lam, u.um)
-		self.kernel = kernel
-		self.fwhm = utils.unify(fwhm, u.mas)
-		self.res =  utils.unify(res, u.mas)
+		self.kernel = defaults["kernel"]
+		self.fwhm = utils.unify(defaults["fwhm"], u.mas)
+		self.res =  utils.unify(defaults["pix_res"], u.mas)
 
 		## convert sigma (gauss) to first zero (airy)
 		gauss2airy = 2.76064  
