@@ -97,16 +97,16 @@ import utils
 class PSF(object):
 	"""Point spread function (single layer) base class
 
+	Needed keywords arguments:
+	- size: the size of the 
 	
 	"""
 	
-	def __init__(self, width, height, pix_res):
+	def __init__(self, **kwargs):
 	
-		self.width = width
-		self.height = height
-		self.pix_res = pix_res
-		self.type = None
-		self.array = np.zeros((width, height))
+		self.size = kwargs["size"]
+		self.pix_res = kwargs["pix_res"]
+		self.array = np.zeros((self.size, self.size))
 		
 		self.info = dict([])
 		self.info['created'] = 'yes'
@@ -115,19 +115,53 @@ class PSF(object):
 	def __repr__(self):
 		return self.info['description']
 
-	def convolve(self, other_psf):	
-		self.array = convolve_fft(self.array, other_psf.array)
+	def convolve(self, kernel):	
+		"""
+		Convolve the PSF with another kernel. The PSF.array keeps its shape
+		- kernel is a PSF object
+		- ## TODO the option to convolve with a 2D ndarray
+		"""
 		
+		self.array = convolve_fft(self.array, kernel.array)
 		
 	
+class DeltaPSF(PSF):
+	"""
+	Generate a PSF with a delta function at position (x,y)
+	
+	"""
+		
+	def __init__(self, **kwargs):
+
+		super(DeltaPSF, self).__init__(**kwargs)
+		self.info["Type"] = "Delta"
+		self.info['description'] = "Delta PSF, centred at (%.1f, %.1f)" \
+									% position
+		if "position" in kwargs.key(): 
+			self.position = kwargs["position"]
+		else:
+			self.position = (0,0)
 
 
-class	
 		
-		
-		
-		
-		
+		## CHECK: What does this do?
+
+
+		self.size = int(np.max(np.abs(position))) * 2 + padding
+		if self.size % 2 == 0:
+			self.size += 1
+		self.x = self.size / 2 + position[0]
+		self.y = self.size / 2 + position[1]
+
+		x2 = self.x - int(self.x)
+		x1 = 1. - x2
+		y2 = self.y - int(self.y)
+		y1 = 1. - y2
+
+		n = np.zeros((self.size, self.size))
+		n[int(self.y):int(self.y)+2, int(self.x):int(self.x)+2] = \
+			np.array([[x1 * y1, x2 * y1], [x1 * y2, x2 * y2]])
+		self.psf = n
 		
 		
 		
@@ -171,7 +205,7 @@ class
 		"""
 		
 		defaults = {"kernel":"airy", "fwhm":0., "pix_res":1*u.mas, 
-					"position"=(0,0), "padding":5, "min_size":256, "size":None}
+					"position":(0,0), "padding":5, "min_size":256, "size":None}
 		defaults.update(kwargs)
 		
 		
