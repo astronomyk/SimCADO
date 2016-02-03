@@ -92,7 +92,10 @@ from astropy.convolution import convolve, convolve_fft
 import utils
 
 
-            
+## These classes and functions are exported to the package
+__all__ = ["PSFCube", "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF", "DeltaPSF"]        
+
+
         
 class PSF(object):
     """Point spread function (single layer) base class
@@ -115,6 +118,20 @@ class PSF(object):
     def __repr__(self):
         return self.info['description']
 
+    def set_array(sefl, array, threshold=1e-15):
+        """
+        Renormalise the array and make sure there aren't any negative values
+        that will screw up the flux later on
+        
+        Keywords:
+        - array
+        - threshold: by default set to 1E-15
+        """
+        self.array = array
+        self.array[self.array <=0] = threshold
+        self.array = self.array / np.sum(self.array)
+        
+        
     def convolve(self, kernel): 
         """
         Convolve the PSF with another kernel. The PSF.array keeps its shape
@@ -152,7 +169,7 @@ class DeltaPSF(PSF):
             self.position = (0,0)
         
         if "size" in kwargs.keys():
-            size = kwargs["size"]
+            size = round(kwargs["size"] / 2) * 2 + 1
         else: 
             size = int(np.max(np.abs(position))) * 2 + 1
         
@@ -175,8 +192,10 @@ class DeltaPSF(PSF):
         y2 = self.y - int(self.y)
         y1 = 1. - y2
 
-        self.array[int(self.y) : int(self.y) + 2, int(self.x) : int(self.x) + 2] =\
-                    np.array([[x1 * y1, x2 * y1], [x1 * y2, x2 * y2]])
+        arr = np.zeros((self.size,self.size))
+        arr[int(self.y) : int(self.y) + 2, int(self.x) : int(self.x) + 2] = \
+            np.array([[x1 * y1, x2 * y1], [x1 * y2, x2 * y2]])
+        self.set_array(arr)
         
  
         
@@ -214,8 +233,8 @@ class AiryPSF(PSF):
         gauss2airy = 2.76064 
                                
         n = (self.fwhm / 2.35) / self.pix_res * gauss2airy
-        self.array = AiryDisk2DKernel(n, x_size=size, y_size=size).array
-
+        self.set_array(AiryDisk2DKernel(n, x_size=size, y_size=size,
+                                        mode='oversample').array)
     
 class GaussianPSF(PSF):
     """
@@ -250,12 +269,14 @@ class GaussianPSF(PSF):
                                     % (self.fwhm)
                                                                   
         n = (self.fwhm / 2.35) / self.pix_res
-        self.array = Gaussian2DKernel(n, x_size=size, y_size=size).array
+        self.set_array(Gaussian2DKernel(n, x_size=size, y_size=size,
+                                        mode='oversample').array)
         
-
+        
 class MoffatPSF(PSF):
     """
-    Generate a PSF for a Moffat function
+    Generate a PSF for a Moffat function. Alpha is generated from the FWHM and 
+    Beta = 4.765 (from Trujillo et al. 2001)
     
     Needed keywords arguments:
     - fwhm: the FWHM in [arcsec] of the PSF.
@@ -294,10 +315,9 @@ class MoffatPSF(PSF):
             mode = "linear_interp"
         else:
             mode = "oversample"
-        self.array = Moffat2DKernel(alpha, beta, x_size=size, 
-                                    y_size=size, mode=mode).array
-             
-
+        self.set_array(Moffat2DKernel(alpha, beta, x_size=size, 
+                                      y_size=size, mode=mode).array)
+ 
 
 
 
@@ -332,75 +352,16 @@ class MoffatPSF(PSF):
 
         return self
         
-        
-    @classmethod
-    def gen_analytic(self, lam, **kwargs):
-        ## CHECK: How does this relate to the cube?
-        """Generate a psf from an analytic model
-
-        Parameters:
-        ==========
-        - lam : array of wavelength values
-        - kernel : currently implemented are "airy" and "gauss"
-                   For any other value, a delta peak is created.
-        - fwhm : full-width at half maximum of the model. If 0, the theoretical
-                 diffraction fwhm of the E-ELT is computed
-        - res : ???
-        - position : tuple giving the position of the delta peak 
-                     (not for airy and gauss)
-        - padding : increase output array by this margin outside of delta
-                    peak
-        - min_size : minimum size of output array (for airy and gauss)
-        """
-        
-        defaults = {"kernel":"airy", "fwhm":0., "pix_res":1*u.mas, 
-                    "position":(0,0), "padding":5, "min_size":256, "size":None}
-        defaults.update(kwargs)
-        
-        
-        self = PSF()
-        self.lam = utils.unify(lam, u.um)
-        self.kernel = defaults["kernel"]
-        self.fwhm = utils.unify(defaults["fwhm"], u.mas)
-        self.res =  utils.unify(defaults["pix_res"], u.mas)
-
-        ## convert sigma (gauss) to first zero (airy)
-        gauss2airy = 2.76064  
 
         ## if lam does not have units, assume microns
-        if self.fwhm.value == 0:
+        #if self.fwhm.value == 0:
             ## TODO: telescope parameters as variables!
-            self.fwhm = (1.22 * lam / (39.3 * u.m)).cgs * u.rad * (
-                206264806 * u.mas / u.rad)
+            #self.fwhm = (1.22 * lam / (39.3 * u.m)).cgs * u.rad * (
+                #206264806 * u.mas / u.rad)
 
 
 
-        else:
-            ## CHECK: What does this do?
-            self.info['description'] = "Delta PSF, centred at (%.1f, %.1f)" \
-                                       % position
-
-            self.size = int(np.max(np.abs(position))) * 2 + padding
-            if self.size % 2 == 0:
-                self.size += 1
-            self.x = self.size / 2 + position[0]
-            self.y = self.size / 2 + position[1]
-
-            x2 = self.x - int(self.x)
-            x1 = 1. - x2
-            y2 = self.y - int(self.y)
-            y1 = 1. - y2
-
-            n = np.zeros((self.size, self.size))
-            n[int(self.y):int(self.y)+2, int(self.x):int(self.x)+2] = \
-                np.array([[x1 * y1, x2 * y1], [x1 * y2, x2 * y2]])
-            self.psf = n
-
-        self.psf[self.psf <=0] = 1e-15
-        self.psf = self.psf / np.sum(self.psf)
-        return self
-
-
+       
     def resize(self, new_size):
         """Make all slices the same size
 
@@ -423,60 +384,41 @@ class MoffatPSF(PSF):
 
         self.size = [slice.psf.shape[0] for slice in self.cube]
             
+              
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
 
-## This is essentially a copy from Kieran recoded as a subclass
-## Can we dispense with this class?
-## Main benefit of having an extra class is automatic storage of
-## atmospheric parameters.
-#class PSF_ADC(PSF_Cube):
-#    """Atmospheric dispersion stored as a "PSF" cube
-#    """
-#    
-#    def __init__(self, lam_arr, res=1*u.mas, effectiveness=100,
-#                 z0=60, temp=0, rel_hum=60, pres=750, nadir_angle=0,
-#                 lat=-24.5, h=3064):
-#        pass
-                 
-
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 ## These classes and functions are exported to the package
-__all__ = ["PSFCube", "PSF"]
 
 class PSFCube(object):
     """Class holding wavelength dependent point spread function"""
