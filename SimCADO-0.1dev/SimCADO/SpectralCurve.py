@@ -217,58 +217,128 @@ class Throughput(SpectralCurve):
 # Until I find out what's going on here, I'll use a simple TransmissionCurve
 
 class TransmissionCurve(object):
-	def __init__(self, filename, res=0.001):
+	def __init__(self, **kwargs):
 		"""
-		Very basic class to read in a text file for a transmission curve
-		TransmissionCurve(filename, res=0.001 [um])		
+		Very basic class to either read in a text file for a transmission curve
+		or take two vectors to make a transmission curve
+		
+		List of kwargs:
+		lam: 1D numpy array of length n in [µm]
+		val: 1D numpy array of length n in []
+		res: float with the desired spectral resolution in [µm]
+		filename: string with the path to the transmission curve file where
+		          the first column is wavelength in [µm] and the second is the
+				  transmission coefficient between [0,1]
 		"""
 		
-		data = ascii.read(filename)
-		self.lam_orig = data[data.colnames[0]]
-		self.val_orig = data[data.colnames[1]]
-		self.res = res
+		if "lam" in kwargs.keys() and "val" in kwargs.keys():
+			self.lam_orig = kwargs["lam"]
+			self.lam_orig = kwargs["val"]
+		if "filename" in kwargs.keys():
+			data = ascii.read(kwargs["filename"])
+			self.lam_orig = data[data.colnames[0]]
+			self.val_orig = data[data.colnames[1]]
+		if "res" in kwargs.keys():
+			self.res = kwargs["res"]
+		else:
+			self.res = 0.001
+
 		self.resample(self.res)
 		
+		
 	def resample(self, bins, action="average"):
-		min_step = 2E-5
+		"""
+		Resamples both the wavelength and value vectors to an even grid. 
+		In order to avoid losing spectral information, the TransmissionCurve
+		
+		"""
+
+		#####################################################
+		# Work out the irregular grid problem while summing #
+		#####################################################
+		
+		min_step = 1E-5
+		
 		
 		tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], min_step)
 		tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
 		
-		# if bins is a single number, use it as the bin width
-		# else as the bin centers
-		print(bins)
-		if not hasattr(bins, "__len__"): 
-			tmp_lam = np.arange(self.lam_orig[0], self.lam_orig[-1], bins)
-		else: 
-			tmp_lam = bins
+		# The summing issue - assuming we want to integrate along the curve,
+		# i.e. count all the photons in a new set of bins, we need to integrate
+		# along the well-sampled (1E-5µm) curve. However the above line of code
+		# using np.interp doesn't tak into account the new bin width when 
+		# resampling down to 1E-5µm. I account for this summing up all the
+		# photons in the original data set and normalising the new 1E-5 bin 
+		# data set to have the same amount.
+		if action == "sum":	tmp_y *= (np.sum(self.val_orig) / np.sum(tmp_y))
 		
-		tmp_res = tmp_lam[1] - tmp_lam[0]
-		print(tmp_res)
-		tmp_val = np.zeros((len(tmp_lam)))
+		
+		# if bins is a single number, use it as the bin width
+		# else as the bin centres
+
+		if not hasattr(bins, "__len__"): 
+			lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1], bins)
+		else: 
+			lam_tmp = bins
+		
+		# here is the assumption of a regular grid - see res_tmp
+		res_tmp = lam_tmp[1] - lam_tmp[0]
+		val_tmp = np.zeros((len(lam_tmp)))
 				
-		for i in range(len(tmp_lam)):
-			mask_i = np.where((tmp_x > tmp_lam[i] - tmp_res/2.) * 
-					          (tmp_x < tmp_lam[i] + tmp_res/2.))[0]
+		for i in range(len(lam_tmp)):
+			mask_i = np.where((tmp_x > lam_tmp[i] - res_tmp/2.) * 
+					          (tmp_x < lam_tmp[i] + res_tmp/2.))[0]		
 			
-			if np.sum(mask_i) > 0 and action == "sum":	
-				##########################################################
-				# BIG ISSUE WITH THE SUMMING - IT DOESN'T SCALE BECAUSE  #
-				# OF THE DIVISION BY min_step EARLIER - FIX IT           # 
-				##########################################################
-				tmp_val[i] = np.sum(tmp_y[mask_i[0]:mask_i[-1]])
-			elif np.sum(mask_i) > 0 and action == "average":	
-				tmp_val[i] = np.average(tmp_y[mask_i[0]:mask_i[-1]])
-			else: tmp_val[i] = 0
+			if np.sum(mask_i) > 0 and action == "average":	
+				val_tmp[i] = np.average(tmp_y[mask_i[0]:mask_i[-1]])
 			
-		self.lam = tmp_lam
-		self.val = tmp_val
+			elif np.sum(mask_i) > 0 and action == "sum":	
+				# FIXED. THE SUMMING ISSUE. TEST IT         #
+				# Tested - the errors are on the 0.1% level #
+				val_tmp[i] = np.trapz(tmp_y[mask_i[0]:mask_i[-1]])
+			
+			else: 
+				val_tmp[i] = 0
+			
+		self.lam = lam_tmp
+		self.val = val_tmp
 		
 		
 class EmissionCurve(TransmissionCurve):
-	def __init__(self, filename, res=0.001):
-		print("what's going on here with Inheritance etc?")
+	def __init__(self, **kwargs):
+		"""
+		List of kwargs:
+		lam: 1D numpy array of length n in [µm]
+		val: 1D numpy array of length n in []
+		res: float with the desired spectral resolution in [µm]
+		filename: string with the path to the transmission curve file where
+		          the first column is wavelength in [µm] and the second is the
+				  transmission coefficient between [0,1]
+		
+		pix_res: float of int in [arcsec] for the field of view for each pixel
+		area: float or int in [m2] for the collecting area of M1
+		exptime: float or int in [s] for the integration time for an exposure
+		units: string or astropy.units for calculating the number of photons 
+		       per voxel
+		"""
+		
+		if "pix_res" in kwargs.keys(): self.pix_res = kwargs["pix_res"]
+		#if "lam_res" in kwargs.keys(): self.lam_res = kwargs["lam_res"]
+		if "area" in kwargs.keys():    self.area    = kwargs["area"]
+		if "exptime" in kwargs.keys(): self.exptime = kwargs["exptime"]
+		if "units" in kwargs.keys():   self.units   = kwargs["units"]
+		###### Add support for both astropy units and a string with units #####
+		
+		super(EmissionCurve, self).__init__(**kwargs)
+		
+	def resample(self, bins, action="sum"):
+		super(EmissionCurve, self).resample(bins, action)
 
+	def convert_to_photons(self):
+		"""Do the conversion to photons/voxel by using the units, lam, area
+		and exptime keywords. If not given, make some assumptions.
+		"""
+		pass
 
 
 
