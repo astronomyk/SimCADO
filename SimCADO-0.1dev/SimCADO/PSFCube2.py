@@ -84,6 +84,7 @@
 # convolution of a list of PSF components
 
 import numpy as np
+import scipy.ndimage.interpolation as spi
 
 from astropy import units as u
 from astropy.convolution import (Gaussian2DKernel, AiryDisk2DKernel,
@@ -106,7 +107,7 @@ class PSF(object):
     - pix_res: the pixel scale used in the array
     """
     
-    def __init__(self, size, pix_res):
+    def __init__(self, size, pix_res, array=None):
     
         self.size = size
         self.pix_res = pix_res
@@ -142,7 +143,6 @@ class PSF(object):
         """
         
         self.set_array(convolve_fft(self.array, kernel.array))
-
         
     def add():
         pass
@@ -150,11 +150,10 @@ class PSF(object):
     def mult():
         pass
     
-    
     def resize(self, new_size):
         """Reshape the PSF
 
-        The target shape is new_size x new_size
+        The target shape is (new_size, new_size)
         """
         
          # make sure the new size is always an odd number
@@ -165,7 +164,24 @@ class PSF(object):
         arr_tmp[new_size//2, new_size//2] = 1
         self.set_array(convolve_fft(arr_tmp, self.array))
 
+    def resample(self, new_pix_res):
+        """
+        Resample the PSF array onto a new grid - Not perfect, but conserves flux
+      
+        new_PSF = old_PSF.resample(new_pix_res)
+        """
+        scale_factor = self.pix_res / np.float(new_pix_res) 
+        new_arr = spi.zoom(self.array, scale_factor, order=1)
+        new_arr *= np.sum(self.array)/np.sum(new_arr) 
         
+        ############################################################
+        # Not happy with the way the returned type is not the same #
+        # as the original type. The new object is a plain PSF      #
+        ############################################################
+        new_psf = PSF(size = new_arr.shape[0], pix_res = new_pix_res)
+        new_psf.set_array(new_arr)
+        return new_psf
+    
     
 class DeltaPSF(PSF):
     """
@@ -240,7 +256,7 @@ class AiryPSF(PSF):
         if "size" in kwargs.keys():
             size = round(kwargs["size"] / 2) * 2 + 1
         else: 
-            size = 1
+            size = 255           # min_size
         
         self.fwhm = fwhm
         size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, size)))
@@ -335,15 +351,15 @@ class MoffatPSF(PSF):
             size = round(kwargs["size"] / 2) * 2 + 1
         else: 
             size = 1
-        size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, size)))
+        size = int(np.max((round(4 * self.fwhm / pix_res) * 2 + 1, size)))
 
-        if size > 512: 
-            size = 512
+        if size > 511: 
+            size = 511
             print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
             print("Array size:", size,"x",size, "- PSF FoV:", size * pix_res)
             warnings.warn("PSF dimensions too large")
         
-        super(GaussianPSF, self).__init__(size, pix_res)
+        super(MoffatPSF, self).__init__(size, pix_res)
 
         beta = 4.765 ### Trujillo et al. 2001
         alpha = self.fwhm/(2 * np.sqrt(2**(1/beta) - 1))
@@ -375,10 +391,18 @@ class CombinedPSF(PSF):
         if not hasattr(psf_list, "__len__") or len(psf_list) < 2:
             raise ValueError("psf_list requires more than 1 PSF object")
 
+        pix_res_list = [psf.pix_res for psf in psf_list]
+        if not all(res == pix_res_list[0] for res in pix_res_list):
+            raise ValueError("Not all PSFs in have the same pixel resolution")
+
+        pix_res = pix_res_list[0]
+        
         if "size" in kwargs.keys():
             size = round(kwargs["size"] / 2) * 2 + 1
         else: 
-            size = round(np.max([psf.size for psf in psf_list]) / 2) * 2 + 1
+            size_list = [psf.size for psf in psf_list]
+            size = round(np.max(size_list) / 2) * 2 + 1
+        
         
         arr_tmp = np.zeros((size, size)) 
         arr_tmp[size // 2, size // 2] = 1
@@ -387,11 +411,13 @@ class CombinedPSF(PSF):
             arr_tmp = convolve_fft(arr_tmp, psf.array)
         
         super(CombinedPSF, self).__init__(size, pix_res)
-        self.set_array(arr_tmp)
-        
         self.info["Type"] = "Combined"
         self.info['description'] = "Combined PSF from " + str(len(psf_list)) \
                                                                 + "PSF objects"
+        self.set_array(arr_tmp)
+        
+        
+        
         
         
         #self = copy.deepcopy(psf_list[0])
