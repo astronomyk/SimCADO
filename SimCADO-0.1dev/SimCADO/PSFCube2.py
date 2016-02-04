@@ -544,10 +544,10 @@ class PSFCube(object):
     
     """
     
-    def __init__(self, psf_list, **kwargs):
+    def __init__(self, lam_bin_centers):
             
         self.lam_bin_centers = lam_bin_centers
-        self.psf_list = psf_list
+        self.psf_slices = []
         
         self.info = dict([])
         self.info['created'] = 'yes'
@@ -555,6 +555,9 @@ class PSFCube(object):
     
     def __repr__(self):
         return self.info['description']
+        
+    def __getitem__(self, i):
+        return self.psf_slices[i]
 
     def resize():
         pass
@@ -576,24 +579,69 @@ class PSFCube(object):
 
 
         
-class AnalyticPSFCube(PSFCube):
+class DeltaPSFCube(PSFCube):
     """
-    
+    """
 
+    def __init__(self, lam_bin_centers, positions=(0,0), **kwargs):
+        super(DeltaPSFCube, self).__init__(lam_bin_centers)
+        
+        if hasattr(positions[0], "__len__"):
+            for i in range(len(lam_bin_centers)):
+                self.psf_slices += [DeltaPSF(position=positions[i], **kwargs)]
+        else:
+            self.psf_slices = [DeltaPSF(position = positions, **kwargs)\
+                                                for lam in lam_bin_centers]
     
     
+class AiryPSFCube(PSFCube):
     """
-    pass
+    """
+    
+    #########################Finish this one off ####################
+    
+    
+    
+    def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
+        super(AiryPSFCube, self).__init__(lam_bin_centers)
+        
+        if "diameter" in kwargs.keys():
+            self.diameter = kwargs["diameter"]
+        else: 
+            self.diameter = 1
+            
+            
+        if hasattr(fwhm, "__len__"):
+            for i in range(len(lam_bin_centers)):
+                self.psf_slices += [DeltaPSF(position=positions[i], **kwargs)]
+        else:
+            self.psf_slices = [DeltaPSF(position = positions, **kwargs)\
+                                                for lam in lam_bin_centers]
+    
+    
+class GaussianPSFCube(PSFCube):
+    """
+    """
+    
+class MoffatPSFCube(PSFCube):
+    """
+    """
+    
+class CombinedPSFCube(PSFCube):
+    """
+    """
     
 class UserPSFCube(PSFCube):
-    pass
+    """
+    """
+    
+class ADC_PSFCube(PSFCube):
+    """
+    """
+    
+ 
     
     
-    
-    
-class ADC_PSFCube    
-    
-
     
     
     
