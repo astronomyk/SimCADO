@@ -86,6 +86,7 @@
 import numpy as np
 import scipy.ndimage.interpolation as spi
 
+from astropy.io import fits
 from astropy import units as u
 from astropy.convolution import (Gaussian2DKernel, AiryDisk2DKernel,
                                  Moffat2DKernel)
@@ -98,6 +99,20 @@ import warnings
 __all__ = ["PSFCube", "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF", "DeltaPSF"]        
 
 
+###############################################################################
+#                            PSF and PSF subclasses                           #
+###############################################################################
+
+# (Sub)Class    Needed              Optional
+# PSF           size, pix_res
+# DeltaPSF                          pix_res=0.004, size=f(position), position=(0,0)
+# AiryPSF       fwhm                pix_res=0.004, size=f(fwhm)
+# GaussianPSF   fwhm                pix_res=0.004, size=f(fwhm)
+# MoffatPSF     fwhm                pix_res=0.004, size=f(fwhm)
+# CombinedPSF   psf_list            size=f(psf_list)
+# UserPSF       filename,           pix_res=0.004, size=f(filename), fits_ext=0
+
+
         
 class PSF(object):
     """Point spread function (single layer) base class
@@ -107,7 +122,7 @@ class PSF(object):
     - pix_res: the pixel scale used in the array
     """
     
-    def __init__(self, size, pix_res, array=None):
+    def __init__(self, size, pix_res):
     
         self.size = size
         self.pix_res = pix_res
@@ -134,26 +149,11 @@ class PSF(object):
         self.array = self.array / np.sum(self.array)
         self.size = self.array.shape[0]
         
-    def convolve(self, kernel): 
-        """
-        Convolve the PSF with another kernel. The PSF.array keeps its shape
-        - kernel is a PSF object
-        - ## TODO the option to convolve with a 2D ndarray ##
-        - ## TODO resize the kernel if the pixel scales are different ##
-        """
-        
-        self.set_array(convolve_fft(self.array, kernel.array))
-        
-    def add():
-        pass
-    
-    def mult():
-        pass
-    
     def resize(self, new_size):
-        """Reshape the PSF
+        """Resize the PSF. The target shape is (new_size, new_size).
 
-        The target shape is (new_size, new_size)
+        Keywords:
+        - new_size: the new size of the PSF array in pixels
         """
         
          # make sure the new size is always an odd number
@@ -181,6 +181,45 @@ class PSF(object):
         new_psf = PSF(size = new_arr.shape[0], pix_res = new_pix_res)
         new_psf.set_array(new_arr)
         return new_psf
+        
+    def convolve(self, kernel):
+        """
+        Convolve the PSF with another kernel. The PSF keeps its shape
+        
+        Keywords:
+        - kernel: either a numpy.ndarray or a PSF (sub)class
+        """       
+        if issubclass(type(kernel), PSF):
+            self.set_array(convolve_fft(self.array, kernel.array))
+        else:
+            self.set_array(convolve_fft(self.array, kernel))
+            
+    def __array__(self):
+        return self.array
+        
+    def __mul__(self, x):
+        self.array *= x
+        return self
+        
+    def __rmul__(self, x):
+        self.array *= x
+        return self
+        
+    def __add__(self, x):
+        self.array += x
+        return self
+        
+    def __radd__(self, x):
+        self.array += x
+        return self      
+
+    def __sub__(self, x):
+        self.array -= x
+        return self
+        
+    def __rsub__(self, x):
+        self.array -= x
+        return self            
     
     
 class DeltaPSF(PSF):
@@ -382,6 +421,9 @@ class CombinedPSF(PSF):
     
     Keywords:
     - psf_list: A list of PSF objects
+    
+    Optional keywords:
+    - size: the side length in pixels of the array
     """ 
 
     def __init__(self, psf_list, **kwargs):
@@ -415,60 +457,153 @@ class CombinedPSF(PSF):
         self.info['description'] = "Combined PSF from " + str(len(psf_list)) \
                                                                 + "PSF objects"
         self.set_array(arr_tmp)
+
         
         
-        
-        
-        
-        #self = copy.deepcopy(psf_list[0])
-        #self.info['description'] = "Master psf from list"
-        #self.info['PSF01'] = psf_list[0].info['description']
-        #for i, psf in enumerate(psf_list[1:]):
-            #self.psf = convolve_fft(self.psf, psf.psf)
-            #self.info['PSF%02d' % (i+2)] = psf.info['description']
-
-        #return self
-        
-
-        ## if lam does not have units, assume microns
-        #if self.fwhm.value == 0:
-            ## TODO: telescope parameters as variables!
-            #self.fwhm = (1.22 * lam / (39.3 * u.m)).cgs * u.rad * (
-                #206264806 * u.mas / u.rad)
-
-
-
-       
-
-                 
-                 
-                 
-                 
-                 
-                 
+class UserPSF(PSF):
+    """
+    Import a PSF from a FITS file. 
     
+    Keywords:
+    - filename: A list of PSF objects
+    
+    Optional keywords
+    - fits_ext: the extension number (default 0) for the data in the FITS file
+    - pix_res: the pixel scale used in the array, default is 0.004 arcsec   
+    """ 
+
+    def __init__(self, filename, **kwargs):
+
+        if "pix_res" in kwargs.keys():
+            pix_res = kwargs["pix_res"]  
+        else: 
+            pix_res = 0.004
+    
+        if "fits_ext" in kwargs.keys():
+            fits_ext = kwargs["fits_ext"]  
+        else: 
+            fits_ext = 0
+            
+        self.filename = filename
+        self.fits_ext = fits_ext
+        
+        header = fits.getheader(self.filename, ext = self.fits_ext)
+        data = fits.getdata(self.filename, ext = self.fits_ext)
+        size = header["NAXIS1"]
+
+        super(UserPSF, self).__init__(size, pix_res)
+        self.info["Type"] = "User"
+        self.info['description'] = "PSF from FITS file: " + self.filename
+        
+        self.set_array(data)
+
+        if "size" in kwargs.keys():
+            self.resize(kwargs["size"])
+
+
+            
+###############################################################################
+#                       PSFCube and PSFCube subclasses                        #
+###############################################################################
                  
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
+# (Sub)Class    Needed              Optional
+# PSF           size, pix_res
+# DeltaPSF                          pix_res=0.004, size=f(position), position=(0,0)
+# AiryPSF       fwhm                pix_res=0.004, size=f(fwhm)
+# GaussianPSF   fwhm                pix_res=0.004, size=f(fwhm)
+# MoffatPSF     fwhm                pix_res=0.004, size=f(fwhm)
+# CombinedPSF   psf_list            size=f(psf_list)
+# UserPSF       filename,           pix_res=0.004, size=f(filename), fits_ext=0
+
+#    Keywords:
+#    - type:
+#    - lam_bin_centers
+    
+#    Bound keywords:
+#    - fwhm : needed for AiryPSF, GaussianPSF, MoffatPSF
+#    - psf_list: needed for CombinedPSF
+#    - filename: needed for UserPSF
+    
+#    Optional keywords
+#    - size:
+#    - pix_res:
+#    - position: optional in DeltaPSF
+#    - fits_ext: optional in UserPSF
 
 
 class PSFCube(object):
-    """Class holding wavelength dependent point spread function"""
+    """Class holding wavelength dependent point spread function
 
+    Keywords:
+    - lam_bin_centers
+    - pix_res
+    
+    Optional keywords:
+    - size
+
+    
+    """
+    
+    def __init__(self, psf_list, **kwargs):
+            
+        self.lam_bin_centers = lam_bin_centers
+        self.psf_list = psf_list
+        
+        self.info = dict([])
+        self.info['created'] = 'yes'
+        self.info['description'] = "Point spread function (multiple layer)"
+    
+    def __repr__(self):
+        return self.info['description']
+
+    def resize():
+        pass
+    
+    def resample():
+        pass
+    
+    def export_to_FITS():
+        pass
+
+    def convolve():
+        pass
+    
+    def add():
+        pass
+    
+    def mult():
+        pass
+
+
+        
+class AnalyticPSFCube(PSFCube):
+    """
+    
+
+    
+    
+    """
+    pass
+    
+class UserPSFCube(PSFCube):
+    pass
+    
+    
+    
+    
+class ADC_PSFCube    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     def __init__(self):
         self.info = dict([])
         self.info['created'] = 'yes'
