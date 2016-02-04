@@ -91,6 +91,7 @@ from astropy.convolution import (Gaussian2DKernel, AiryDisk2DKernel,
 from astropy.convolution import convolve, convolve_fft
 import utils
 
+import warnings
 
 ## These classes and functions are exported to the package
 __all__ = ["PSFCube", "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF", "DeltaPSF"]        
@@ -118,7 +119,7 @@ class PSF(object):
     def __repr__(self):
         return self.info['description']
 
-    def set_array(sefl, array, threshold=1e-15):
+    def set_array(self, array, threshold=1e-15):
         """
         Renormalise the array and make sure there aren't any negative values
         that will screw up the flux later on
@@ -139,8 +140,10 @@ class PSF(object):
         - ## TODO the option to convolve with a 2D ndarray ##
         - ## TODO resize the kernel if the pixel scales are different ##
         """
+        
         self.set_array(convolve_fft(self.array, kernel.array))
 
+        
     def add():
         pass
     
@@ -153,26 +156,16 @@ class PSF(object):
 
         The target shape is new_size x new_size
         """
-        # make sure the new size is always an odd number
+        
+         # make sure the new size is always an odd number
         if new_size % 2 == 0:
             new_size += 1
 
-        new_arr = np.zeros((new_size, new_size))
-        aw, bw = self.array.shape[0], new_size
+        arr_tmp = np.zeros((new_size, new_size)) 
+        arr_tmp[new_size//2, new_size//2] = 1
+        self.set_array(convolve_fft(arr_tmp, self.array))
 
-        # if the new array is larger, place old array in the centre of the 
-        # empty array. Otherwise, cut the centre out of the old array
-        if bw > aw:
-            new_arr[bw/2 - aw/2 : bw/2 + aw/2 + 1, 
-                    bw/2 - aw/2 : bw/2 + aw/2 + 1] = self.array
-        else:
-            new_arr = self.array[aw/2 - bw/2 : aw/2 + bw/2 + 1, 
-                                 aw/2 - bw/2 : aw/2 + bw/2 + 1]
         
-        self.set_array(new_arr)
-    
-    
-    
     
 class DeltaPSF(PSF):
     """
@@ -189,7 +182,7 @@ class DeltaPSF(PSF):
         
     def __init__(self, **kwargs):
 
-        if "position" not in kwargs.keys():
+        if "position" in kwargs.keys():
             self.position = kwargs["position"]  
         else: 
             self.position = (0,0)
@@ -197,7 +190,7 @@ class DeltaPSF(PSF):
         if "size" in kwargs.keys():
             size = round(kwargs["size"] / 2) * 2 + 1
         else: 
-            size = int(np.max(np.abs(position))) * 2 + 1
+            size = int(np.max(np.abs(self.position))) * 2 + 3
         
         if "pix_res" in kwargs.keys():
             pix_res = kwargs["pix_res"]  
@@ -208,10 +201,10 @@ class DeltaPSF(PSF):
         super(DeltaPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Delta"
         self.info['description'] = "Delta PSF, centred at (%.1f, %.1f)" \
-                                    % position
+                                    % self.position
         
-        self.x = self.size // 2 + position[0]
-        self.y = self.size // 2 + position[1]
+        self.x = self.size // 2 + self.position[0]
+        self.y = self.size // 2 + self.position[1]
 
         x2 = self.x - int(self.x)
         x1 = 1. - x2
@@ -238,7 +231,7 @@ class AiryPSF(PSF):
     """
     
     def __init__(self, fwhm, **kwargs):
-        
+               
         if "pix_res" in kwargs.keys():
             pix_res = kwargs["pix_res"]  
         else: 
@@ -248,8 +241,16 @@ class AiryPSF(PSF):
             size = round(kwargs["size"] / 2) * 2 + 1
         else: 
             size = 1
-        size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, self.size)))
-
+        
+        self.fwhm = fwhm
+        size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, size)))
+        
+        if size > 511: 
+            size = 511
+            print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
+            print("Array size:", size,"x",size, "- PSF FoV:", size * pix_res)
+            warnings.warn("PSF dimensions too large")
+        
         super(AiryPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Airy"
         self.info['description'] = "Airy PSF, FWHM = %.1f arcsec" \
@@ -257,10 +258,12 @@ class AiryPSF(PSF):
                                     
         ## convert sigma (gauss) to first zero (airy)
         gauss2airy = 2.76064 
-                               
+        
         n = (self.fwhm / 2.35) / self.pix_res * gauss2airy
-        self.set_array(AiryDisk2DKernel(n, x_size=self.size, y_size=self.size,
+        self.set_array(AiryDisk2DKernel(n, x_size=self.size, y_size=self.size, \
                                         mode='oversample').array)
+    
+    
     
 class GaussianPSF(PSF):
     """
@@ -287,8 +290,14 @@ class GaussianPSF(PSF):
             size = round(kwargs["size"] / 2) * 2 + 1
         else: 
             size = 1
-        size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, size)))
+        size = int(np.max((round(5 * self.fwhm / pix_res) * 2 + 1, size)))
 
+        if size > 512: 
+            size = 512
+            print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
+            print("Array size:", size,"x",size, "- PSF FoV:", size * pix_res)
+            warnings.warn("PSF dimensions too large")
+        
         super(GaussianPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Gaussian"
         self.info['description'] = "Gaussian PSF, FWHM = %.1f arcsec" \
@@ -297,6 +306,7 @@ class GaussianPSF(PSF):
         n = (self.fwhm / 2.35) / self.pix_res
         self.set_array(Gaussian2DKernel(n, x_size=self.size, y_size=self.size,
                                         mode='oversample').array)
+        
         
         
 class MoffatPSF(PSF):
@@ -312,7 +322,7 @@ class MoffatPSF(PSF):
     - pix_res: the pixel scale used in the array, default is 0.004 arcsec   
     """ 
         
-     def __init__(self, fwhm, **kwargs):
+    def __init__(self, fwhm, **kwargs):
         
         self.fwhm = fwhm
         
@@ -327,9 +337,14 @@ class MoffatPSF(PSF):
             size = 1
         size = int(np.max((round(8 * self.fwhm / pix_res) * 2 + 1, size)))
 
+        if size > 512: 
+            size = 512
+            print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
+            print("Array size:", size,"x",size, "- PSF FoV:", size * pix_res)
+            warnings.warn("PSF dimensions too large")
+        
         super(GaussianPSF, self).__init__(size, pix_res)
 
-    
         beta = 4.765 ### Trujillo et al. 2001
         alpha = self.fwhm/(2 * np.sqrt(2**(1/beta) - 1))
         self.info["Type"] = "Moffat"
@@ -343,28 +358,50 @@ class MoffatPSF(PSF):
         self.set_array(Moffat2DKernel(alpha, beta, x_size=self.size, 
                                       y_size=self.size, mode=mode).array)
  
+ 
 
 class CombinedPSF(PSF):
+    """
+    Generate a PSF from a collection of several PSFs. 
+    
+    Keywords:
+    - psf_list: A list of PSF objects
+    """ 
 
-
-        
-        
-    @classmethod
-    def __init__(self, psf_list):
+    def __init__(self, psf_list, **kwargs):
         """Generate a master psf through convolution of a list of psfs"""
         import copy
+        
+        if not hasattr(psf_list, "__len__") or len(psf_list) < 2:
+            raise ValueError("psf_list requires more than 1 PSF object")
 
-        if not hasattr(psf_list, "__len__"):
-            psf_list = [psf_list]
+        if "size" in kwargs.keys():
+            size = round(kwargs["size"] / 2) * 2 + 1
+        else: 
+            size = round(np.max([psf.size for psf in psf_list]) / 2) * 2 + 1
+        
+        arr_tmp = np.zeros((size, size)) 
+        arr_tmp[size // 2, size // 2] = 1
+        
+        for psf in psf_list:
+            arr_tmp = convolve_fft(arr_tmp, psf.array)
+        
+        super(CombinedPSF, self).__init__(size, pix_res)
+        self.set_array(arr_tmp)
+        
+        self.info["Type"] = "Combined"
+        self.info['description'] = "Combined PSF from " + str(len(psf_list)) \
+                                                                + "PSF objects"
+        
+        
+        #self = copy.deepcopy(psf_list[0])
+        #self.info['description'] = "Master psf from list"
+        #self.info['PSF01'] = psf_list[0].info['description']
+        #for i, psf in enumerate(psf_list[1:]):
+            #self.psf = convolve_fft(self.psf, psf.psf)
+            #self.info['PSF%02d' % (i+2)] = psf.info['description']
 
-        self = copy.deepcopy(psf_list[0])
-        self.info['description'] = "Master psf from list"
-        self.info['PSF01'] = psf_list[0].info['description']
-        for i, psf in enumerate(psf_list[1:]):
-            self.psf = convolve_fft(self.psf, psf.psf)
-            self.info['PSF%02d' % (i+2)] = psf.info['description']
-
-        return self
+        #return self
         
 
         ## if lam does not have units, assume microns
@@ -383,15 +420,7 @@ class CombinedPSF(PSF):
                  
                  
                  
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
+    
                  
                  
                  
