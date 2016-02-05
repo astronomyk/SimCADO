@@ -118,8 +118,8 @@ class PSF(object):
     """Point spread function (single layer) base class
 
     Needed keywords arguments:
-    - size: the size length of the array in pixels
-    - pix_res: the pixel scale used in the array
+    - size: [int] the size length of the array in pixels
+    - pix_res: [arcsec] the pixel scale used in the array
     """
     
     def __init__(self, size, pix_res):
@@ -141,7 +141,7 @@ class PSF(object):
         that will screw up the flux later on
         
         Keywords:
-        - array
+        - array: [ndarray] the array representing the PSF
         - threshold: by default set to 1E-15
         """
         self.array = array
@@ -153,7 +153,7 @@ class PSF(object):
         """Resize the PSF. The target shape is (new_size, new_size).
 
         Keywords:
-        - new_size: the new size of the PSF array in pixels
+        - new_size: [int] the new size of the PSF array in pixels
         """
         
          # make sure the new size is always an odd number
@@ -167,8 +167,10 @@ class PSF(object):
     def resample(self, new_pix_res):
         """
         Resample the PSF array onto a new grid - Not perfect, but conserves flux
-      
-        new_PSF = old_PSF.resample(new_pix_res)
+        Example: new_PSF = old_PSF.resample(new_pix_res)
+        
+        Keywords:
+        - new_pix_res: [arcsec] the pixel resolution of the returned array
         """
         scale_factor = self.pix_res / np.float(new_pix_res) 
         new_arr = spi.zoom(self.array, scale_factor, order=1)
@@ -187,7 +189,7 @@ class PSF(object):
         Convolve the PSF with another kernel. The PSF keeps its shape
         
         Keywords:
-        - kernel: either a numpy.ndarray or a PSF (sub)class
+        - kernel: [PSF/ndarray] either a numpy.ndarray or a PSF (sub)class
         """       
         if issubclass(type(kernel), PSF):
             self.set_array(convolve_fft(self.array, kernel.array))
@@ -201,25 +203,22 @@ class PSF(object):
         self.array *= x
         return self
         
-    def __rmul__(self, x):
-        self.array *= x
-        return self
-        
     def __add__(self, x):
         self.array += x
         return self
         
-    def __radd__(self, x):
-        self.array += x
-        return self      
-
     def __sub__(self, x):
         self.array -= x
         return self
-        
+    
+    def __rmul__(self, x):
+        self.__mul__(x)
+                
+    def __radd__(self, x):
+        self.__add__(x)
+    
     def __rsub__(self, x):
-        self.array -= x
-        return self            
+        self.__sub__(x)        
     
     
 class DeltaPSF(PSF):
@@ -229,10 +228,10 @@ class DeltaPSF(PSF):
     Needed keywords arguments:
                 
     Optional keywords
-    - position: where (x,y) on the array will the delta function go,
+    - position: [(x,y,)] where (x,y) on the array will the delta function go,
                 default is (x,y) = (0,0) and is the centre of the array
-    - size: the side length of the array in pixels
-    - pix_res: the pixel scale used in the array, default is 0.004 arcsec   
+    - size: [int] the side length of the array in pixels
+    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004 
     """
         
     def __init__(self, **kwargs):
@@ -278,11 +277,11 @@ class AiryPSF(PSF):
     Generate a PSF for an Airy function with an equivalent FWHM
     
     Needed keywords arguments:
-    - fwhm: the equivalent FWHM in [arcsec] of the PSF.
+    - fwhm: [arcsec] the equivalent FWHM of the Airy disk core.
     
     Optional keywords
-    - size: the side length of the array in pixels
-    - pix_res: the pixel scale used in the array, default is 0.004 arcsec   
+    - size: [int] the side length of the array in pixels
+    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004 
     """
     
     def __init__(self, fwhm, **kwargs):
@@ -325,11 +324,11 @@ class GaussianPSF(PSF):
     Generate a PSF for an Gaussian function
     
     Needed keywords arguments:
-    - fwhm: the FWHM in [arcsec] of the PSF.
+    - fwhm: [arcsec] the FWHM of the PSF.
     
     Optional keywords
-    - size: the side length of the array in pixels
-    - pix_res: the pixel scale used in the array, default is 0.004 arcsec   
+    - size: [int] the side length of the array in pixels
+    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
     """
     
     def __init__(self, fwhm, **kwargs):
@@ -370,11 +369,11 @@ class MoffatPSF(PSF):
     Beta = 4.765 (from Trujillo et al. 2001)
     
     Needed keywords arguments:
-    - fwhm: the FWHM in [arcsec] of the PSF.
+    - fwhm: [arcsec] the FWHM of the PSF.
     
     Optional keywords
-    - size: the side length of the array in pixels
-    - pix_res: the pixel scale used in the array, default is 0.004 arcsec   
+    - size: [int] the side length of the array in pixels
+    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
     """ 
         
     def __init__(self, fwhm, **kwargs):
@@ -420,10 +419,10 @@ class CombinedPSF(PSF):
     Generate a PSF from a collection of several PSFs. 
     
     Keywords:
-    - psf_list: A list of PSF objects
+    - psf_list: [list] A list of PSF objects
     
     Optional keywords:
-    - size: the side length in pixels of the array
+    - size: [int] the side length in pixels of the array
     """ 
 
     def __init__(self, psf_list, **kwargs):
@@ -465,11 +464,11 @@ class UserPSF(PSF):
     Import a PSF from a FITS file. 
     
     Keywords:
-    - filename: A list of PSF objects
+    - filename: [str] path to the FITS file to be read in
     
     Optional keywords
-    - fits_ext: the extension number (default 0) for the data in the FITS file
-    - pix_res: the pixel scale used in the array, default is 0.004 arcsec   
+    - fits_ext: [int] the FITS extension number (default 0) for the data
+    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
     """ 
 
     def __init__(self, filename, **kwargs):
@@ -558,29 +557,102 @@ class PSFCube(object):
         
     def __getitem__(self, i):
         return self.psf_slices[i]
+        
+    def __array__(self):
+        return self.psf_slices
 
-    def resize():
-        pass
+    def resize(self, new_size):
+        """Resize the list of PSFs. The target shape is (new_size, new_size).
+
+        Keywords:
+        - new_size: [int] the new size of the PSF array in pixels
+        """
+        for psf in psf_slices: 
+            psf.resize(new_size)
     
-    def resample():
-        pass
-    
+    def resample(new_pix_res):
+        """
+        Resample the the list of PSF array onto a new grid and return the new
+        grid - Not perfect, but conserves flux
+        Example: new_PSF = old_PSF.resample(new_pix_res)
+        
+        Keywords:
+        - new_pix_res: [arcsec] the pixel resolution of the returned array
+        """
+        return [psf.resample(new_pix_res) for psf in psf_slices]
+
     def export_to_FITS():
         pass
 
-    def convolve():
-        pass
+    def convolve(kernel_list):
+        if len(self.psf_slices) != len(kernel_list):
+            print("len(PSF_slices):",  len(self.psf_slices), 
+                  "len(kernel_list):", len(kernel_list))
+            raise ValueError("Number of kernels must equal number of PSFs")
+        
+        for psf, kernel in zip(self.psf_slices, kernel_list):
+            psf.convolve(kernel)
+          
+    def __mul__(x):
+        if not hasattr(x, "__len__"):
+            y = [x] * len(self.psf_slices)
+        else: 
+            y = x
+        
+        if len(self.psf_slices) != len(y):
+            print(len(self.psf_slices), len(y))
+            raise ValueError("len(arguments) must equal len(PSFs)")
+        
+        for psf, y in zip(self.psf_slices, y):
+                psf = psf * y
+
+    def __add__(x):
+        if not hasattr(x, "__len__"):
+            y = [x] * len(self.psf_slices)
+        else: 
+            y = x
+        
+        if len(self.psf_slices) != len(y):
+            print(len(self.psf_slices), len(y))
+            raise ValueError("len(arguments) must equal len(PSFs)")
+        
+        for psf, y in zip(self.psf_slices, y):
+                psf = psf + y
+   
+    def __sub__(x):
+        if not hasattr(x, "__len__"):
+            y = [x] * len(self.psf_slices)
+        else: 
+            y = x
+        
+        if len(self.psf_slices) != len(y):
+            print(len(self.psf_slices), len(y))
+            raise ValueError("len(arguments) must equal len(PSFs)")
+        
+        for psf, y in zip(self.psf_slices, y):
+                psf = psf - y
     
-    def add():
-        pass
+    def __rmul__(self, x):
+        self.__mul__(x)
+                
+    def __radd__(self, x):
+        self.__add__(x)
     
-    def mult():
-        pass
+    def __rsub__(self, x):
+        self.__sub__(x)    
 
 
         
 class DeltaPSFCube(PSFCube):
     """
+    Generate a list of PSFs ofr each wavelength defined in lam_bin_centers
+    
+    Keywords:
+    - lam_bin_centers: [µm] the centre of each wavelength slice
+    
+    Optional keywords:
+    - positions: [(px,px)] either a tuple, or a list of tuples denoting the 
+                 position of the delta function
     """
 
     def __init__(self, lam_bin_centers, positions=(0,0), **kwargs):
@@ -596,40 +668,99 @@ class DeltaPSFCube(PSFCube):
     
 class AiryPSFCube(PSFCube):
     """
+    Keywords:
+    - lam_bin_centers: [µm] a list with the centres of each wavelength slice
+    
+    Optional keywords:
+    - fwhm: [arcsec] the equivalent FWHM of the PSF.
+    - diameter: [m] diamter of primary mirror. Default is 39.3m.
     """
-    
-    ######################### Finish this one off ####################
-    
-    
     
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
         super(AiryPSFCube, self).__init__(lam_bin_centers)
         
-        if "diameter" in kwargs.keys():
-            self.diameter = kwargs["diameter"]
-        else: 
-            self.diameter = 1
-            
-            
-        if hasattr(fwhm, "__len__"):
-            for i in range(len(lam_bin_centers)):
-                self.psf_slices += [DeltaPSF(position=positions[i], **kwargs)]
+        if "diameter" in kwargs.keys(): 
+            self.diameter = kwargs["diameter"] 
         else:
-            self.psf_slices = [DeltaPSF(position = positions, **kwargs)\
-                                                for lam in lam_bin_centers]
+            self.diameter = 39.3
+            
+        if fwhm is None:
+            # lam in µm, diameter in m, 206265 is 1 rad in arcsec
+            self.fwhm = [206265 * 1.22 * lam * 1E-6 / self.diameter \
+                                                    for lam in lam_bin_centers]
+        elif not hasattr(fwhm, "__len__"):
+            self.fwhm = [fwhm] * len(self.lam_bin_centers)
+        
+        self.psf_slices = [AiryPSF(fwhm = f, **kwargs) for f in fwhm]
     
     
 class GaussianPSFCube(PSFCube):
     """
+    Keywords:
+    - lam_bin_centers: [µm] a list with the centres of each wavelength slice 
+    
+    Optional keywords:
+    - fwhm: [arcsec] the FWHM of the PSF.
+   - diameter: [m] diamter of primary mirror. Default is 39.3m.
     """
+    
+    def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
+        super(GaussianPSFCube, self).__init__(lam_bin_centers)
+        
+        if "diameter" in kwargs.keys(): 
+            self.diameter = kwargs["diameter"] 
+        else:
+            self.diameter = 39.3
+            
+        if fwhm is None:
+            # lam in µm, diameter in m, 206265 is 1 rad in arcsec
+            self.fwhm = [206265 * 1.22 * lam * 1E-6 / self.diameter \
+                                                    for lam in lam_bin_centers]
+        elif not hasattr(fwhm, "__len__"):
+            self.fwhm = [fwhm] * len(self.lam_bin_centers)
+        
+        self.psf_slices = [GaussianPSF(fwhm = f, **kwargs) for f in fwhm]
+    
     
 class MoffatPSFCube(PSFCube):
     """
+    Keywords:
+    - lam_bin_centers: [µm] a list with the centres of each wavelength slice 
+    
+    Optional keywords:
+    - fwhm: [arcsec] the FWHM of the PSF.
+   - diameter: [m] diamter of primary mirror. Default is 39.3m.
     """
     
+    def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
+        super(MoffatPSFCube, self).__init__(lam_bin_centers)
+        
+        if "diameter" in kwargs.keys(): 
+            self.diameter = kwargs["diameter"] 
+        else:
+            self.diameter = 39.3
+            
+        if fwhm is None:
+            # lam in µm, diameter in m, 206265 is 1 rad in arcsec
+            self.fwhm = [206265 * 1.22 * lam * 1E-6 / self.diameter \
+                                                    for lam in lam_bin_centers]
+        elif not hasattr(fwhm, "__len__"):
+            self.fwhm = [fwhm] * len(self.lam_bin_centers)
+        
+        self.psf_slices = [MoffatPSF(fwhm = f, **kwargs) for f in fwhm]
+        
+        
 class CombinedPSFCube(PSFCube):
     """
     """
+    
+    def __init__(self, psfcube_list)
+    
+    
+    
+    
+    
+    
     
 class UserPSFCube(PSFCube):
     """
