@@ -586,8 +586,31 @@ class PSFCube(object):
         """
         return [psf.resample(new_pix_res) for psf in psf_slices]
 
-    def export_to_FITS():
-        pass
+    def export_to_FITS(self, filename, clobber=True, **header_info):
+        """
+        Export the PSFCube to a FITS file for later use
+        
+        Keywords:
+        - filename
+        - **header_info: A dict with extra header keys and values
+        """
+        ext_list = []
+
+        for i in range(len(self)):
+            psf = self.psf_slices[i]    
+            if i == 0: 
+                hdu = fits.PrimaryHDU(psf.array)
+            else:
+                hdu = fits.ImageHDU(psf.array)
+            hdu.header["CDELT1"] = (psf.pix_res, "[arcsec] - Pixel resolution")
+            hdu.header["CDELT2"] = (psf.pix_res, "[arcsec] - Pixel resolution")
+            hdu.header["WAVECENT"] = (self.lam_bin_centers[i], "[micron] - Wavelength of slice")
+            #hdu.header["PSF_TYPE"] = (self.info["Type"], "Type of PSF")
+            ext_list += [hdu]
+        
+        hdu_list = fits.HDUList(ext_list)
+        hdu_list.writeto(filename, clobber=clobber)
+    
 
     def convolve(kernel_list):
         if len(self.psf_slices) != len(kernel_list):
@@ -788,7 +811,7 @@ class CombinedPSFCube(PSFCube):
             
         ## Check that the wavelengths are equal
         lam_list = [cube.lam_bin_centers for cube in psfcube_list]
-        if not all([all(lam == lam_list[0]) for lam in lam_list[1:]]):
+        if not all([all(lam == lam_list[0]) for lam in lam_list]):
             raise ValueError("Wavelength arrays of psf cubes are not equal")
         lam_bin_centers = lam_list[0]
 
@@ -807,6 +830,8 @@ class CombinedPSFCube(PSFCube):
 class UserPSFCube(PSFCube):
     """
     """
+    
+
     
 class ADC_PSFCube(PSFCube):
     """
