@@ -242,15 +242,17 @@ class DeltaPSF(PSF):
             self.position = (0,0)
         
         if "size" in kwargs.keys():
-            size = round(kwargs["size"] / 2) * 2 + 1
+            size = round(kwargs["size"] / 2) * 2 + 3
         else: 
             size = int(np.max(np.abs(self.position))) * 2 + 3
+
+        if not np.max(self.position) < size:
+            raise ValueError("positions are outside array borders:")
         
         if "pix_res" in kwargs.keys():
             pix_res = kwargs["pix_res"]  
         else: 
             pix_res = 0.004
-        
         
         super(DeltaPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Delta"
@@ -307,8 +309,8 @@ class AiryPSF(PSF):
         
         super(AiryPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Airy"
-        self.info['description'] = "Airy PSF, FWHM = %.1f arcsec" \
-                                    % (self.fwhm)
+        self.info['description'] = "Airy PSF, FWHM = %.1f mas" \
+                                    % (self.fwhm * 1E3)
                                     
         ## convert sigma (gauss) to first zero (airy)
         gauss2airy = 2.76064 
@@ -355,7 +357,7 @@ class GaussianPSF(PSF):
         super(GaussianPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Gaussian"
         self.info['description'] = "Gaussian PSF, FWHM = %.1f arcsec" \
-                                    % (self.fwhm)
+                                    % (self.fwhm * 1E3)
                                                                   
         n = (self.fwhm / 2.35) / self.pix_res
         self.set_array(Gaussian2DKernel(n, x_size=self.size, y_size=self.size,
@@ -403,7 +405,7 @@ class MoffatPSF(PSF):
         alpha = self.fwhm/(2 * np.sqrt(2**(1/beta) - 1))
         self.info["Type"] = "Moffat"
         self.info['description'] = "Moffat PSF, FWHM = %.1f, alpha = %.1f"\
-                                       % (self.fwhm, alpha)
+                                       % (self.fwhm * 1E3, alpha)
 
         if self.size > 100:
             mode = "linear_interp"
@@ -439,18 +441,24 @@ class CombinedPSF(PSF):
         pix_res = pix_res_list[0]
         
         if "size" in kwargs.keys():
-            size = round(kwargs["size"] / 2) * 2 + 1
+            size = int(kwargs["size"] // 2) * 2 + 1
         else: 
             size_list = [psf.size for psf in psf_list]
-            size = round(np.max(size_list) / 2) * 2 + 1
+            size = int(np.max(size_list) // 2) * 2 + 1
         
-        
+        ## Compensate for the shift in centre due to a DeltaPSF
+        shifts = np.asarray([(0,0)] + [psf.position for psf in psf_list \
+                                            if psf.info["Type"] == "Delta"])
+        size += 2 * np.max(shifts)
+        print(size)
+                                             
         arr_tmp = np.zeros((size, size)) 
         arr_tmp[size // 2, size // 2] = 1
         
         for psf in psf_list:
             arr_tmp = convolve_fft(arr_tmp, psf.array)
-        
+
+                
         super(CombinedPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Combined"
         self.info['description'] = "Combined PSF from " + str(len(psf_list)) \
@@ -534,19 +542,13 @@ class PSFCube(object):
     """Class holding wavelength dependent point spread function
 
     Keywords:
-    - lam_bin_centers
-    - pix_res
-    
-    Optional keywords:
-    - size
-
-    
+    - lam_bin_centers: [µm] the centre of each wavelength slice
     """
     
     def __init__(self, lam_bin_centers):
             
         self.lam_bin_centers = lam_bin_centers
-        self.psf_slices = []
+        self.psf_slices = [None] * len(lam_bin_centers)
         
         self.info = dict([])
         self.info['created'] = 'yes'
@@ -558,8 +560,11 @@ class PSFCube(object):
     def __getitem__(self, i):
         return self.psf_slices[i]
         
-    def __array__(self):
-        return self.psf_slices
+    #def __array__(self):
+     #   return self.psf_slices
+        
+    def __len__(self):
+        return len(self.psf_slices)
 
     def resize(self, new_size):
         """Resize the list of PSFs. The target shape is (new_size, new_size).
@@ -645,7 +650,7 @@ class PSFCube(object):
         
 class DeltaPSFCube(PSFCube):
     """
-    Generate a list of PSFs ofr each wavelength defined in lam_bin_centers
+    Generate a list of DeltaPSFs for wavelengths defined in lam_bin_centers
     
     Keywords:
     - lam_bin_centers: [µm] the centre of each wavelength slice
@@ -658,16 +663,19 @@ class DeltaPSFCube(PSFCube):
     def __init__(self, lam_bin_centers, positions=(0,0), **kwargs):
         super(DeltaPSFCube, self).__init__(lam_bin_centers)
         
-        if hasattr(positions[0], "__len__"):
-            for i in range(len(lam_bin_centers)):
-                self.psf_slices += [DeltaPSF(position=positions[i], **kwargs)]
-        else:
-            self.psf_slices = [DeltaPSF(position = positions, **kwargs)\
-                                                for lam in lam_bin_centers]
-    
+        if not hasattr(positions[0], "__len__"):
+            positions = [positions]*len(self), 
+        
+        for i in range(len(self)):
+            self.psf_slices[i] = DeltaPSF(position=positions[i], **kwargs)
+        
+        self.info['description'] = "List of Delta function PSFs"
+        self.info["Type"] = "DeltaCube"
     
 class AiryPSFCube(PSFCube):
     """
+    Generate a list of AiryPSFs for wavelengths defined in lam_bin_centers
+    
     Keywords:
     - lam_bin_centers: [µm] a list with the centres of each wavelength slice
     
@@ -689,13 +697,18 @@ class AiryPSFCube(PSFCube):
             self.fwhm = [206265 * 1.22 * lam * 1E-6 / self.diameter \
                                                     for lam in lam_bin_centers]
         elif not hasattr(fwhm, "__len__"):
-            self.fwhm = [fwhm] * len(self.lam_bin_centers)
+            self.fwhm = [fwhm] * len(self)
         
-        self.psf_slices = [AiryPSF(fwhm = f, **kwargs) for f in fwhm]
+        self.psf_slices = [AiryPSF(fwhm = f, **kwargs) for f in self.fwhm]
+    
+        self.info['description'] = "List of Airy function PSFs"
+        self.info["Type"] = "AiryCube"
     
     
 class GaussianPSFCube(PSFCube):
     """
+    Generate a list of GaussianPSFs for wavelengths defined in lam_bin_centers
+    
     Keywords:
     - lam_bin_centers: [µm] a list with the centres of each wavelength slice 
     
@@ -717,19 +730,23 @@ class GaussianPSFCube(PSFCube):
             self.fwhm = [206265 * 1.22 * lam * 1E-6 / self.diameter \
                                                     for lam in lam_bin_centers]
         elif not hasattr(fwhm, "__len__"):
-            self.fwhm = [fwhm] * len(self.lam_bin_centers)
+            self.fwhm = [fwhm] * len(self)
         
-        self.psf_slices = [GaussianPSF(fwhm = f, **kwargs) for f in fwhm]
+        self.psf_slices = [GaussianPSF(fwhm = f, **kwargs) for f in self.fwhm]
     
+        self.info['description'] = "List of Gaussian function PSFs"
+        self.info["Type"] = "GaussianCube"
     
 class MoffatPSFCube(PSFCube):
     """
+    Generate a list of MoffatPSFs for wavelengths defined in lam_bin_centers
+    
     Keywords:
     - lam_bin_centers: [µm] a list with the centres of each wavelength slice 
     
     Optional keywords:
     - fwhm: [arcsec] the FWHM of the PSF.
-   - diameter: [m] diamter of primary mirror. Default is 39.3m.
+    - diameter: [m] diamter of primary mirror. Default is 39.3m.
     """
     
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
@@ -745,22 +762,47 @@ class MoffatPSFCube(PSFCube):
             self.fwhm = [206265 * 1.22 * lam * 1E-6 / self.diameter \
                                                     for lam in lam_bin_centers]
         elif not hasattr(fwhm, "__len__"):
-            self.fwhm = [fwhm] * len(self.lam_bin_centers)
+            self.fwhm = [fwhm] * len(self)
         
         self.psf_slices = [MoffatPSF(fwhm = f, **kwargs) for f in fwhm]
         
+        self.info['description'] = "List of Moffat function PSFs"
+        self.info["Type"] = "MoffatCube"
         
 class CombinedPSFCube(PSFCube):
     """
+    Generate a list of CombinedPSFs from the list of PSFCubes in psfcube_list
+    
+    Keywords:
+    - lam_bin_centers: [µm] a list with the centres of each wavelength slice 
+    
+    Optional keywords:
+    - fwhm: [arcsec] the FWHM of the PSF.
+    - diameter: [m] diamter of primary mirror. Default is 39.3m.
     """
     
-    def __init__(self, psfcube_list)
-    
-    
-    
-    
-    
-    
+    def __init__(self, psfcube_list, **kwargs):
+        
+        if not (type(psfcube_list) == list and len(psfcube_list) >= 2):
+            raise ValueError("psfcube_list only takes a list of PSFCube objects")
+            
+        ## Check that the wavelengths are equal
+        lam_list = [cube.lam_bin_centers for cube in psfcube_list]
+        if not all([all(lam == lam_list[0]) for lam in lam_list[1:]]):
+            raise ValueError("Wavelength arrays of psf cubes are not equal")
+        lam_bin_centers = lam_list[0]
+
+        super(CombinedPSFCube, self).__init__(lam_bin_centers)
+
+        self.info['description'] = "Master psf cube from list"
+        for i in range(len(psfcube_list)):
+            self.info['PSF%02d' % (i+1)] = psfcube_list[i].info['description']
+
+            
+        for i in range(len(self)):
+            self.psf_slices[i] = CombinedPSF([psf[i] for psf in psfcube_list], **kwargs)
+            
+        
     
 class UserPSFCube(PSFCube):
     """
@@ -876,16 +918,6 @@ class ADC_PSFCube(PSFCube):
 
         self.fwhm = [i.fwhm for i in self.cube]
         self.size_orig = [i.psf.shape[0] for i in self.cube]
-
-        ## CHECK: Do we have to resize the slices to a common shape?
-        ## Comment from Kieran's original code
-        # resample the slices so that they are all the same size
-        # self.resample(np.max(self.size_orig))
-        
-    # !!!!!!!!!!! It seems that we don't need the resampling,
-        # so long as all arrays are odd numbers in length !!!!!!!!!!!!!!
-
-        ## TODO: Add some more cube info
 
         return self
         
