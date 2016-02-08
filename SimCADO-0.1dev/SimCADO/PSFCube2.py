@@ -144,7 +144,7 @@ class PSF(object):
         - array: [ndarray] the array representing the PSF
         - threshold: by default set to 1E-15
         """
-        self.array = array
+        self.array = array.astype(np.float32)
         self.array[self.array <=0] = threshold
         self.array = self.array / np.sum(self.array)
         self.size = self.array.shape[0]
@@ -195,6 +195,7 @@ class PSF(object):
             self.set_array(convolve_fft(self.array, kernel.array))
         else:
             self.set_array(convolve_fft(self.array, kernel))
+        self.info["Type"] = "Combined"
             
     def __array__(self):
         return self.array
@@ -242,9 +243,9 @@ class DeltaPSF(PSF):
             self.position = (0,0)
         
         if "size" in kwargs.keys():
-            size = round(kwargs["size"] / 2) * 2 + 3
+            size = round(kwargs["size"] / 2) * 2 + 5
         else: 
-            size = int(np.max(np.abs(self.position))) * 2 + 3
+            size = int(np.max(np.abs(self.position))) * 2 + 5
 
         if not np.max(self.position) < size:
             raise ValueError("positions are outside array borders:")
@@ -256,8 +257,10 @@ class DeltaPSF(PSF):
         
         super(DeltaPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Delta"
-        self.info['description'] = "Delta PSF, centred at (%.1f, %.1f)" \
+        self.info["description"] = "Delta PSF, centred at (%.1f, %.1f)" \
                                     % self.position
+        self.info["x_shift"] = self.position[0]
+        self.info["y_shift"] = self.position[1]
         
         self.x = self.size // 2 + self.position[0]
         self.y = self.size // 2 + self.position[1]
@@ -305,12 +308,13 @@ class AiryPSF(PSF):
             size = 511
             print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
             print("Array size:", size,"x",size, "- PSF FoV:", size * pix_res)
-            warnings.warn("PSF dimensions too large")
+            warnings.warn("PSF dimensions too large - cropped to 512x512")
         
         super(AiryPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Airy"
         self.info['description'] = "Airy PSF, FWHM = %.1f mas" \
                                     % (self.fwhm * 1E3)
+        self.info["fwhm"] = self.fwhm * 1E3
                                     
         ## convert sigma (gauss) to first zero (airy)
         gauss2airy = 2.76064 
@@ -358,7 +362,8 @@ class GaussianPSF(PSF):
         self.info["Type"] = "Gaussian"
         self.info['description'] = "Gaussian PSF, FWHM = %.1f arcsec" \
                                     % (self.fwhm * 1E3)
-                                                                  
+        self.info["fwhm"] = self.fwhm * 1E3
+                
         n = (self.fwhm / 2.35) / self.pix_res
         self.set_array(Gaussian2DKernel(n, x_size=self.size, y_size=self.size,
                                         mode='oversample').array)
@@ -406,6 +411,7 @@ class MoffatPSF(PSF):
         self.info["Type"] = "Moffat"
         self.info['description'] = "Moffat PSF, FWHM = %.1f, alpha = %.1f"\
                                        % (self.fwhm * 1E3, alpha)
+        self.info["fwhm"] = self.fwhm * 1E3
 
         if self.size > 100:
             mode = "linear_interp"
@@ -436,7 +442,7 @@ class CombinedPSF(PSF):
 
         pix_res_list = [psf.pix_res for psf in psf_list]
         if not all(res == pix_res_list[0] for res in pix_res_list):
-            raise ValueError("Not all PSFs in have the same pixel resolution")
+            raise ValueError("Not all PSFs have the same pixel resolution")
 
         pix_res = pix_res_list[0]
         
@@ -539,8 +545,14 @@ class UserPSF(PSF):
 
 
 class PSFCube(object):
-    """Class holding wavelength dependent point spread function
-
+    """Class holding wavelength dependent point spread function.
+    Special functions:
+    - len(self) return the number of layers in the PSFCube
+    - self[i] returns the PSF object for layer i. If the __array__ function
+      is called, self[i] will return the array associated with the instance
+      e.g plt.imshow(self[i]) will plot PSF.array from self.psf_slices[i]
+    - Maths operators *,+,- act equally on all PSF.arrays in self.psf_slices
+      
     Keywords:
     - lam_bin_centers: [µm] the centre of each wavelength slice
     """
@@ -605,7 +617,11 @@ class PSFCube(object):
             hdu.header["CDELT1"] = (psf.pix_res, "[arcsec] - Pixel resolution")
             hdu.header["CDELT2"] = (psf.pix_res, "[arcsec] - Pixel resolution")
             hdu.header["WAVECENT"] = (self.lam_bin_centers[i], "[micron] - Wavelength of slice")
-            #hdu.header["PSF_TYPE"] = (self.info["Type"], "Type of PSF")
+            hdu.header["NSLICES"] = (len(self), "Number of wavelength slices")
+            
+            for k in self.psf_slices[i].info.keys():
+                hdu.header[k[:8].upper()] = (self[i].info[k], k)
+            
             ext_list += [hdu]
         
         hdu_list = fits.HDUList(ext_list)
@@ -620,6 +636,7 @@ class PSFCube(object):
         
         for psf, kernel in zip(self.psf_slices, kernel_list):
             psf.convolve(kernel)
+        self.info["Type"] = "Complex"
           
     def __mul__(x):
         if not hasattr(x, "__len__"):
@@ -808,7 +825,7 @@ class CombinedPSFCube(PSFCube):
         
         if not (type(psfcube_list) == list and len(psfcube_list) >= 2):
             raise ValueError("psfcube_list only takes a list of PSFCube objects")
-            
+                    
         ## Check that the wavelengths are equal
         lam_list = [cube.lam_bin_centers for cube in psfcube_list]
         if not all([all(lam == lam_list[0]) for lam in lam_list]):
@@ -818,10 +835,11 @@ class CombinedPSFCube(PSFCube):
         super(CombinedPSFCube, self).__init__(lam_bin_centers)
 
         self.info['description'] = "Master psf cube from list"
+        self.info["Type"] = "CombinedCube"
+        
         for i in range(len(psfcube_list)):
             self.info['PSF%02d' % (i+1)] = psfcube_list[i].info['description']
 
-            
         for i in range(len(self)):
             self.psf_slices[i] = CombinedPSF([psf[i] for psf in psfcube_list], **kwargs)
             
@@ -829,159 +847,104 @@ class CombinedPSFCube(PSFCube):
     
 class UserPSFCube(PSFCube):
     """
+    Read in a PSFCube previously saved as a FITS file
+    Keywords needed for a PSFCube to be read in:
+    NSLICES, WAVECENT, NAXIS1, CDELT1, PSF_TYPE, DESCRIPT
+    
+    N.B. A separate function will exist to convert foreign PSF FITS files into
+    PSFCube readable FITS files
+    
+    Keywords:
+    - filename: the path to the FITS file holding the cube
     """
     
+    def __init__(self, filename):
+        n_slices = fits.getheader(filename, ext = 0)["NSLICES"]
+        psf_slices = []
+        lam_bin_centers = []
+        
+        for i in range(n_slices):
+            hdr = fits.getheader(filename, ext = i)
+            self.header = hdr
+            lam_bin_centers += [hdr["WAVECENT"]]
 
+            psf = PSF(size = hdr["NAXIS1"], pix_res = hdr["CDELT1"])
+            psf.set_array(fits.getdata(filename, ext = i))
+            psf.info["Type"] = hdr["PSF_TYPE"]
+            psf.info["description"] = hdr["DESCRIPT"]
+            
+            psf_slices += [psf]
+            
+        super(UserPSFCube, self).__init__(lam_bin_centers)
+        self.psf_slices = psf_slices
+        
+        self.info['description'] = "User PSF cube input from " + filename
+        self.info["Type"] = hdr["PSF_TYPE"]+"Cube"
+        
     
-class ADC_PSFCube(PSFCube):
+    
+class ADC_PSFCube(DeltaPSFCube):
     """
+    Generates a DeltaPSFCube with the shifts required to mimic the ADC at a 
+    certain efficiency
+    
+    Keywords:
+    - lam_bin_centers: [µm] a list with the centres of each wavelength slice 
+    
+    Optional Keywords:
+    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004 
+    - PARALLACTIC_ANGLE: [deg] the orientation of the input cube relative to 
+      the zenith
+    - INST_ADC_EFFICIENCY: [%] efficiency of the ADC
+    - SCOPE_LATITUDE: [deg] latitude of the telescope site
+    - SCOPE_ALTITUDE: [m] hight above sea level of the telescope site
+    - ATMO_REL_HUMIDITY: [%] relative humidity in percent
+    - OBS_ZENITH_DIST: [deg] zenith distance of the object
+    - ATMO_TEMPERATURE: [°C] air temperature of the observing site in Celsius
+    - ATMO_PRESSURE: [mbar] air pressure of the observing site in millibar
+    
+    The default values for the above mentioned keywords are:
+    0.004 arcsec, 0 deg, 100%, -24.5 deg, 3064m, 60%, 60 deg, 0°C, 750mbar
     """
-    
- 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    def __init__(self):
-        self.info = dict([])
-        self.info['created'] = 'yes'
 
-    def __repr__(self):
-        return self.info['description']
-
-    @classmethod
-    def gen_adc(self, lam_arr, config_dict, res=1*u.mas, nadir_angle=0):
-        # TODO: Remove nadir angle (=parallactic angle?)
-        # TODO: add info
-        effectiveness = float(config_dict['INST_ADC_EFFICIENCY'])/100. ###
-        lat = float(config_dict['SCOPE_LATITUDE'])
-        alt = float(config_dict['SCOPE_ALTITUDE'])
-        rel_hum = float(config_dict['ATMO_REL_HUMIDITY'])
-
-        ## CHECK: better called OBS_ZENITH_DIST
-        z0 = float(config_dict['OBS_ZENITH_DIST'])
-        temp = float(config_dict['ATMO_TEMPERATURE'])
-        pres = float(config_dict['ATMO_PRESSURE'])
-
-        lam_arr = unify(lam_arr, u.um)
-        nadir_angle = unify(nadir_angle, u.deg)
-        res = unify(res, u.mas)
-
+    def __init__(self, lam_bin_centers, **kwargs):
+        params =    {"pix_res"           :0.004, 
+                    "PARALLACTIC_ANGLE"  :0, 
+                    "INST_ADC_EFFICIENCY":100, 
+                    "SCOPE_LATITUDE"     :-24.5, 
+                    "SCOPE_ALTITUDE"     :3064, 
+                    "ATMO_REL_HUMIDITY"  :60, 
+                    "OBS_ZENITH_DIST"    :60, 
+                    "ATMO_TEMPERATURE"   :0, 
+                    "ATMO_PRESSURE"      :750
+                    }
+        
+        params.update(**kwargs)
+        pix_res = params["pix_res"]
+        para_angle = params["PARALLACTIC_ANGLE"]
+        effectiveness = params["INST_ADC_EFFICIENCY"] / 100.
+        
         ## get the angle shift for each slice
-        angle_shift = [atmospheric_refraction(lam, z0, temp, rel_hum, pres,
-                                              lat, alt)
-                       for lam in lam_arr.value]
-        angle_shift = angle_shift * u.arcsec
+        angle_shift = [utils.atmospheric_refraction(lam, params["OBS_ZENITH_DIST"],
+                        params["ATMO_TEMPERATURE"], params["ATMO_REL_HUMIDITY"],
+                        params["ATMO_PRESSURE"], params["SCOPE_LATITUDE"],
+                        params["SCOPE_ALTITUDE"]) for lam in lam_bin_centers]
 
         ## convert angle shift into number of pixels
         ## pixel shifts are defined with respect to last slice
-        pixel_shift = (angle_shift - angle_shift[-1]).to(u.mas) / res
-
-        ## Rotate by the parallactic angle
-        x = -pixel_shift * np.sin(nadir_angle.to(u.rad)) * (1. - effectiveness)
-        y = -pixel_shift * np.cos(nadir_angle.to(u.rad)) * (1. - effectiveness)
-
-        adc_cube = PSFCube.gen_cube(lam_arr, kernel='adc', position=(x, y),
-                                    res=res)
-        return adc_cube
-
-    @classmethod
-    def gen_cube(self, lam_arr, fwhm=0, res=1.*u.mas, kernel='gauss',
-                 position=(0,0), padding=5, min_size=71, size=None):
-        """Generate a cube full of psf_gen objects
-
-        An astropy unit array is required for the central wavelength
-        of each slice.
-        The FWHM can be specified as a blanket value, or an array of
-        FWHMs for each slice
-        """
-
-        ## Get everything in mas for the spatial values and um for the
-        ## spectral values
-        self = PSFCube()
-
-        if 'airy' in kernel:
-            self.info['description'] = "PSF cube, Airy"
-        elif 'gauss' in kernel:
-            self.info['description'] = "PSF cube, Gauss"
-        else:
-            self.info['description'] = "PSF cube, delta peak"
+        pixel_shift = (angle_shift - angle_shift[-1]) / pix_res
+        if np.max(np.abs(pixel_shift)) > 1000: 
+            raise ValueError("Pixel shifts too great (>1000), check units")
             
-        self.lam_arr = utils.unify(lam_arr, u.um)
+        ## Rotate by the paralytic angle
+        x = -pixel_shift * np.sin(para_angle / 57.29578) * (1. - effectiveness)
+        y = -pixel_shift * np.cos(para_angle / 57.29578) * (1. - effectiveness)
+        positions = [(xi,yi) for xi,yi in zip(x,y)]
 
-        # if fwhm is scalar, generate a constant array
-        self.fwhm = utils.unify(fwhm, u.mas, len(lam_arr))
-        self.res = utils.unify(res, u.mas)
-        self.kernel = kernel
-        self.padding = padding
-
-        ## Create a cube along the spectral dimension. Call psf_gen for each
-        ## lambda value and corresponding fwhm
-        self.cube = []
-
-        ## if only one position, generate constant arrays for x and y
-        x, y = position[0], position[1]
-        if not hasattr(x, "__len__"):
-            x = x * np.ones(len(lam_arr))
-        if not hasattr(y, "__len__"):
-            y = y * np.ones(len(lam_arr))
-            
-        for i in range(len(self.lam_arr)):
-            self.cube += [PSF.gen_analytic(self.lam_arr[i], fwhm=self.fwhm[i],
-                                           res=self.res, kernel=self.kernel,
-                                           position=(x[i], y[i]),
-                                           padding=padding,
-                                           min_size=min_size)]
-
-        self.fwhm = [i.fwhm for i in self.cube]
-        self.size_orig = [i.psf.shape[0] for i in self.cube]
-
-        return self
+        super(ADC_PSFCube, self).__init__(lam_bin_centers, positions = positions, 
+                                            pix_res = pix_res)
+        self.info["Type"] = "ADC_PSFCube"
+        self.info['description'] = "ADC PSF cube for ADC effectiveness:" + \
+                                    str(params["INST_ADC_EFFICIENCY"]) + ", z0:" \
+                                    + str(params["OBS_ZENITH_DIST"])
         
-
-    @classmethod
-    def gen_from_list(self, psf_list):
-        """Generate a master psf cube through convolution of a list of psfs"""
-        import copy
-
-        if not hasattr(psf_list, "__len__"):
-            self.psf_list = [psf_list]
-
-        self = PSFCube()
-        
-        self.info['description'] = "Master psf cube from list"
-        for i in range(len(psf_list)):
-            self.info['PSF%02d' % (i+1)] = psf_list[i].info['description']
-        
-        ## Check that the wavelengths are equal
-        lam_list = [psf.lam_arr for psf in psf_list]
-        if not all([all(lam == lam_list[0]) for lam in lam_list[1:]]):
-            raise ValueError("Wavelength arrays of psf cubes are not equal")
-        self.lam = lam_list[0]
-
-        ## Check that the resolutions are equal
-        res_list = [psf.res for psf in psf_list]
-        if not all([res == res_list[0] for res in res_list[1:]]):
-            raise ValueError("Resolutions of psf cubes are not equal")
-        self.res = res_list[0]
-
-        ## Combine each layer
-        # CHECK: What's this padding for? size is not defined
-        ##padding = np.sum(np.max([psf.size for psf in psf_list], axis=1))
-
-        self.psf = PSFCube.gen_cube(self.lam, res=self.res, kernel='dot')
-        #, min_size=min_size, padding=padding)
-
-        self.cube = range(len(self.lam))
-        for i in range(len(self.lam)):
-            self.cube[i] = PSF.gen_from_list([psf.cube[i] for psf in psf_list])
-        
-        return self
