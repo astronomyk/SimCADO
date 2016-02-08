@@ -29,5 +29,21 @@
 # Methods:
 #
 #
-#
-#
+
+class PlaneEffect(object):
+    """
+    
+    """
+
+    def __init__(self, **kwargs):
+    
+        self.info = dict([])
+        self.info['created'] = 'yes'
+        self.info['description'] = "Point spread function (single layer)"
+    
+        self.x_map = np.zeros((2,2))
+        self.y_map = np.zeros((2,2))
+    
+    
+
+class 

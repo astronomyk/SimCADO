@@ -165,6 +165,9 @@ class LightObject(object):
 
         
 
+class         
+        
+        
 		
 def generate_light_object():
 	"""
