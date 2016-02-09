@@ -43,7 +43,7 @@ class PlaneEffect(object):
     
         self.x_map = np.zeros((2,2))
         self.y_map = np.zeros((2,2))
-    
+        
     
 
 class 

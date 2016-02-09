@@ -96,7 +96,6 @@
 #
 
 
-
 from astropy.io import fits
 
 ## These classes and functions are exported to the package

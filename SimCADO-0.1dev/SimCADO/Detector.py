@@ -54,7 +54,7 @@ class Detector(object):
                     "FPA_LINEARITY_CURVE":None,
                     "FPA_GAIN"          :1,
                     "FPA_WELL_DEPTH"    :1E5
-                    }
+                 }
         params.update(kwargs)
         
     
