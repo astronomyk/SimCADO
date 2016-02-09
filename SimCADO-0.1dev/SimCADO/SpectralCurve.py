@@ -55,12 +55,13 @@ from copy import deepcopy
 from astropy import units as u
 from astropy.io import fits, ascii
 import numpy as np
+import warnings
 
-__all__ = ["SpectralCurve", "Emission", "Throughput"] 
+__all__ = ["TransmissionCurve", "EmissionCurve"] 
 
 
 class TransmissionCurve(object):
-    def __init__(self, lam, val, **kwargs):
+    def __init__(self, **kwargs):
         """
         Very basic class to either read in a text file for a transmission curve
         or take two vectors to make a transmission curve
@@ -75,19 +76,20 @@ class TransmissionCurve(object):
         """
         self.params = { "lam_unit"  :u.um,
                         "val_unit"  :None,
+                        "filename"  :None,
                         "lam_res"   :0.001,
-                        "Type"      :"Spectral",
+                        "Type"      :"Transmission",
                         "min_bin_width" :1E-5
                        }
+                       
         self.params.update(kwargs)
         
         self.info = dict([])
         self.info["Type"] = self.params["Type"]
         
-        self.lam_orig = lam
-        self.val_orig = val
+        self.lam_orig, self.val_orig = self.get_lam_val()
+        self.lam_orig *= (1*self.params["lam_unit"]).to(u.um)
         
-        self.lam_orig *= (1*self.params["lam_unit"]).to(u.um).value
         self.resample(self.params["lam_res"])
 
         
@@ -95,7 +97,42 @@ class TransmissionCurve(object):
         return "Ich bin eine SpectralCurve:\n"+str(self.info)
 
         
-    def resample(self, bins, action="average"):
+    def get_lam_val(self):
+        """
+        Get the wavelength and value vectors from the input parameters
+        """
+    
+        if "lam" in self.params.keys() and "val" in self.params.keys():
+            lam = self.params["lam"]
+            val = self.params["val"]
+            
+        # test if it is a skycalc file
+        elif "filename" in self.params.keys():
+            filename = self.params["filename"]
+            if ".fits" in filename:
+                hdr = fits.getheader(filename)
+                if any(["SKYCALC" in hdr[i] for i in range(len(hdr)) \
+                                                    if type(hdr[i]) == str]):
+                    if self.params["Type"] == "Emission":
+                        lam = fits.getdata(filename)["lam"]        
+                        val = fits.getdata(filename)["flux"]
+                    else:
+                        lam = fits.getdata(filename)["lam"]
+                        val = fits.getdata(filename)["trans"]
+                else:
+                    data = fits.getdata("../data/skytable.fits")
+                    lam = data[data.columns[0].name]
+                    val = data[data.columns[1].name]
+            else:
+                data = ascii.read(self.params["filename"])
+                lam = data[data.colnames[0]]
+                val = data[data.colnames[1]]
+        else: 
+            raise ValueError("Please pass either filename or lam/val keywords")
+        
+        return lam, val
+        
+    def resample(self, bins, action="average", use_edges=False):
         """
         Resamples both the wavelength and value vectors to an even grid. 
         In order to avoid losing spectral information, the TransmissionCurve
@@ -107,11 +144,13 @@ class TransmissionCurve(object):
         - bins: [µm]: float - taken to mean the width of bins on an even grid
                       array - the centres of the spectral bins
         
-        Optinal keywords:
+        Optional keywords:
         - action: ['average','sum'] How to rebin the spectral curve. If 'sum', 
                   then the curve is normalised against the integrated value of  
                   the original curve. If 'average', the average value per bin
                   becomes the value for each bin.
+        - use_edges: [False, True] True if the array passed in 'bins' describes 
+                     the edges of the wavelength bins. 
         
         """
         #####################################################
@@ -132,27 +171,34 @@ class TransmissionCurve(object):
         # data set to have the same amount.
         if action == "sum": tmp_y *= (np.sum(self.val_orig) / np.sum(tmp_y))
         
-        
         # if bins is a single number, use it as the bin width
         # else as the bin centres
-
         if not hasattr(bins, "__len__"): 
             lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1], bins)
         else: 
             lam_tmp = bins
+        lam_res = bins[1] - bins[0]
         
+        # define the edges and centres of each wavelength bin
+        if use_edges:
+            lam_bin_edges = bins
+            lam_bin_centres = 0.5 * (bins[1:] + bins[:-1])
+        else:
+            lam_bin_edges = np.append(bins - 0.5*lam_res, bins[-1] + 0.5*lam_res)
+            lam_bin_centers = bins
+       
         # here is the assumption of a regular grid - see res_tmp
-        res_tmp = lam_tmp[1] - lam_tmp[0]
-        val_tmp = np.zeros((len(lam_tmp)))
-                
-        for i in range(len(lam_tmp)):
-            mask_i = np.where((tmp_x > lam_tmp[i] - res_tmp/2.) * 
-                              (tmp_x < lam_tmp[i] + res_tmp/2.))[0]     
+        val_tmp = np.zeros((len(lam_bin_centers)))
+        
+        for i in range(len(lam_bin_centers)):
+            
+            mask_i = np.where((tmp_x > lam_bin_edges[i]) * 
+                              (tmp_x < lam_bin_edges[i+1]))[0]     
             
             if np.sum(mask_i) > 0 and action == "average":  
                 val_tmp[i] = np.average(tmp_y[mask_i[0]:mask_i[-1]])
-            
-            elif np.sum(mask_i) > 0 and action == "sum":    
+
+                elif np.sum(mask_i) > 0 and action == "sum":    
                 # FIXED. THE SUMMING ISSUE. TEST IT         #
                 # Tested - the errors are on the 0.1% level #
                 val_tmp[i] = np.trapz(tmp_y[mask_i[0]:mask_i[-1]])
@@ -247,12 +293,15 @@ class EmissionCurve(TransmissionCurve):
         - units: string or astropy.units for calculating the number of photons 
                per voxel
         """
-        default_params = {  "pix_res":0.004,
-                            "area"   :978,
-                            "exptime":1,
-                            "units"  :"ph"
+        default_params = {  "pix_res" :0.004,
+                            "area"    :978,
+                            "exptime" :1,
+                            "val_unit":"ph/(s m2 micron arcsec2)"
                           }
 
+        if "val_unit" not in kwargs.keys():
+            warnings.warn("No val_unit specified in EmissionCurve. Assuming ph/(s m2 micron arcsec2)")
+                          
         super(EmissionCurve, self).__init__(Type = "Emission", **kwargs)
         self.params.update(default_params)
         self.convert_to_photons()
@@ -261,46 +310,17 @@ class EmissionCurve(TransmissionCurve):
         super(EmissionCurve, self).resample(bins, action)
 
     def convert_to_photons(self):
-        """Do the conversion to photons/voxel by using the units, lam, area
+        """Do the conversion to photons/voxel by using the val_unit, lam, area
         and exptime keywords. If not given, make some assumptions.
         """
+        self.params["val_unit"] = u.Unit(self.params["val_unit"])
+        bases  = self.params["val_unit"].bases
+        
+        factor = 1. * self.params["val_unit"]
 
-        self.params["units"] = u.Unit(self.params["units"])
-        if u.ph in self.params["units"]:
-            self.params["units"] *= u.ph**-1
-
-        factor = 1. * self.params["units"]
-        bases  = self.params["units"].bases
         if u.s      in bases: factor *= self.params["exptime"] 
         if u.m      in bases: factor *= self.params["area"]
         if u.arcsec in bases: factor *= self.params["pix_res"]**2
         if u.micron in bases: factor *= self.params["lam_res"]
-        
+
         self.val *= factor
-        
-        
-        
-class TransmissionCurve(SpectralCurve):
-
-    def __init__(self):
-        
-        if "lam" in kwargs.keys() and "val" in kwargs.keys():
-            self.lam_orig = kwargs["lam"]
-            self.val_orig = kwargs["val"]
-            
-        elif "filename" in kwargs.keys():
-            if ".fits" in kwargs["filename"]:
-                a = fits.getheader("../data/skytable.fits")
-                any(["SKYCALC" in a[i] for i in range(len(a)) if type(a[i]) == str])
-
-
-               if 
-                self.lam_orig = fits.getdata(fname)["lam"]
-                self.val_orig = fits.getdata(fname)["trans"]
-            else:
-                data = ascii.read(kwargs["filename"])
-                self.lam_orig = data[data.colnames[0]]
-                self.val_orig = data[data.colnames[1]]
-        
-        else: 
-            raise ValueError("Please pass either filename or lam/val keywords")
