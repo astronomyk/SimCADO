@@ -64,7 +64,7 @@ class SpectrumArray(object):
 class PositionArray(object):
 
     def __init__(self, x, y, spec_ref, weight):
-        def 
+
     
     
 
