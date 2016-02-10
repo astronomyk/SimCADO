@@ -31,51 +31,86 @@
 
 from astropy.io import fits
 import numpy as np
+import scipy.ndimage.interpolation as spi
 
 
 class LightObject(object):
 
     def __init__(self, **kwargs):
 
-        self.spectra   = SpectrumArray(kwargs["lam"], kwargs["spec_list"])    
-        self.positions = PositionArray(kwargs["x"], kwargs["y"], 
-                                        kwargs["spec_ref"], kwargs["weight"])
+    # - lam_res
+    # - lam_bin_centers
+    # - lam_bin_edges
+        
+        self.params = { "pix_res"   :0.004,
+                        "NAXIS1"    :4096,
+                        "NAXIS2"    :4096,
+                      }
+        self.params.update(kwargs)
 
+        self.info = dict([])
+        self.info['created'] = 'yes'
+        self.info['description'] = "List of spectra and their positions"
+        
+        self.lam       = np.asarray(kwargs["lam"])
+        self.spectra   = np.asarray(kwargs["spec_list"]))
+        if len(self.spectra.shape) == 1:
+            self.spectra.shape = np.asarray([self.spectra.shape]*2)
+        
+        self.positions = np.asarray((kwargs["x"], kwargs["y"], 
+                                kwargs["spec_ref"], kwargs["pixel_weights"]))
+        
+        self.working_slice = np.zeros((self.params("NAXIS1"),
+                                       self.params("NAXIS2")), dtype=np.float32)
+        self.array = np.zeros((self.params("NAXIS1"),
+                               self.params("NAXIS2")), dtype=np.float32)
+        
+    def __repr__(self):
+        return self.info['description']
+    
+    def __array__(self, x):
+        return self.array
+    
+    def get_slice_photons(self, lam_min, lam_max, zoom_res = 10):
+        """
+        
+        """
+        
+        # Check if the slice limits are within the spectrum wavelength range
+        if lam_min > self.lam[-1] or lam_max < self.lam[0]:
+            print((lam_min, lam_max), (self.lam[0], self.lam[-1]))
+            raise ValueError("lam_min or lam_max outside wavelength range of spectra")
+
+        # find the closest indices i0, i1 which match the limits 
+        x0, x1 = np.abs(self.lam - lam_min), np.abs(self.lam - lam_max)
+        i0, i1 = np.where(x0 == np.min(x0))[0][0], np.where(x1 == np.min(x1))[0][0]
+        if self.lam[i0] > lam_min and i0 > 0: 
+            i0 -= 1 
+        if self.lam[i1] < lam_max and i1 < len(self.lam): 
+            i1 += 1 
+
+        lam_zoom  = np.linspace(lam_min, lam_max, zoom_factor)
+        spec_zoom = np.asarray([np.interp(lam_zoom, lam[i0:i1], spec[i0:i1]) 
+                                                        for spec in spectra])
+
+        photons = np.trapz(spec_zoom, lam_zoom, axis=1)  
+        return photons
+    
+    def apply_spectral_curve(self, spec_curve):
         
 
+
         
-    def generate_slice(self, lam_min, lam_max)
+    def convolve(self, psf):
+        
+        
+    def generate_slice(self, lam_min, lam_max):
+    
+        
+    
     
         return slice
-    
-    
-class SpectrumArray(object):
-
-    def __init__(self, lam, spec_list):
-        self.lam = lam
-        self.array = np.asarray(spec_list)
-        
-    
-    def shrink_spectra(self, lam_bin_edges, action="sum"):
-
-        return low_res_spectra
-    
-    
-class PositionArray(object):
-
-    def __init__(self, x, y, spec_ref, weight):
-
-    
-    
-
-class WorkingSlice(object):
-
-    def __init__(self, spec_array, pos_array, lam_bin_edges, pix_res)
-    
-    
-    
-    
-    
+   
     
     
     

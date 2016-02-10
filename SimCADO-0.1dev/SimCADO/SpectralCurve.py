@@ -81,14 +81,13 @@ class TransmissionCurve(object):
                         "Type"      :"Transmission",
                         "min_bin_width" :1E-5
                        }
-                       
         self.params.update(kwargs)
         
         self.info = dict([])
         self.info["Type"] = self.params["Type"]
         
-        self.lam_orig, self.val_orig = self.get_lam_val()
-        self.lam_orig *= (1*self.params["lam_unit"]).to(u.um)
+        self.lam_orig, self.val_orig = self.get_data()
+        self.lam_orig *= (1*self.params["lam_unit"]).to(u.um).value
         
         self.resample(self.params["lam_res"])
 
@@ -97,7 +96,7 @@ class TransmissionCurve(object):
         return "Ich bin eine SpectralCurve:\n"+str(self.info)
 
         
-    def get_lam_val(self):
+    def get_data(self):
         """
         Get the wavelength and value vectors from the input parameters
         """
