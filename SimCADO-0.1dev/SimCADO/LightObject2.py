@@ -89,32 +89,18 @@ class LightObject(object):
         if self.lam[i1] < lam_max and i1 < len(self.lam): 
             i1 += 1 
 
+        zoom_factor = zoom_res * (i1 - i0)
         lam_zoom  = np.linspace(lam_min, lam_max, zoom_factor)
-        spec_zoom = np.asarray([np.interp(lam_zoom, lam[i0:i1], spec[i0:i1]) 
-                                                        for spec in spectra])
+        spec_zoom = np.zeros((spectra.shape[0], zoom_factor))
+        for i in range(len(spectra)): 
+            spec_zoom[i,:] = np.interp(lam_zoom, lam[i0:i1], spectra[i,i0:i1])
 
         photons = np.trapz(spec_zoom, lam_zoom, axis=1)  
         return photons
     
     def apply_spectral_curve(self, spec_curve):
-        
-
-
+     
         
     def convolve(self, psf):
-        
-        
-    def generate_slice(self, lam_min, lam_max):
-    
-        
-    
-    
-        return slice
-   
-    
-    
-    
-    
-
-    
+  
     
