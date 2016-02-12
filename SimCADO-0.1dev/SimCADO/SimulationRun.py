@@ -1,13 +1,21 @@
 ###############################################################################
 # SimulationRun
 #
-# Deliverables
+# DESCIPTION
+#
+# File Structure needed to run the simulation
+# 
+#
+#
+#
+#
+#
 #
 #
 # Need 2 different UserCommands dictionaries as input
 #  - Observation parameters (Alt, Az, Exptime, etc)
 #  - Observatory parameters (area, instrument configuration, psfs, etc)
-#
+#  -
 #
 #
 # Classes:
@@ -47,7 +55,38 @@ import numpy as np
 from astropy.io import fits
 import sys
 
-import PSFCube, SpectralCurve, LightObject2
+import PSFCube as psf
+import SpectralCurve as sc
+import LightObject as lo
+import utils
+
+
+class simulation(object):
+    """
+    """
+    
+    def __init__(user_config):
+        """
+        """
+        
+        
+        
+    def make_optical_system():
+    
+    
+    
+    def 
+    
+    
+cmds = read_config(sys.argv[1])
+
+
+
+
+
+
+
+
 
 
 

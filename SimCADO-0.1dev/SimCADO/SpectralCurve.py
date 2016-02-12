@@ -53,11 +53,12 @@
 
 from copy import deepcopy
 from astropy import units as u
+from astropy import constants as c
 from astropy.io import fits, ascii
 import numpy as np
 import warnings
 
-__all__ = ["TransmissionCurve", "EmissionCurve"] 
+__all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve"] 
 
 
 class TransmissionCurve(object):
@@ -69,7 +70,8 @@ class TransmissionCurve(object):
         List of kwargs:
         lam: [µm] 1D numpy array of length n
         val: 1D numpy array of length n
-        res: [µm] float with the desired spectral resolution
+        lam_res: [µm] float with the desired spectral resolution
+        or
         filename: string with the path to the transmission curve file where
                   the first column is wavelength in [µm] and the second is the
                   transmission coefficient between [0,1]
@@ -79,7 +81,7 @@ class TransmissionCurve(object):
                         "filename"  :None,
                         "lam_res"   :0.001,
                         "Type"      :"Transmission",
-                        "min_bin_width" :1E-5
+                        "min_step"  :1E-5
                        }
         self.params.update(kwargs)
         
@@ -133,11 +135,11 @@ class TransmissionCurve(object):
         
         return lam, val
         
-    def resample(self, bins, action="average", use_edges=False):
+    def resample(self, bins, action="average", use_edges=False, min_step=1E-5):
         """
         Resamples both the wavelength and value vectors to an even grid. 
         In order to avoid losing spectral information, the TransmissionCurve
-        resamples down to a resolution of 'min_bin_width' (default: 0.01nm) 
+        resamples down to a resolution of 'min_step' (default: 0.01nm) 
         before resampling again up to the given sampling vector defined by
         'bins'.
         
@@ -153,15 +155,13 @@ class TransmissionCurve(object):
                   becomes the value for each bin.
         - use_edges: [False, True] True if the array passed in 'bins' describes 
                      the edges of the wavelength bins. 
-        
+        - min_step: [µm] default=1E-5, the step size for the down-sample
         """
         #####################################################
         # Work out the irregular grid problem while summing #
         #####################################################
         
-        min_step = self.params["min_bin_width"]
-        
-        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], min_step)
+        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], self.params["min_step"])
         tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
         
         # The summing issue - assuming we want to integrate along the curve,
@@ -212,7 +212,7 @@ class TransmissionCurve(object):
         self.lam = lam_tmp
         self.val = val_tmp
         self.res = lam_res
-        self.params["lam_res"] = lam_res
+        self.params["lam_res"] = self.res
         
     def __len__(self):
         return len(self.val)
@@ -320,7 +320,8 @@ class EmissionCurve(TransmissionCurve):
         self.convert_to_photons()
         
     def resample(self, bins, action="sum", use_edges=False):
-        super(EmissionCurve, self).resample(bins=bins, action=action, use_edges=use_edges)
+        super(EmissionCurve, self).resample(bins=bins, action=action, 
+                                                            use_edges=use_edges)
 
     def convert_to_photons(self):
         """Do the conversion to photons/voxel by using the val_unit, lam, area
@@ -331,9 +332,60 @@ class EmissionCurve(TransmissionCurve):
         
         factor = 1.
 
-        if u.s      in bases: factor *= self.params["exptime"] 
+        # The delivered EmissionCurve should be in ph/s/voxel
+        #if u.s      in bases: factor *= self.params["exptime"] 
         if u.m      in bases: factor *= self.params["area"]
         if u.arcsec in bases: factor *= self.params["pix_res"]**2
         if u.micron in bases: factor *= self.params["lam_res"]
-
+        
         self.val *= factor
+
+        
+        
+class BlackbodyCurve(TransmissionCurve):
+    def __init__(self, lam, temp, **kwargs):
+        """
+        List of kwargs:
+        - lam: 1D numpy array of length n in [µm]
+        - val: 1D numpy array of length n in []
+        - res: float with the desired spectral resolution in [µm]
+        - filename: string with the path to the transmission curve file where
+                  the first column is wavelength in [µm] and the second is the
+                  transmission coefficient between [0,1]
+        
+        - pix_res: [arcsec] float of int for the field of view for each pixel
+        - area: [m2] float or int for the collecting area of M1
+        - exptime: [s] float or int for the integration time for an exposure
+        - units: string or astropy.units for calculating the number of photons 
+               per voxel
+        """
+        self.params = { "pix_res" :0.004,
+                        "area"    :978,
+                        "exptime" :1,
+                        "temp"    :273
+                        }
+        self.params.update(kwargs)
+        
+        lam_res = lam[1] - lam[0]
+        edges = np.append(lam - 0.5*lam_res, lam[-1] + 0.5*lam_res)
+        lam_res = edges[1:] - edges[:-1]
+           
+        # I is in W sr−1 m−3
+        I = 2. * c.h * c.c**2 / (lam*u.um)**5 / \
+            (np.exp(c.h * c.c / (c.k_B * (temp*u.K) * (lam*u.um))) - 1.) / u.sr
+
+        # E is in W
+        E = I * (self.params["area"]*u.m**2) * lam_res*u.um * \
+                                            (self.params["pix_res"]*u.arcsec)**2
+        # ph is in 1/s
+        ph = E / (c.h * c.c / (lam*u.um))
+        val = ph.si                
+        
+        super(BlackbodyCurve, self).__init__(lam=lam, val=val, 
+                                                    Type="Emission", **kwargs)
+        #self.resample(lam_res)
+        
+    def resample(self, bins, action="sum", use_edges=False):
+        super(BlackbodyCurve, self).resample(bins=bins, action=action, 
+                                                use_edges=use_edges)
+

@@ -138,7 +138,7 @@ class LightObject(object):
 
     
     def apply_psf_cube(self, psf_cube, lam_bin_edges, export_slices=False, 
-                        filename = "../tmp_data/slices.fits", sub_pixel=False):
+                        filename = "../output/slices.fits", sub_pixel=False):
         """
         For all PSFs in a PSFCube, generate an array containing the number of 
         photons expected in the wavelength range of that PSF, and where they
@@ -304,10 +304,45 @@ class Source(object):
     
     """
     
+    def __init__(self, **kwargs):
+        
+        check what we're getting - a filename or a series of list
+            filename
+                is it a fits file
+                is it an ascii file
+                    does the file have x,y,spec type
     
     
     
+    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area)    
+    
+    
+    def image_to_light(filename):
+  
 
+    def ascii_to_light(filename):
+
+
+    def fitscube_to_light(filename)
+
+
+    def read_light()
+
+    
+    
+ascii
+    x,y,mag,[temp]
+    x,y,type
+    x,y,spectra
+images
+    JHK
+cube
+    
+    
+    
+    
+    
+    
 
 
 
