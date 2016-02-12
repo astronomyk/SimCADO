@@ -907,7 +907,7 @@ class ADC_PSFCube(DeltaPSFCube):
     
     Optional Keywords:
     - pix_res: [arcsec] the pixel scale used in the array, default is 0.004 
-    - PARALLACTIC_ANGLE: [deg] the orientation of the input cube relative to 
+    - OBS_PARALLACTIC_ANGLE: [deg] the orientation of the input cube relative to 
       the zenith
     - INST_ADC_EFFICIENCY: [%] efficiency of the ADC
     - SCOPE_LATITUDE: [deg] latitude of the telescope site

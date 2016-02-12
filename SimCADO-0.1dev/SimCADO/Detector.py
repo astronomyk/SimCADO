@@ -405,7 +405,7 @@ class HXRGNoise:
         # completely removed when the data are calibrated to
         # correlated double sampling or slope images. We include
         # them in here to make more realistic looking raw cubes.
-        self.ktc_noise = 29.     if ktc_noise   is None else ktc_noise 
+        self.ktc_noise   = 29.   if ktc_noise   is None else ktc_noise 
         self.bias_offset = 5000. if bias_offset is None else bias_offset
         self.bias_amp    = 500.  if bias_amp    is None else bias_amp
 
