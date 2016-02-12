@@ -89,9 +89,11 @@ class TransmissionCurve(object):
         self.lam_orig, self.val_orig = self.get_data()
         self.lam_orig *= (1*self.params["lam_unit"]).to(u.um).value
         
-        self.resample(self.params["lam_res"])
-
-        
+        if self.params["Type"] == "Emission":
+            self.resample(self.params["lam_res"], action="sum")
+        else:
+            self.resample(self.params["lam_res"], action="average")
+            
     def __repr__(self):
         return "Ich bin eine SpectralCurve:\n"+str(self.info)
 
@@ -142,6 +144,7 @@ class TransmissionCurve(object):
         Keywords:
         - bins: [µm]: float - taken to mean the width of bins on an even grid
                       array - the centres of the spectral bins
+                            - the edges of the spectral bins if use_edges = True
         
         Optional keywords:
         - action: ['average','sum'] How to rebin the spectral curve. If 'sum', 
@@ -176,15 +179,16 @@ class TransmissionCurve(object):
             lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1], bins)
         else: 
             lam_tmp = bins
-        lam_res = bins[1] - bins[0]
+
+        lam_res = lam_tmp[1] - lam_tmp[0]
         
         # define the edges and centres of each wavelength bin
         if use_edges:
-            lam_bin_edges = bins
-            lam_bin_centres = 0.5 * (bins[1:] + bins[:-1])
+            lam_bin_edges = lam_tmp
+            lam_bin_centres = 0.5 * (lam_tmp[1:] + lam_tmp[:-1])
         else:
-            lam_bin_edges = np.append(bins - 0.5*lam_res, bins[-1] + 0.5*lam_res)
-            lam_bin_centers = bins
+            lam_bin_edges = np.append(lam_tmp - 0.5*lam_res, lam_tmp[-1] + 0.5*lam_res)
+            lam_bin_centers = lam_tmp
        
         # here is the assumption of a regular grid - see res_tmp
         val_tmp = np.zeros((len(lam_bin_centers)))
@@ -197,7 +201,7 @@ class TransmissionCurve(object):
             if np.sum(mask_i) > 0 and action == "average":  
                 val_tmp[i] = np.average(tmp_y[mask_i[0]:mask_i[-1]])
 
-                elif np.sum(mask_i) > 0 and action == "sum":    
+            elif np.sum(mask_i) > 0 and action == "sum":    
                 # FIXED. THE SUMMING ISSUE. TEST IT         #
                 # Tested - the errors are on the 0.1% level #
                 val_tmp[i] = np.trapz(tmp_y[mask_i[0]:mask_i[-1]])
@@ -207,7 +211,11 @@ class TransmissionCurve(object):
             
         self.lam = lam_tmp
         self.val = val_tmp
-    
+        self.res = lam_res
+        self.params["lam_res"] = lam_res
+        
+    def __len__(self):
+        return len(self.val)
     
     def __getitem__(self, i):
         return self.val[i], self.lam[i]
@@ -321,5 +329,5 @@ class EmissionCurve(TransmissionCurve):
         if u.m      in bases: factor *= self.params["area"]
         if u.arcsec in bases: factor *= self.params["pix_res"]**2
         if u.micron in bases: factor *= self.params["lam_res"]
-
+        print(factor)
         self.val *= factor

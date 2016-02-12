@@ -14,7 +14,6 @@
 #  - SpectrumArray
 
 
-
 # Flow of events
 # - Generate the lists of spectra and positions
 # - Apply the transmission curves [SpectrumArray]
@@ -28,7 +27,6 @@
 #   - add the WorkingSlice to the FPA [WorkingSlice, FPArray]
 
 
-
 from astropy.io import fits
 from astropy.convolution import convolve, convolve_fft
 import numpy as np
@@ -39,29 +37,28 @@ import warnings
 
 class LightObject(object):
 
-    def __init__(self, **kwargs):
-    """
-    Keywords:
-    - lam: [µm] an array of size L with wavelengths for the spectra
-    - x, y: [pix] arrays of size N holding the pixel coordinate information for
-            N sources
-    - spectra: [photons] a 2D array of size (S,L) with a spectrum for S unique 
-                sources
-    - spec_ref: [int] an array holding N references joining each of the N source
-                pixel coordinates to one of the S unique spectra
-    - weights: [float] an array of size N with weights for each source
-    
-    
-    """
-    
-    
-    # - lam_res
-    # - lam_bin_centers
-    # - lam_bin_edges
+    def __init__(self, lam, spectra, x, y, **kwargs):
+        """
+        Keywords:
+        - lam: [µm] an array of size L with wavelengths for the spectra
+        - x, y: [pix] arrays of size N holding the pixel coordinate information 
+                for N sources
+        - spectra: [photons] a 2D array of size (S,L) with a spectrum for S 
+                    unique sources
+        
+        Optional keywords:
+        - spec_ref: [int] an array holding N references joining each of the N 
+                    source pixel coordinates to one of the S unique spectra
+        - weights: [float] an array of size N with weights for each source
+        """
+        
+        # - lam_res
+        # - lam_bin_centers
+        # - lam_bin_edges
         
         self.params = { "pix_res"   :0.004,
                         "NAXIS1"    :4096,
-                        "NAXIS2"    :4096,
+                        "NAXIS2"    :4096
                       }
         self.params.update(kwargs)
 
@@ -69,19 +66,28 @@ class LightObject(object):
         self.info['created'] = 'yes'
         self.info['description'] = "List of spectra and their positions"
         
-        self.lam      = np.asarray(kwargs["lam"])
-        self.spectra  = np.asarray(kwargs["spec_list"])
-        self.x        = np.asarray(kwargs["x"])
-        self.y        = np.asarray(kwargs["y"])
-        self.spec_ref = np.asarray(kwargs["spec_ref"])
-        self.weights  = np.asarray(kwargs["pixel_weights"])
+        self.lam        = lam
+        self.spectra    = spectra
+        self.x, self.y  = x, y
+            
+        if "spec_ref" in kwargs.keys():
+            self.spec_ref = np.asarray(kwargs["spec_ref"])
+        else: 
+            warnings.warn("spec_ref missing. Assuming spectra[i] --> (x,y)[i] ")
+            self.spec_ref = np.arange(len(self.x)) % spectra.shape[0]
+        
+        if "weights" in kwargs.keys():
+            self.weights  = np.asarray(kwargs["pixel_weights"])
+        else:
+            self.weights  = np.array([1]*len(self.x))
+               
                
         # add a second dimension to self.spectra so that all the 2D calls work
         if len(self.spectra.shape) == 1:
             self.spectra.shape = np.asarray([self.spectra.shape]*2)
         
-        self.array = np.zeros((self.params("NAXIS1"),
-                               self.params("NAXIS2")), dtype=np.float32)
+        self.array = np.zeros((self.params["NAXIS1"],
+                               self.params["NAXIS2"]), dtype=np.float32)
         
     def __repr__(self):
         return self.info['description']
@@ -89,24 +95,55 @@ class LightObject(object):
     def __array__(self, x):
         return self.array
     
-    def poissonify(self):
-        """ Add a realisation of the poisson process to the photon signal """
-        self.array = np.random.poisson(self.array)
+    def poissonify(self, arr=None):
+        """ 
+        Add a realisation of the poisson process to the array 'arr'. 
+        If arr=None, the poisson realisation is applied to LightObject.array
+                
+        Optional keyword:
+        - arr: 
+        """
+        if arr is None: arr = self.array
+        arr = np.random.poisson(arr)
     
+    def add_uniform_background(self, emission_curve, lam_min, lam_max, output=False):
+        """
+        Take an EmissionCurve and some wavelength boundaries, lam_min lam_max,
+        and sum up the photons in between. Add those to the LightObject array.
+        
+        Keywords:
+        - emission_curve: EmissionCurve object with background emission photons
+        - lam_min, lam_max: the wavelength limits
+        
+        Optional keywords:
+        - output: [False, True] if output is True, the BG emission array is 
+                  returned
+        """
+        ec = np.asarray((emission_curve.val, emission_curve.val))
+        slice_photons = self.get_slice_photons(ec, lam_min, lam_max, zoom_res=1)[0]
+        
+        bg_arr = slice_photons * np.ones((self.params["NAXIS1"],
+                                    self.params["NAXIS2"]), dtype=np.float32) 
+        if output is False:
+            self.array += bg_arr
+        else: 
+            return bg_arr
+
     
     def apply_psf_cube(self, psf_cube, lam_bin_edges, sub_pixel=False, 
                        export_slices=False):
         """
         For all PSFs in a PSFCube, generate an array containing the number of 
         photons expected in the wavelength range of that PSF, and where they
-        will land on the FOV. Then apply the PSF to this "ideal" FOV.
+        will land on the FOV. Then apply the PSF to this "ideal" FOV. Each layer
+        is added to the final LightObject array.
         
         ??? Issue
         zoom_res for get_slice_photons is set at 10. Should this be variable?
         
         Keywords:
-        - psf_cube
-        - lam_bin_edges
+        - psf_cube: a PSFCube object containing all the PSFs to be applied
+        - lam_bin_edges: the edges of the wavelength bins used in the PSFCube
         
         Optional keywords:
         - sub_pixel: [False, True] simulate sources that aren't directly in the
@@ -118,10 +155,12 @@ class LightObject(object):
             warnings.warn("Number of PSFs does not fit to lam_bin_edges")
     
         x_int, y_int = self.x.astype(int), self.y.astype(int)
-        slice_photons = np.zeros((len(self.lam))
+        slice_photons = np.zeros((len(self.lam)))
         slice_array = np.zeros((self.params("NAXIS1"),
                                        self.params("NAXIS2")), dtype=np.float32)
-        
+        tmp_array = np.zeros((self.params("NAXIS1"),
+                                       self.params("NAXIS2")), dtype=np.float32)
+                                       
         for i in range(len(psf_cube)):
             
             psf = psf_cube[i]
@@ -137,6 +176,7 @@ class LightObject(object):
                 ax, ay = np.array(slice_array.shape)//2           
                 bx, by = np.array(psf.array.shape)//2
                 
+                # for each point source in the list, add a psf to the slice_array
                 for p in range(len(slice_photons)):
                     psf_tmp = spi.shift(psf, (dx[p],dy[p]), order=1)
                     x_pint, y_pint = x_int[p], y_int[p]
@@ -168,8 +208,10 @@ class LightObject(object):
                 slice_array[x_int, y_int] = slice_photons * self.weights
                 slice_array = convolve_fft(self.slice_array, psf.array)
             
-            self.array += slice_array
+            # add the slice_array to the final array
+            tmp_arr += slice_array
             
+            # for debugging purposes, save the layers to disk
             if export_slices:
                 filename = "../data/tmp.fits"
                 if not os.path.exists(filename):
@@ -184,23 +226,30 @@ class LightObject(object):
     
     
     def apply_plane_effect(self, plane):
-    
-    
-    def apply_spectral_curve(self, spec_curve):
-        
+        pass
         
     
+    def apply_transmission_curve(self, transmission_curve):
+        """
+        Apply the values from a TransmissionCurve object to self.spectra
+        
+        Keywords:
+        - transmission_curve: The TransmissionCurve to be applied
+        """
+        tc = transmission_curve
+        tc.resample(self.lam)
+        self.spectra *= tc.val
     
-    
-    
-    
-    
-    def get_slice_photons(self, lam_min, lam_max, zoom_res = 10):
+    def get_slice_photons(self, spectra, lam_min, lam_max, zoom_res = 10):
         """
         Caluclate how many photons for each source exist in the wavelength bin
         defined by lam_min and lam_max.
-        """
         
+        Keywords:
+        
+        Optional keywords:
+        - zoom_res
+        """
         # Check if the slice limits are within the spectrum wavelength range
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
             print((lam_min, lam_max), (self.lam[0], self.lam[-1]))
@@ -214,15 +263,17 @@ class LightObject(object):
         if self.lam[i1] < lam_max and i1 < len(self.lam): 
             i1 += 1 
 
-        zoom_factor = zoom_res * (i1 - i0)
-        lam_zoom  = np.linspace(lam_min, lam_max, zoom_factor)
-        spec_zoom = np.zeros((spectra.shape[0], zoom_factor))
+        n_bins = zoom_res * (i1 - i0)
+        lam_zoom  = np.linspace(lam_min, lam_max, n_bins)
+        spec_zoom = np.zeros((spectra.shape[0], len(lam_zoom)))
         
-        #spec_zoom = np.asarray([np.interp(lam_zoom, lam[i0:i1], spec[i0:i1]) for spec in spectra])
+        # spec_zoom = np.asarray([np.interp(lam_zoom, lam[i0:i1], spec[i0:i1]) 
+        # for spec in spectra])
         for i in range(len(spectra)): 
-            spec_zoom[i,:] = np.interp(lam_zoom, lam[i0:i1], spectra[i,i0:i1])
+            spec_zoom[i,:] = np.interp(lam_zoom, self.lam[i0:i1], spectra[i,i0:i1])
 
         slice_photons = np.trapz(spec_zoom, lam_zoom, axis=1)  
         return slice_photons
 
-        
+class asd:
+    pass
