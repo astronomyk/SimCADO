@@ -40,3 +40,14 @@
 # 5. Convert image to electrons and add the detector effects
 
 
+
+######## Taken out of my IPython Notebook - not to be take seriously
+
+import numpy as np
+from astropy.io import fits
+import sys
+
+import PSFCube, SpectralCurve, LightObject2
+
+
+

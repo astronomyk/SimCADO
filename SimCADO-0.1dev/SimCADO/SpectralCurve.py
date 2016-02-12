@@ -89,10 +89,10 @@ class TransmissionCurve(object):
         self.lam_orig, self.val_orig = self.get_data()
         self.lam_orig *= (1*self.params["lam_unit"]).to(u.um).value
         
-        if self.params["Type"] == "Emission":
-            self.resample(self.params["lam_res"], action="sum")
-        else:
-            self.resample(self.params["lam_res"], action="average")
+        #if self.params["Type"] == "Emission":
+        #    self.resample(self.params["lam_res"], action="sum")
+        #else:
+        self.resample(self.params["lam_res"], action="average")
             
     def __repr__(self):
         return "Ich bin eine SpectralCurve:\n"+str(self.info)
@@ -185,7 +185,7 @@ class TransmissionCurve(object):
         # define the edges and centres of each wavelength bin
         if use_edges:
             lam_bin_edges = lam_tmp
-            lam_bin_centres = 0.5 * (lam_tmp[1:] + lam_tmp[:-1])
+            lam_bin_centers = 0.5 * (lam_tmp[1:] + lam_tmp[:-1])
         else:
             lam_bin_edges = np.append(lam_tmp - 0.5*lam_res, lam_tmp[-1] + 0.5*lam_res)
             lam_bin_centers = lam_tmp
@@ -238,7 +238,10 @@ class TransmissionCurve(object):
             if not np.all(self.lam == tc.lam):
                 tc.resample(self.lam)
             tcnew.val *= tc.val
-
+            
+        tcnew.lam_orig = tcnew.lam
+        tcnew.val_orig = tcnew.val
+            
         return tcnew
 
     def __add__(self, tc):
@@ -256,7 +259,10 @@ class TransmissionCurve(object):
             if not np.all(self.lam == tc.lam):
                 tc.resample(self.lam)
             tcnew.val += tc.val
-
+            
+        tcnew.lam_orig = tcnew.lam
+        tcnew.val_orig = tcnew.val
+            
         return tcnew 
         
     def __sub__(self, tc):
@@ -313,8 +319,8 @@ class EmissionCurve(TransmissionCurve):
         self.params.update(default_params)
         self.convert_to_photons()
         
-    def resample(self, bins, action="sum"):
-        super(EmissionCurve, self).resample(bins, action)
+    def resample(self, bins, action="sum", use_edges=False):
+        super(EmissionCurve, self).resample(bins=bins, action=action, use_edges=use_edges)
 
     def convert_to_photons(self):
         """Do the conversion to photons/voxel by using the val_unit, lam, area
@@ -323,11 +329,11 @@ class EmissionCurve(TransmissionCurve):
         self.params["val_unit"] = u.Unit(self.params["val_unit"])
         bases  = self.params["val_unit"].bases
         
-        factor = 1. * self.params["val_unit"]
+        factor = 1.
 
         if u.s      in bases: factor *= self.params["exptime"] 
         if u.m      in bases: factor *= self.params["area"]
         if u.arcsec in bases: factor *= self.params["pix_res"]**2
         if u.micron in bases: factor *= self.params["lam_res"]
-        print(factor)
+
         self.val *= factor
