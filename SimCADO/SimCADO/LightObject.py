@@ -306,11 +306,97 @@ class Source(object):
     
     def __init__(self, **kwargs):
         pass
-#        check what we're getting - a filename or a series of list
-#            filename
-#                is it a fits file
-#                is it an ascii file
-#                    does the file have x,y,spec type
+        
+    def from_cube(self, lam, cube, units="ph/s/arcsec2/micron")
+        """
+        Make a Source object from a cube in memory or a FITS cube on disk
+        """
+        self.units = units
+        if type(cube) == str and os.path.exists(cube):
+            cube = fits.getdata(cube)
+            if "BUNIT" in cube.getheader().keys()
+                self.units = cube.getheader["BUNIT"]
+            
+        flux_map = np.sum(cube, axis=0).astype(dtype=np.float32)
+        x, y = np.where(flux_map != 0)
+        
+        self.lam = lam
+        self.spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
+        self.x, self.y = x,y
+        self.ref = np.arange(len(x))
+        self.weight = np.ones(len(x))
+        
+    def from_arrays(self, lam, spec_arr, x, y, ref, weight=None, 
+                    units="ph/s/arcsec2/micron"):
+        """
+        Make a Source object from a series of lists
+        """
+        self.units = units
+        self.lam = lam
+        self.spec_arr = spec_arr
+        self.x = x
+        self.y = y
+        self.ref = ref
+        self.weight = weight
+                
+        if len(spec_arr.shape) == 1:
+            self.spec_arr = np.array((spec_arr, spec_arr))
+        if weight is None:
+            weight = np.array([1]*len(x))
+        
+        
+    def read(self, filename="../input/GC2.fits", units="ph/s/arcsec2/micron")
+        """
+        Read in a previously saved Source FITS file
+        """
+        self.units = units
+        
+        ipt = fits.open(filename)
+        self.x = ipt[0].data[0,:]
+        self.y = ipt[0].data[1,:]
+        self.ref = ipt[0].data[2,:]
+        self.weight = ipt[0].data[3,:]
+
+        self.spec_arr = ipt[1].data
+        lam_min, lam_max = ipt[1].header["LAM_MIN"], ipt[1].header["LAM_MAX"]       
+        self.lam = np.linspace(lam_min, lam_max, ipt[1].header["NAXIS1"])
+
+    
+    def write(self, filename="../input/source.fits"):
+        """
+        Just a place holder so that I know what's going on with the input table
+        * The fist extension [0] contains an "image" of size 4 x N where N is the
+        amount of sources. The 4 columns are x, y, spec_ref, weight. 
+        * The second extension [1] contains an "image" with the spectra of each 
+        source. The image is M x len(spectrum), where M is the number of unique 
+        spectra in the source list. max(spec_ref) = M - 1
+        """
+    
+        hdr = fits.getheader("../../../PreSim/Input_cubes/GC2.fits")
+        ipt = fits.getdata("../../../PreSim/Input_cubes/GC2.fits")
+        flux_map = np.sum(ipt, axis=0).astype(dtype=np.float32)
+        x,y = np.where(flux_map != 0)
+        ref = np.arange(len(x))
+        weight = np.ones(len(x))
+        spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
+        lam = np.linspace(0.2,2.5,231)
+
+        xyHDU = fits.PrimaryHDU(np.array((x,y,ref,weight)))
+        xyHDU.header["X_COL"] = "1"
+        xyHDU.header["Y_COL"] = "2"
+        xyHDU.header["REF_COL"] = "3"
+        xyHDU.header["W_COL"] = "4"
+        xyHDU.header["BUNIT"] = self.units
+        #xyHDU.header["DISTANCE"] = (hdr["DISTANCE"], "Mpc")
+        #xyHDU.header["RADIUS"] = (hdr["RADIUS"], "kpc")
+
+        specHDU = fits.ImageHDU(spec_arr)
+        specHDU.header["LAM_MIN"] = lam[0]
+        specHDU.header["LAM_MAX"] = lam[-1]
+
+        hdu = fits.HDUList([xyHDU, specHDU])
+        hdu.writeto("",clobber=True)    
+    
     
     
     
