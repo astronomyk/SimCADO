@@ -355,14 +355,10 @@ class EmissionCurve(TransmissionCurve):
         factor = 1.
 
         # The delivered EmissionCurve should be in ph/s/voxel
-        #if u.s      in bases: factor *= self.params["exptime"]
-        if u.m      in bases:
-            factor *= self.params["area"]
-        if u.arcsec in bases:
-            factor *= self.params["pix_res"]**2
-        if u.micron in bases:
-            factor *= self.params["lam_res"]
-        print(self.params["lam_res"], factor)
+        #if u.s      in bases: factor *= self.params["exptime"] 
+        if u.m      in bases: factor *= self.params["area"]
+        if u.arcsec in bases: factor *= self.params["pix_res"]**2
+        if u.micron in bases: factor *= self.params["lam_res"]
 
         self.val *= factor
 
