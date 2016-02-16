@@ -223,14 +223,17 @@ class OpticalTrain(object):
             
         return tc_master_scope
 
-    def get_master_psf(self, psf_keywords):
+    def get_master_psf(self, psf_type="Airy"):
         """
-        Generate a Master PSF for the system. This includes the AO PSF, plus a
-        component for telescope jitter
+        Generate a Master PSF for the system. This includes the AO PSF. 
+        Notes: Jitter can be applied to detector array as a single PSF, and the 
+               ADC shift can be applied to each layer of the PSFCube seperately
+        
+        Parameters
+        ==========
+        psf_type: 'Moffat', 'Airy'
         """
-        
-
-        
+       
         ####### PSF CUBES #######
         
         ############################################################
@@ -257,25 +260,30 @@ class OpticalTrain(object):
             ao_eff  = self.cmds["SCOPE_AO_EFFECTIVENESS"]
             
             # Get a Diffraction limited PSF
-            fwhm = (1.22*u.rad * self.lam_bin_centers*u.um / \
+            fwhm = (1.22*u.rad * self.cmds["lam_bin_centers"]*u.um / \
                                             (m1_diam * u.m)).to(u.arcsec).value 
-            psf_diff = psf.AiryPSFCube(self.lam_bin_centers, fwhm=fwhm,
-                                    pix_res=self.pix_res, size=self.psf_size)
-            
-            # Get the Gaussian seeing PSF
-            fwhm = (1. - ao_eff/100.) * self.cmds["OBS_SEEING"]
-            psf_seeing = psf.GaussianPSFCube(self.lam_bin_centers, fwhm=fwhm,
-                        , pix_res=self.pix_res, size=self.psf_size)
+            if psf_type == "Moffat"
+                psf_diff = psf.MoffatPSFCube(self.cmds["lam_bin_centers"], 
+                                             fwhm=fwhm,
+                                             pix_res=self.pix_res, 
+                                             size=self.psf_size)
+            elif psf_type == "Airy"
+                psf_diff = psf.AiryPSFCube(self.cmds["lam_bin_centers"], 
+                                           fwhm=fwhm,
+                                           pix_res=self.pix_res, 
+                                           size=self.psf_size)                                           
+                                           
+                # Get the Gaussian seeing PSF
+                fwhm = (1. - ao_eff/100.) * self.cmds["OBS_SEEING"]
+                psf_seeing = psf.GaussianPSFCube(self.cmds["lam_bin_centers"], 
+                                                fwhm=fwhm,
+                                                pix_res=self.pix_res)
             
             psf_m1 = psf_diff.convolve(psf_seeing)
         
-        # get a PSF for any kind of jitter
-        if self.cmds["SCOPE_JITTER_FWHM"] > 0:
-            fwhm = self.cmds["SCOPE_JITTER_FWHM"]
-            psf_m1 = psf.GaussianPSFCube(self.lam_bin_centers, fwhm=fwhm,
-                                    pix_res=self.pix_res, size=self.psf_size)
+        scope_psf_master = psf_m1
         
-        scope_psf_master    
+        return scope_psf_master
     
     def make(self, cmds=None):
         """

@@ -20,8 +20,15 @@
 # Methods:
 #   
 
-import nghxrg as ng
+import os
+import warnings
+import datetime
+
+import numpy as np
+from scipy.ndimage.interpolation import zoom
+
 from astropy.io import fits
+from astropy.stats.funcs import median_absolute_deviation as mad
 
 
 class Detector(object):
@@ -60,14 +67,10 @@ class Detector(object):
     
     def make_detector(self):
         pass
-    
-    
-    
+
     def read_in_detector_noise(self, filename=None, **kwargs):    
         pass
-        
-        
-    
+ 
     def generate_hxrg_noise(self, filename=None, **kwargs):
         """
         Create a detector noise array using Bernard Rauscher's NGHXRG tool
@@ -83,8 +86,7 @@ class Detector(object):
                                 n_out  = params["HXRG_NUM_OUTPUTS"],
                                 nroh   = params["HXRG_NUM_ROW_OH"],
                                 verbose= params["VERBOSE"],
-                                pca0_file=params["HXRG_PCA0_FILENAME"]
-                               )
+                                pca0_file=params["HXRG_PCA0_FILENAME"])
 
         # Make a noise file.
         if filename is None: filename = params["FPA_NOISE_PATH"]
@@ -93,24 +95,26 @@ class Detector(object):
                         pedestal = params["HXRG_PEDESTAL"],
                         c_pink   = params["HXRG_CORR_PINK"],
                         u_pink   = params["HXRG_UNCORR_PINK"],
-                        acn      = params["HXRG_ALT_COL_NOISE"]
-                        )
+                        acn      = params["HXRG_ALT_COL_NOISE"])
 
                         
-                        
+    def add_cosmic_rays(self):                    
+        pass
+
+    def add_dead_pixels(self):
+        pass
+        
+    def add_dead_lines(self):
+        pass
+
+    def apply_saturation(self):
+        pass
+
+
+
+
     
 
-
-
-
-
-
-
-
-
-
-    
-                    
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
@@ -118,14 +122,13 @@ class Detector(object):
 ###############################################################################
 
 # dependencies include: astropy, numpy, scipy [, datetime, warnings, os]
-
-import os
-import warnings
-from astropy.io import fits
-import numpy as np
-from scipy.ndimage.interpolation import zoom
-from astropy.stats.funcs import median_absolute_deviation as mad
-import datetime
+# import os
+# import warnings
+# from astropy.io import fits
+# import numpy as np
+# from scipy.ndimage.interpolation import zoom
+# from astropy.stats.funcs import median_absolute_deviation as mad
+# import datetime
 # import matplotlib.pyplot as plt # Handy for debugging
 
 warnings.filterwarnings('ignore')
