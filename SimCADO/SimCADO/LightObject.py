@@ -305,38 +305,38 @@ class Source(object):
     """
     
     def __init__(self, **kwargs):
-        
-        check what we're getting - a filename or a series of list
-            filename
-                is it a fits file
-                is it an ascii file
-                    does the file have x,y,spec type
+        pass
+#        check what we're getting - a filename or a series of list
+#            filename
+#                is it a fits file
+#                is it an ascii file
+#                    does the file have x,y,spec type
     
     
     
-    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area)    
+#    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area)    
     
     
-    def image_to_light(filename):
+#    def image_to_light(filename):
   
 
-    def ascii_to_light(filename):
+#    def ascii_to_light(filename):
 
 
-    def fitscube_to_light(filename)
+#    def fitscube_to_light(filename)
 
 
-    def read_light()
+#    def read_light()
 
     
     
-ascii
-    x,y,mag,[temp]
-    x,y,type
-    x,y,spectra
-images
-    JHK
-cube
+#ascii
+#    x,y,mag,[temp]
+#    x,y,type
+#    x,y,spectra
+#images
+#    JHK
+#cube
     
     
     

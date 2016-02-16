@@ -91,6 +91,7 @@ class TransmissionCurve(object):
         self.lam_orig, self.val_orig = self.get_data()
         self.lam_orig *= (1*self.params["lam_unit"]).to(u.um).value
         
+        
         #if self.params["Type"] == "Emission":
         #    self.resample(self.params["lam_res"], action="sum")
         #else:
@@ -132,7 +133,7 @@ class TransmissionCurve(object):
                 val = data[data.colnames[1]]
         else: 
             raise ValueError("Please pass either filename or lam/val keywords")
-        
+
         return lam, val
         
     def resample(self, bins, action="average", use_edges=False, min_step=1E-5):
@@ -164,6 +165,7 @@ class TransmissionCurve(object):
         tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], self.params["min_step"])
         tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
         
+
         # The summing issue - assuming we want to integrate along the curve,
         # i.e. count all the photons in a new set of bins, we need to integrate
         # along the well-sampled (1E-5µm) curve. However the above line of code
@@ -176,11 +178,13 @@ class TransmissionCurve(object):
         # if bins is a single number, use it as the bin width
         # else as the bin centres
         if not hasattr(bins, "__len__"): 
-            lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1], bins)
+            lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1]+1E-7, bins)
         else: 
             lam_tmp = bins
 
         lam_res = lam_tmp[1] - lam_tmp[0]
+        if min_step >= lam_res: 
+            warnings.warn("min_step > resample resolution. Can't resample")
         
         # define the edges and centres of each wavelength bin
         if use_edges:
@@ -189,18 +193,18 @@ class TransmissionCurve(object):
         else:
             lam_bin_edges = np.append(lam_tmp - 0.5*lam_res, lam_tmp[-1] + 0.5*lam_res)
             lam_bin_centers = lam_tmp
-       
+            
         # here is the assumption of a regular grid - see res_tmp
         val_tmp = np.zeros((len(lam_bin_centers)))
-        
+
         for i in range(len(lam_bin_centers)):
             
             mask_i = np.where((tmp_x > lam_bin_edges[i]) * 
                               (tmp_x < lam_bin_edges[i+1]))[0]     
-            
+
             if np.sum(mask_i) > 0 and action == "average":  
                 val_tmp[i] = np.average(tmp_y[mask_i[0]:mask_i[-1]])
-
+                
             elif np.sum(mask_i) > 0 and action == "sum":    
                 # FIXED. THE SUMMING ISSUE. TEST IT         #
                 # Tested - the errors are on the 0.1% level #
@@ -208,7 +212,7 @@ class TransmissionCurve(object):
             
             else: 
                 val_tmp[i] = 0
-            
+   
         self.lam = lam_tmp
         self.val = val_tmp
         self.res = lam_res
@@ -222,6 +226,18 @@ class TransmissionCurve(object):
         
     def __array__(self):
         return self.val
+    
+    def __pow__(self, n):
+        """ 
+        TransmissionCurve to the power of n. 
+        """
+        tcnew = deepcopy(self)       
+        tcnew.val = tcnew.val ** n
+            
+        tcnew.lam_orig = tcnew.lam
+        tcnew.val_orig = tcnew.val
+
+        return tcnew   
     
     def __mul__(self, tc):
         """ 
@@ -267,7 +283,7 @@ class TransmissionCurve(object):
         
     def __sub__(self, tc):
         return  self.__add__(-1 * tc)
-        
+    
     def __rmul__(self, x):
         return self.__mul__(x)
                 
@@ -383,9 +399,10 @@ class BlackbodyCurve(TransmissionCurve):
         
         super(BlackbodyCurve, self).__init__(lam=lam, val=val, 
                                                     Type="Emission", **kwargs)
-        #self.resample(lam_res)
         
-    def resample(self, bins, action="sum", use_edges=False):
-        super(BlackbodyCurve, self).resample(bins=bins, action=action, 
-                                                use_edges=use_edges)
+        
+class UnityCurve(TransmissionCurve):
 
+    def __init__(self, lam=np.asarray([0.5,2.5]), val=None):
+        if val is None: val = np.asarray([1]*len(lam))
+        super(UnityCurve, self).__init__(lam=lam, val=val)
