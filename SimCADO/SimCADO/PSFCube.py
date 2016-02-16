@@ -95,6 +95,7 @@ import warnings
 from copy import deepcopy
 
 from astropy.io import fits
+from astropy import units as u
 from astropy.convolution import (Gaussian2DKernel,
                                  Moffat2DKernel)
 from astropy.convolution import convolve_fft
