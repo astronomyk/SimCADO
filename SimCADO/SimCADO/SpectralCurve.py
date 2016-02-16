@@ -217,6 +217,9 @@ class TransmissionCurve(object):
         self.val = val_tmp
         self.res = lam_res
         self.params["lam_res"] = self.res
+
+    def renormalize(self, val=1):
+        self.val *= val/np.sum(self.val)
         
     def __len__(self):
         return len(self.val)
@@ -353,6 +356,7 @@ class EmissionCurve(TransmissionCurve):
         if u.m      in bases: factor *= self.params["area"]
         if u.arcsec in bases: factor *= self.params["pix_res"]**2
         if u.micron in bases: factor *= self.params["lam_res"]
+        print(self.params["lam_res"], factor)
         
         self.val *= factor
 
@@ -406,3 +410,10 @@ class UnityCurve(TransmissionCurve):
     def __init__(self, lam=np.asarray([0.5,2.5]), val=None):
         if val is None: val = np.asarray([1]*len(lam))
         super(UnityCurve, self).__init__(lam=lam, val=val)
+       
+    
+    
+    
+    
+    
+    

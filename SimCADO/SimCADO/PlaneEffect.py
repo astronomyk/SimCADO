@@ -37,3 +37,73 @@
 #
 #
 #
+from copy import deepcopy
+
+import numpy as np
+import scipy.ndimage as spi
+
+
+class CoordEffect(object):
+    """
+    """
+
+    def __init__(self, dx, dy):
+        self.dx = dx
+        self.dy = dy
+
+    def apply(self, x, y)
+        return x + self.dx, y + self.dy
+        
+        
+        
+class ADC_Effect(CoordEffect):
+    
+    def __init__(lam, angle = 0, **kwargs):
+    
+        shift = atmospheric_refraction(lam, **kwargs):
+        dx = np.cos(shift / 57.29578)
+        dy = np.cos(shift / 57.29578)
+
+        super(ADC_Effect, self).__init__(dx, dy)
+        
+        
+def rotate_array(x, y, angle, center):
+    pass
+
+    
+
+    return x+dx, y+dy
+
+def shift_array(arr, dx, dy):
+    pass
+
+def distort_coords(x, y, x_arr, y_arr)
+    pass
+
+def distort_array(arr, x_arr, y_arr, weight_arr)
+    pass
+
+
+        
+    def rotate(x, y, angle, center):
+        pass
+    
+    def shift(dx, dy):
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

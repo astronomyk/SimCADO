@@ -211,7 +211,7 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750, lat=-24.5, 
 	R = k*g*(1 - b) * np.tan(z0/57.29578) - k*g*(b - g/2.) * np.tan(z0/57.29578)**3
 
 	# the refraction is the side of a triangle, although the triangle side makes an arc across the sky. 
-	# We want the angle that this triangle side is subtenting
+	# We want the angle that this triangle side subtends
 	# Using the small angle approximation (which is in radians), we can get the angle of refraction
 	
 	ang = R * 3600 * 57.29578

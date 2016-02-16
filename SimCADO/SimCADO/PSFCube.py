@@ -102,11 +102,11 @@ from astropy.convolution import convolve_fft
 from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
-import SimCADO.utils as utils
+import utils
 
 
 
-## TODO - Add a ellipticity to the GaussianPSF ##
+## TODO - Add a ellipticity to the GaussianPSFplt.plot() ##
 
 
 ## These classes and functions are exported to the package
