@@ -201,12 +201,16 @@ class PSF(object):
         Keywords:
         - kernel: [PSF/ndarray] either a numpy.ndarray or a PSF (sub)class
         """
+        psf_new = deepcopy(self) 
+        
         if issubclass(type(kernel), PSF):
-            self.set_array(convolve_fft(self.array, kernel.array))
+            psf_new.set_array(convolve_fft(self.array, kernel.array))
         else:
-            self.set_array(convolve_fft(self.array, kernel))
-        self.info["Type"] = "Combined"
-
+            psf_new.set_array(convolve_fft(self.array, kernel))
+        psf_new.info["Type"] = "Combined"
+        
+        return psf_new
+            
     def __array__(self):
         return self.array
 
