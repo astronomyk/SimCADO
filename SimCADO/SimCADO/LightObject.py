@@ -27,6 +27,20 @@
 #   - add the WorkingSlice to the FPA [WorkingSlice, FPArray]
 
 
+## TODO implement conversions to Source object from:
+#ascii
+#    x,y,mag,[temp]
+#    x,y,type
+#images
+#    JHK
+#    cube
+    
+
+
+
+
+
+
 from astropy.io import fits
 from astropy.convolution import convolve, convolve_fft
 import numpy as np
@@ -131,11 +145,10 @@ class LightObject(object):
         
         bg_arr = slice_photons * np.ones((self.params["NAXIS1"],
                                     self.params["NAXIS2"]), dtype=np.float32) 
-        if output is False:
-            self.array += bg_arr
-        else: 
+        if output is True:
             return bg_arr
-
+        else: 
+            self.array += bg_arr
     
     def apply_psf_cube(self, psf_cube, lam_bin_edges, export_slices=False, 
                         filename = "../output/slices.fits", sub_pixel=False):
@@ -304,7 +317,11 @@ class Source(object):
     
     """
     
-    def __init__(self, **kwargs):
+    def __init__(self, pix_res, units):
+        
+        
+        self.units = units
+        
         pass
         
     def from_cube(self, lam, cube, units="ph/s/arcsec2/micron")
@@ -400,38 +417,19 @@ class Source(object):
     
     
     
-#    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area)    
+    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area)    
+        pass
+    
+    def image_to_light(filename):
+        pass
+
+    def ascii_to_light(filename):
+        pass
+
+    def fitscube_to_light(filename)
+        pass
+
+    def read_light()
+        pass
     
     
-#    def image_to_light(filename):
-  
-
-#    def ascii_to_light(filename):
-
-
-#    def fitscube_to_light(filename)
-
-
-#    def read_light()
-
-    
-    
-#ascii
-#    x,y,mag,[temp]
-#    x,y,type
-#    x,y,spectra
-#images
-#    JHK
-#cube
-    
-    
-    
-    
-    
-    
-
-
-
-
-
-

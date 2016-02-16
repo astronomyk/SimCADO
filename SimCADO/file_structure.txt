@@ -2,9 +2,12 @@ SimCADO-dev
 |
 |-- SimCADO
 |    |
+|    |-- Detector.py
 |    |-- LightObject.py
-|    |-- SpectralCuve.py
+|    |-- OpticalTrain.py
+|    |-- SpectralCurve.py
 |    |-- SimulationRun.py
+|    |-- PlaneEffect.py
 |    |-- PSFCube.py
 |    |-- utils.py
 |    |
