@@ -7,11 +7,6 @@
 # 
 #
 #
-#
-#
-#
-#
-#
 # Need 2 different UserCommands dictionaries as input
 #  - Observation parameters (Alt, Az, Exptime, etc)
 #  - Observatory parameters (area, instrument configuration, psfs, etc)
@@ -51,10 +46,13 @@
 
 ######## Taken out of my IPython Notebook - not to be take seriously
 
-import numpy as np
-from astropy.io import fits
 import sys, os
 import warnings
+
+import numpy as np
+
+from astropy.io import fits
+import astropy.units as u
 
 import PSFCube as psf
 import SpectralCurve as sc
@@ -227,6 +225,8 @@ class OpticalTrain(object):
 
     def get_master_psf(self, psf_keywords):
         """
+        Generate a Master PSF for the system. This includes the AO PSF, plus a
+        component for telescope jitter
         """
         
 
@@ -269,7 +269,7 @@ class OpticalTrain(object):
             
             psf_m1 = psf_diff.convolve(psf_seeing)
         
-        
+        # get a PSF for any kind of jitter
         if self.cmds["SCOPE_JITTER_FWHM"] > 0:
             fwhm = self.cmds["SCOPE_JITTER_FWHM"]
             psf_m1 = psf.GaussianPSFCube(self.lam_bin_centers, fwhm=fwhm,

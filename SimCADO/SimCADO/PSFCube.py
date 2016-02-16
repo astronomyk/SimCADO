@@ -106,6 +106,9 @@ import SimCADO.utils as utils
 
 
 
+## TODO - Add a ellipticity to the GaussianPSF ##
+
+
 ## These classes and functions are exported to the package
 __all__ = ["PSFCube", "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF",
            "DeltaPSF"]
