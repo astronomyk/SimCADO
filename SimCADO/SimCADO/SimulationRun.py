@@ -111,6 +111,30 @@ class Simulation(object):
         pass
            
     def run():
+        
+        
+        
+        make_optical_train()
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         pass
         
    
@@ -159,7 +183,7 @@ class Simulation(object):
    
   
    
-   
+class ads:   
    
    
    

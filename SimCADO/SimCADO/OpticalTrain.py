@@ -266,9 +266,6 @@ class OpticalTrain(object):
         #       - 
     
     
-        SCOPE_M1_TEMP
-    
-    
     
         pass
    

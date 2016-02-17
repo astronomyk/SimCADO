@@ -61,10 +61,22 @@ class ADC_Effect(CoordEffect):
     def __init__(lam, angle = 0, **kwargs):
     
         shift = atmospheric_refraction(lam, **kwargs):
-        dx = np.cos(shift / 57.29578)
-        dy = np.cos(shift / 57.29578)
+        dx = shift * np.cos(angle / 57.29578)
+        dy = shift * np.cos(angle / 57.29578)
 
         super(ADC_Effect, self).__init__(dx, dy)
+
+class ArrayEffect(object):
+    
+    def __init__(self, x, y, weight):
+        self.x = np.zeros()
+    
+    
+    def apply(self, array)
+    
+    
+
+
         
         
 def rotate_array(x, y, angle, center):

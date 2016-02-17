@@ -362,6 +362,28 @@ class EmissionCurve(TransmissionCurve):
 
         self.val *= factor
 
+        
+    def photons_in_range(self, lam_min, lam_max):
+        """
+        Sum up the photons in between the wavelength boundaries, lam_min lam_max
+        
+        Keywords:
+        - lam_min, lam_max: the wavelength limits
+        """
+        if lam_min > self.lam[-1] or lam_max < self.lam[0]:
+            warnings.warn("wavelength limits outside wavelength range")
+            photons = 0
+        else:
+            if (lam_max - lam_min) < 2 * self.res:
+                zoom = 10
+                lam_zoom = np.linspace(lam_min, lam_max, zoom)
+                spec_zoom = np.interp(lam_zoom, self.lam, self.val) / zoom
+                photons = np.sum(spec_zoom) 
+            else:
+                mask = (self.lam >= lam_min) * (self.lam < lam_max)
+                photons = np.sum(self.val[mask])
+            
+        return photons
 
 
 class BlackbodyCurve(EmissionCurve):

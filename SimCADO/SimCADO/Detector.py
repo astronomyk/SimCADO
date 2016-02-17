@@ -40,36 +40,74 @@ class Detector(object):
         
         """
 
-        params = {  "NAXIS1"            :4096,
-                    "NAXIS2"            :4096,
-                    "pix_res"           :0.004,
-                    "VERBOSE"           :False,
-                    
-                    "HXRG_NUM_OUTPUTS"  :32,
-                    "HXRG_NUM_ROW_OH"   :8,
-                    "HXRG_PCA0_FILENAME":"../data/nirspec_pca0.fits",
-                    "HXRG_NOISE_PATH"   :"../data/H4RG_noise.fits",
-                    "HXRG_PEDESTAL"     :4,
-                    "HXRG_CORR_PINK"    :3,
-                    "HXRG_UNCORR_PINK"  :1,
-                    "HXRG_ALT_COL_NOISE":0.5,
-                    
-                    "FPA_READOUT_MEDIAN":4,
-                    "FPA_DARK_MEDIAN"   :0.01,
-                    "FPA_QE_FILENAME"   :None,
-                    "FPA_DISTORTION_MAP":None,
-                    "FPA_LINEARITY_CURVE":None,
-                    "FPA_GAIN"          :1,
-                    "FPA_WELL_DEPTH"    :1E5
-                 }
-        params.update(kwargs)
+        self.params = { "NAXIS1"            :4096,
+                        "NAXIS2"            :4096,
+                        "VERBOSE"           :False,
+                        
+                        "HXRG_NUM_OUTPUTS"  :32,
+                        "HXRG_NUM_ROW_OH"   :8,
+                        "HXRG_PCA0_FILENAME":"../data/nirspec_pca0.fits",
+                        "HXRG_NOISE_PATH"   :"../data/H4RG_noise.fits",
+                        "HXRG_PEDESTAL"     :4,
+                        "HXRG_CORR_PINK"    :3,
+                        "HXRG_UNCORR_PINK"  :1,
+                        "HXRG_ALT_COL_NOISE":0.5,
+                        
+                        "FPA_READOUT_MEDIAN":4,
+                        "FPA_DARK_MEDIAN"   :0.01,
+                        "FPA_QE_FILENAME"   :None,
+                        "FPA_DISTORTION_MAP":None,
+                        "FPA_LINEARITY_CURVE":None,
+                        "FPA_GAIN"          :1,
+                        "FPA_WELL_DEPTH"    :1E5}
+        self.params.update(kwargs)
+        
+        self.size = self.params["NAXIS1"]
+        self.array = np.zeros((self.size, self.size))
+        self.pix_res = self.params["SIM_INTERNAL_PIX_SCALE"]
+        self.fpa_res = self.params["SIM_DETECTOR_PIX_SCALE"]
+        self.exptime = self.params["OBS_EXPTIME"]
+        
         
     
+    
     def make_detector(self):
+        
+        if use_file == True:
+            read_in_detector_noise()
+        else:
+            generate_hxrg_noise()
+        
+        add_cosmic_rays(exptime)
+        add_pixel_map("FPA_DEAD_PIXEL_MAP")
+        apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
+        
+        self.array
         pass
 
-    def read_in_detector_noise(self, filename=None, **kwargs):    
+    def read_detector_noise(self, filename=None, **kwargs):    
         pass
+ 
+    def save_detector_noise(self, filename=None, **kwargs):    
+        pass
+ 
+    def add_cosmic_rays(self):                    
+        self.array += cosmic_map
+        pass
+
+    def apply_pixel_map(self):
+        self.array *= pixel_map
+        pass
+        
+    def apply_saturation(self):
+        """
+        
+        """
+    
+        self.array = altered_array
+        pass
+
+
  
     def generate_hxrg_noise(self, filename=None, **kwargs):
         """
@@ -96,22 +134,9 @@ class Detector(object):
                         c_pink   = params["HXRG_CORR_PINK"],
                         u_pink   = params["HXRG_UNCORR_PINK"],
                         acn      = params["HXRG_ALT_COL_NOISE"])
-
-                        
-    def add_cosmic_rays(self):                    
-        pass
-
-    def add_dead_pixels(self):
-        pass
         
-    def add_dead_lines(self):
-        pass
-
-    def apply_saturation(self):
-        pass
-
-
-
+        self.array = noise
+                        
 
     
 
