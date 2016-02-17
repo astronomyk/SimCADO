@@ -421,13 +421,13 @@ class BlackbodyCurve(EmissionCurve):
             (np.exp(c.h * c.c / (c.k_B * (temp*u.K) * (lam*u.um))) - 1.) / u.sr
 
         # E is in W
-        E = I * (self.params["area"] * u.m**2) * lam_res * u.um * \
-            (self.params["pix_res"] * u.arcsec)**2
+        E = I * (self.params["area"] * u.m**2) * (lam_res * u.um) * \
+                (self.params["pix_res"] * u.arcsec)**2
         # ph is in 1/s
         ph = E / (c.h * c.c / (lam * u.um))
         val = ph.si
 
-        super(BlackbodyCurve, self).__init__(lam=lam, val=val,
+        super(BlackbodyCurve, self).__init__(lam=lam, val=val, units="1/s"
                                              Type="Emission", **kwargs)
 
 

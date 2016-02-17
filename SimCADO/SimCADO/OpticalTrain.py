@@ -39,6 +39,29 @@ class OpticalTrain(object):
         self.lam_res         = self.cmds["SIM_LAM_TC_BIN_WIDTH"]
         self.pix_res         = self.cmds["SIM_INTERNAL_PIX_SCALE"]
 
+        # if SIM_USE_FILTER_LAM is true, then use the filter curve to set the
+        # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
+        tc_filt = sc.TransmissionCurve(self.cmds['INST_FILTER_TC'])
+
+        if self.cmds["SIM_USE_FILTER_LAM"].lower() == "yes":
+            mask = np.where(tc_filt.val > self.cmds["SIM_FILTER_THRESHOLD"])[0]
+            lam_min, lam_max = tc_filt.lam[mask[0]], tc_filt.lam[mask[-1]]
+            self.lam_bin_edges = np.arange( lam_min, lam_max+1E-7, 
+                                            self.cmds["SIM_LAM_PSF_BIN_WIDTH"])
+        else:
+            lam_min, lam_max = self.cmds["SIM_LAM_MIN"], self.cmds["SIM_LAM_MAX"]
+            self.lam_bin_edges = np.arange( tc_filt.lam[i0], 
+                                            tc_filt.lam[i1]+1E-7, 
+                                            self.cmds["SIM_LAM_PSF_BIN_WIDTH"])
+
+        self.lam_bin_centers = 0.5 * (self.lam_bin_edges[1:] + \
+                                      self.lam_bin_edges[:-1]) 
+
+
+        
+        
+        
+        
     
     def read(self, filename):
         pass
@@ -170,14 +193,19 @@ class OpticalTrain(object):
         
         # Make the spectral curves for the atmospheric background photons
         self.tc_atmo_bg = get_master_tc(self, preset="atmosphere_bg")
-        
-        # Get the number of atmospheric background photons in the bandpass
         self.ec_atmo_gb = sc.EmissionCurve(self.cmds["ATMO_EC"])
         
         # Make the transmission curve for the blackbody photons from the mirror
-        self.mirror_tc  = get_master_tc(self, preset="mirror_bb")
+        self.tc_mirror  = get_master_tc(self, preset="mirror_bb")
+        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
+                                            temp=self.cmds["SCOPE_M1_TEMP"])
         
-        
+            def __init__(self, lam, temp, **kwargs):
+        self.params = { "pix_res" :0.004,
+                        "area"    :978,
+                        "exptime" :1,
+                        "temp"    :273
+                        }
         
     
     
@@ -202,32 +230,7 @@ class OpticalTrain(object):
         #       - imperfect derotation
         #       - distortion                        [weight map can be exported]
         #       - flat fielding                     [can be exported]
-        #
-
-
-            
-        
-        
-        
-        
-        
-        ####################################
-        # Idea - break these up into make_tc(), make_psf() and generic make()
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+        #   - detector  
         
         
         # - the optical path for the atmospheric BG emission [can be exported]
@@ -238,20 +241,7 @@ class OpticalTrain(object):
         #       - dichroic
         #       - filter
         #       - detector QE
-        #   - list of wave-indep plane effects
-        #       - distortion 
-        #       - flat fielding
-        #       -
 
-
-
-
-
-
-
-
-
-        
         # - the optical path for the mirror BB emission [can be exported]
         #   - master transmission curve
         #       - n-1 x mirror
@@ -260,12 +250,3 @@ class OpticalTrain(object):
         #       - dichroic
         #       - filter
         #       - detector QE
-        #   - list of wave-indep plane effects
-        #       - distortion 
-        #       - flat fielding
-        #       - 
-    
-    
-    
-        pass
-   

@@ -254,7 +254,33 @@ class LightObject(object):
         newlight.array *= x
         return newlight
 
+    def __add__(self, x):
+        newlight = deepcopy(self)
+        newlight.array += x
+        return newlight
 
+    def __sub__(self, x):
+        newlight = deepcopy(self)
+        newlight.array -= x
+        return newlight
+        
+    def __rmul__(self, x):
+        return self.__mul__(x)
+        
+    def __radd__(self, x):
+        return self.__add__(x)
+    
+    def __rsub__(self, x):
+        return self.__mul__(-1) + x
+    
+    def __imul__(self, x):
+        return self.__mul__(x)
+    
+    def __iadd__(self, x):
+        return self.__add__(x)
+    
+    def __isub__(self, x):
+        return self.__sub__(x)
         
         
         
@@ -275,12 +301,15 @@ class Source(object):
     - weight
     """
     
-    def __init__(self, pix_res, units):
+    def __init__(self, pix_res, units, **kwargs):
         
         self.pix
         self.units = units
         
-        pass
+        if "filename" in kwargs.key():
+            
+        
+        
         
     def from_cube(self, lam, cube, units="ph/s/arcsec2/micron")
         """
