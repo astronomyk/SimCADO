@@ -36,18 +36,14 @@
 #    cube
     
 
+import os
+import warnings
 
-
-
-
-
-from astropy.io import fits
-from astropy.convolution import convolve, convolve_fft
 import numpy as np
 import scipy.ndimage.interpolation as spi
 
-import os
-import warnings
+from astropy.io import fits
+from astropy.convolution import convolve, convolve_fft
 
 class LightObject(object):
 
