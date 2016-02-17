@@ -1,3 +1,4 @@
+"""Atmosphere model"""
 ###############################################################################
 # AtmosphereModel
 #
@@ -26,6 +27,7 @@
 #
 
 
+import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from throughput import *
