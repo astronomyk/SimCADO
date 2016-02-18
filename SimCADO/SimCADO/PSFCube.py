@@ -993,7 +993,7 @@ class ADC_PSFCube(DeltaPSFCube):
         params.update(**kwargs)
         pix_res = params["pix_res"]
         para_angle = params["PARALLACTIC_ANGLE"]
-        effectiveness = params["INST_ADC_EFFICIENCY"] / 100.
+        effectiveness = params["INST_ADC_PERFORMANCE"] / 100.
 
         ## get the angle shift for each slice
         angle_shift = [utils.atmospheric_refraction(lam,

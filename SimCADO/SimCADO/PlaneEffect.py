@@ -42,6 +42,33 @@ from copy import deepcopy
 import numpy as np
 import scipy.ndimage as spi
 
+def derotator(arr, cmds):
+    spi.rotate()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class CoordEffect(object):
     """
@@ -74,37 +101,6 @@ class ArrayEffect(object):
     
     def apply(self, array)
     
-    
-
-
-        
-        
-def rotate_array(x, y, angle, center):
-    pass
-
-    
-
-    return x+dx, y+dy
-
-def shift_array(arr, dx, dy):
-    pass
-
-def distort_coords(x, y, x_arr, y_arr)
-    pass
-
-def distort_array(arr, x_arr, y_arr, weight_arr)
-    pass
-
-
-        
-    def rotate(x, y, angle, center):
-        pass
-    
-    def shift(dx, dy):
-        pass
-
-
-
 
 
 

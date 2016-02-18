@@ -95,7 +95,7 @@ class LightObject(object):
         return self.array
         
     def __getitem__(self, i):
-        return self.x[i], self.y[i], 
+        return self.x[i], self.y[i], \
                             self.spectra[self.spec_ref[i],:] * self.weight[i]
     
     def poissonify(self, arr=None):
@@ -306,19 +306,16 @@ class Source(object):
         self.pix
         self.units = units
         
-        if "filename" in kwargs.key():
-            
         
         
-        
-    def from_cube(self, lam, cube, units="ph/s/arcsec2/micron")
+    def from_cube(self, lam, cube, units="ph/s/arcsec2/micron"):
         """
         Make a Source object from a cube in memory or a FITS cube on disk
         """
         self.units = units
         if type(cube) == str and os.path.exists(cube):
             cube = fits.getdata(cube)
-            if "BUNIT" in cube.getheader().keys()
+            if "BUNIT" in cube.getheader().keys():
                 self.units = cube.getheader["BUNIT"]
             
         flux_map = np.sum(cube, axis=0).astype(dtype=np.float32)
@@ -348,7 +345,7 @@ class Source(object):
             self.spec_arr = np.array((spec_arr, spec_arr))
         
         
-    def read(self, filename="../input/GC2.fits", units="ph/s/arcsec2/micron")
+    def read(self, filename="../input/GC2.fits", units="ph/s/arcsec2/micron"):
         """
         Read in a previously saved Source FITS file
         """
@@ -404,7 +401,7 @@ class Source(object):
     
     
     
-    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area)    
+    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area):   
         pass
     
     def image_to_light(filename):
@@ -413,10 +410,10 @@ class Source(object):
     def ascii_to_light(filename):
         pass
 
-    def fitscube_to_light(filename)
+    def fitscube_to_light(filename):
         pass
 
-    def read_light()
+    def read_light():
         pass
     
     

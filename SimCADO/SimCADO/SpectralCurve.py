@@ -414,7 +414,7 @@ class BlackbodyCurve(EmissionCurve):
         ph = E / (c.h * c.c / (lam * u.um))
         val = ph.si
 
-        super(BlackbodyCurve, self).__init__(lam=lam, val=val, units="1/s"
+        super(BlackbodyCurve, self).__init__(lam=lam, val=val, units="1/s",
                                              Type="Emission", **kwargs)
 
 

@@ -111,12 +111,4 @@ class Simulation(object):
         pass
            
     def run():
-        
-   
-class ads:   
-   
-   
-   
-   
-   
-   
+        pass

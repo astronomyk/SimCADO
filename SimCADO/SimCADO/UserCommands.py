@@ -65,7 +65,7 @@ class UserCommands(object):
         if self.cmds["OBS_OUTPUT_NAME"] == "none":
             self.cmds["OBS_OUTPUT_NAME"] = "output.fits"
    
-        if self.cmds["SIM_PSF_OVERSAMPLE"] = "yes":
+        if self.cmds["SIM_PSF_OVERSAMPLE"] == "yes":
             self.cmds["PSF_MODE"] = "oversample"
         else:
             self.cmds["PSF_MODE"] = "linear_interp"

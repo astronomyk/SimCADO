@@ -47,7 +47,7 @@ class OpticalTrain(object):
                                                 pix_res=self.pix_res)
         
         self.adc_shifts      = np.zeros((len(self.lam_bin_centers)))
-        self.distortion_map  = 1
+        #self.distortion_map
 
 
         
@@ -64,7 +64,7 @@ class OpticalTrain(object):
         
         Optional Parameters:
         ===================
-        tc_keywords: a list of keywords from the config files. E.g:
+        tc_keywords: a list of keywords from the .config files. E.g:
                      tc_keywords = ['ATMO_TC', 'SCOPE_M1_TC', 'INST_FILTER_TC']
         preset: a present string for the most common collections of keywords:
                 - 'source' includes all the elements seen by source photons
@@ -146,12 +146,12 @@ class OpticalTrain(object):
             # Get a Diffraction limited PSF
             fwhm = (1.22*u.rad * self.lam_bin_centers*u.um / \
                                             (m1_diam * u.m)).to(u.arcsec).value 
-            if psf_type == "Moffat"
+            if psf_type == "Moffat":
                 psf_m1 = psf.MoffatPSFCube(self.lam_bin_centers, 
                                            fwhm=fwhm,
                                            pix_res=self.pix_res, 
                                            size=self.psf_size)
-            elif psf_type == "Airy"
+            elif psf_type == "Airy":
                 psf_diff = psf.AiryPSFCube(self.lam_bin_centers, 
                                            fwhm=fwhm,
                                            pix_res=self.pix_res, 
@@ -182,7 +182,7 @@ class OpticalTrain(object):
         
         """ 
         para_angle = self.cmds["PARALLACTIC_ANGLE"]
-        effectiveness = self.cmds["INST_ADC_EFFICIENCY"] / 100.
+        effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
 
         ## get the angle shift for each slice
         angle_shift = [utils.atmospheric_refraction(lam,
@@ -236,12 +236,7 @@ class OpticalTrain(object):
         self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
                                             temp=self.cmds["SCOPE_M1_TEMP"])
         
-            def __init__(self, lam, temp, **kwargs):
-        self.params = { "pix_res" :0.004,
-                        "area"    :978,
-                        "exptime" :1,
-                        "temp"    :273
-                        }
+ 
         
     
     
@@ -286,4 +281,5 @@ class OpticalTrain(object):
         #       - dichroic
         #       - filter
         #       - detector QE
-class ads        
+class ads:
+    pass        
