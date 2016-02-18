@@ -4,38 +4,44 @@
 # DESCRIPTION
 #
 # UserCommands is essentially a dictionary that holds all the variables that
-# the user may wish to change, plus some methods to get certain subclasses
-# out, i.e. anything that starts with "ATMO"
-#
-#
-# Classes:
-#   
-#
-# Methods:
-#   
-#
+# the user may wish to change. It also has some set variable like 'self.pix_res'
+# that can be accessed directly, instead of from the dictionary
 #
 
-from utils import *
-from SpectralCurve import Throughput
+import os, warnings
+import numpy as np
+import SpectralCurve as sc
+import utils
 
 class UserCommands(object):
+    """
+    A dictionary class that holds all the keywords from the config files plus
+    a couple of most used variables, i.e. pix_res, lam_bin_edges
+    
+    Parameters
+    ==========
+    - user_filename: path to the user's .config file 
+    - master_filename: path to the master.config file
+    """
+    
+    def __init__(self, user_filename=None, master_filename="../user_commands/master.config"):
 
-	def __init__(self, filename)
+        self.cmds = utils.read_config(master_filename)
+        
+        # need to generate a list, because the cmds dict will be updated
+        fnames = [value for value in self.cmds.values()]
+        for fname in fnames: 
+            if os.path.exists(fname):
+                self.cmds.update(utils.read_config(fname))
+            else:
+                warnings.warn(fname+" doesn't exist.")
 
-        self.filename = filename
-		self.cmds = read_config(filename)
-		self.verbose = True if self.cmds["VERBOSE"].lower() == "yes" else False
-		
-		self.cmds["LAM_BIN_CENTERS"] = None
-		self.cmds["LAM_BIN_EDGES"]   = None
-		self.cmds["LAM_BIN_MIN"]     = None
-		self.cmds["LAM_BIN_MAX"]     = None
-		self.cmds["LAM_BIN_RES"]     = None
-				
-		self.cmds["PIX_RES"]		 = None
-		self.cmds["PIX_SHAPE"]       = None
-		
+        if user_filename is not None: 
+            self.cmds.update(utils.read_config(user_filename))   
+        
+        self.cmds["CONFIG_MASTER"] = master_filename
+        self.cmds["CONFIG_USER"]   = user_filename
+        
         # check the output path directory and file name
         if self.cmds["OBS_OUTPUT_DIR"] == "none":
             self.cmds["OBS_OUTPUT_DIR"] = "./"
@@ -43,37 +49,46 @@ class UserCommands(object):
         if self.cmds["OBS_OUTPUT_NAME"] == "none":
             self.cmds["OBS_OUTPUT_NAME"] = "output.fits"
    
-        
-        # Check if a filter curve file has been give, or a standard broadband name
+        # Check if for a filter curve file or a standard broadband name
         if self.cmds["INST_FILTER_TC"] in ["I", "z", "Y", "J", "H", "Ks", "K"]:
             self.cmds["INST_FILTER_TC"] = "../data/TC_filter_" + \
                                             self.cmds["INST_FILTER_TC"] + ".dat"
 
         # if SIM_USE_FILTER_LAM is true, then use the filter curve to set the
         # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
-        tc_filt = sc.TransmissionCurve(self.cmds['INST_FILTER_TC'])
-        
+         
         if self.cmds["SIM_USE_FILTER_LAM"].lower() == "yes":
+            tc_filt = sc.TransmissionCurve(filename=self.cmds['INST_FILTER_TC'])
             mask = np.where(tc_filt.val > self.cmds["SIM_FILTER_THRESHOLD"])[0]
-            lam_min, lam_max = tc_filt.lam[mask[0]], tc_filt.lam[mask[-1]]
-            self.cmds["lam_bin_edges"] = np.arange( lam_min, lam_max+1E-7, 
-                                                    self.cmds["SIM_LAM_PSF_BIN_WIDTH"])
+            i0 = np.max((mask[0] - 1, 0))
+            i1 = np.min((mask[-1] + 1 , len(tc_filt.lam) - 1))
+            lam_min, lam_max   = tc_filt.lam[i0], tc_filt.lam[i1]
         else:
             lam_min, lam_max = self.cmds["SIM_LAM_MIN"], self.cmds["SIM_LAM_MAX"]
-            self.cmds["lam_bin_edges"] = np.arange( tc_filt.lam[i0], 
-                                                    tc_filt.lam[i1]+1E-7, 
-                                                    self.cmds["SIM_LAM_TC_BIN_WIDTH"])
+
+        self.lam_res = self.cmds["SIM_LAM_TC_BIN_WIDTH"] 
+        self.lam = np.arange(lam_min, lam_max + 1E-7, self.lam_res)
         
-        self.cmds["lam_bin_centers"] = 0.5 * (self.lam_bin_edges[1:] + \
-                                              self.lam_bin_edges[:-1])         
-                                              
+        self.lam_psf_res = self.cmds["SIM_LAM_PSF_BIN_WIDTH"]
+        self.lam_bin_edges = np.arange(lam_min, 
+                                       lam_max + self.lam_psf_res, 
+                                       self.lam_psf_res)
+        self.lam_bin_centers = 0.5 * (self.lam_bin_edges[1:] + \
+                                      self.lam_bin_edges[:-1])
+        
+        self.pix_res     = self.cmds["SIM_INTERNAL_PIX_SCALE"]
+        self.fpa_pix_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
+        
+        self.exptime     = self.cmds["OBS_EXPTIME"]
+        self.diameter    = self.cmds["SCOPE_M1_DIAMETER_OUT"]
+        self.area        = np.pi / 4 * (self.diameter**2 - \
+                                        self.cmds["SCOPE_M1_DIAMETER_IN"]**2)
+        
+        self.verbose = True     if self.cmds["VERBOSE"] == "yes"    else False
+        
     
+    def __repr__(self):
+        return "A dictionary of commands compiled from "+self.cmds["CONFIG_MASTER"]
     
-    
-    
-    def update(self, filename)	
-		update_config(filename, self.cmds)
-	
     def __getitem__(self, kw):
         return self.cmds[kw]
-                                              
