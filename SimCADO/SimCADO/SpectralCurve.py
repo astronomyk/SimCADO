@@ -58,7 +58,7 @@ from astropy import units as u
 from astropy import constants as c
 from astropy.io import fits, ascii
 
-__all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve"]
+__all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve"]
 
 
 class TransmissionCurve(object):
@@ -76,10 +76,7 @@ class TransmissionCurve(object):
               transmission coefficient between [0,1]
     """
     def __init__(self, **kwargs):
-        self.params = {"lam_unit"  :u.um,
-                       "val_unit"  :None,
-                       "filename"  :None,
-                       "lam_res"   :0.001,
+        self.params = {"lam_res"   :0.001,
                        "Type"      :"Transmission",
                        "min_step"  :1E-5}
         self.params.update(kwargs)
@@ -143,12 +140,14 @@ class TransmissionCurve(object):
         before resampling again up to the given sampling vector defined by
         'bins'.
 
-        Keywords:
+        Parameters
+        ==========
         - bins: [um]: float - taken to mean the width of bins on an even grid
                       array - the centres of the spectral bins
                             - the edges of the spectral bins if use_edges = True
 
-        Optional keywords:
+        Optional parameters
+        ===================
         - action: ['average','sum'] How to rebin the spectral curve. If 'sum',
                   then the curve is normalised against the integrated value of
                   the original curve. If 'average', the average value per bin
@@ -231,7 +230,7 @@ class TransmissionCurve(object):
 
     def __pow__(self, n):
         """
-        TransmissionCurve to the power of n.
+        TransmissionCurve.val to the power of n.
         """
         tcnew = deepcopy(self)
         tcnew.val = tcnew.val ** n
@@ -311,30 +310,27 @@ class EmissionCurve(TransmissionCurve):
     """
     Class for emission curves
 
-    List of kwargs:
-    - lam: 1D numpy array of length n in [um]
-    - val: 1D numpy array of length n in []
-    - res: float with the desired spectral resolution in [um]
+    Parameters
+    ==========
+    - lam: [um] 1D numpy array of length n
+    - val: 1D numpy array of length n
+    - res: [um] float with the desired spectral resolution
     - filename: string with the path to the transmission curve file where
                 the first column is wavelength in [um] and the second is the
                 transmission coefficient between [0,1]
     - pix_res: [arcsec] float of int for the field of view for each pixel
     - area: [m2] float or int for the collecting area of M1
-    - exptime: [s] float or int for the integration time for an exposure
-    - units: string or astropy.units for calculating the number of photons
+    - units: string or astropy.unit for calculating the number of photons
              per voxel
     """
     def __init__(self, **kwargs):
         default_params = {  "pix_res" :0.004,
                             "area"    :978,
-                            "exptime" :1,
-                            "val_unit":"ph/(s m2 micron arcsec2)"
-                          }
+                            "units":"ph/(s m2 micron arcsec2)"}
 
-        if "val_unit" not in kwargs.keys():
-            warnings.warn(
-                """No val_unit specified in EmissionCurve.
-                Assuming ph/(s m2 micron arcsec2)""")
+        if "units" not in kwargs.keys():
+            warnings.warn("""No 'units' specified in EmissionCurve.
+                          Assuming ph/(s m2 micron arcsec2)""")
 
         super(EmissionCurve, self).__init__(Type = "Emission", **kwargs)
         self.params.update(default_params)
@@ -346,7 +342,7 @@ class EmissionCurve(TransmissionCurve):
                                             use_edges=use_edges)
 
     def convert_to_photons(self):
-        """Do the conversion to photons/voxel by using the val_unit, lam, area
+        """Do the conversion to photons/s/voxel by using the val_unit, lam, area
         and exptime keywords. If not given, make some assumptions.
         """
         self.params["val_unit"] = u.Unit(self.params["val_unit"])
@@ -367,7 +363,8 @@ class EmissionCurve(TransmissionCurve):
         """
         Sum up the photons in between the wavelength boundaries, lam_min lam_max
         
-        Keywords:
+        Parameters
+        ==========
         - lam_min, lam_max: the wavelength limits
         """
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
@@ -390,30 +387,20 @@ class BlackbodyCurve(EmissionCurve):
     """
     Blackbody emission curve
 
-    List of kwargs:
+    Parameters
+    ==========
     - lam: 1D numpy array of length n in [um]
-    - val: 1D numpy array of length n in []
-    - res: float with the desired spectral resolution in [um]
-    - filename: string with the path to the transmission curve file where
-                the first column is wavelength in [um] and the second is the
-                transmission coefficient between [0,1]
+    - temp: [deg C] float for the average temperature of the blackbody
     - pix_res: [arcsec] float or int for the field of view for each pixel
-    - area: [m2] float or int for the collecting area of M1
-    - exptime: [s] float or int for the integration time for an exposure
-    - units: string or astropy.units for calculating the number of photons
-             per voxel
+    - area: [m2] float or int for the emitting surface
     """
 
     def __init__(self, lam, temp, **kwargs):
-        self.params = { "pix_res" :0.004,
-                        "area"    :978,
-                        "exptime" :1,
-                        "temp"    :273
-                        }
+        self.params = {"pix_res":0.004, "area":978}
         self.params.update(kwargs)
 
         lam_res = lam[1] - lam[0]
-        edges = np.append(lam - 0.5*lam_res, lam[-1] + 0.5*lam_res)
+        edges = np.append(lam - 0.5 * lam_res, lam[-1] + 0.5 * lam_res)
         lam_res = edges[1:] - edges[:-1]
 
         # I is in W sr-1 m-3

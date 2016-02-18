@@ -34,54 +34,35 @@ class OpticalTrain(object):
 
         self.cmds = cmds
         
-        self.lam_bin_edges   = self.cmds["lam_bin_edges"]
-        self.lam_bin_centers = self.cmds["lam_bin_centers"]
-        self.lam_res         = self.cmds["SIM_LAM_TC_BIN_WIDTH"]
-        self.pix_res         = self.cmds["SIM_INTERNAL_PIX_SCALE"]
+        self.lam_bin_edges   = cmds.lam_bin_edges
+        self.lam_bin_centers = cmds.lam_bin_centers
+        self.lam_res         = cmds.lam_res
+        self.pix_res         = cmds.pix_res
 
-        # if SIM_USE_FILTER_LAM is true, then use the filter curve to set the
-        # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
-        tc_filt = sc.TransmissionCurve(self.cmds['INST_FILTER_TC'])
-
-        if self.cmds["SIM_USE_FILTER_LAM"].lower() == "yes":
-            mask = np.where(tc_filt.val > self.cmds["SIM_FILTER_THRESHOLD"])[0]
-            lam_min, lam_max = tc_filt.lam[mask[0]], tc_filt.lam[mask[-1]]
-            self.lam_bin_edges = np.arange( lam_min, lam_max+1E-7, 
-                                            self.cmds["SIM_LAM_PSF_BIN_WIDTH"])
-        else:
-            lam_min, lam_max = self.cmds["SIM_LAM_MIN"], self.cmds["SIM_LAM_MAX"]
-            self.lam_bin_edges = np.arange( tc_filt.lam[i0], 
-                                            tc_filt.lam[i1]+1E-7, 
-                                            self.cmds["SIM_LAM_PSF_BIN_WIDTH"])
-
-        self.lam_bin_centers = 0.5 * (self.lam_bin_edges[1:] + \
-                                      self.lam_bin_edges[:-1]) 
-
-
+        self.lam             = cmds.lam
+        self.tc_master       = sc.UnityCurve(lam=self.lam)
         
-        
-        
-        
-    
     def read(self, filename):
         pass
     
     def save(self, filename):
         pass
     
-    
-    def get_master_tc(self, tc_keywords=None, preset=None):
+    def gen_master_tc(self, tc_keywords=None, preset=None, output=False):
         """
         Combine a list of TransmissionCurves into one, either by specifying the 
         list of command keywords (e.g. ATMO_TC) or by passing a preset keywords
         
-        Keywords:
+        Optional Parameters:
+        ===================
         tc_keywords: a list of keywords from the config files. E.g:
                      tc_keywords = ['ATMO_TC', 'SCOPE_M1_TC', 'INST_FILTER_TC']
         preset: a present string for the most common collections of keywords:
                 - 'source' includes all the elements seen by source photons
                 - 'atmosphere_bg' includes surfaces seen by the atmospheric BG
                 - 'mirror_bb' includes surfaces seen by the M1 blackbody photons
+        output: [False/True] if True, the master_tc is returned, otherwise, it
+                updated the internal parameter self.tc_master
         """
         
         if tc_keywords is None:
@@ -108,21 +89,27 @@ class OpticalTrain(object):
             else: 
                 self.tc_list[key] = sc.UnityCurve()
             
-        tc_master_scope  = sc.UnityCurve()
+        tc_master  = sc.UnityCurve()
         for key in tc_list.keys():
-            tc_master_scope *= self.tc_list[key]
+            tc_master*= self.tc_list[key]
             
-        return tc_master_scope
+        if output: 
+            return tc_master
+        else:
+            self.tc_master = tc_master
 
-    def get_master_psf(self, psf_type="Airy"):
+            
+    def gen_master_psf(self, psf_type="Airy", output=False):
         """
         Generate a Master PSF for the system. This includes the AO PSF. 
         Notes: Jitter can be applied to detector array as a single PSF, and the 
-               ADC shift can be applied to each layer of the PSFCube seperately
+               ADC shift can be applied to each layer of the PSFCube separately
         
         Parameters
         ==========
         psf_type: 'Moffat', 'Airy'
+        output: [False/True] if True, the master_tc is returned, otherwise, it
+                updated the internal parameter self.tc_master
         """
        
         ####### PSF CUBES #######
@@ -134,13 +121,12 @@ class OpticalTrain(object):
         ############################################################
         
         self.psf_size = self.cmds["SIM_PSF_SIZE"]
-        self.area = np.pi * (self.cmds["SCOPE_M1_DIAMETER_OUT"]**2 - \
-                             self.cmds["SCOPE_M1_DIAMETER_IN"]**2)
+        self.area = self.cmds.area
         
         # Make a PSF for the main mirror. If there is one on file, read it in
         # otherwise generate an Airy+Gaussian (or Moffat, Oliver?)
         
-        if self.cmds["SCOPE_USE_PSF_FILE"] != "none" and \
+        if self.cmds["SCOPE_USE_PSF_FILE"].lower() != "none" and \
                                 os.path.exists(self.cmds["SCOPE_USE_PSF_FILE"]):
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_USE_PSF_FILE"])
             if psf_m1[0].pix_res != self.pix_res:
@@ -153,10 +139,10 @@ class OpticalTrain(object):
             fwhm = (1.22*u.rad * self.lam_bin_centers*u.um / \
                                             (m1_diam * u.m)).to(u.arcsec).value 
             if psf_type == "Moffat"
-                psf_diff = psf.MoffatPSFCube(self.lam_bin_centers, 
-                                             fwhm=fwhm,
-                                             pix_res=self.pix_res, 
-                                             size=self.psf_size)
+                psf_m1 = psf.MoffatPSFCube(self.lam_bin_centers, 
+                                           fwhm=fwhm,
+                                           pix_res=self.pix_res, 
+                                           size=self.psf_size)
             elif psf_type == "Airy"
                 psf_diff = psf.AiryPSFCube(self.lam_bin_centers, 
                                            fwhm=fwhm,
@@ -169,11 +155,14 @@ class OpticalTrain(object):
                                                 fwhm=fwhm,
                                                 pix_res=self.pix_res)
             
-            psf_m1 = psf_diff.convolve(psf_seeing)
+                psf_m1 = psf_diff.convolve(psf_seeing)
         
         scope_psf_master = psf_m1
         
         return scope_psf_master
+    
+    def gen_adc_shifts
+    
     
     def make(self, cmds=None):
         """

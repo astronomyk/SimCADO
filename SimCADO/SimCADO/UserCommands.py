@@ -5,8 +5,24 @@
 #
 # UserCommands is essentially a dictionary that holds all the variables that
 # the user may wish to change. It also has some set variable like 'self.pix_res'
-# that can be accessed directly, instead of from the dictionary
+# that can be accessed directly, instead of from the dictionary.
 #
+# Special parameters
+# ==================
+# self.lam_res
+# self.lam
+#
+# self.lam_psf_res
+# self.lam_bin_edges
+# self.lam_bin_centers
+# self.pix_res
+# self.fpa_pix_res
+#
+# self.exptime
+# self.diameter
+# self.area 
+# self.verbose
+
 
 import os, warnings
 import numpy as np
@@ -86,9 +102,20 @@ class UserCommands(object):
         
         self.verbose = True     if self.cmds["VERBOSE"] == "yes"    else False
         
+        if self.verbose:
+            print("Read in parameters from ")
     
     def __repr__(self):
         return "A dictionary of commands compiled from "+self.cmds["CONFIG_MASTER"]
     
     def __getitem__(self, kw):
         return self.cmds[kw]
+        
+    def __setitem__(self, kw, val):
+        self.cmds[kw] = val
+        
+    def keys(self):
+        return self.cmds.keys()
+        
+    def values(self):
+        return self.cmds.values()
