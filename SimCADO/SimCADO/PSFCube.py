@@ -317,7 +317,7 @@ class AiryPSF(PSF):
     - pix_res [arcsec] the pixel scale used in the array, default is 0.004
     - obscuration [0..1]: radius of inner obscuration as fraction of aperture
       radius
-    - mode [str]: see Kernel2D (scipy.convolution.core)
+    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
     """
 
     def __init__(self, fwhm, obscuration=0., size=255, pix_res=0.004,
@@ -326,18 +326,21 @@ class AiryPSF(PSF):
         # Ensure that PSF size is at least 8 times fwhm
         size = int(np.max((round(8 * fwhm / pix_res) * 2 + 1, size)))
 
-        if size > 511:
-            size = 511
-            print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
-            print("Array size:", size, "x", size, "- PSF FoV:", size * pix_res)
-            warnings.warn("PSF dimensions too large - cropped to 512x512")
+        # if size > 511:
+            # size = 511
+            # print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
+            # print("Array size:", size, "x", size, "- PSF FoV:", size * pix_res)
+            # warnings.warn("PSF dimensions too large - cropped to 512x512")
 
         # Check for 'mode' keyword argument
         if "mode" in kwargs.keys():
             mode = kwargs["mode"]
         else:
-            mode = 'oversample'
-
+            if size > 100: 
+                mode = "linear_interp"
+            else:
+                mode = 'oversample'           
+            
         # Ensure that obscuration is between 0 and 1
         if obscuration < 0 or obscuration > 1:
             print("Warning: Obscuration must be between 0 and 1. Using 0.")
@@ -382,6 +385,7 @@ class GaussianPSF(PSF):
     Optional keywords
     - size: [int] the side length of the array in pixels
     - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
+    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
     """
 
     def __init__(self, fwhm, **kwargs):
@@ -399,21 +403,24 @@ class GaussianPSF(PSF):
             size = 1
         size = int(np.max((round(5 * self.fwhm / pix_res) * 2 + 1, size)))
 
-        if size > 512:
-            size = 512
-            print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
-            print("Array size:", size, "x", size, "- PSF FoV:", size * pix_res)
-            warnings.warn("PSF dimensions too large")
+        # Check for 'mode' keyword argument
+        if "mode" in kwargs.keys():
+            mode = kwargs["mode"]
+        else:
+            if size > 100: 
+                mode = "linear_interp"
+            else:
+                mode = 'oversample'  
 
         super(GaussianPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Gaussian"
         self.info['description'] = "Gaussian PSF, FWHM = %.1f arcsec" \
                                     % (self.fwhm * 1E3)
-        self.info["fwhm"] = self.fwhm * 1E3
-
+        self.info["fwhm"] = self.fwhm * 1E3 
+        
         n = (self.fwhm / 2.35) / self.pix_res
         self.set_array(Gaussian2DKernel(n, x_size=self.size, y_size=self.size,
-                                        mode='oversample').array)
+                                        mode=mode).array)
 
 
 
@@ -428,6 +435,7 @@ class MoffatPSF(PSF):
     Optional keywords
     - size: [int] the side length of the array in pixels
     - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
+    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
     """
 
     def __init__(self, fwhm, **kwargs):
@@ -445,11 +453,14 @@ class MoffatPSF(PSF):
             size = 1
         size = int(np.max((round(4 * self.fwhm / pix_res) * 2 + 1, size)))
 
-        if size > 511:
-            size = 511
-            print("FWHM [arcsec]:", fwhm, "- pixel res [arcsec]:", pix_res)
-            print("Array size:", size, "x", size, "- PSF FoV:", size * pix_res)
-            warnings.warn("PSF dimensions too large")
+        # Check for 'mode' keyword argument
+        if "mode" in kwargs.keys():
+            mode = kwargs["mode"]
+        else:
+            if self.size > 100: 
+                mode = "linear_interp"
+            else:
+                mode = 'oversample'
 
         super(MoffatPSF, self).__init__(size, pix_res)
 
@@ -460,10 +471,6 @@ class MoffatPSF(PSF):
                                        % (self.fwhm * 1E3, alpha)
         self.info["fwhm"] = self.fwhm * 1E3
 
-        if self.size > 100:
-            mode = "linear_interp"
-        else:
-            mode = "oversample"
         self.set_array(Moffat2DKernel(alpha, beta, x_size=self.size,
                                       y_size=self.size, mode=mode).array)
 
@@ -743,12 +750,16 @@ class DeltaPSFCube(PSFCube):
     """
     Generate a list of DeltaPSFs for wavelengths defined in lam_bin_centers
 
-    Keywords:
+    Parameters:
+    ===========
     - lam_bin_centers: [um] the centre of each wavelength slice
 
-    Optional keywords:
-    - positions: [(px,px)] either a tuple, or a list of tuples denoting the
+    Optional Parameters:
+    ====================
+    - positions: [(x,y)] either a tuple, or a list of tuples denoting the
                  position of the delta function
+    - pix_res: [arcsec], pixel scale of the PSF. Default is 0.004 arcsec
+    - size: [int], side length of the PSF array
     """
 
     def __init__(self, lam_bin_centers, positions=(0, 0), **kwargs):
@@ -774,6 +785,7 @@ class AiryPSFCube(PSFCube):
     Optional keywords:
     - fwhm: [arcsec] the equivalent FWHM of the PSF.
     - diameter: [m] diamter of primary mirror. Default is 39.3m.
+    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
@@ -811,7 +823,8 @@ class GaussianPSFCube(PSFCube):
 
     Optional keywords:
     - fwhm: [arcsec] the FWHM of the PSF.
-   - diameter: [m] diamter of primary mirror. Default is 39.3m.
+    - diameter: [m] diamter of primary mirror. Default is 39.3m.
+    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
@@ -844,6 +857,7 @@ class MoffatPSFCube(PSFCube):
     Optional keywords:
     - fwhm: [arcsec] the FWHM of the PSF.
     - diameter: [m] diamter of primary mirror. Default is 39.3m.
+    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):

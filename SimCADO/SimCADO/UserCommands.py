@@ -65,6 +65,11 @@ class UserCommands(object):
         if self.cmds["OBS_OUTPUT_NAME"] == "none":
             self.cmds["OBS_OUTPUT_NAME"] = "output.fits"
    
+        if self.cmds["SIM_PSF_OVERSAMPLE"] = "yes":
+            self.cmds["PSF_MODE"] = "oversample"
+        else:
+            self.cmds["PSF_MODE"] = "linear_interp"
+   
         # Check if for a filter curve file or a standard broadband name
         if self.cmds["INST_FILTER_TC"] in ["I", "z", "Y", "J", "H", "Ks", "K"]:
             self.cmds["INST_FILTER_TC"] = "../data/TC_filter_" + \

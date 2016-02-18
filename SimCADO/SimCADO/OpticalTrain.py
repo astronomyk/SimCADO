@@ -23,7 +23,6 @@ import astropy.units as u
 
 import PSFCube as psf
 import SpectralCurve as sc
-import LightObject as lo
 import utils
 
 
@@ -41,6 +40,16 @@ class OpticalTrain(object):
 
         self.lam             = cmds.lam
         self.tc_master       = sc.UnityCurve(lam=self.lam)
+        
+        self.size            = cmds["SIM_PSF_SIZE"]
+        self.psf_master      = psf.DeltaPSFCube(self.lam_bin_centers,
+                                                size=self.size,
+                                                pix_res=self.pix_res)
+        
+        self.adc_shifts      = np.zeros((len(self.lam_bin_centers)))
+        self.distortion_map  = 1
+
+
         
     def read(self, filename):
         pass
@@ -121,7 +130,6 @@ class OpticalTrain(object):
         ############################################################
         
         self.psf_size = self.cmds["SIM_PSF_SIZE"]
-        self.area = self.cmds.area
         
         # Make a PSF for the main mirror. If there is one on file, read it in
         # otherwise generate an Airy+Gaussian (or Moffat, Oliver?)
@@ -157,12 +165,51 @@ class OpticalTrain(object):
             
                 psf_m1 = psf_diff.convolve(psf_seeing)
         
-        scope_psf_master = psf_m1
+        psf_master = psf_m1
+                   
+        if output: 
+            return psf_master
+        else:
+            self.psf_master = psf_master
         
         return scope_psf_master
     
-    def gen_adc_shifts
-    
+    def gen_adc_shifts(self, output=False):
+        """
+        
+        
+        Keywords:
+        
+        """ 
+        para_angle = self.cmds["PARALLACTIC_ANGLE"]
+        effectiveness = self.cmds["INST_ADC_EFFICIENCY"] / 100.
+
+        ## get the angle shift for each slice
+        angle_shift = [utils.atmospheric_refraction(lam,
+                                                    self.cmds["OBS_ZENITH_DIST"],
+                                                    self.cmds["ATMO_TEMPERATURE"],
+                                                    self.cmds["ATMO_REL_HUMIDITY"],
+                                                    self.cmds["ATMO_PRESSURE"],
+                                                    self.cmds["SCOPE_LATITUDE"],
+                                                    self.cmds["SCOPE_ALTITUDE"])
+                       for lam in self.lam_bin_centers]
+
+        ## convert angle shift into number of pixels
+        ## pixel shifts are defined with respect to last slice
+        pixel_shift = (angle_shift - angle_shift[-1]) / self.pix_res
+        if np.max(np.abs(pixel_shift)) > 1000:
+            raise ValueError("Pixel shifts too great (>1000), check units")
+
+        ## Rotate by the paralytic angle
+        x = -pixel_shift * np.sin(para_angle / 57.29578) * (1. - effectiveness)
+        y = -pixel_shift * np.cos(para_angle / 57.29578) * (1. - effectiveness)
+        adc_shifts = [(xi, yi) for xi, yi in zip(x, y)]
+        
+        if output: 
+            return adc_shifts
+        else:
+            self.adc_shifts = adc_shifts
+
     
     def make(self, cmds=None):
         """
@@ -239,3 +286,4 @@ class OpticalTrain(object):
         #       - dichroic
         #       - filter
         #       - detector QE
+class ads        
