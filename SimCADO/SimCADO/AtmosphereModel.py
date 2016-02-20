@@ -30,7 +30,7 @@
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
-import SimCADO.SpectralCurve as sc
+import SpectralCurve as sc
 
 ## These classes and functions are exported to the package
 __all__ = ["AtmosphereModel", "atmospheric_refraction"]
@@ -118,11 +118,11 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     g = n0 - 1.
     b = 0.001254 * (273.15 + temp) / 273.15
     #k = 1
-    k = 1. + 0.005302 * np.sin(lat / 57.29578)**2 \
-        - 0.00000583 * np.sin(2. * lat / 57.29578)**2 - 0.000000315 * h
+    k = 1. + 0.005302 * np.sin(np.deg2rad(lat))**2 \
+        - 0.00000583 * np.sin(2. * np.deg2rad(lat))**2 - 0.000000315 * h
 
-    R = k * g * (1 - b) * np.tan(z0 / 57.29578) \
-        - k * g * (b - g/2.) * np.tan(z0/57.29578)**3
+    R = k * g * (1 - b) * np.tan(np.deg2rad(z0)) \
+        - k * g * (b - g/2.) * np.tan(np.deg2rad(z0))**3
 
     # the refraction is the side of a triangle, although the triangle
     # side makes an arc across the sky.
@@ -130,6 +130,6 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     # Using the small angle approximation (which is in radians),
     # we can get the angle of refraction
 
-    ang = R * 3600 * 57.29578
+    ang = np.rad2deg(R * 3600)
 
     return ang
