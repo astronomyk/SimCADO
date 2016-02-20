@@ -73,7 +73,7 @@ def line_blur(arr, shift, kernel="gaussian", angle=0, pix_res=0.004):
     n = max(int(2 * shift) + 1, 3)
     if kernel == "gaussian":
         dr = np.linspace(-3 * shift, 3 * shift, 6 * n)
-        weight = gaussian_dist(dr, 0, shift))
+        weight = gaussian_dist(dr, 0, shift)
     else:
         dr = np.linspace(0, shift, n)
         weight = linear_dist(dr)
@@ -109,7 +109,7 @@ def rotate_blur(arr, angle, kernel="gaussian"):
 
     if kernel == "gaussian":
         d_ang = np.linspace(-3 * angle, 3 * angle, max(2, 6*n))
-        weight = gaussian(d_ang, 0, angle))
+        weight = gaussian(d_ang, 0, angle)
     else:
         d_ang = np.linspace(0, angle, n)
         weight = linear(d_ang)
@@ -132,7 +132,7 @@ class CoordEffect(object):
         self.dx = dx
         self.dy = dy
 
-    def apply(self, x, y)
+    def apply(self, x, y):
         return x + self.dx, y + self.dy
 
 
@@ -141,7 +141,7 @@ class ADC_Effect(CoordEffect):
 
     def __init__(lam, angle = 0, **kwargs):
 
-        shift = atmospheric_refraction(lam, **kwargs):
+        shift = atmospheric_refraction(lam, **kwargs)
         dx = shift * np.cos(np.deg2rad(angle))
         dy = shift * np.cos(np.deg2rad(angle))
 
@@ -153,4 +153,5 @@ class ArrayEffect(object):
         self.x = np.zeros()
 
 
-    def apply(self, array)
+    def apply(self, array):
+        pass
