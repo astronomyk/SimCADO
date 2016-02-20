@@ -4,7 +4,7 @@
 # DESCIPTION
 #
 # File Structure needed to run the simulation
-# 
+#
 #
 #
 # Need 2 different UserCommands dictionaries as input
@@ -23,7 +23,7 @@
 #    Create UserCommands objects for: optical train and observing run.
 #    The observing run will be used for science, atmo and mirror photons.
 #
-# 2. Create OpticalTrain, 
+# 2. Create OpticalTrain,
 #    which in turn creates all the individual objects
 #
 # 3. Create LightObjects.
@@ -54,61 +54,61 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 
-import PSFCube as psf
-import SpectralCurve as sc
-import LightObject as lo
-import utils
+import SimCADO.PSFCube as psf
+import SimCADO.SpectralCurve as sc
+import SimCADO.LightObject as lo
+import SimCADO.utils as utils
 
 
 class Simulation(object):
     """
     """
-    
+
     def __init__(self, cmds=None, filename=None):
         """
         """
         self.set_user_commands(filename)
         if  cmds  is not None: self.cmds = cmds
-               
+
         self.check_defaults()
-        
-        
+
+
     def set_user_commands(self, user_filename=None):
-        """ 
+        """
         - get master.config
         - read in all the other configs and add them to cmds
-        - read in the file with user overrides 
-        
+        - read in the file with user overrides
+
         Optional keywords:
         user_filename: path to the user.config file
         """
         self.cmds = utils.read_config("../user_commands/master.config")
         fnames = [self.cmds[key] for key in self.cmds.keys()]
-        for fname in fnames: 
+        for fname in fnames:
             if os.path.exists(fname):
                 self.cmds.update(utils.read_config(fname))
             else:
                 warnings.warn(fname+" doesn't exist")
-     
-        if user_filename is not None: 
+
+        if user_filename is not None:
             self.cmds.update(utils.read_config(user_filename))
 
-        
+
     def read_optical_train(self, filename):
         # if we should use a previous optical system, import is
         pass
-        
+
     def save_optical_train(self, filename, clobber=False):
         # save the current optical system to a FITS file
         pass
-        
+
     def make_optical_train(self):
         # if we should use a previous optical system, import is
         # else generate a new one
         pass
-        
+
     def read_source(self, filename):
         pass
-           
+
     def run():
         pass

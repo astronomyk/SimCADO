@@ -30,7 +30,7 @@
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
-import SpectralCurve as sc
+import SimCADO.SpectralCurve as sc
 
 ## These classes and functions are exported to the package
 __all__ = ["AtmosphereModel", "atmospheric_refraction"]

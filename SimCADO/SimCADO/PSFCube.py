@@ -102,7 +102,7 @@ from astropy.convolution import convolve_fft
 from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
-import utils
+import SimCADO.utils as utils
 
 
 
@@ -205,16 +205,16 @@ class PSF(object):
         Keywords:
         - kernel: [PSF/ndarray] either a numpy.ndarray or a PSF (sub)class
         """
-        psf_new = deepcopy(self) 
-        
+        psf_new = deepcopy(self)
+
         if issubclass(type(kernel), PSF):
             psf_new.set_array(convolve_fft(self.array, kernel.array))
         else:
             psf_new.set_array(convolve_fft(self.array, kernel))
         psf_new.info["Type"] = "Combined"
-        
+
         return psf_new
-            
+
     def __array__(self):
         return self.array
 
@@ -336,11 +336,11 @@ class AiryPSF(PSF):
         if "mode" in kwargs.keys():
             mode = kwargs["mode"]
         else:
-            if size > 100: 
+            if size > 100:
                 mode = "linear_interp"
             else:
-                mode = 'oversample'           
-            
+                mode = 'oversample'
+
         # Ensure that obscuration is between 0 and 1
         if obscuration < 0 or obscuration > 1:
             print("Warning: Obscuration must be between 0 and 1. Using 0.")
@@ -407,17 +407,17 @@ class GaussianPSF(PSF):
         if "mode" in kwargs.keys():
             mode = kwargs["mode"]
         else:
-            if size > 100: 
+            if size > 100:
                 mode = "linear_interp"
             else:
-                mode = 'oversample'  
+                mode = 'oversample'
 
         super(GaussianPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Gaussian"
         self.info['description'] = "Gaussian PSF, FWHM = %.1f arcsec" \
                                     % (self.fwhm * 1E3)
-        self.info["fwhm"] = self.fwhm * 1E3 
-        
+        self.info["fwhm"] = self.fwhm * 1E3
+
         n = (self.fwhm / 2.35) / self.pix_res
         self.set_array(Gaussian2DKernel(n, x_size=self.size, y_size=self.size,
                                         mode=mode).array)
@@ -457,7 +457,7 @@ class MoffatPSF(PSF):
         if "mode" in kwargs.keys():
             mode = kwargs["mode"]
         else:
-            if self.size > 100: 
+            if self.size > 100:
                 mode = "linear_interp"
             else:
                 mode = 'oversample'
