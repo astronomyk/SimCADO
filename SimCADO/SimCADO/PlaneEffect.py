@@ -138,8 +138,9 @@ def tracking(arr, cmds):
     !! TODO, work out the shift during the DIT for the object RA, DEC etc !!
     """
     if cmds["SCOPE_DRIFT_DISTANCE"] > 0.:
+        pix_res = cmds["SIM_DETECTOR_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]    
         kernel = cmds["SCOPE_DRIFT_PROFILE"]    
-        shift  = cmds["SCOPE_DRIFT_DISTANCE"] / cmds["SIM_INTERNAL_PIX_SCALE"]
+        shift  = cmds["SCOPE_DRIFT_DISTANCE"] / pix_res
         
         return line_blur(arr, shift, kernel=kernel, angle=0)
     else:
@@ -169,7 +170,8 @@ def wind_jitter(arr, cmds):
     !! TODO, get the read spectrum for wind jitter !!
     !! Add in an angle parameter for the ellipse   !!
     """
-    fwhm = cmds["SCOPE_JITTER_FWHM"] / cmds["SIM_INTERNAL_PIX_SCALE"]
+    pix_res = cmds["SIM_DETECTOR_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]
+    fwhm = cmds["SCOPE_JITTER_FWHM"] / pix_res
     n = (fwhm / 2.35)
     kernel = Gaussian2DKernel(n, mode="oversample")
     

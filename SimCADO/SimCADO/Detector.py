@@ -66,7 +66,8 @@ class Detector(object):
         
         self.size = self.params["NAXIS1"]
         self.array = np.zeros((self.size, self.size))
-        self.pix_res = self.params["SIM_INTERNAL_PIX_SCALE"]
+        self.oversample = self.params["SIM_OVERSAMPLING"]
+        self.pix_res = self.params["SIM_DETECTOR_PIX_SCALE"] / self.oversample
         self.fpa_res = self.params["SIM_DETECTOR_PIX_SCALE"]
         self.exptime = self.params["OBS_EXPTIME"]
         

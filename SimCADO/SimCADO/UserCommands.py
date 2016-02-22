@@ -102,8 +102,8 @@ class UserCommands(object):
         self.lam_bin_centers = 0.5 * (self.lam_bin_edges[1:] + \
                                       self.lam_bin_edges[:-1])
 
-        self.pix_res     = self.cmds["SIM_INTERNAL_PIX_SCALE"]
         self.fpa_pix_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
+        self.pix_res     = self.fpa_pix_res / self.cmds["SIM_OVERSAMPLING"]
 
         self.exptime     = self.cmds["OBS_EXPTIME"]
         self.diameter    = self.cmds["SCOPE_M1_DIAMETER_OUT"]

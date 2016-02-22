@@ -98,6 +98,9 @@ class LightObject(object):
         return self.x[i], self.y[i], \
                             self.spectra[self.spec_ref[i],:] * self.weight[i]
 
+    def shrink 
+    
+                            
     def poissonify(self, arr=None):
         """
         Add a realisation of the poisson process to the array 'arr'.
@@ -151,8 +154,8 @@ class LightObject(object):
         if sub_pixel:
             x_int, y_int = self.x.astype(int), self.y.astype(int)
             dx, dy = self.x - x_int, self.y - y_int
-            ax, ay = np.array(slice_array.shape)//2
-            bx, by = np.array(psf.array.shape)//2
+            ax, ay = np.array(slice_array.shape) // 2
+            bx, by = np.array(psf.array.shape)   // 2
 
             # for each point source in the list, add a psf to the slice_array
             for i in range(len(slice_photons)):
