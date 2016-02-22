@@ -47,7 +47,7 @@ from astropy.convolution import convolve, convolve_fft
 
 class LightObject(object):
 
-    def __init__(self, source, **kwargs):
+    def __init__(self, source, cmds):
         """
         Keywords:
         - lam: [um] an array of size L with wavelengths for the spectra
@@ -62,13 +62,9 @@ class LightObject(object):
                     max(spec_ref) < spectra.shape[0]
         - weights: [float] an array of size N with weights for each source
         """
-
-        self.params = { "pix_res"   :0.004,
-                        "NAXIS1"    :4096,
-                        "NAXIS2"    :4096
-                      }
-        self.params.update(kwargs)
-
+        self.params = cmds
+        self.size = 4096
+        
         self.info = dict([])
         self.info['created'] = 'yes'
         self.info['description'] = "List of spectra and their positions"
@@ -85,8 +81,7 @@ class LightObject(object):
         if len(self.spectra.shape) == 1:
             self.spectra.shape = np.asarray([self.spectra.shape]*2)
 
-        self.array = np.zeros((self.params["NAXIS1"],
-                               self.params["NAXIS2"]), dtype=np.float32)
+        self.array = np.zeros((self.size, self.size), dtype=np.float32)
 
     def __repr__(self):
         return self.info['description']
@@ -98,7 +93,12 @@ class LightObject(object):
         return self.x[i], self.y[i], \
                             self.spectra[self.spec_ref[i],:] * self.weight[i]
 
-    def shrink 
+    def shrink_to_detector(self)
+        """
+        Contract the oversampled photon array down to one that is consistent 
+        with the pixel scale of the FPA
+        """
+        pass
     
                             
     def poissonify(self, arr=None):
@@ -132,9 +132,7 @@ class LightObject(object):
         bg_photons = emission_curve.photons_in_range(lam_min, lam_max)
 
         if output is True:
-            return bg_photons * np.ones((self.params["NAXIS1"],
-                                         self.params["NAXIS2"]),
-                                         dtype=np.float32)
+            return bg_photons * np.ones((self.size, self.size), dtype=np.float32)
         else:
             self.array += bg_photons
 
@@ -144,8 +142,7 @@ class LightObject(object):
 
         """
         slice_photons = self.get_slice_photons(lam_min, lam_max, zoom=10)
-        slice_array = np.zeros((self.params["NAXIS1"],
-                                self.params["NAXIS2"]), dtype=np.float32)
+        slice_array = np.zeros((self.size, self.size), dtype=np.float32)
 
         # if sub pixel accuracy is needed, be prepared to wait. For this we
         # need to go through every source spectra in turn, shift the psf by
@@ -454,8 +451,7 @@ class Source(object):
         # if len(lam_bin_edges) != len(psf_cube) + 1:
             # warnings.warn("Number of PSFs does not fit to lam_bin_edges")
 
-        # tmp_array = np.zeros((self.params["NAXIS1"],
-                                       # self.params["NAXIS2"]), dtype=np.float32)
+        # tmp_array = np.zeros((self.size, self.size), dtype=np.float32)
 
         # for i in range(len(psf_cube)):
 
