@@ -46,18 +46,20 @@ class Detector(object):
                         
                         "HXRG_NUM_OUTPUTS"  :32,
                         "HXRG_NUM_ROW_OH"   :8,
-                        "HXRG_PCA0_FILENAME":"../data/nirspec_pca0.fits",
-                        "HXRG_NOISE_PATH"   :"../data/H4RG_noise.fits",
+                        "HXRG_PCA0_FILENAME":"../data/FPA_nirspec_pca0.fits",
+                        "HXRG_OUTPUT_PATH"   :"../data/H4RG_noise.fits",
                         "HXRG_PEDESTAL"     :4,
                         "HXRG_CORR_PINK"    :3,
                         "HXRG_UNCORR_PINK"  :1,
                         "HXRG_ALT_COL_NOISE":0.5,
                         
+                        "FPA_NOISE_PATH"    :None
                         "FPA_READOUT_MEDIAN":4,
                         "FPA_DARK_MEDIAN"   :0.01,
                         "FPA_QE_FILENAME"   :None,
                         "FPA_DISTORTION_MAP":None,
                         "FPA_LINEARITY_CURVE":None,
+                        "FPA_DEAD_PIXELS"   :5
                         "FPA_GAIN"          :1,
                         "FPA_WELL_DEPTH"    :1E5}
         self.params.update(kwargs)
@@ -71,73 +73,96 @@ class Detector(object):
         
     
     
-    def make_detector(self):
+    def make_detector(self, oversample=False, filename=None):
         
-        if use_file == True:
-            read_in_detector_noise()
+        if filename is not None:
+            self.array = fits.getdata(filename)
         else:
             generate_hxrg_noise()
         
-        add_cosmic_rays(exptime)
-        add_pixel_map("FPA_DEAD_PIXEL_MAP")
-        apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
-        
-        self.array
+        #add_cosmic_rays(exptime)
+        self.add_pixel_map()
+        #apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
+
         pass
 
-    def read_detector_noise(self, filename=None, **kwargs):    
+    def read_detector(self, filename=None, **kwargs):    
         pass
  
-    def save_detector_noise(self, filename=None, **kwargs):    
-        pass
+    def save_detector(self, filename=None, **kwargs):    
+        """
+        Save a Detector frame to a FITS file
+        
+        filename : path to output FITS file. Default:  ../output/H4RG_noise.fits
+        """
+        if filename is None:
+            filename = self.params["HXRG_OUTPUT_PATH"]
+        hdu = fits.PrimaryHDU(self.array)
+        hdu.update(self.params)
+        hdu.header["SIM_CUBE"] = "FPA_NOISE"
+        hdu.writeto(filename)
+        
  
     def add_cosmic_rays(self):                    
-        self.array += cosmic_map
+        """
+        Not needed because of up-the-ramp sampling
+        """
         pass
 
     def apply_pixel_map(self):
-        self.array *= pixel_map
-        pass
+        
+        if type(self.params["FPA_DEAD_PIXELS"]) == float:
+            n = int(self.size**2 * self.params["FPA_DEAD_PIXELS"] / 100)
+            x = np.random.randint(self.size, size=n)
+            y = np.random.randint(self.size, size=n),
+            self.array[x,y] = self.params["FPA_WELL_DEPTH"]
+            
+        elif: os.path.exists(self.params["FPA_DEAD_PIXELS"]):
+            pixel_map = fits.getdata
+            if self.array.shape != pixel_map.shape
+                raise ValueError("pixel_map.shape != detector_array.shape")
+            self.array *= pixel_map
+        else:
+            raise ValueError(self.params["FPA_DEAD_PIXELS"] + "does not exist")
         
     def apply_saturation(self):
         """
-        
+        Cap all pixels that are above the well depth.
+        !! TODO: apply a linearity curve and shift excess light into !!
+        !! neighbouring pixels !!
         """
-    
-        self.array = altered_array
-        pass
+        max_val = self.params["FPA_WELL_DEPTH"]
+        self.array[self.array > max_val] = max_val
 
 
  
-    def generate_hxrg_noise(self, filename=None, **kwargs):
+    def generate_hxrg_noise(self, filename=None):
         """
-        Create a detector noise array using Bernard Rauscher's NGHXRG tool
+        Create a detector noise array using Bernard Rauscher's NGHxRG tool
         
         Optional Keywords:
-        - filename: 
+        - filename: to override the output filename for the noise
         
         """
-    
         # HXRG needs a pca file to run. Work out what a PCA file means!!
-        ng_h4rg = ng.HXRGNoise( naxis1 = params["NAXIS1"], 
-                                naxis2 = params["NAXIS2"], 
-                                n_out  = params["HXRG_NUM_OUTPUTS"],
-                                nroh   = params["HXRG_NUM_ROW_OH"],
-                                verbose= params["VERBOSE"],
-                                pca0_file=params["HXRG_PCA0_FILENAME"])
+        ng_h4rg = HXRGNoise(naxis1 = self.params["NAXIS1"], 
+                            naxis2 = self.params["NAXIS2"], 
+                            n_out  = self.params["HXRG_NUM_OUTPUTS"],
+                            nroh   = self.params["HXRG_NUM_ROW_OH"],
+                            pca0_file=self.params["HXRG_PCA0_FILENAME"],
+                            verbose= self.params["VERBOSE"])
 
-        # Make a noise file.
-        if filename is None: filename = params["FPA_NOISE_PATH"]
+        # Make a noise file
+        if filename is None: filename = self.params["HXRG_OUTPUT_PATH"]
         ng_h4rg.mknoise(filename, 
-                        rd_noise = params["FPA_READOUT_MEDIAN"], 
-                        pedestal = params["HXRG_PEDESTAL"],
-                        c_pink   = params["HXRG_CORR_PINK"],
-                        u_pink   = params["HXRG_UNCORR_PINK"],
-                        acn      = params["HXRG_ALT_COL_NOISE"])
+                        rd_noise = self.params["FPA_READOUT_MEDIAN"], 
+                        pedestal = self.params["HXRG_PEDESTAL"],
+                        c_pink   = self.params["HXRG_CORR_PINK"],
+                        u_pink   = self.params["HXRG_UNCORR_PINK"],
+                        acn      = self.params["HXRG_ALT_COL_NOISE"])
         
-        self.array = noise
-                        
-
+        self.array = fits.getdata(self.params["HXRG_OUTPUT_PATH"])
+        
     
 
 ###############################################################################
@@ -215,13 +240,13 @@ class HXRGNoise:
         # ======================================================================
         
         # Default clocking pattern is JWST NIRSpec
-        self.naxis1    = 2048  if naxis1   is None else naxis1
-        self.naxis2    = 2048  if naxis2   is None else naxis2
-        self.naxis3    = 1     if naxis3   is None else naxis3
-        self.n_out     = 4     if n_out    is None else n_out
+        self.naxis1    = 2048  if naxis1   is None else int(naxis1)
+        self.naxis2    = 2048  if naxis2   is None else int(naxis2)
+        self.naxis3    = 1     if naxis3   is None else int(naxis3)
+        self.n_out     = 4     if n_out    is None else int(n_out)
         self.dt        = 1.e-5 if dt       is None else dt
-        self.nroh      = 12    if nroh     is None else nroh
-        self.nfoh      = 1     if nfoh     is None else nfoh
+        self.nroh      = 12    if nroh     is None else int(nroh)
+        self.nfoh      = 1     if nfoh     is None else int(nfoh)
         self.reference_pixel_border_width = 4 \
                                             if reference_pixel_border_width is \
                                             None else reference_pixel_border_width

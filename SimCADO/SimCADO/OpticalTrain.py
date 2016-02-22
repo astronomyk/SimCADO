@@ -189,6 +189,12 @@ class OpticalTrain(object):
         else:
             self.adc_shifts = adc_shifts
 
+            
+    def gen_detector(self, output=False):
+        pass
+    
+    
+            
 
     def make(self, cmds=None):
         """
@@ -203,20 +209,20 @@ class OpticalTrain(object):
         self.cmds.update(cmds)
 
         # Make the transmission curve for the blackbody photons from the mirror
-        self.tc_mirror  = get_master_tc(self, preset="mirror_bb")
+        self.tc_mirror  = gen_master_tc(self, preset="mirror_bb")
         self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
                                             temp=self.cmds["SCOPE_M1_TEMP"])
 
         # Make the spectral curves for the atmospheric background photons
-        self.tc_atmo_bg = get_master_tc(self, preset="atmosphere_bg")
+        self.tc_atmo_bg = gen_master_tc(self, preset="atmosphere_bg")
         self.ec_atmo_gb = sc.EmissionCurve(self.cmds["ATMO_EC"])
 
         # Make the transmission curve and PSF for the source photons
-        self.tc_source  = get_master_tc(self, preset="source")
-        self.psf_source = get_master_psf()
+        self.tc_source  = gen_master_tc(self, preset="source")
+        self.psf_source = gen_master_psf()
 
-
-
+        # Make a detector Plane
+        self.detector_noise = gen_detector()
 
 
 
