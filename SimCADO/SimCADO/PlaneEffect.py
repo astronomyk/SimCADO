@@ -42,6 +42,17 @@ from copy import deepcopy
 import numpy as np
 import scipy.ndimage as spi
 
+from astropy.convolution import convolve_fft, Gaussian2DKernel
+
+try:
+    import SimCADO.utils as utils
+except:
+    import utils
+    
+    
+__all__ = ["line_blur", "rotate_blur", "tracking", "derotator", "wind_jitter"]
+
+
 def gaussian_dist(x, mu, sig):
     p = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     return p / np.sum(p)
@@ -50,14 +61,14 @@ def linear_dist(x):
     p = np.array([1.]*len(x))
     return p / np.sum(p)
 
-def line_blur(arr, shift, kernel="gaussian", angle=0, pix_res=0.004):
+def line_blur(arr, shift, kernel="gaussian", angle=0):
     """
     Introduce a linear blur due to tracking error.
 
     Parameters
     ==========
     - arr: [2D array] the image
-    - shift: [arcsec] how far in angular distance that the image has moved
+    - shift: [pixel] how many pixels the image has moved
 
     Optional parameters
     ===================
@@ -66,7 +77,6 @@ def line_blur(arr, shift, kernel="gaussian", angle=0, pix_res=0.004):
               'linear' - shift is the length of the tracking blur with all
                          positions weighted equally, approximating no tracking
     - angle: [deg] the angle between image up and the zenith
-    - pix_res: [arcsec] angular resolution of the pixels
     """
 
     # sample the shift at least every half pixel
@@ -78,12 +88,12 @@ def line_blur(arr, shift, kernel="gaussian", angle=0, pix_res=0.004):
         dr = np.linspace(0, shift, n)
         weight = linear_dist(dr)
 
-    dx = np.cos(np.deg2rad(ang)) * dr
-    dy = np.sin(np.deg2rad(ang)) * dr
+    dx = np.cos(np.deg2rad(angle)) * dr
+    dy = np.sin(np.deg2rad(angle)) * dr
 
     tmp_arr = np.zeros(arr.shape)
     for x,y,w in zip(dx,dy,weight):
-        tmp_arr += spi.shift(im, (dx, dy), order=1) * w
+        tmp_arr += spi.shift(arr, (dx, dy), order=1) * w
 
     return tmp_arr
 
@@ -104,54 +114,94 @@ def rotate_blur(arr, angle, kernel="gaussian"):
                          positions weighted equally, approximating no tracking
     """
 
-    angle_at_outer_pixel = np.rad2deg(np.arctan2(1, arr.shape[0] // 2))
-    n = max(3, int(angle / angle_at_outer_pixel) + 1)
+    ang_at_cnr_pix = np.rad2deg(np.arctan2(1, np.sqrt(2) * arr.shape[0] // 2))
+    n = max(3, int(angle / ang_at_cnr_pix) + 1)
 
     if kernel == "gaussian":
         d_ang = np.linspace(-3 * angle, 3 * angle, max(2, 6*n))
-        weight = gaussian(d_ang, 0, angle)
+        weight = gaussian_dist(d_ang, 0, angle)
     else:
         d_ang = np.linspace(0, angle, n)
-        weight = linear(d_ang)
+        weight = linear_dist(d_ang)
 
-    tmp_arr = np.zeros((q,q))
-    for ang, w in zip(d_ang,weight):
+    tmp_arr = np.zeros(arr.shape)
+    for ang, w in zip(d_ang, weight):
         tmp_arr += spi.rotate(arr, ang, order=1, reshape=False) * w
 
     return tmp_arr
 
-
-# def derotator(arr, angle, pix_res, kernel="gaussian"):
-
-
-class CoordEffect(object):
+    
+def tracking(arr, cmds):
     """
+    A method to simulate tracking errors
+    ===== Currently a place holder with minimum functionality =========
+    !! TODO, work out the shift during the DIT for the object RA, DEC etc !!
     """
+    if cmds["SCOPE_DRIFT_DISTANCE"] > 0.:
+        kernel = cmds["SCOPE_DRIFT_PROFILE"]    
+        shift  = cmds["SCOPE_DRIFT_DISTANCE"] / cmds["SIM_INTERNAL_PIX_SCALE"]
+        
+        return line_blur(arr, shift, kernel=kernel, angle=0)
+    else:
+        return arr    
+    
 
-    def __init__(self, dx, dy):
-        self.dx = dx
-        self.dy = dy
+def derotator(arr, cmds):
+    """
+    A method to simulate field rotation in case the derotator is <100% effective
+    ===== Currently a place holder with minimum functionality =========
+    !! TODO, work out the rotation during the DIT for the object RA, DEC etc !!
+    """
+    if cmds["INST_DEROT_PERFORMANCE"] < 100.:
+        eff    = 1. - (cmds["INST_DEROT_PERFORMANCE"] / 100.)
+        kernel = cmds["INST_DEROT_PROFILE"]    
+        angle  = eff * cmds["OBS_EXPTIME"] * 15 / 3600.
+        
+        return rotate_blur(arr, angle, kernel=kernel)
+    else:
+        return arr
+    
 
-    def apply(self, x, y):
-        return x + self.dx, y + self.dy
+def wind_jitter(arr, cmds):
+    """
+    A method to simulate wind jitter
+    ===== Currently a place holder with minimum functionality =========
+    !! TODO, get the read spectrum for wind jitter !!
+    !! Add in an angle parameter for the ellipse   !!
+    """
+    fwhm = cmds["SCOPE_JITTER_FWHM"] / cmds["SIM_INTERNAL_PIX_SCALE"]
+    n = (fwhm / 2.35)
+    kernel = Gaussian2DKernel(n, mode="oversample")
+    
+    return convolve_fft(arr, kernel)
 
+    
+def adc_shift(cmds):
+    """Generates a list of x and y shifts from a UserCommands object"""
 
+    para_angle = cmds["OBS_PARALLACTIC_ANGLE"]
+    effectiveness = cmds["INST_ADC_PERFORMANCE"] / 100.
 
-class ADC_Effect(CoordEffect):
+    ## get the angle shift for each slice
+    angle_shift = [utils.atmospheric_refraction(lam,
+                                                cmds["OBS_ZENITH_DIST"],
+                                                cmds["ATMO_TEMPERATURE"],
+                                                cmds["ATMO_REL_HUMIDITY"],
+                                                cmds["ATMO_PRESSURE"],
+                                                cmds["SCOPE_LATITUDE"],
+                                                cmds["SCOPE_ALTITUDE"])
+                   for lam in cmds.lam_bin_centers]
 
-    def __init__(lam, angle = 0, **kwargs):
+    ## convert angle shift into number of pixels
+    ## pixel shifts are defined with respect to last slice
+    pixel_shift = (angle_shift - angle_shift[-1]) / cmds.pix_res
+    if np.max(np.abs(pixel_shift)) > 1000:
+        raise ValueError("Pixel shifts too great (>1000), check units")
 
-        shift = atmospheric_refraction(lam, **kwargs)
-        dx = shift * np.cos(np.deg2rad(angle))
-        dy = shift * np.cos(np.deg2rad(angle))
-
-        super(ADC_Effect, self).__init__(dx, dy)
-
-class ArrayEffect(object):
-
-    def __init__(self, x, y, weight):
-        self.x = np.zeros()
-
-
-    def apply(self, array):
-        pass
+    ## Rotate by the paralytic angle
+    x = -pixel_shift * np.sin(para_angle / 57.29578) * (1. - effectiveness)
+    y = -pixel_shift * np.cos(para_angle / 57.29578) * (1. - effectiveness)
+    
+    return x, y
+    
+    

@@ -78,7 +78,8 @@ class TransmissionCurve(object):
     def __init__(self, **kwargs):
         self.params = {"lam_res"   :0.001,
                        "Type"      :"Transmission",
-                       "min_step"  :1E-5}
+                       "min_step"  :1E-5,
+                       "lam_unit"  :u.um}
         self.params.update(kwargs)
 
         self.info = dict([])

@@ -54,11 +54,16 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 
-import SimCADO.PSFCube as psf
-import SimCADO.SpectralCurve as sc
-import SimCADO.LightObject as lo
-import SimCADO.utils as utils
-
+try:
+    import SimCADO.PSFCube as psf
+    import SimCADO.SpectralCurve as sc
+    import SimCADO.LightObject as lo
+    import SimCADO.utils as utils
+except:
+    import PSFCube as psf
+    import SpectralCurve as sc
+    import LightObject as lo
+    import utils
 
 class Simulation(object):
     """

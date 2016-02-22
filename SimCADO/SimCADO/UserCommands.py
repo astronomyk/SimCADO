@@ -26,9 +26,14 @@
 
 import os, warnings
 import numpy as np
-import SimCADO.SpectralCurve as sc
-import SimCADO.utils as utils
+try:
+    import SimCADO.SpectralCurve as sc
+    import SimCADO.utils as utils
+except:
+    import SpectralCurve as sc
+    import utils as utils
 
+    
 class UserCommands(object):
     """
     A dictionary class that holds all the keywords from the config files plus

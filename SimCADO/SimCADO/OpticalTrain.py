@@ -20,11 +20,16 @@ import numpy as np
 
 from astropy.io import fits
 import astropy.units as u
-
-import SimCADO.PSFCube as psf
-import SimCADO.SpectralCurve as sc
-import SimCADO.utils as utils
-
+try:
+    import SimCADO.PSFCube as psf
+    import SimCADO.SpectralCurve as sc
+    import SimCADO.PlaneEffect as pe
+    import SimCADO.utils as utils
+except:
+    import PSFCube as psf
+    import SpectralCurve as sc
+    import PlaneEffect as pe
+    import utils
 
 class OpticalTrain(object):
 
@@ -74,23 +79,21 @@ class OpticalTrain(object):
                 updated the internal parameter self.tc_master
         """
 
-        if tc_keywords is None:
+        if tc_keywords is None and preset is not None:
+            base = ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
+                   ['INST_ADC_TC', 'INST_DICHROIC_TC', 'INST_ENTR_WINDOW_TC', 
+                    'INST_FILTER_TC', 'FPA_QE']
             if preset == "source":
-                tc_keywords = ['SCOPE_M1_TC']*self.cmds['SCOPE_NUM_MIRRORS'] + \
-                              ['ATMO_TC', 'INST_ADC_TC', 'INST_DICHROIC_TC',
-                               'INST_ENTR_WINDOW_TC', 'INST_FILTER_TC', 'FPA_QE']
+                tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
             if preset == "atmosphere_bg":
-                tc_keywords = ['SCOPE_M1_TC']*self.cmds['SCOPE_NUM_MIRRORS'] + \
-                              ['INST_ADC_TC', 'INST_DICHROIC_TC',
-                               'INST_ENTR_WINDOW_TC', 'INST_FILTER_TC', 'FPA_QE']
+                tc_keywords = ['SCOPE_M1_TC'] + base
             if preset == "mirror_bb":
-                tc_keywords = ['SCOPE_M1_TC']*(self.cmds['SCOPE_NUM_MIRRORS']-1) + \
-                              ['INST_ADC_TC', 'INST_DICHROIC_TC',
-                               'INST_ENTR_WINDOW_TC', 'INST_FILTER_TC', 'FPA_QE']
+                tc_keywords = base
 
+                
         for key in tc_keywords:
             if key not in self.cmds.keys():
-                raise ValueError(key+" is not in your list of commands")
+                raise ValueError(key + " is not in your list of commands")
 
             if self.cmds[key].lower() != 'none':
                 self.tc_list[key] = sc.TransmissionCurve(filename=self.cmds[key],
@@ -176,35 +179,11 @@ class OpticalTrain(object):
 
     def gen_adc_shifts(self, output=False):
         """
-
-
         Keywords:
 
         """
-        para_angle = self.cmds["PARALLACTIC_ANGLE"]
-        effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
-
-        ## get the angle shift for each slice
-        angle_shift = [utils.atmospheric_refraction(lam,
-                                                    self.cmds["OBS_ZENITH_DIST"],
-                                                    self.cmds["ATMO_TEMPERATURE"],
-                                                    self.cmds["ATMO_REL_HUMIDITY"],
-                                                    self.cmds["ATMO_PRESSURE"],
-                                                    self.cmds["SCOPE_LATITUDE"],
-                                                    self.cmds["SCOPE_ALTITUDE"])
-                       for lam in self.lam_bin_centers]
-
-        ## convert angle shift into number of pixels
-        ## pixel shifts are defined with respect to last slice
-        pixel_shift = (angle_shift - angle_shift[-1]) / self.pix_res
-        if np.max(np.abs(pixel_shift)) > 1000:
-            raise ValueError("Pixel shifts too great (>1000), check units")
-
-        ## Rotate by the paralytic angle
-        x = -pixel_shift * np.sin(para_angle / 57.29578) * (1. - effectiveness)
-        y = -pixel_shift * np.cos(para_angle / 57.29578) * (1. - effectiveness)
-        adc_shifts = [(xi, yi) for xi, yi in zip(x, y)]
-
+        adc_shifts = pe.adc_shift(self.cmds)
+        
         if output:
             return adc_shifts
         else:
@@ -223,18 +202,18 @@ class OpticalTrain(object):
 
         self.cmds.update(cmds)
 
-        # Make the transmission curve and PSF for the source photons
-        self.tc_source  = get_master_tc(self, preset="source")
-        self.psf_source = get_master_psf()
+        # Make the transmission curve for the blackbody photons from the mirror
+        self.tc_mirror  = get_master_tc(self, preset="mirror_bb")
+        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
+                                            temp=self.cmds["SCOPE_M1_TEMP"])
 
         # Make the spectral curves for the atmospheric background photons
         self.tc_atmo_bg = get_master_tc(self, preset="atmosphere_bg")
         self.ec_atmo_gb = sc.EmissionCurve(self.cmds["ATMO_EC"])
 
-        # Make the transmission curve for the blackbody photons from the mirror
-        self.tc_mirror  = get_master_tc(self, preset="mirror_bb")
-        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
-                                            temp=self.cmds["SCOPE_M1_TEMP"])
+        # Make the transmission curve and PSF for the source photons
+        self.tc_source  = get_master_tc(self, preset="source")
+        self.psf_source = get_master_psf()
 
 
 
@@ -263,23 +242,5 @@ class OpticalTrain(object):
         #       - flat fielding                     [can be exported]
         #   - detector
 
-
-        # - the optical path for the atmospheric BG emission [can be exported]
-        #   - master transmission curve
-        #       - n x mirror
-        #       - instrument window
-        #       - internal mirrors
-        #       - dichroic
-        #       - filter
-        #       - detector QE
-
-        # - the optical path for the mirror BB emission [can be exported]
-        #   - master transmission curve
-        #       - n-1 x mirror
-        #       - instrument window
-        #       - internal mirrors
-        #       - dichroic
-        #       - filter
-        #       - detector QE
 class ads:
     pass

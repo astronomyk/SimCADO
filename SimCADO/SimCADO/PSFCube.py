@@ -102,7 +102,10 @@ from astropy.convolution import convolve_fft
 from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
-import SimCADO.utils as utils
+try: 
+    import SimCADO.utils as utils
+except: 
+    import utils
 
 
 
@@ -139,6 +142,7 @@ class PSF(object):
 
     def __init__(self, size, pix_res):
         self.size = size
+        self.shape = [size, size]
         self.pix_res = pix_res
         self.array = np.zeros((self.size, self.size))
 
@@ -162,7 +166,8 @@ class PSF(object):
         self.array[self.array <= 0] = threshold
         self.array = self.array / np.sum(self.array)
         self.size = self.array.shape[0]
-
+        self.shape = self.array.shape
+        
     def resize(self, new_size):
         """Resize the PSF. The target shape is (new_size, new_size).
 
@@ -992,7 +997,7 @@ class ADC_PSFCube(DeltaPSFCube):
 
         params.update(**kwargs)
         pix_res = params["pix_res"]
-        para_angle = params["PARALLACTIC_ANGLE"]
+        para_angle = params["OBS_PARALLACTIC_ANGLE"]
         effectiveness = params["INST_ADC_PERFORMANCE"] / 100.
 
         ## get the angle shift for each slice
