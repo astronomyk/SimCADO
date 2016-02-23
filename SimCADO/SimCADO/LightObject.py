@@ -64,7 +64,7 @@ class LightObject(object):
         """
         self.params = cmds
         self.size = 4096
-        
+
         self.info = dict([])
         self.info['created'] = 'yes'
         self.info['description'] = "List of spectra and their positions"
@@ -93,14 +93,14 @@ class LightObject(object):
         return self.x[i], self.y[i], \
                             self.spectra[self.spec_ref[i],:] * self.weight[i]
 
-    def shrink_to_detector(self)
+    def shrink_to_detector(self):
         """
-        Contract the oversampled photon array down to one that is consistent 
+        Contract the oversampled photon array down to one that is consistent
         with the pixel scale of the FPA
         """
         pass
-    
-                            
+
+
     def poissonify(self, arr=None):
         """
         Add a realisation of the poisson process to the array 'arr'.
