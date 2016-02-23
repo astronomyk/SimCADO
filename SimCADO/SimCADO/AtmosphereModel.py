@@ -47,7 +47,6 @@ class AtmosphereModel(object):
         self.info["res"] = res
 
         hdulist = fits.open(fname)
-        header = hdulist[1].header
         data = hdulist[1].data
         hdulist.close()
 
@@ -58,12 +57,14 @@ class AtmosphereModel(object):
         self.trans = data["trans"]
         self.val_unit = u.Unit("ph/s/m2/micron/arcsec2")
 
-        self.ec = SpectralCurve(lam=self.lam, val=self.flux,
-                                lam_unit=u.um, val_unit=self.val_unit,
-                                Type="Atmospheric emission")
-        self.tc = SpectralCurve(lam=self.lam, val=self.trans,
-                                lam_unit=u.um, val_unit=1.,
-                                Type="Atmospheric transmission")
+        emission = sc.EmissionCurve(lam=self.lam, val=self.flux,
+                                    lam_unit=u.um, val_unit=self.val_unit,
+                                    Type="Atmospheric emission")
+        self.emission = emission
+        transmission = sc.TransmissionCurve(lam=self.lam, val=self.trans,
+                                            lam_unit=u.um, val_unit=1.,
+                                            Type="Atmospheric transmission")
+        self.transmission = transmission
 
     def __repr__(self):
         return "Ich bin ein Atmosphere_Model:\n" + str(self.info)
@@ -108,7 +109,7 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     Da = (Pa / T) * (1. + Pa * (57.9E-8 - 0.0009325 / T + 0.25844 / T**2))
     Dw = (Pw / T) * (1. + Pw * (1. + 3.7E-4 * Pw) *
                      (-2.37321E-3 + 2.23366 / T - 710.792 / T**2
-                     + 77514.1 / T**3))
+                      + 77514.1 / T**3))
 
     na = Da * (2371.34 + 683939.7 / (130. - sig**2) + 4547.3 / (38.9 - sig**2))
     nw = Dw * (6487.31 + 58.058 * sig**2 - 0.7115 * sig**4 + 0.08851 * sig**6)
