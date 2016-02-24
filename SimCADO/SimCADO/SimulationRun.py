@@ -108,7 +108,7 @@ class Simulation(object):
         pass
 
     def make_optical_train(self):
-        # if we should use a previous optical system, import is
+        # if we should use a previous optical system, import it
         # else generate a new one
         pass
 
