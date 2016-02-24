@@ -102,9 +102,9 @@ from astropy.convolution import convolve_fft
 from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
-try: 
+try:
     import SimCADO.utils as utils
-except: 
+except:
     import utils
 
 
@@ -149,7 +149,7 @@ class PSF(object):
         self.info = dict([])
         self.info['description'] = "Point spread function (single layer)"
 
-    def __repr__(self):
+    def __str__(self):
         return self.info['description']
 
     def set_array(self, array, threshold=1e-15):
@@ -167,7 +167,7 @@ class PSF(object):
         self.array = self.array / np.sum(self.array)
         self.size = self.array.shape[0]
         self.shape = self.array.shape
-        
+
     def resize(self, new_size):
         """Resize the PSF. The target shape is (new_size, new_size).
 
@@ -625,7 +625,7 @@ class PSFCube(object):
         self.info['created'] = 'yes'
         self.info['description'] = "Point spread function (multiple layer)"
 
-    def __repr__(self):
+    def __str__(self):
         return self.info['description']
 
     def __getitem__(self, i):

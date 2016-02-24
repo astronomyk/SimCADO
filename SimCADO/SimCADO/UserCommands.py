@@ -33,7 +33,7 @@ except:
     import SpectralCurve as sc
     import utils as utils
 
-    
+
 class UserCommands(object):
     """
     A dictionary class that holds all the keywords from the config files plus
@@ -115,8 +115,9 @@ class UserCommands(object):
         if self.verbose:
             print("Read in parameters from ")
 
-    def __repr__(self):
-        return "A dictionary of commands compiled from "+self.cmds["CONFIG_MASTER"]
+    def __str__(self):
+        return "A dictionary of commands compiled from " + \
+            self.cmds["CONFIG_MASTER"]
 
     def __getitem__(self, kw):
         return self.cmds[kw]

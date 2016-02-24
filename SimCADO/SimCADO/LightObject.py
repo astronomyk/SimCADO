@@ -83,7 +83,7 @@ class LightObject(object):
 
         self.array = np.zeros((self.size, self.size), dtype=np.float32)
 
-    def __repr__(self):
+    def __str__(self):
         return self.info['description']
 
     def __array__(self):

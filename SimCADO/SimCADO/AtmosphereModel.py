@@ -66,7 +66,7 @@ class AtmosphereModel(object):
                                             Type="Atmospheric transmission")
         self.transmission = transmission
 
-    def __repr__(self):
+    def __str__(self):
         return "Ich bin ein Atmosphere_Model:\n" + str(self.info)
 
 
