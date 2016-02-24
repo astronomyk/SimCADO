@@ -51,6 +51,7 @@
 #
 #
 
+import sys
 from copy import deepcopy
 import warnings
 import numpy as np
@@ -76,6 +77,9 @@ class TransmissionCurve(object):
               transmission coefficient between [0,1]
     """
     def __init__(self, **kwargs):
+        # TODO: remove automatic resampling to lam_res. This should
+        #       only be done when requested (i.e. lam_res in kwargs)
+
         self.params = {"lam_res"   :0.001,
                        "Type"      :"Transmission",
                        "min_step"  :1E-5,
@@ -86,17 +90,20 @@ class TransmissionCurve(object):
         self.info["Type"] = self.params["Type"]
 
         self.lam_orig, self.val_orig = self.get_data()
-        self.lam_orig *= (1*self.params["lam_unit"]).to(u.um).value
+        self.lam = self.lam_orig
+        self.val = self.val_orig
+        self.lam_orig *= (1 * self.params["lam_unit"]).to(u.um).value
 
 
+        ## OC: resampling should only be done when necessary
         #if self.params["Type"] == "Emission":
         #    self.resample(self.params["lam_res"], action="sum")
         #else:
-        self.resample(self.params["lam_res"], action="average")
+        #    self.resample(self.params["lam_res"], action="average")
 
-    def __repr__(self):
-        return "Ich bin eine SpectralCurve:\n"+str(self.info)
 
+    def __str__(self):
+        return "Ich bin eine SpectralCurve:\n" + str(self.info)
 
     def get_data(self):
         """
@@ -113,7 +120,7 @@ class TransmissionCurve(object):
             if ".fits" in filename:
                 hdr = fits.getheader(filename)
                 if any(["SKYCALC" in hdr[i] for i in range(len(hdr)) \
-                                                    if type(hdr[i]) == str]):
+                        if type(hdr[i]) == str]):
                     if self.params["Type"] == "Emission":
                         lam = fits.getdata(filename)["lam"]
                         val = fits.getdata(filename)["flux"]
@@ -132,6 +139,7 @@ class TransmissionCurve(object):
             raise ValueError("Please pass either filename or lam/val keywords")
 
         return lam, val
+
 
     def resample(self, bins, action="average", use_edges=False, min_step=1E-5):
         """
@@ -161,7 +169,8 @@ class TransmissionCurve(object):
         # Work out the irregular grid problem while summing #
         #####################################################
 
-        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], self.params["min_step"])
+        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1],
+                          self.params["min_step"])
         tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
 
 
@@ -190,7 +199,8 @@ class TransmissionCurve(object):
             lam_bin_edges = lam_tmp
             lam_bin_centers = 0.5 * (lam_tmp[1:] + lam_tmp[:-1])
         else:
-            lam_bin_edges = np.append(lam_tmp - 0.5*lam_res, lam_tmp[-1] + 0.5*lam_res)
+            lam_bin_edges = np.append(lam_tmp - 0.5*lam_res,
+                                      lam_tmp[-1] + 0.5*lam_res)
             lam_bin_centers = lam_tmp
 
         # here is the assumption of a regular grid - see res_tmp
@@ -217,8 +227,21 @@ class TransmissionCurve(object):
         self.res = lam_res
         self.params["lam_res"] = self.res
 
-    def renormalize(self, val=1):
-        self.val *= val/np.sum(self.val)
+    def normalize(self, val=1., mode='integral'):
+        """Normalize the spectral curve
+
+        - mode="integral" normalizes the integral over the defined
+               wavelength range to val (default: 1.)
+        - mode="maximum" normalizes the maximum over the defined
+               wavelength range to val (default: 1.)
+        """
+        if mode.lower() == 'integral':
+            self.val = val * self.val / np.trapz(self.val, self.lam)
+        elif mode.lower() == 'maximum':
+            self.val = self.val / self.val.max() * val
+        else:
+            errorstr = "Unknown normalization mode: {0}. No action taken."
+            raise ValueError(errorstr.format(mode))
 
     def __len__(self):
         return len(self.val)
@@ -352,18 +375,18 @@ class EmissionCurve(TransmissionCurve):
         factor = 1.
 
         # The delivered EmissionCurve should be in ph/s/voxel
-        #if u.s      in bases: factor *= self.params["exptime"] 
+        #if u.s      in bases: factor *= self.params["exptime"]
         if u.m      in bases: factor *= self.params["area"]
         if u.arcsec in bases: factor *= self.params["pix_res"]**2
         if u.micron in bases: factor *= self.params["lam_res"]
 
         self.val *= factor
 
-        
+
     def photons_in_range(self, lam_min, lam_max):
         """
         Sum up the photons in between the wavelength boundaries, lam_min lam_max
-        
+
         Parameters
         ==========
         - lam_min, lam_max: the wavelength limits
@@ -376,11 +399,11 @@ class EmissionCurve(TransmissionCurve):
                 zoom = 10
                 lam_zoom = np.linspace(lam_min, lam_max, zoom)
                 spec_zoom = np.interp(lam_zoom, self.lam, self.val) / zoom
-                photons = np.sum(spec_zoom) 
+                photons = np.sum(spec_zoom)
             else:
                 mask = (self.lam >= lam_min) * (self.lam < lam_max)
                 photons = np.sum(self.val[mask])
-            
+
         return photons
 
 
