@@ -113,7 +113,7 @@ class UserCommands(object):
         self.verbose = True     if self.cmds["VERBOSE"] == "yes"    else False
 
         if self.verbose:
-            print("Read in parameters from ")
+            print("Read in parameters from "+fnames)
 
     def __repr__(self):
         return "A dictionary of commands compiled from "+self.cmds["CONFIG_MASTER"]
