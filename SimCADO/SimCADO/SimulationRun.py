@@ -119,3 +119,14 @@ class Simulation(object):
 
     def run():
         pass
+        
+        
+    def current_test_run()
+        
+        cmds = UserCommands()
+        
+        opt_train = OpticalTrain()
+        
+        
+        
+        
