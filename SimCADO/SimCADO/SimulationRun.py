@@ -58,11 +58,13 @@ try:
     import SimCADO.PSFCube as psf
     import SimCADO.SpectralCurve as sc
     import SimCADO.LightObject as lo
+    import SimCADO.UserCommands as uc
     import SimCADO.utils as utils
 except:
     import PSFCube as psf
     import SpectralCurve as sc
     import LightObject as lo
+    import UserCommands as uc
     import utils
 
 class Simulation(object):
