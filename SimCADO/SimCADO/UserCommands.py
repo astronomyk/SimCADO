@@ -114,7 +114,7 @@ class UserCommands(object):
         self.verbose = True     if self.cmds["VERBOSE"] == "yes"    else False
 
         if self.verbose:
-            print("Read in parameters from "+fnames)
+            print("Read in parameters from \n"+"\n".join(fnames))
 
     def __str__(self):
         return "A dictionary of commands compiled from " + \
@@ -131,3 +131,12 @@ class UserCommands(object):
 
     def values(self):
         return self.cmds.values()
+
+    def update(self, x_dict):
+        if isinstance(x_dict, UserCommands):
+            self.cmds.update(x_dict.cmds)
+        elif isinstance(x_dict, dict):
+            self.cmds.update(x_dict)
+        else:
+            pass
+    
