@@ -61,13 +61,14 @@ class AtmosphereModel(object):
                                     lam_unit=u.um, val_unit=self.val_unit,
                                     Type="Atmospheric emission")
         self.emission = emission
+
         transmission = sc.TransmissionCurve(lam=self.lam, val=self.trans,
                                             lam_unit=u.um, val_unit=1.,
                                             Type="Atmospheric transmission")
         self.transmission = transmission
 
     def __str__(self):
-        return "Ich bin ein Atmosphere_Model:\n" + str(self.info)
+        return "Atmosphere Model:\n" + str(self.info)
 
 
 def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
