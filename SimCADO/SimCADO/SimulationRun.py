@@ -58,11 +58,15 @@ try:
     import SimCADO.PSFCube as psf
     import SimCADO.SpectralCurve as sc
     import SimCADO.LightObject as lo
+    import SimCADO.UserCommands as uc
+    import SimCADO.OpticalTrain as ot
     import SimCADO.utils as utils
 except:
     import PSFCube as psf
     import SpectralCurve as sc
     import LightObject as lo
+    import UserCommands as uc
+    import OpticalTrain as ot
     import utils
 
 class Simulation(object):
@@ -74,9 +78,6 @@ class Simulation(object):
         """
         self.set_user_commands(filename)
         if  cmds  is not None: self.cmds = cmds
-
-        self.check_defaults()
-
 
     def set_user_commands(self, user_filename=None):
         """
@@ -117,3 +118,11 @@ class Simulation(object):
 
     def run():
         pass
+        
+        
+    def current_test_run():
+        opt_train = ot.OpticalTrain()
+        
+        
+        
+        

@@ -287,7 +287,7 @@ class DeltaPSF(PSF):
             pix_res = kwargs["pix_res"]
         else:
             pix_res = 0.004
-
+        
         super(DeltaPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Delta"
         self.info["description"] = "Delta PSF, centred at (%.1f, %.1f)" \
@@ -419,7 +419,7 @@ class GaussianPSF(PSF):
 
         super(GaussianPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Gaussian"
-        self.info['description'] = "Gaussian PSF, FWHM = %.1f arcsec" \
+        self.info['description'] = "Gaussian PSF, FWHM = %.1f mas" \
                                     % (self.fwhm * 1E3)
         self.info["fwhm"] = self.fwhm * 1E3
 
@@ -771,7 +771,7 @@ class DeltaPSFCube(PSFCube):
         super(DeltaPSFCube, self).__init__(lam_bin_centers)
 
         if not hasattr(positions[0], "__len__"):
-            positions = [positions]*len(self),
+            positions = [positions]*len(self)
 
         for i in range(len(self)):
             self.psf_slices[i] = DeltaPSF(position=positions[i], **kwargs)
@@ -812,6 +812,8 @@ class AiryPSFCube(PSFCube):
                                                     for lam in lam_bin_centers]
         elif not hasattr(fwhm, "__len__"):
             self.fwhm = [fwhm] * len(self)
+        else:
+            self.fwhm = fwhm
 
         self.psf_slices = [AiryPSF(fwhm=f, **kwargs) for f in self.fwhm]
 

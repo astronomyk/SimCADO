@@ -80,13 +80,14 @@ class TransmissionCurve(object):
     def __init__(self, **kwargs):
         # TODO: remove automatic resampling to lam_res. This should
         #       only be done when requested (i.e. lam_res in kwargs)
+        # See answer below
 
         self.params = {"lam_res"   :0.001,
                        "Type"      :"Transmission",
-                       "min_step"  :1E-5,
+                       "min_step"  :1E-4,
                        "lam_unit"  :u.um}
         self.params.update(kwargs)
-
+        
         self.info = dict([])
         self.info["Type"] = self.params["Type"]
 
@@ -95,13 +96,19 @@ class TransmissionCurve(object):
         self.val = self.val_orig
         self.lam_orig *= (1 * self.params["lam_unit"]).to(u.um).value
 
-
         ## OC: resampling should only be done when necessary
-        #if self.params["Type"] == "Emission":
-        #    self.resample(self.params["lam_res"], action="sum")
-        #else:
-        #    self.resample(self.params["lam_res"], action="average")
-
+        ## KL: This ensures that the curves are on a regular grid. Not all of
+        ## the filter curve .dat files have regular bin spacing and so it is 
+        ## impossible to define a "lam_res" for those curves. This is needed for
+        ## the EmissionCurve function "photons_in_range(lam_min, lam_max)"
+        ##
+        ## We could always implement a catch for irregular bin spacing and only
+        ## resample those curves.
+        if self.params["Type"] == "Emission":
+            self.resample(self.params["lam_res"], action="sum")
+        else:
+            self.resample(self.params["lam_res"], action="average")
+            
 
     def __str__(self):
         return "Spectral curve:\n" + str(self.info)
@@ -351,14 +358,13 @@ class EmissionCurve(TransmissionCurve):
     def __init__(self, **kwargs):
         default_params = {  "pix_res" :0.004,
                             "area"    :978,
-                            "units":"ph/(s m2 micron arcsec2)"}
-
+                            "units"   :"ph/(s m2 micron arcsec2)"}
         if "units" not in kwargs.keys():
             warnings.warn("""No 'units' specified in EmissionCurve.
                           Assuming ph/(s m2 micron arcsec2)""")
-
-        super(EmissionCurve, self).__init__(Type = "Emission", **kwargs)
-        self.params.update(default_params)
+        default_params.update(kwargs)
+                
+        super(EmissionCurve, self).__init__(Type = "Emission", **default_params)
         self.convert_to_photons()
 
     def resample(self, bins, action="sum", use_edges=False):
@@ -370,8 +376,8 @@ class EmissionCurve(TransmissionCurve):
         """Do the conversion to photons/s/voxel by using the val_unit, lam, area
         and exptime keywords. If not given, make some assumptions.
         """
-        self.params["val_unit"] = u.Unit(self.params["val_unit"])
-        bases  = self.params["val_unit"].bases
+        self.params["units"] = u.Unit(self.params["units"])
+        bases  = self.params["units"].bases
 
         factor = 1.
 
@@ -382,7 +388,7 @@ class EmissionCurve(TransmissionCurve):
         if u.micron in bases: factor *= self.params["lam_res"]
 
         self.val *= factor
-
+        self.factor = factor
 
     def photons_in_range(self, lam_min, lam_max):
         """
@@ -424,6 +430,8 @@ class BlackbodyCurve(EmissionCurve):
         self.params = {"pix_res":0.004, "area":978}
         self.params.update(kwargs)
 
+        temp += 273.15
+        
         lam_res = lam[1] - lam[0]
         edges = np.append(lam - 0.5 * lam_res, lam[-1] + 0.5 * lam_res)
         lam_res = edges[1:] - edges[:-1]
@@ -440,8 +448,8 @@ class BlackbodyCurve(EmissionCurve):
         val = ph.si
 
         super(BlackbodyCurve, self).__init__(lam=lam, val=val, units="1/s",
-                                             Type="Emission", **kwargs)
-
+                                             **self.params)
+        self.info["Type"] = "Blackbody"
 
 class UnityCurve(TransmissionCurve):
     """Constant transmission curve
@@ -452,7 +460,6 @@ class UnityCurve(TransmissionCurve):
     - val: constant value of transmission (default: 1)
     """
 
-    def __init__(self, lam=np.asarray([0.5,2.5]), val=1):
-
+    def __init__(self, lam=np.asarray([0.5,2.5]), val=1, **kwargs):
         val = np.asarray([val]*len(lam))
-        super(UnityCurve, self).__init__(lam=lam, val=val)
+        super(UnityCurve, self).__init__(lam=lam, val=val, **kwargs)

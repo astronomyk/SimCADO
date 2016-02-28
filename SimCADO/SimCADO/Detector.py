@@ -72,8 +72,6 @@ class Detector(object):
         self.exptime = self.params["OBS_EXPTIME"]
 
 
-
-
     def make_detector(self, oversample=False, filename=None):
 
         if filename is not None:
@@ -82,7 +80,7 @@ class Detector(object):
             generate_hxrg_noise()
 
         #add_cosmic_rays(exptime)
-        self.add_pixel_map()
+        self.apply_pixel_map()
         #apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
 
         pass
@@ -110,6 +108,7 @@ class Detector(object):
         """
         pass
 
+        
     def apply_pixel_map(self):
 
         if type(self.params["FPA_DEAD_PIXELS"]) == float:
@@ -126,6 +125,7 @@ class Detector(object):
         else:
             raise ValueError(self.params["FPA_DEAD_PIXELS"] + "does not exist")
 
+            
     def apply_saturation(self):
         """
         Cap all pixels that are above the well depth.
@@ -182,7 +182,7 @@ class Detector(object):
 # import datetime
 # import matplotlib.pyplot as plt # Handy for debugging
 
-warnings.filterwarnings('ignore')
+#warnings.filterwarnings('ignore')
 
 class HXRGNoise:
     """

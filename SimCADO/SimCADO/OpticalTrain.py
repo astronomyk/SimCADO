@@ -51,7 +51,7 @@ class OpticalTrain(object):
                                                 size=self.size,
                                                 pix_res=self.pix_res)
 
-        self.adc_shifts      = np.zeros((len(self.lam_bin_centers)))
+        self.adc_shifts      = np.zeros((len(self.lam_bin_centers),2))
         #self.distortion_map
 
 
@@ -62,7 +62,7 @@ class OpticalTrain(object):
     def save(self, filename):
         pass
 
-    def gen_master_tc(self, tc_keywords=None, preset=None, output=False):
+    def gen_master_tc(self, tc_keywords=None, preset=None):
         """
         Combine a list of TransmissionCurves into one, either by specifying the
         list of command keywords (e.g. ATMO_TC) or by passing a preset keywords
@@ -75,40 +75,44 @@ class OpticalTrain(object):
                 - 'source' includes all the elements seen by source photons
                 - 'atmosphere_bg' includes surfaces seen by the atmospheric BG
                 - 'mirror_bb' includes surfaces seen by the M1 blackbody photons
-        output: [False/True] if True, the master_tc is returned, otherwise, it
-                updated the internal parameter self.tc_master
         """
 
-        if tc_keywords is None and preset is not None:
-            base = ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
-                   ['INST_ADC_TC', 'INST_DICHROIC_TC', 'INST_ENTR_WINDOW_TC', 
-                    'INST_FILTER_TC', 'FPA_QE']
-            if preset == "source":
-                tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
-            if preset == "atmosphere_bg":
-                tc_keywords = ['SCOPE_M1_TC'] + base
-            if preset == "mirror_bb":
-                tc_keywords = base
-
+        if tc_keywords is None:
+            if preset is not None:
+                base = ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
+                       ['INST_ADC_TC', 'INST_DICHROIC_TC', 'INST_ENTR_WINDOW_TC', 
+                        'INST_FILTER_TC', 'FPA_QE']
+                if preset == "source":
+                    tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
+                if preset == "atmosphere_bg":
+                    tc_keywords = ['SCOPE_M1_TC'] + base
+                if preset == "mirror_bb":
+                    tc_keywords = base
+            else:
+                warnings.warn("""
+                No presets or keywords passed to gen_master_tc(). 
+                Setting self.tc_master = sc.UnityCurve()""")
+                self.tc_master = sc.UnityCurve()
+                return
+                
+        tc_dict = dict([])
                 
         for key in tc_keywords:
             if key not in self.cmds.keys():
                 raise ValueError(key + " is not in your list of commands")
 
             if self.cmds[key].lower() != 'none':
-                self.tc_list[key] = sc.TransmissionCurve(filename=self.cmds[key],
-                                                         lam_res=self.lam_res)
+                tc_dict[key] = sc.TransmissionCurve(filename=self.cmds[key],
+                                                    lam_res=self.lam_res)
             else:
-                self.tc_list[key] = sc.UnityCurve()
+                tc_dict[key] = sc.UnityCurve()
 
-        tc_master  = sc.UnityCurve()
-        for key in tc_list.keys():
-            tc_master*= self.tc_list[key]
+        tc_master = sc.UnityCurve( lam=self.lam, lam_res=self.lam_res, 
+                                   min_step=self.cmds["SIM_SPEC_MIN_STEP"])
+        for key in tc_keywords:
+            tc_master *= tc_dict[key]
 
-        if output:
-            return tc_master
-        else:
-            self.tc_master = tc_master
+        return tc_master
 
 
     def gen_master_psf(self, psf_type="Airy", output=False):
@@ -137,9 +141,9 @@ class OpticalTrain(object):
         # Make a PSF for the main mirror. If there is one on file, read it in
         # otherwise generate an Airy+Gaussian (or Moffat, Oliver?)
 
-        if self.cmds["SCOPE_USE_PSF_FILE"].lower() != "none" and \
-                                os.path.exists(self.cmds["SCOPE_USE_PSF_FILE"]):
-            psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_USE_PSF_FILE"])
+        if self.cmds["SCOPE_PSF_FILE"].lower() != "none" and \
+                                os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
+            psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"])
             if psf_m1[0].pix_res != self.pix_res:
                 psf_m1 = psf_m1.resample(self.pix_res)
         else:
@@ -147,7 +151,7 @@ class OpticalTrain(object):
             ao_eff  = self.cmds["SCOPE_AO_EFFECTIVENESS"]
 
             # Get a Diffraction limited PSF
-            fwhm = (1.22*u.rad * self.lam_bin_centers*u.um / \
+            fwhm = (1.22*u.rad * self.lam_bin_centers * u.um / \
                                             (m1_diam * u.m)).to(u.arcsec).value
             if psf_type == "Moffat":
                 psf_m1 = psf.MoffatPSFCube(self.lam_bin_centers,
@@ -161,13 +165,16 @@ class OpticalTrain(object):
                                            size=self.psf_size)
 
                 # Get the Gaussian seeing PSF
-                fwhm = (1. - ao_eff/100.) * self.cmds["OBS_SEEING"]
-                psf_seeing = psf.GaussianPSFCube(self.lam_bin_centers,
-                                                fwhm=fwhm,
-                                                pix_res=self.pix_res)
+                if ao_eff < 100.:
+                    fwhm = (1. - ao_eff/100.) * self.cmds["OBS_SEEING"]
+                    psf_seeing = psf.GaussianPSFCube(self.lam_bin_centers,
+                                                    fwhm=fwhm,
+                                                    pix_res=self.pix_res)
 
-                psf_m1 = psf_diff.convolve(psf_seeing)
-
+                    psf_m1 = psf_diff.convolve(psf_seeing)
+                else:
+                    psf_m1 = psf_diff
+                    
         psf_master = psf_m1
 
         if output:
@@ -175,7 +182,6 @@ class OpticalTrain(object):
         else:
             self.psf_master = psf_master
 
-        return scope_psf_master
 
     def gen_adc_shifts(self, output=False):
         """
@@ -209,20 +215,20 @@ class OpticalTrain(object):
         self.cmds.update(cmds)
 
         # Make the transmission curve for the blackbody photons from the mirror
-        self.tc_mirror  = gen_master_tc(self, preset="mirror_bb")
+        self.tc_mirror  = self.gen_master_tc(preset="mirror_bb")
         self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
                                             temp=self.cmds["SCOPE_M1_TEMP"])
 
         # Make the spectral curves for the atmospheric background photons
-        self.tc_atmo_bg = gen_master_tc(self, preset="atmosphere_bg")
-        self.ec_atmo_gb = sc.EmissionCurve(self.cmds["ATMO_EC"])
+        self.tc_atmo_bg = self.gen_master_tc(preset="atmosphere_bg")
+        self.ec_atmo_gb = sc.EmissionCurve(filename = self.cmds["ATMO_EC"])
 
         # Make the transmission curve and PSF for the source photons
-        self.tc_source  = gen_master_tc(self, preset="source")
-        self.psf_source = gen_master_psf()
+        self.tc_source  = self.gen_master_tc(preset="source")
+        self.psf_source = self.gen_master_psf()
 
         # Make a detector Plane
-        self.detector_noise = gen_detector()
+        self.detector_noise = self.gen_detector()
 
 
 
