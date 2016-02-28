@@ -1,3 +1,4 @@
+"""Classes for spectral curves"""
 ###############################################################################
 # SpectralCurve
 #
@@ -103,7 +104,7 @@ class TransmissionCurve(object):
 
 
     def __str__(self):
-        return "Ich bin eine SpectralCurve:\n" + str(self.info)
+        return "Spectral curve:\n" + str(self.info)
 
     def get_data(self):
         """
