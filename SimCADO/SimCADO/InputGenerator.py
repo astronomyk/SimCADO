@@ -52,7 +52,7 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     
     try:
         import poppy
-    else:
+    except:
         raise ValueError("Please install poppy \n >>sudo pip3 install poppy")
         return
     
