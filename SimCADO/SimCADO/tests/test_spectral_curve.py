@@ -12,9 +12,11 @@ class TestNormalize(unittest.TestCase):
         val = 2.
         normval = 1.
 
-        unitycurve = UnityCurve(lam=lam, val=val)
-        unitycurve.normalize(val=normval, mode='integral')
-        unitycheckval = np.sum(unitycurve.val[1:] * (lam[1:] - lam[:-1]))
+        ucurve = UnityCurve(lam=lam, val=val)
+        ucurve.normalize(val=normval, mode='integral')
+        unitycheckval = np.sum(ucurve.val[1:] * \
+                               (ucurve.lam[1:] - ucurve.lam[:-1]))
+
         self.assertAlmostEqual(unitycheckval, normval)
 
     def test_normalize_maximum(self):
