@@ -33,7 +33,7 @@ from astropy.stats.funcs import median_absolute_deviation as mad
 
 class Detector(object):
 
-    def __init__(self, **kwargs):
+    def __init__(self, filename=None, **kwargs):
         """
 
         Keywords:
@@ -43,11 +43,15 @@ class Detector(object):
         self.params = { "NAXIS1"            :4096,
                         "NAXIS2"            :4096,
                         "VERBOSE"           :False,
+                                                
+                        "SIM_OVERSAMPLING"  :4,
+                        "SIM_DETECTOR_PIX_SCALE":0.004,
+                        "OBS_EXPTIME"       :1,  
 
                         "HXRG_NUM_OUTPUTS"  :32,
                         "HXRG_NUM_ROW_OH"   :8,
                         "HXRG_PCA0_FILENAME":"../data/FPA_nirspec_pca0.fits",
-                        "HXRG_OUTPUT_PATH"   :"../data/H4RG_noise.fits",
+                        "HXRG_OUTPUT_PATH"  :None,
                         "HXRG_PEDESTAL"     :4,
                         "HXRG_CORR_PINK"    :3,
                         "HXRG_UNCORR_PINK"  :1,
@@ -61,47 +65,75 @@ class Detector(object):
                         "FPA_LINEARITY_CURVE":None,
                         "FPA_DEAD_PIXELS"   :5,
                         "FPA_GAIN"          :1,
-                        "FPA_WELL_DEPTH"    :1E5}
+                        "FPA_WELL_DEPTH"    :1E5    }
         self.params.update(kwargs)
 
         self.size = self.params["NAXIS1"]
-        self.array = np.zeros((self.size, self.size))
         self.oversample = self.params["SIM_OVERSAMPLING"]
         self.pix_res = self.params["SIM_DETECTOR_PIX_SCALE"] / self.oversample
         self.fpa_res = self.params["SIM_DETECTOR_PIX_SCALE"]
         self.exptime = self.params["OBS_EXPTIME"]
 
-
-    def make_detector(self, oversample=False, filename=None):
-
         if filename is not None:
-            self.array = fits.getdata(filename)
+            self.params["FPA_NOISE_PATH"] = filename
+        if self.params["FPA_NOISE_PATH"] is not None:
+            self.read_detector(self.params["FPA_NOISE_PATH"])
         else:
-            generate_hxrg_noise()
+            self.make_detector()
+            
+        
+    def make_detector(self, **kwargs):
+
+        self.array = self.generate_hxrg_noise(**kwargs)
 
         #add_cosmic_rays(exptime)
-        self.apply_pixel_map()
+        #self.apply_pixel_map()
         #apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
 
         pass
 
-    def read_detector(self, filename=None, **kwargs):
-        pass
-
+    def read_detector(self, filename, **kwargs):
+        """
+        Read in a detector FITS file
+        
+        filename
+        """
+        if not os.path.exists(filename):
+            raise ValueError(filename + " doesn't exist")
+        
+        f = fits.open(filename)
+        self.params.update(f[0].header)
+        self.array = f[0].data
+        f.close()
+        
     def save_detector(self, filename=None, **kwargs):
+        ##########################################################
+        # Can't save directly after read_detector. WHY????
+        ##########################################################
         """
         Save a Detector frame to a FITS file
 
         filename : path to output FITS file. Default:  ../output/H4RG_noise.fits
         """
+        self.params.update(kwargs)
         if filename is None:
             filename = self.params["HXRG_OUTPUT_PATH"]
+        if filename is None:
+            raise ValueError("No output path was specified. " + \
+                             "Use either filename= or HXRG_OUTPUT_PATH=")
+            
         hdu = fits.PrimaryHDU(self.array)
-        hdu.update(self.params)
-        hdu.header["SIM_CUBE"] = "FPA_NOISE"
-        hdu.writeto(filename)
+        hdu.header["PIX_RES"] = self.pix_res
+        hdu.header["EXPTIME"] = self.exptime
+        hdu.header["GAIN"]    = self.params["FPA_GAIN"]
+        hdu.header["SIM_CUBE"]= "FPA_NOISE"
+        
+        try:
+            hdu.writeto(filename, clobber=True)
+        except:
+            warnings.warn(filename+" exists and is busy. OS won't let me write")
 
-
+            
     def add_cosmic_rays(self):
         """
         Not needed because of up-the-ramp sampling
@@ -110,15 +142,19 @@ class Detector(object):
 
         
     def apply_pixel_map(self):
-
+        """
+        Read in a FITS file with locations of dead pixels, or generate a series
+        of random coordinates and random weights for those pixels
+        """
         if type(self.params["FPA_DEAD_PIXELS"]) == float:
             n = int(self.size**2 * self.params["FPA_DEAD_PIXELS"] / 100)
             x = np.random.randint(self.size, size=n)
-            y = np.random.randint(self.size, size=n),
-            self.array[x,y] = self.params["FPA_WELL_DEPTH"]
+            y = np.random.randint(self.size, size=n)
+            z = np.random.random(n)
+            self.array[x,y] = self.params["FPA_WELL_DEPTH"] * z
 
         elif os.path.exists(self.params["FPA_DEAD_PIXELS"]):
-            pixel_map = fits.getdata
+            pixel_map = fits.getdata(self.params["FPA_DEAD_PIXELS"])
             if self.array.shape != pixel_map.shape:
                 raise ValueError("pixel_map.shape != detector_array.shape")
             self.array *= pixel_map
@@ -136,36 +172,34 @@ class Detector(object):
         self.array[self.array > max_val] = max_val
 
 
-
-    def generate_hxrg_noise(self, filename=None):
+    def generate_hxrg_noise(self, **kwargs):
         """
         Create a detector noise array using Bernard Rauscher's NGHxRG tool
 
         Optional Keywords:
-        - filename: to override the output filename for the noise
+        - HXRG_OUTPUT_PATH: 
 
         """
+        if len(kwargs) > 0 and self.verbose: print("updating ",kwargs)
+        self.params.update(kwargs)
+        
         # HXRG needs a pca file to run. Work out what a PCA file means!!
-        ng_h4rg = HXRGNoise(naxis1 = self.params["NAXIS1"],
-                            naxis2 = self.params["NAXIS2"],
-                            n_out  = self.params["HXRG_NUM_OUTPUTS"],
-                            nroh   = self.params["HXRG_NUM_ROW_OH"],
-                            pca0_file=self.params["HXRG_PCA0_FILENAME"],
-                            verbose= self.params["VERBOSE"])
+        ng_h4rg     = HXRGNoise(naxis1   = self.params["NAXIS1"],
+                                naxis2   = self.params["NAXIS2"],
+                                n_out    = self.params["HXRG_NUM_OUTPUTS"],
+                                nroh     = self.params["HXRG_NUM_ROW_OH"],
+                                pca0_file= self.params["HXRG_PCA0_FILENAME"],
+                                verbose  = self.params["VERBOSE"])
 
         # Make a noise file
-        if filename is None: filename = self.params["HXRG_OUTPUT_PATH"]
-        ng_h4rg.mknoise(filename,
-                        rd_noise = self.params["FPA_READOUT_MEDIAN"],
-                        pedestal = self.params["HXRG_PEDESTAL"],
-                        c_pink   = self.params["HXRG_CORR_PINK"],
-                        u_pink   = self.params["HXRG_UNCORR_PINK"],
-                        acn      = self.params["HXRG_ALT_COL_NOISE"])
+        return  ng_h4rg.mknoise(o_file   = self.params["HXRG_OUTPUT_PATH"],
+                                rd_noise = self.params["FPA_READOUT_MEDIAN"],
+                                pedestal = self.params["HXRG_PEDESTAL"],
+                                c_pink   = self.params["HXRG_CORR_PINK"],
+                                u_pink   = self.params["HXRG_UNCORR_PINK"],
+                                acn      = self.params["HXRG_ALT_COL_NOISE"])
 
-        self.array = fits.getdata(self.params["HXRG_OUTPUT_PATH"])
-
-
-
+                                
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
@@ -621,8 +655,11 @@ class HXRGNoise:
         hdu.header.append(('ACN', self.acn, 'Alternating column noise'))
         hdu.header.append(('PCA0', self.pca0_amp, \
                            'PCA zero, AKA picture frame'))
-        hdu.header['HISTORY'] = 'Created by NGHXRG version ' \
-                                + str(self.nghxrg_version)
-        hdu.writeto(o_file, clobber='True')
-
+        #hdu.header['HISTORY'] = 'Created_by_NGHXRG_version_' \
+        #                        + str(self.nghxrg_version)
+        
         self.message('Exiting mknoise()')
+        
+        if o_file is not None:
+            hdu.writeto(o_file, clobber='True')
+        return result
