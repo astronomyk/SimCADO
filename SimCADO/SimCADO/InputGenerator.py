@@ -4,34 +4,67 @@
 #
 # Put various functions here that generate input data for a simulation
 #
+# - FITS cubes with PSFs
+# - FITS cubes with source data
+# - ASCII lists with source data
+# - Broadband filter curves, unity curves
+# - Detector noise image/cubes
+# - Dead pixel image
 #
-#
+
+import warnings
+import numpy as np
+from astropy.io import fits
 
 
-
-def analytic_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
+def source_from_mags():
     """
-    Generate a FITS file with E-ELT PSFs for a range of wavelengths.
+    Generate an LightObject FITS file from a list of magnitudes
+    """
+
+
+
+
+
+def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
+    """
+    Generate a FITS file with E-ELT PSFs for a range of wavelengths by using the
+    POPPY module - https://pythonhosted.org/poppy/
     
     Parameters:
-    ===========
+    -----------
     lam_bin_centers: [um] the centres of each wavelength bin
     filename: [None] path name to where the FITS file should be saved. If not 
-              given, the file is stored in the working directory
+              given, a HDUList is returned
     
     Optional Parameters:
-    ====================
+    --------------------
     pix_res: [arcsec] the angular resolution of the pixels. Default is 1 mas
-    diameter: [m]
+    diameter_out: [m]
+    diameter_in: [m]
+    flatotflat: [m]
+    gap: [m]
+    n_spiders: [m]
+    size: [int]
+    oversample: [int]
+    clobber: [True/False]
     """
+    
+    try:
+        import poppy
+    else:
+        raise ValueError("Please install poppy \n >>sudo pip3 install poppy")
+        return
+    
     params = {  "diameter_out"  :37,
                 "diameter_in"   :5.5,
                 "flattoflat"    :1.45,
                 "gap"           :0.004,
                 "n_spiders"     :6,
                 "pix_res"       :0.001,
-                "size"          :255
-                "oversample"    :1     }
+                "size"          :255,
+                "oversample"    :1,
+                "clobber"       :True   }
     params.update(kwargs)
     
     rings = int(0.65 * params["diameter_out"] / params["flattoflat"])
@@ -56,4 +89,4 @@ def analytic_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     if filename is None:
         return hdulist
     else: 
-        hdulist.writeto(filename, clobber=True)
+        hdulist.writeto(filename, clobber=params["clobber"])
