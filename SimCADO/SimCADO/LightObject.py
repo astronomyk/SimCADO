@@ -44,6 +44,10 @@ import scipy.ndimage.interpolation as spi
 
 from astropy.io import fits
 from astropy.convolution import convolve, convolve_fft
+import astropy.units as u
+
+__all__ = ["LightObject", "Source"]
+
 
 class LightObject(object):
 
@@ -79,10 +83,11 @@ class LightObject(object):
 
         # add a second dimension to self.spectra so that all the 2D calls work
         if len(self.spectra.shape) == 1:
-            self.spectra.shape = np.asarray([self.spectra.shape]*2)
+            self.spectra = np.asarray([self.spectra]*2)
 
         self.array = np.zeros((self.size, self.size), dtype=np.float32)
-
+        
+        
     def __str__(self):
         return self.info['description']
 
@@ -288,82 +293,148 @@ class Source(object):
     """
     Source class generates the arrays needed for LightObject. It takes various
     inputs and converts them to an array of positions and references to spectra
-    It also converts spectra to photons/s/voxel
+    It also converts spectra to photons/s/voxel. The default units for input
+    data is ph/s
 
     Keywords:
     - filename
     or
-    - lam
-    - spectra
-    - x
-    - y
-    - spec_ref
-    - weight
+    - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
+    - spectra   :
+    - x         : X_COL
+    - y         : Y_COL
+    - spec_ref  : REF_COL
+    - weight    : W_COL
+    - units*    : BUNIT
+    - pix_res*  : PIX_RES [, CDELT1]
+    - exptime*  : EXPTIME
+    - area*     : AREA
     """
 
-    def __init__(self, pix_res, units, **kwargs):
+    def __init__(self, **kwargs):
+        pass
+    
+    def __repr__(self):
+        return "A photon source object"
+    
+    
+    def _convert_to_photons(self):
+        """
+        convert the spectra to photons/s/voxel
+        """
+        self.units = u.Unit(self.units)
+        bases  = self.units.bases
+        
+        factor = 1.
+        if u.s      not in bases: factor /= self.exptime  
+        if u.m      not in bases: factor /= self.area
+        if u.micron not in bases: factor /= self.lam_res
+        if u.arcsec not in bases: factor /= (self.pix_res)**2
 
-        self.pix
-        self.units = units
-
-
-
-    def from_cube(self, lam, cube, units="ph/s/arcsec2/micron"):
+        self.units = u.Unit("ph/(s m2 micron arcsec2)")
+        self.spectra *= factor
+    
+    
+    def from_cube(self, filename, **kwargs):
         """
         Make a Source object from a cube in memory or a FITS cube on disk
         """
-        self.units = units
-        if type(cube) == str and os.path.exists(cube):
-            cube = fits.getdata(cube)
-            if "BUNIT" in cube.getheader().keys():
-                self.units = cube.getheader["BUNIT"]
+        params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
+        params.update(kwargs)
+        
+        if type(filename) == str and os.path.exists(filename):
+            hdr = fits.getheader(filename)
+            cube = fits.getdata(filename)
+        else:
+            raise ValueError(filename+" doesn't exist")
 
+        lam_res = hdr["CDELT3"]
+        lam_min = hdr["CRVAL3"] - hdr["CRPIX3"] * lam_res
+        lam_max = lam_min + hdr["NAXIS3"] * lam_res
+        
         flux_map = np.sum(cube, axis=0).astype(dtype=np.float32)
         x, y = np.where(flux_map != 0)
 
-        self.lam = lam
+        self.lam = np.linspace(lam_min, lam_max, hdr["NAXIS3"])
         self.spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
         self.x, self.y = x,y
         self.ref = np.arange(len(x))
         self.weight = np.ones(len(x))
 
-    def from_arrays(self, lam, spec_arr, x, y, ref, weight=None,
-                    units="ph/s/arcsec2/micron"):
+        self.units   = u.Unit(hdr["BUNIT"]) if "BUNIT"  in hdr.keys()  else params["units"]
+        self.exptime = hdr["EXPTIME"]      if "EXPTIME" in hdr.keys()  else params["exptime"]
+        self.area    = hdr["AREA"]          if "AREA"   in hdr.keys()  else params["area"]
+        self.pix_res = hdr["CDELT1"]        if "CDELT1" in hdr.keys()  else params["pix_res"]
+        self.lam_res = lam_res
+        
+        self.convert_to_photons()
+        
+    def from_arrays(self, lam, spec_arr, x, y, ref, 
+                    weight=None, **kwargs):
         """
         Make a Source object from a series of lists
         """
-
+        params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
+        params.update(kwargs)
+        
         self.lam = lam
         self.spec_arr = spec_arr
         self.x = x
         self.y = y
         self.ref = ref
         self.weight = weight   if weight is not None   else np.array([1]*len(x))
-        self.units = units
-
+        
+        self.units = params["units"]
+        self.pix_res = params["pix_res"]
+        self.exptime = params["exptime"]
+        self.area = params["area"]
+        self.lam_res = (lam[-1] - lam[0]) / len(lam)
+        
         if len(spec_arr.shape) == 1:
             self.spec_arr = np.array((spec_arr, spec_arr))
 
+        self.convert_to_photons()
 
-    def read(self, filename="../input/GC2.fits", units="ph/s/arcsec2/micron"):
+    def read(self, filename, **kwargs):
         """
         Read in a previously saved Source FITS file
         """
-        self.units = units
-
+        params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
+        params.update(kwargs)
+        
         ipt = fits.open(filename)
-        self.x = ipt[0].data[0,:]
-        self.y = ipt[0].data[1,:]
-        self.ref = ipt[0].data[2,:]
-        self.weight = ipt[0].data[3,:]
+        dat0 = ipt[0].data
+        hdr0 = ipt[0].header
+        dat1 = ipt[1].data
+        hdr1 = ipt[1].header
+        ipt.close()
+                
+        self.x = dat0[0,:]
+        self.y = dat0[1,:]
+        self.ref = dat0[2,:]
+        self.weight = dat0[3,:]
 
-        self.spec_arr = ipt[1].data
-        lam_min, lam_max = ipt[1].header["LAM_MIN"], ipt[1].header["LAM_MAX"]
-        self.lam = np.linspace(lam_min, lam_max, ipt[1].header["NAXIS1"])
+        lam_min, lam_max = hdr1["LAM_MIN"], hdr1["LAM_MAX"]
+        self.lam = np.linspace(lam_min, lam_max, hdr1["NAXIS1"])
+        self.spec_arr = dat1
+        
+        self.units   = u.Unit(hdr["BUNIT"]) if "BUNIT"  in hdr0.keys()  else params["units"]
+        self.exptime = hdr["EXPTIME"]      if "EXPTIME" in hdr0.keys()  else params["exptime"]
+        self.area    = hdr["AREA"]          if "AREA"   in hdr0.keys()  else params["area"]
+        self.pix_res = hdr["CDELT1"]        if "CDELT1" in hdr0.keys()  else params["pix_res"]
+        self.lam_res = (lam_max - lam_min) / hdr1["NAXIS1"]
 
-
-    def write(self, filename="../input/source.fits"):
+        self.convert_to_photons()
+        
+    def write(self, filename):
         """
+        Write the current Source object out to a FITS file
+        
+        Parameters:
+        ===========
+        filename:
+        
+        
         Just a place holder so that I know what's going on with the input table
         * The fist extension [0] contains an "image" of size 4 x N where N is the
         amount of sources. The 4 columns are x, y, spec_ref, weight.
@@ -372,37 +443,35 @@ class Source(object):
         spectra in the source list. max(spec_ref) = M - 1
         """
 
-        hdr = fits.getheader("../../../PreSim/Input_cubes/GC2.fits")
-        ipt = fits.getdata("../../../PreSim/Input_cubes/GC2.fits")
-        flux_map = np.sum(ipt, axis=0).astype(dtype=np.float32)
-        x,y = np.where(flux_map != 0)
-        ref = np.arange(len(x))
-        weight = np.ones(len(x))
-        spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
-        lam = np.linspace(0.2,2.5,231)
+        # hdr = fits.getheader("../../../PreSim/Input_cubes/GC2.fits")
+        # ipt = fits.getdata("../../../PreSim/Input_cubes/GC2.fits")
+        # flux_map = np.sum(ipt, axis=0).astype(dtype=np.float32)
+        # x,y = np.where(flux_map != 0)
+        # ref = np.arange(len(x))
+        # weight = np.ones(len(x))
+        # spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
+        # lam = np.linspace(0.2,2.5,231)
 
         xyHDU = fits.PrimaryHDU(np.array((x,y,ref,weight)))
         xyHDU.header["X_COL"] = "1"
         xyHDU.header["Y_COL"] = "2"
         xyHDU.header["REF_COL"] = "3"
         xyHDU.header["W_COL"] = "4"
-        xyHDU.header["BUNIT"] = self.units
-        xyHDU.header["SIM_CUBE"] = "SOURCE"
-        #xyHDU.header["DISTANCE"] = (hdr["DISTANCE"], "Mpc")
-        #xyHDU.header["RADIUS"] = (hdr["RADIUS"], "kpc")
 
+        xyHDU.header["BUNIT"] = self.units
+        xyHDU.header["EXPTIME"] = self.exptime
+        xyHDU.header["AREA"] = self.area
+        xyHDU.header["CDELT1"] = self.pix_res
+        
+        xyHDU.header["SIM_CUBE"] = "SOURCE"
+        
         specHDU = fits.ImageHDU(spec_arr)
         specHDU.header["LAM_MIN"] = lam[0]
         specHDU.header["LAM_MAX"] = lam[-1]
 
         hdu = fits.HDUList([xyHDU, specHDU])
-        hdu.writeto("",clobber=True)
+        hdu.writeto(filename, clobber=True)
 
-
-
-
-    def arrays_to_light(lam, spectra, x, y, spec_ref, weights, pix_res, area):
-        pass
 
     def image_to_light(filename):
         pass
@@ -410,20 +479,8 @@ class Source(object):
     def ascii_to_light(filename):
         pass
 
-    def fitscube_to_light(filename):
-        pass
-
-    def read_light():
-        pass
-
-
-
-
-
-
-
-
-
+        
+        
 ###############################################################
 # Old code from LightObject - not sure if I still need it.
 
