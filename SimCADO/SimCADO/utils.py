@@ -227,3 +227,110 @@ def poissonify(self, arr):
     - arr: 
     """
     return np.random.poisson(arr).astype(np.float32)
+    
+    
+    
+    
+################################################################################    
+#              Stellar parameters from mass for InputGenerator                 #
+################################################################################
+
+# The following functions are to help determine various stellar parameters based
+# on the mass of the star. The is so that a cluster of main sequence stars can 
+# be generated according to masses in an IMF.
+    
+    
+        
+        
+        
+def temp_from_mass(mass):
+    
+    mass = mass.value if type(mass) == u.quantity.Quantity else mass
+    
+    f = np.array([ 0.02651303, -0.05307791, -0.10533279,  0.1843677 ,  0.5460582 , 3.74004826])
+    logM = np.log10(mass)
+    logT = np.polyval(f, logM)
+    
+    return 10**logT * u.K
+        
+    
+def flux5556A_from_mass(mass, distance=10*u.pc):    
+	"""
+	F = F0 * 10**(-0.4 * f(log10(temp)))
+	
+	The difference in luminosity is based on the difference in absolute 
+    magnitude, Mv, compared to Vega (@ 10pc Mv=0) and Mv is proportional to 
+    log10(Temp), which we get from the mass.
+	
+	The value for F0 is taken to be 3580 Jy for a Mv = 0 star
+	This is based on the value for Vega, at 7.7pc with Mv(vega) = 0.58
+	Therefore if Vega were at 10pc, it would have a Mv = 0.
+    
+    F_5556A = f(mass)
+	"""
+	
+	mass = mass.value if type(mass) == u.quantity.Quantity else mass
+	temp = temp_from_mass(mass)
+	
+	f = np.array([-10.57984516,  139.88537641, -624.14454692,  935.92676894])
+	
+	if type(temp) == u.quantity.Quantity:
+        logT = np.log10(temp.value) 
+    else: 
+        np.log10(temp)
+	Mv = np.polyval(f, logT)
+	
+	return (3580 * u.Jy * 10**(-0.4*Mv) * (10*u.pc / distance)**2).to(u.Jy)
+    
+    
+def lifetime_from_mass(mass):
+    """
+    Calculate the lifetime of a main sequence star based on a best fit
+    approximation to a plot of lifetimes vs masses.
+    
+    t = f(mass)
+    """
+    mass = mass.value   if type(mass) == u.quantity.Quantity    else mass
+    
+    f = np.array([ 0.24897294, -0.09842223, -2.47114954,  9.89215499])
+    
+    logM = np.log10(mass)
+    logt = np.polyval(f, logM)
+    
+    return 10**logt * u.yr
+    
+    
+def n_class_from_mass(mass):
+	"""
+    I have given spectral types a number based (O=0, A=2, M=6, etc) so that they
+    can be quantified. The following determines the numerical main sequence 
+    spectral type based on the stars mass.
+    
+    n(spec_type) = f(mass)
+    """
+	mass = mass.value if type(mass) == u.quantity.Quantity else mass
+	
+	f = np.array([-0.14376899,  0.13219846,  0.37555566, -0.31116164, -0.59572498, 1.62977733])
+	logM = np.log10(mass)
+	logN = np.polyval(f, logM)
+	
+	n = np.asarray(10**logN, dtype=int)
+	return n
+	
+	
+def pickles_from_n(mass, pickles_dir):
+	"""
+    Not all main sequence spectral types are in the Pickles library. This 
+    function looks at what is available and then assigns a spectrum to each star
+    based on its mass
+    """
+    n = n_class_from_mass(mass)
+	stars 	= [fname[2:4] for fname in os.listdir(pickles_dir) if "uk" in fname and "v" in fname[4]]
+	avail	= [int(str(["o","b","a","f","g","k","m"].index(f[0]))+f[1]) for f in stars]
+	dn      = [(avail-i)[abs(avail-i).argmin()] for i in n]
+
+	x,y = (n+dn)/10, (n+dn)%10
+	pickle_types = [["o","b","a","f","g","k","m"][x[i]]+str(y[i])+"v" for i in range(len(n))]
+	
+	return pickle_types
+    
