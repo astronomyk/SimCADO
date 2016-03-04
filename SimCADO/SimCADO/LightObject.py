@@ -291,28 +291,55 @@ class LightObject(object):
 
 class Source(object):
     """
+    Create a source object from a file or from arrays
+    
     Source class generates the arrays needed for LightObject. It takes various
     inputs and converts them to an array of positions and references to spectra
     It also converts spectra to photons/s/voxel. The default units for input
     data is ph/s
 
-    Keywords:
+    Parameters
+    ==========
     - filename
     or
-    - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
-    - spectra   :
-    - x         : X_COL
-    - y         : Y_COL
-    - spec_ref  : REF_COL
-    - weight    : W_COL
-    - units*    : BUNIT
-    - pix_res*  : PIX_RES [, CDELT1]
-    - exptime*  : EXPTIME
-    - area*     : AREA
-    """
+    - lam     
+    - spectra 
+    - x       
+    - y       
+    - spec_ref
+    - weight  
 
-    def __init__(self, **kwargs):
-        pass
+    Keyword arguments
+    =================
+    - units
+    - pix_res
+    - exptime
+    - area
+    """
+    
+    def __init__(self, filename=None,
+                lam=None, spec_arr=None, x=None, y=None, ref=None, weight=None, 
+                **kwargs):
+        
+        self.params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
+        self.params.update(kwargs)
+    
+        self.units = u.Unit(self.params["units"])
+        self.pix_res = self.params["pix_res"]
+        self.exptime = self.params["exptime"]
+        self.area = self.params["area"]
+    
+        if filename is not None:
+            hdr = fits.getheader(filename)
+            if "SIM_CUBE" in hdr.keys() and hdr["SIM_CUBE"] == "SOURCE":
+                self.read(filename)
+            else:
+                self._from_cube(self, filename)
+        elif not None in (lam, spec_arr, x, y, ref):
+            self._from_arrays(lam, spec_arr, x, y, ref, weight)  
+        else:
+            raise ValueError("Trouble with inputs. Could not create Source")
+            
     
     def __repr__(self):
         return "A photon source object"
@@ -320,28 +347,33 @@ class Source(object):
     
     def _convert_to_photons(self):
         """
-        convert the spectra to photons/s/voxel
+        convert the spectra to photons/(s m2)
+        if [arcsec] are in the units, we want to find the photons per pixel
+        if [um] are in the units, we want to find the photons per wavelength bin
+        if 
+        
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Come back and put in other energy units like Jy, mag, ergs !
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         """
-        self.units = u.Unit(self.units)
+        self.units = u.Unit(self.params["units"])
         bases  = self.units.bases
         
         factor = 1.
-        if u.s      not in bases: factor /= self.exptime  
-        if u.m      not in bases: factor /= self.area
-        if u.micron not in bases: factor /= self.lam_res
-        if u.arcsec not in bases: factor /= (self.pix_res)**2
-
-        self.units = u.Unit("ph/(s m2 micron arcsec2)")
-        self.spectra *= factor
+        if u.s      not in bases: factor /= (self.params["exptime"]*u.s)
+        if u.m      not in bases: factor /= (self.params["area"]   *u.m**2)
+        if u.micron     in bases: factor *= (self.params["lam_res"]*u.um)
+        if u.arcsec     in bases: factor *= (self.params["pix_res"]*u.arcsec)**2
+        #print((factor*self.units).unit)
+        
+        self.units = (factor*self.units).unit
+        self.spec_arr *= factor
     
     
-    def from_cube(self, filename, **kwargs):
+    def _from_cube(self, filename, **kwargs):
         """
         Make a Source object from a cube in memory or a FITS cube on disk
-        """
-        params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
-        params.update(kwargs)
-        
+        """       
         if type(filename) == str and os.path.exists(filename):
             hdr = fits.getheader(filename)
             cube = fits.getdata(filename)
@@ -361,47 +393,35 @@ class Source(object):
         self.ref = np.arange(len(x))
         self.weight = np.ones(len(x))
 
-        self.units   = u.Unit(hdr["BUNIT"]) if "BUNIT"  in hdr.keys()  else params["units"]
-        self.exptime = hdr["EXPTIME"]      if "EXPTIME" in hdr.keys()  else params["exptime"]
-        self.area    = hdr["AREA"]          if "AREA"   in hdr.keys()  else params["area"]
-        self.pix_res = hdr["CDELT1"]        if "CDELT1" in hdr.keys()  else params["pix_res"]
+        if "BUNIT"  in hdr.keys():      self.units   = u.Unit(hdr["BUNIT"]) 
+        if "EXPTIME" in hdr.keys():     self.exptime = hdr["EXPTIME"]
+        if "AREA"   in hdr.keys():      self.area    = hdr["AREA"]          
+        if "CDELT1" in hdr.keys():      self.pix_res = hdr["CDELT1"]    
         self.lam_res = lam_res
         
-        self.convert_to_photons()
+        self._convert_to_photons()
         
-    def from_arrays(self, lam, spec_arr, x, y, ref, 
-                    weight=None, **kwargs):
+    def _from_arrays(self, lam, spec_arr, x, y, ref, weight=None):
         """
         Make a Source object from a series of lists
-        """
-        params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
-        params.update(kwargs)
-        
+        """       
         self.lam = lam
         self.spec_arr = spec_arr
         self.x = x
         self.y = y
         self.ref = ref
         self.weight = weight   if weight is not None   else np.array([1]*len(x))
-        
-        self.units = params["units"]
-        self.pix_res = params["pix_res"]
-        self.exptime = params["exptime"]
-        self.area = params["area"]
-        self.lam_res = (lam[-1] - lam[0]) / len(lam)
+        self.lam_res = np.median(lam[1:] - lam[:-1])
         
         if len(spec_arr.shape) == 1:
             self.spec_arr = np.array((spec_arr, spec_arr))
 
-        self.convert_to_photons()
+        self._convert_to_photons()
 
-    def read(self, filename, **kwargs):
+    def read(self, filename):
         """
         Read in a previously saved Source FITS file
         """
-        params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
-        params.update(kwargs)
-        
         ipt = fits.open(filename)
         dat0 = ipt[0].data
         hdr0 = ipt[0].header
@@ -415,16 +435,17 @@ class Source(object):
         self.weight = dat0[3,:]
 
         lam_min, lam_max = hdr1["LAM_MIN"], hdr1["LAM_MAX"]
+        self.lam_res     = hdr1["LAM_RES"]
         self.lam = np.linspace(lam_min, lam_max, hdr1["NAXIS1"])
         self.spec_arr = dat1
         
-        self.units   = u.Unit(hdr["BUNIT"]) if "BUNIT"  in hdr0.keys()  else params["units"]
-        self.exptime = hdr["EXPTIME"]      if "EXPTIME" in hdr0.keys()  else params["exptime"]
-        self.area    = hdr["AREA"]          if "AREA"   in hdr0.keys()  else params["area"]
-        self.pix_res = hdr["CDELT1"]        if "CDELT1" in hdr0.keys()  else params["pix_res"]
-        self.lam_res = (lam_max - lam_min) / hdr1["NAXIS1"]
+        if "BUNIT"  in hdr0.keys():     self.params["units"]   = u.Unit(hdr0["BUNIT"]) 
+        if "EXPTIME" in hdr0.keys():    self.params["exptime"] = hdr0["EXPTIME"]      
+        if "AREA"   in hdr0.keys():     self.params["area"]    = hdr0["AREA"]          
+        if "CDELT1" in hdr0.keys():     self.params["pix_res"] = hdr0["CDELT1"]        
+        self.lam_res = hdr1["LAM_RES"]
 
-        self.convert_to_photons()
+        self._convert_to_photons()
         
     def write(self, filename):
         """
@@ -452,23 +473,28 @@ class Source(object):
         # spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
         # lam = np.linspace(0.2,2.5,231)
 
-        xyHDU = fits.PrimaryHDU(np.array((x,y,ref,weight)))
+        print(self.x, self.y, self.ref, self.weight)
+        xyHDU = fits.PrimaryHDU(np.array((self.x, self.y, self.ref, self.weight)))
         xyHDU.header["X_COL"] = "1"
         xyHDU.header["Y_COL"] = "2"
         xyHDU.header["REF_COL"] = "3"
         xyHDU.header["W_COL"] = "4"
 
-        xyHDU.header["BUNIT"] = self.units
-        xyHDU.header["EXPTIME"] = self.exptime
-        xyHDU.header["AREA"] = self.area
-        xyHDU.header["CDELT1"] = self.pix_res
+        xyHDU.header["BUNIT"] = self.units.to_string()
+        xyHDU.header["EXPTIME"] = self.params["exptime"]
+        xyHDU.header["AREA"] = self.params["area"]
+        xyHDU.header["CDELT1"] = self.params["pix_res"]
         
         xyHDU.header["SIM_CUBE"] = "SOURCE"
         
-        specHDU = fits.ImageHDU(spec_arr)
-        specHDU.header["LAM_MIN"] = lam[0]
-        specHDU.header["LAM_MAX"] = lam[-1]
-
+        specHDU = fits.ImageHDU(self.spec_arr)
+        specHDU.header["CRVAL1"] = self.lam[0]
+        specHDU.header["CRPIX1"] = 0
+        specHDU.header["CDELT1"] = self.lam_res
+        specHDU.header["LAM_MIN"] = self.lam[0]
+        specHDU.header["LAM_MAX"] = self.lam[-1]
+        specHDU.header["LAM_RES"] = self.lam_res
+        
         hdu = fits.HDUList([xyHDU, specHDU])
         hdu.writeto(filename, clobber=True)
 
