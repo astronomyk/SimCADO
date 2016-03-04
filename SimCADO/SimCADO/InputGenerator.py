@@ -24,51 +24,11 @@ try:
 except:
     import utils
     import LightObject as lo
-    
 
-def source_star(spec_type, distance=10*u.pc, filename=None, **kwargs):
-    """
-    create a Source object for a main sequence star. If filename is None, return
-    the object. Otherwise save it to disk
-    """
-    # Must have the following properties:
-    # ===================================
-    # - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
-    # - spectra   :
-    # - x         : X_COL
-    # - y         : Y_COL
-    # - spec_ref  : REF_COL
-    # - weight    : W_COL
-    # - units*    : BUNIT
-    # - pix_res*  : PIX_RES [, CDELT1]
-    # - exptime*  : EXPTIME
-    # - area*     : AREA
-
-    params = {  "x"     :0
-                "y"     :0
-                "units" :"ph/(s m2)"
-                "pix_res":0.004
-                "exptime":None
-                "area"  :None   }
-    params.update(kwargs)
-    
-    lam, spectra = get_MS_spectra(spec_type, distance)
-    x, y = [0], [0]
-    spec_ref = [1]
-    weight = [0]
-    units = 
-    pix_res = 
-    
-
-def source_from_mags():
-    """
-    Generate a LightObject FITS file from a list of magnitudes
-    """
-    pass
-
-
-
-
+################################################################################    
+#                             Generate PSF Cubes                               #
+################################################################################    
+        
 def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     """
     Generate a FITS file with E-ELT PSFs for a range of wavelengths by using the
@@ -136,6 +96,109 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
 
         
         
+################################################################################    
+#                       Generate some Source objects                           #
+################################################################################    
+
+def source_from_stars(spec_type, x, y, distance=10*u.pc, 
+                      filename=None, **kwargs):
+    """
+    create a Source object for a main sequence star. If filename is None, return
+    the object. Otherwise save it to disk
+    """
+    # Must have the following properties:
+    # ===================================
+    # - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
+    # - spectra   :
+    # - x         : X_COL
+    # - y         : Y_COL
+    # - spec_ref  : REF_COL
+    # - weight    : W_COL
+    #   **kwargs
+    # - units*    : BUNIT
+    # - pix_res*  : PIX_RES [, CDELT1]
+    # - exptime*  : EXPTIME
+    # - area*     : AREA
+
+    params = {  "units" :"ph/(s m2)",
+                "pix_res":0.004,
+                "exptime":None,
+                "area"  :None   }
+    params.update(kwargs)
+    is_list = True if type(spec_type) in (list, tuple, np.ndarray) else False
+    
+    spec_type = [spec_type] if not is_list else spec_type
+    unique_type = list(np.unique(spec_type))
+    
+    ref = [unique_type.index(i) for i in spec_type]
+    lam, spectra = get_MS_spectra(unique_type)
+    if type(u.Quantity): 
+        weight = ((10*u.pc / distance).value)**2
+    else:
+        weight = (10. / distance)**2
+    if type(weight) != np.ndarray:
+        weight = np.array([weight]*len(spec_type))
+
+    obj = lo.Source()
+    obj.from_arrays(lam, spectra, x, y, ref, weight, **params)
+    if filename is not None:
+        obj.write(filename)
+    else:
+        return obj
+    
+def source_from_mags():
+    """
+    Generate a LightObject FITS file from a list of magnitudes
+    """
+    pass
+
+ 
+def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None):
+    """
+    Pull in the emission curve for a specific star
+    
+    Parameters
+    ==========
+    - spec_type : str, [str]
+        the spectral class(es) of the main sequence star(s), e.g. A0, G2V
+    - distance : float, [float], optional
+        [parsec] the distance(s) to said star
+    - star_catalogue : str, optional
+        path name to an ASCII table with spectra of MS stars normalised to
+        lam = 5556 Angstrom. Default is "../data/EC_pickles_MS.dat".
+        
+    Notes:
+        It is assumed that the wavelength column of any pickles_table is in [um]
+        Units of the returned spectra are [ph/s/m2]
+    """   
+    if pickles_table is None:
+        pickles_table = ascii.read("../data/EC_pickles_MS.dat")
+    cat = pickles_table  
+    
+    if type(spec_type) == list:
+        pick_type = [nearest_pickle_type(SpT) for SpT in spec_type]
+    else:
+        pick_type = nearest_pickle_type(spec_type)
+        
+    # Flux is in units of [ph/s/m2/um]. dlam is in units of [um] 
+    mass = spec_type_to_mass(pick_type)
+    flux = mass_to_flux5556A(mass, distance)
+    
+    lam = cat[cat.colnames[0]].data
+    dlam = np.append(lam[1:] - lam[:-1], lam[-1] - lam[-2])
+      
+    if type(spec_type) == list:
+        spectra = []
+        for i in range(len(pick_type)):
+            tmp = cat[pick_type[i][:2].lower()+"v"].data
+            spectra += [tmp * dlam * flux[i]]
+    else:
+        spectra = cat[spec_type[:2].lower()+"v"].data
+        spectra = spectra * dlam * flux
+    
+    return np.asarray(lam), np.asarray(spectra)
+
+        
     
 ################################################################################    
 #              Stellar parameters from mass for InputGenerator                 #
@@ -145,15 +208,16 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
 # on the mass of the star. The is so that a cluster of main sequence stars can 
 # be generated according to masses in an IMF.
     
-    
-        
         
         
 def mass_to_temp(mass):
-    
+    """
+    Caluclate an approximate surface temperature based on mass
+    """
     mass = mass.value if type(mass) == u.quantity.Quantity else mass
     
-    f = np.array([ 0.02651303, -0.05307791, -0.10533279,  0.1843677 ,  0.5460582 , 3.74004826])
+    f = np.array([ 0.02651303, -0.05307791, -0.10533279,  0.1843677 ,  
+                   0.5460582 , 3.74004826])
     logM = np.log10(mass)
     logT = np.polyval(f, logM)
     
@@ -199,7 +263,7 @@ def mass_to_flux5556A(mass, distance=10*u.pc):
 
     # janskys = (3580 * u.Jy * 10**(-0.4*Mv) * (10*u.pc / distance)**2).to(u.Jy)
     photons = (996 * u.Unit("ph/(s cm2 Angstrom)") * 10**(-0.4*Mv) * \
-                                            (10*u.pc / distance)**2)
+                                                        (10*u.pc / distance)**2)
     return photons.to(u.ph/u.s/u.m**2/u.um).value
         
     
@@ -240,6 +304,25 @@ def mass_to_spec_type(mass):
     return spec_type
 
     
+def mass_to_n_class(mass):
+    """
+    I have given spectral types a number based (O=0, A=2, M=6, etc) so that they
+    can be quantified. The following determines the numerical main sequence 
+    spectral type based on the stars mass.
+    
+    n(spec_type) = f(mass)
+    """
+    mass = mass.value if type(mass) == u.quantity.Quantity else mass
+    
+    f = np.array([-0.14376899,  0.13219846,  0.37555566, -0.31116164,
+                  -0.59572498, 1.62977733])
+    logM = np.log10(mass)
+    logN = np.polyval(f, logM)
+    
+    n = np.asarray(10**logN, dtype=int)
+    return n
+    
+
 def spec_type_to_mass(spec_type):
     """
     Takes a spectral type of a main sequence star and returns the mass, 
@@ -270,9 +353,10 @@ def spec_type_to_n(spec_type):
     Convert a spectral type to numerical type: O5 = 5, A0V = 20, G2 = 42, etc
     O:0, B:1, A:2, F:3, G:4, K:5, M:6, L:7, T:8
     """
+    spec_type = [spec_type] if type(spec_type) != list else spec_type
     d = {"o":0, "b":1, "a":2, "f":3, "g":4, "k":5, "m":6, "l":7, "t":8}
-    n = float(d[spec_type[0].lower()])*10 + float(spec_type[1])
-    return int(n)
+    n = [int(float(d[SpT[0].lower()])*10 + float(SpT[1])) for SpT in spec_type]
+    return n
 
 
 def n_to_spec_type(n):    
@@ -280,45 +364,10 @@ def n_to_spec_type(n):
     Convert a numerical type to spectral type : O5 = 5, A0V = 20, G2 = 42, etc
     O:0, B:1, A:2, F:3, G:4, K:5, M:6, L:7, T:8
     """
+    n = [n] if not hasattr(n,"__iter__") else n
     d = {0:"o", 1:"b", 2:"a", 3:"f", 4:"g", 5:"k", 6:"m", 7:"l", 8:"t"}
-    spec_type = d[n//10] + str(n%10) + "v"
+    spec_type = [d[i//10] + str(i%10) + "v" for i in n]
     return spec_type    
-    
-    
-def mass_to_n_class(mass):
-    """
-    I have given spectral types a number based (O=0, A=2, M=6, etc) so that they
-    can be quantified. The following determines the numerical main sequence 
-    spectral type based on the stars mass.
-    
-    n(spec_type) = f(mass)
-    """
-    mass = mass.value if type(mass) == u.quantity.Quantity else mass
-    
-    f = np.array([-0.14376899,  0.13219846,  0.37555566, -0.31116164, -0.59572498, 1.62977733])
-    logM = np.log10(mass)
-    logN = np.polyval(f, logM)
-    
-    n = np.asarray(10**logN, dtype=int)
-    return n
-    
-    
-def mass_to_pickles(mass, pickles_dir):
-    """
-    Not all main sequence spectral types are in the Pickles library. This 
-    function looks at what is available and then assigns a spectrum to each star
-    based on its mass
-    """
-    n = n_class_from_mass(mass)
-    stars   = [fname[2:4] for fname in os.listdir(pickles_dir) if "uk" in fname and "v" in fname[4]]
-    avail   = [int(str(["o","b","a","f","g","k","m"].index(f[0]))+f[1]) for f in stars]
-    dn      = [(avail-i)[abs(avail-i).argmin()] for i in n]
-
-    x,y = (n+dn)/10, (n+dn)%10
-    pickle_types = [["o","b","a","f","g","k","m"][x[i]]+str(y[i])+"v" for i in range(len(n))]
-    
-    return pickle_types
-    
     
 def nearest_pickle_type(spec_type):
     """
@@ -334,62 +383,20 @@ def nearest_pickle_type(spec_type):
             'm0v', 'm1v', 'm2v', 'm3v', 'm4v', 'm5v', 'm6v']
     n = np.array([spec_type_to_n(i) for i in keys if i[1].isdigit()])
     
-    if type(spec_type) == str:
-        if spec_type[1].isdigit():
-            m = spec_type_to_n(spec_type)
+    # n are the numerical spectral types, m is the numerical type of "spec_type"
+    # find when n is closest to n, then convert that n to a string spectral type
+    if type(spec_type) not in (list, tuple, np.array) :
+        if type(spec_type) in (str, np.str_):
+            if spec_type[1].isdigit():
+                m = spec_type_to_n(spec_type)
+            else:
+                raise ValueError(spec_type+" isn't a main sequence star")
         else:
-            raise ValueError(spec_type+" isn't a main sequence star")
-    else:
-        m = int(spec_type)
+            m = int(spec_type)
 
-    pick_type = n_to_spec_type(n[np.argmin(np.abs(n-m))])
-    return pick_type
-    
-  
-def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None):
-    """
-    Pull in the emission curve for a specific star
-    
-    Parameters
-    ==========
-    - spec_type : str, [str]
-        the spectral class(es) of the main sequence star(s), e.g. A0, G2V
-    - distance : float, [float], optional
-        [parsec] the distance(s) to said star
-    - star_catalogue : str, optional
-        path name to an ASCII table with spectra of MS stars normalised to
-        lam = 5556 Angstrom. Default is "../data/EC_pickles_MS.dat".
-        
-    Notes:
-        It is assumed that the wavelength column of any pickles_table is in [um]
-        Units of the returned spectra are [ph/s/m2]
-    """   
-    if pickles_table is None:
-        pickles_table = ascii.read("../data/EC_pickles_MS.dat")
-    cat = pickles_table  
-    
-    if type(spec_type) == list:
-        pick_type = [nearest_pickle_type(SpT) for SpT in spec_type]
+        pick_type = n_to_spec_type(n[np.argmin(np.abs(n-m))])
+        return pick_type[0]
     else:
-        pick_type = nearest_pickle_type(spec_type)
+        return [nearest_pickle_type(SpT) for SpT in spec_type]
         
-    # Flux is in units of [ph/s/m2/um]. dlam is in units of [um]    
-    mass = spec_type_to_mass(pick_type)
-    flux = mass_to_flux5556A(mass, distance)
-    
-    lam = cat[cat.colnames[0]].data
-    dlam = np.append(lam[1:] - lam[:-1], lam[-1] - lam[-2])
-    
-      
-    if type(spec_type) == list:
-        spectra = []
-        for i in range(len(pick_type)):
-            tmp = cat[pick_type[i][:2].lower()+"v"].data
-            spectra += [tmp * dlam * flux[i]]
-    else:
-        spectra = cat[spec_type[:2].lower()+"v"].data
-        spectra = spectra * dlam * flux
-    
-    return lam, spectra 
-
-    
+ 
