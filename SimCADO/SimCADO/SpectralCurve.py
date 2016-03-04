@@ -181,16 +181,6 @@ class TransmissionCurve(object):
                           self.params["min_step"])
         tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
 
-
-        # The summing issue - assuming we want to integrate along the curve,
-        # i.e. count all the photons in a new set of bins, we need to integrate
-        # along the well-sampled (1E-5um) curve. However the above line of code
-        # using np.interp doesn't take into account the new bin width when
-        # resampling down to 1E-5um. I account for this summing up all the
-        # photons in the original data set and normalising the new 1E-5 bin
-        # data set to have the same amount.
-        if action == "sum": tmp_y *= (np.sum(self.val_orig) / np.sum(tmp_y))
-
         # if bins is a single number, use it as the bin width
         # else as the bin centres
         if not hasattr(bins, "__len__"):
@@ -226,10 +216,18 @@ class TransmissionCurve(object):
                 # FIXED. THE SUMMING ISSUE. TEST IT         #
                 # Tested - the errors are on the 0.1% level #
                 val_tmp[i] = np.trapz(tmp_y[mask_i[0]:mask_i[-1]])
-
             else:
                 val_tmp[i] = 0
 
+        # The summing issue - assuming we want to integrate along the curve,
+        # i.e. count all the photons in a new set of bins, we need to integrate
+        # along the well-sampled (1E-5um) curve. However the above line of code
+        # using np.interp doesn't take into account the new bin width when
+        # resampling down to 1E-5um. I account for this summing up all the
+        # photons in the original data set and normalising the new 1E-5 bin
+        # data set to have the same amount.
+        if action == "sum": val_tmp *= (np.sum(self.val_orig) / np.sum(val_tmp))
+              
         self.lam = lam_tmp
         self.val = val_tmp
         self.res = lam_res
@@ -383,11 +381,13 @@ class EmissionCurve(TransmissionCurve):
 
         # The delivered EmissionCurve should be in ph/s/voxel
         #if u.s      in bases: factor *= self.params["exptime"]
-        if u.m      in bases: factor *= self.params["area"]
-        if u.arcsec in bases: factor *= self.params["pix_res"]**2
-        if u.micron in bases: factor *= self.params["lam_res"]
+        if u.m      in bases: factor *= self.params["area"]*u.m**2
+        if u.arcsec in bases: factor *= (self.params["pix_res"]*u.arcsec)**2
+        if u.micron in bases: factor *= self.params["lam_res"]*u.um
 
-        self.val *= factor
+        self.params["units"] = (factor*self.params["units"]).unit
+        
+        self.val *= factor.value
         self.factor = factor
 
     def photons_in_range(self, lam_min, lam_max):
