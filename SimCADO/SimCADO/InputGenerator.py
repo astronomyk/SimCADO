@@ -21,9 +21,11 @@ import astropy.units as u
 try:
     import SimCADO.utils as utils
     import SimCADO.LightObject as lo
+    import SimCADO.SpectralCurve as sc
 except:
     import utils
     import LightObject as lo
+    import SpectralCurve as sc
 
 ################################################################################    
 #                             Generate PSF Cubes                               #
@@ -100,12 +102,28 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
 #                       Generate some Source objects                           #
 ################################################################################    
 
+def grid_of_stars(n, spec_type):
+    pass
+
+
+
+def stellar_emission_curve(spec_type, mag=0):
+    """
+    Get an emission curve for a certain type of star
+    """
+    lam, spec = get_MS_spectra(spec_type)
+    lam_res = np.median(lam[1:]-lam[:-1])
+    
+    return sc.EmissionCurve(lam=lam, val=spec, lam_res=0.5*lam_res, units="ph/(s m2)")
+    
+
+
 def source_from_stars(spec_type, x, y, distance=10*u.pc, 
                       filename=None, **kwargs):
     """
     create a Source object for a main sequence star. If filename is None, return
     the object. Otherwise save it to disk
-    """
+    
     # Must have the following properties:
     # ===================================
     # - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
@@ -119,7 +137,11 @@ def source_from_stars(spec_type, x, y, distance=10*u.pc,
     # - pix_res*  : PIX_RES [, CDELT1]
     # - exptime*  : EXPTIME
     # - area*     : AREA
-
+    """
+    
+    # The default **kwargs are based off the units. As it is ph/(s m2), the area
+    # and exptime kwargs are set to None. We are looking at point sources here
+    # so pix_res plays no role. It is only needed for the Source object
     params = {  "units" :"ph/(s m2)",
                 "pix_res":0.004,
                 "exptime":None,
@@ -127,20 +149,27 @@ def source_from_stars(spec_type, x, y, distance=10*u.pc,
     params.update(kwargs)
     is_list = True if type(spec_type) in (list, tuple, np.ndarray) else False
     
+    # Work out which spectral types are unique
     spec_type = [spec_type] if not is_list else spec_type
     unique_type = list(np.unique(spec_type))
     
+    # Pull in the spectra of the unique types, all for a distance of 10pc
     ref = [unique_type.index(i) for i in spec_type]
     lam, spectra = get_MS_spectra(unique_type)
+    x = [x] if not is_list else x
+    y = [y] if not is_list else y
+    
+    # Weight the spectra according to distance
     if type(u.Quantity): 
         weight = ((10*u.pc / distance).value)**2
     else:
         weight = (10. / distance)**2
     if type(weight) != np.ndarray:
         weight = np.array([weight]*len(spec_type))
-
-    obj = lo.Source()
-    obj.from_arrays(lam, spectra, x, y, ref, weight, **params)
+        
+    # Create a LightObject.Source object and write it to a file
+    obj = lo.Source(lam=lam, spec_arr=spectra, x=x, y=y, ref=ref, weight=weight, 
+                    **params)
     if filename is not None:
         obj.write(filename)
     else:
@@ -153,7 +182,7 @@ def source_from_mags():
     pass
 
  
-def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None):
+def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None, raw=False):
     """
     Pull in the emission curve for a specific star
     
@@ -166,6 +195,8 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None):
     - star_catalogue : str, optional
         path name to an ASCII table with spectra of MS stars normalised to
         lam = 5556 Angstrom. Default is "../data/EC_pickles_MS.dat".
+    - raw : bool, optional
+        if True, only the raw spectrum (normalised to 1 at lam=5556A) is returned
         
     Notes:
         It is assumed that the wavelength column of any pickles_table is in [um]
@@ -179,23 +210,30 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None):
         pick_type = [nearest_pickle_type(SpT) for SpT in spec_type]
     else:
         pick_type = nearest_pickle_type(spec_type)
-        
-    # Flux is in units of [ph/s/m2/um]. dlam is in units of [um] 
+    print(pick_type)
+    # flux is in units of [ph/s/m2/um]. dlam is in units of [um] 
+    # flux is adjusted for distance
     mass = spec_type_to_mass(pick_type)
     flux = mass_to_flux5556A(mass, distance)
     
     lam = cat[cat.colnames[0]].data
     dlam = np.append(lam[1:] - lam[:-1], lam[-1] - lam[-2])
-      
+    
     if type(spec_type) == list:
         spectra = []
         for i in range(len(pick_type)):
             tmp = cat[pick_type[i][:2].lower()+"v"].data
-            spectra += [tmp * dlam * flux[i]]
+            if not raw:
+                spectra += [tmp * dlam * flux[i]]
+            else:
+                sprectra += [tmp]
     else:
-        spectra = cat[spec_type[:2].lower()+"v"].data
-        spectra = spectra * dlam * flux
+        spectra = cat[pick_type[:2].lower()+"v"].data
+        if not raw:
+            spectra = spectra * dlam * flux
     
+    # units of the spectra being returned are [ph/s/m2] for each wavelength bin,
+    # adjusted for distance
     return np.asarray(lam), np.asarray(spectra)
 
         
