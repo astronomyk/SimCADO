@@ -76,23 +76,24 @@ class Detector(object):
 
         if filename is not None:
             self.params["FPA_NOISE_PATH"] = filename
+            
         if self.params["FPA_NOISE_PATH"] is not None:
-            self.read_detector(self.params["FPA_NOISE_PATH"])
+            self.read(self.params["FPA_NOISE_PATH"])
         else:
-            self.make_detector()
+            self._make_detector()
             
         
-    def make_detector(self, **kwargs):
-
+    def _make_detector(self, **kwargs):
+        """
+        Internal method for generating a detector using the NGHxRG class
+        """ 
         self.array = self.generate_hxrg_noise(**kwargs)
 
         #add_cosmic_rays(exptime)
         #self.apply_pixel_map()
         #apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
 
-        pass
-
-    def read_detector(self, filename, **kwargs):
+    def read(self, filename, **kwargs):
         """
         Read in a detector FITS file
         
@@ -106,10 +107,7 @@ class Detector(object):
         self.array = f[0].data
         f.close()
         
-    def save_detector(self, filename=None, **kwargs):
-        ##########################################################
-        # Can't save directly after read_detector. WHY????
-        ##########################################################
+    def write(self, filename=None, **kwargs):
         """
         Save a Detector frame to a FITS file
 
