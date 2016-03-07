@@ -1019,8 +1019,8 @@ class ADC_PSFCube(DeltaPSFCube):
             raise ValueError("Pixel shifts too great (>1000), check units")
 
         ## Rotate by the paralytic angle
-        x = -pixel_shift * np.sin(para_angle / 57.29578) * (1. - effectiveness)
-        y = -pixel_shift * np.cos(para_angle / 57.29578) * (1. - effectiveness)
+        x = -pixel_shift * np.sin(np.deg2rad(para_angle)) * (1. - effectiveness)
+        y = -pixel_shift * np.cos(np.deg2rad(para_angle)) * (1. - effectiveness)
         positions = [(xi, yi) for xi, yi in zip(x, y)]
 
         super(ADC_PSFCube, self).__init__(lam_bin_centers,
