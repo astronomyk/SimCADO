@@ -114,38 +114,45 @@ def stellar_emission_curve(spec_type, mag=0):
     lam, spec = get_MS_spectra(spec_type)
     lam_res = np.median(lam[1:]-lam[:-1])
     
+    lam_central = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
+                   "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
+    a0v_rel_flux = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
+                   "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
+    
+    
     return sc.EmissionCurve(lam=lam, val=spec, lam_res=0.5*lam_res, units="ph/(s m2)")
     
 
 
-def source_from_stars(spec_type, x, y, distance=10*u.pc, 
+def source_from_stars(spec_type, x, y, distance=10*u.pc, dist_mod=None,
                       filename=None, **kwargs):
     """
     create a Source object for a main sequence star. If filename is None, return
     the object. Otherwise save it to disk
     
-    # Must have the following properties:
-    # ===================================
-    # - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
-    # - spectra   :
-    # - x         : X_COL
-    # - y         : Y_COL
-    # - spec_ref  : REF_COL
-    # - weight    : W_COL
-    #   **kwargs
-    # - units*    : BUNIT
-    # - pix_res*  : PIX_RES [, CDELT1]
-    # - exptime*  : EXPTIME
-    # - area*     : AREA
+    Must have the following properties:
+    ===================================
+    - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
+    - spectra   :
+    - x         : X_COL
+    - y         : Y_COL
+    - spec_ref  : REF_COL
+    - weight    : W_COL
+    
+    **kwargs
+    - units*    : BUNIT
+    - pix_res*  : PIX_RES [, CDELT1]
+    - exptime*  : EXPTIME
+    - area*     : AREA
     """
     
     # The default **kwargs are based off the units. As it is ph/(s m2), the area
     # and exptime kwargs are set to None. We are looking at point sources here
     # so pix_res plays no role. It is only needed for the Source object
-    params = {  "units" :"ph/(s m2)",
+    params = {  "units"  :"ph/(s m2)",
                 "pix_res":0.004,
                 "exptime":None,
-                "area"  :None   }
+                "area"   :None   }
     params.update(kwargs)
     is_list = True if type(spec_type) in (list, tuple, np.ndarray) else False
     
@@ -160,7 +167,7 @@ def source_from_stars(spec_type, x, y, distance=10*u.pc,
     y = [y] if not is_list else y
     
     # Weight the spectra according to distance
-    if type(u.Quantity): 
+    if type(distance) == u.Quantity: 
         weight = ((10*u.pc / distance).value)**2
     else:
         weight = (10. / distance)**2
@@ -210,13 +217,12 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None, raw=False):
         pick_type = [nearest_pickle_type(SpT) for SpT in spec_type]
     else:
         pick_type = nearest_pickle_type(spec_type)
-    print(pick_type)
     # flux is in units of [ph/s/m2/um]. dlam is in units of [um] 
     # flux is adjusted for distance
     mass = spec_type_to_mass(pick_type)
     flux = mass_to_flux5556A(mass, distance)
     
-    lam = cat[cat.colnames[0]].data
+    lam = np.round(cat[cat.colnames[0]].data, 7)
     dlam = np.append(lam[1:] - lam[:-1], lam[-1] - lam[-2])
     
     if type(spec_type) == list:
