@@ -113,6 +113,11 @@ class TransmissionCurve(object):
     def __str__(self):
         return "Spectral curve:\n" + str(self.info)
 
+    def __repr__(self):
+        mask = [0,1,2],[-3,-2,-1]
+        return self.info["Type"]+"Curve \n"+str(self.val[mask[0]])[:-1] \
+                                    +" ..."+str(self.val[mask[1]])[1:]
+        
     def get_data(self):
         """
         Get the wavelength and value vectors from the input parameters
@@ -377,7 +382,7 @@ class EmissionCurve(TransmissionCurve):
         self.params["units"] = u.Unit(self.params["units"])
         bases  = self.params["units"].bases
 
-        factor = 1.
+        factor = 1.*self.params["units"]
 
         # The delivered EmissionCurve should be in ph/s/voxel
         #if u.s      in bases: factor *= self.params["exptime"]
@@ -385,7 +390,7 @@ class EmissionCurve(TransmissionCurve):
         if u.arcsec in bases: factor *= (self.params["pix_res"]*u.arcsec)**2
         if u.micron in bases: factor *= self.params["lam_res"]*u.um
 
-        self.params["units"] = (factor*self.params["units"]).unit
+        self.params["units"] = factor.unit
         
         self.val *= factor.value
         self.factor = factor
