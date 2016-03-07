@@ -124,31 +124,48 @@ def stellar_emission_curve(spec_type, mag=0):
     
 
 
-def source_from_stars(spec_type, x, y, distance=10*u.pc, dist_mod=None,
+def source_from_stars(spec_type, x, y, distance=None, dist_mod=None,
                       filename=None, **kwargs):
     """
-    create a Source object for a main sequence star. If filename is None, return
-    the object. Otherwise save it to disk
+    Create a LightObject.Source object for a main sequence star.
+       
+    Parameters
+    ==========
+    spec_type : str
+        Any Main sequence spectral type
+    x : float, array-like
+    y : float, array-like
+    distance : float, array-like, optional
+        Distance to the stars. Default is 10pc
+    dist_mod : float, array-like, optional
+        Distance modulus to the stars. If distance is given, dist_mod is ignored
+    filename : str, optional
+        Path to where the Source object FITS file is saved.  If filename is None
+        the object is return.
     
-    Must have the following properties:
-    ===================================
-    - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
-    - spectra   :
-    - x         : X_COL
-    - y         : Y_COL
-    - spec_ref  : REF_COL
-    - weight    : W_COL
-    
-    **kwargs
-    - units*    : BUNIT
-    - pix_res*  : PIX_RES [, CDELT1]
-    - exptime*  : EXPTIME
-    - area*     : AREA
+    **kwargs 
+        {units  : "ph/(s m2)", pix_res : 0.004, exptime : None, area : None}
     """
+    # Must have the following properties:
+    # ===================================
+    # - lam       : LAM_MIN, LAM_MAX [, CDELT3, CRPIX3, CRVAL3, NAXIS3] 
+    # - spectra   :
+    # - x         : X_COL
+    # - y         : Y_COL
+    # - spec_ref  : REF_COL
+    # - weight    : W_COL
     
-    # The default **kwargs are based off the units. As it is ph/(s m2), the area
-    # and exptime kwargs are set to None. We are looking at point sources here
-    # so pix_res plays no role. It is only needed for the Source object
+    # **kwargs
+    # - units*    : BUNIT
+    # - pix_res*  : PIX_RES [, CDELT1]
+    # - exptime*  : EXPTIME
+    # - area*     : AREA
+  
+    
+    # The default **kwargs are based off the units. Default it is ph/(s m2), 
+    # so the area and exptime kwargs are set to None. 
+    # We are looking at point sources here so pix_res plays no role. It is only 
+    # needed for the Source object
     params = {  "units"  :"ph/(s m2)",
                 "pix_res":0.004,
                 "exptime":None,
@@ -166,11 +183,20 @@ def source_from_stars(spec_type, x, y, distance=10*u.pc, dist_mod=None,
     x = [x] if not is_list else x
     y = [y] if not is_list else y
     
+    if distance is None:
+        if dist_mod is None:
+            distance = 10.
+        else:
+            if type(dist_mod is list):
+                dist_mod = np.array(dist_mod)
+            distance = 10**(1. + 0.2 * dist_mod)
+    elif type(distance) == u.Quantity:
+            distance = distance.to(u.pc).value
+    elif type(distance) is list:
+        distance = np.array(distance)
+        
     # Weight the spectra according to distance
-    if type(distance) == u.Quantity: 
-        weight = ((10*u.pc / distance).value)**2
-    else:
-        weight = (10. / distance)**2
+    weight = (10. / distance)**2
     if type(weight) != np.ndarray:
         weight = np.array([weight]*len(spec_type))
         
@@ -179,8 +205,10 @@ def source_from_stars(spec_type, x, y, distance=10*u.pc, dist_mod=None,
                     **params)
     if filename is not None:
         obj.write(filename)
+        print("Source object written to "+filename)
     else:
         return obj
+    
     
 def source_from_mags():
     """
@@ -283,11 +311,11 @@ def mass_to_flux5556A(mass, distance=10*u.pc):
     F = F0 * 10**(-0.4 * f(log10(temp)))
     
     The difference in luminosity is based on the difference in absolute 
-    magnitude, Mv, compared to Vega (@ 10pc Mv=0) and Mv is proportional to 
-    log10(Temp), which we get from the mass.
+    magnitude, Mv, compared to Vega (@ 10pc Mv=0)
+    Mv is proportional to log10(Temp), which we get from the mass.
     
     The value for F0 is taken to be 996 ph/s/cm2/A (or 99.6E9 ph/s/m2/um)
-    for a Mv = 0 star
+    for a Mv = 0 star at 10pc
     from "The Observation and Analysis of Stellar Photospheres - D. Gray"
     
     F_5556A = f(mass)
