@@ -473,7 +473,6 @@ class Source(object):
         # spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
         # lam = np.linspace(0.2,2.5,231)
 
-        print(self.x, self.y, self.ref, self.weight)
         xyHDU = fits.PrimaryHDU(np.array((self.x, self.y, self.ref, self.weight)))
         xyHDU.header["X_COL"] = "1"
         xyHDU.header["Y_COL"] = "2"
