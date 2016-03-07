@@ -21,11 +21,13 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 try:
+    import SimCADO.Detector as fpa
     import SimCADO.PSFCube as psf
     import SimCADO.SpectralCurve as sc
     import SimCADO.PlaneEffect as pe
     import SimCADO.utils as utils
 except:
+    import Detector as fpa
     import PSFCube as psf
     import SpectralCurve as sc
     import PlaneEffect as pe
@@ -38,31 +40,100 @@ class OpticalTrain(object):
 
         self.cmds = cmds
 
-        self.lam_bin_edges   = cmds.lam_bin_edges
-        self.lam_bin_centers = cmds.lam_bin_centers
-        self.lam_res         = cmds.lam_res
-        self.pix_res         = cmds.pix_res
+        fname = self.cmds["OPTICAL_TRAIN_IN_PATH"]
+        if fname is not None:
+            if not os.path.exists(fname):
+                raise ValueError(fname+" doesn't exist")
+            
+            self.read(fname)
+        else:
+            
+            self.lam_bin_edges   = cmds.lam_bin_edges
+            self.lam_bin_centers = cmds.lam_bin_centers
+            self.lam_res         = cmds.lam_res
+            self.pix_res         = cmds.pix_res
 
-        self.lam             = cmds.lam
-        self.tc_master       = sc.UnityCurve(lam=self.lam)
+            self.lam             = cmds.lam
+            self.tc_master       = sc.UnityCurve(lam=self.lam)
 
-        self.size            = cmds["SIM_PSF_SIZE"]
-        self.psf_master      = psf.DeltaPSFCube(self.lam_bin_centers,
-                                                size=self.size,
-                                                pix_res=self.pix_res)
+            self.size            = cmds["SIM_PSF_SIZE"]
+            self.psf_master      = psf.DeltaPSFCube(self.lam_bin_centers,
+                                                    size=self.size,
+                                                    pix_res=self.pix_res)
 
-        self.adc_shifts      = np.zeros((len(self.lam_bin_centers),2))
-        #self.distortion_map
+            self.adc_shifts      = np.zeros((len(self.lam_bin_centers),2))
+            #self.distortion_map
 
+            self.make()
+        
+        
+    def make(self, cmds=None):
+        """
+        To make an optical system, cmds must contain all the keywords from the
+        various .config files. 'cmds' should have been send to __init__, but any
+        changes can be passed to make()
 
+        Parameters
+        ==========
+        - cmds : UserCommands
+            a dictionary of commands
+        """
+
+        self.cmds.update(cmds)
+
+        # Make the transmission curve for the blackbody photons from the mirror
+        self.tc_mirror  = self._gen_master_tc(preset="mirror_bb")
+        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
+                                            temp=self.cmds["SCOPE_M1_TEMP"])
+
+        # Make the spectral curves for the atmospheric background photons
+        self.tc_atmo_bg = self._gen_master_tc(preset="atmosphere_bg")
+        self.ec_atmo_gb = sc.EmissionCurve(filename = self.cmds["ATMO_EC"])
+
+        # Make the transmission curve and PSF for the source photons
+        self.tc_source  = self._gen_master_tc(preset="source")
+        self.psf_source = self._gen_master_psf()
+
+        # Make a detector Plane
+        self.detector = self._gen_detector()
+        
+        # Get the ADC shifts, telescope shake and field rotation angle
+        self.adc_shifts = self._gen_adc_shifts()
+        self.jitter_psf = self._gen_telescope_shake(self):
+        # self.field_rot = self._gen_field_rotation_angle()
+        
+        
+
+        # Here we make the optical train. This includes
+        # - the optical path for the source photons
+        #   - master transmission curve             [can be exported]
+        #       - atmosphere
+        #       - n x mirror
+        #       - instrument window
+        #       - internal mirrors
+        #       - dichroic
+        #       - filter
+        #       - detector QE
+        #   - list of wave-dep plane effects
+        #       - imperfect adc
+        #   - master psf cube
+        #       - AO psf - analytic or from file    [can be exported]
+        #       - jitter psf                        [can be exported]
+        #   - list of wave-indep plane effects
+        #       - imperfect derotation
+        #       - distortion                        [weight map can be exported]
+        #       - flat fielding                     [can be exported]
+        #   - detector    
 
     def read(self, filename):
         pass
 
     def save(self, filename):
         pass
+        
+        
 
-    def gen_master_tc(self, tc_keywords=None, preset=None):
+    def _gen_master_tc(self, tc_keywords=None, preset=None):
         """
         Combine a list of TransmissionCurves into one, either by specifying the
         list of command keywords (e.g. ATMO_TC) or by passing a preset keywords
@@ -115,7 +186,7 @@ class OpticalTrain(object):
         return tc_master
 
 
-    def gen_master_psf(self, psf_type="Airy", output=False):
+    def _gen_master_psf(self, psf_type="Airy"):
         """
         Generate a Master PSF for the system. This includes the AO PSF.
         Notes: Jitter can be applied to detector array as a single PSF, and the
@@ -123,9 +194,8 @@ class OpticalTrain(object):
 
         Parameters
         ==========
-        psf_type: 'Moffat', 'Airy'
-        output: [False/True] if True, the master_tc is returned, otherwise, it
-                updated the internal parameter self.tc_master
+        psf_type : str
+            'Moffat', 'Airy'
         """
 
         ####### PSF CUBES #######
@@ -176,83 +246,42 @@ class OpticalTrain(object):
                     psf_m1 = psf_diff
                     
         psf_master = psf_m1
-
-        if output:
-            return psf_master
-        else:
-            self.psf_master = psf_master
+        return psf_master
 
 
-    def gen_adc_shifts(self, output=False):
+    def _gen_detector(self):
         """
         Keywords:
-
         """
-        adc_shifts = pe.adc_shift(self.cmds)
+        fname = self.cmds["FPA_NOISE_PATH"]
+        if fname is not None:
+            if not os.path.exists(fname):
+                raise ValueError(fname+" doesn't exist")
         
-        if output:
-            return adc_shifts
-        else:
-            self.adc_shifts = adc_shifts
+        return fpa.Detector(fname, **self.cmds)
+        
 
-            
-    def gen_detector(self, output=False):
-        pass
-    
-    
-            
-
-    def make(self, cmds=None):
+    def _gen_adc_shifts(self):
         """
-        To make an optical system, cmds must contain all the keywords from the
-        various .config files. 'cmds' should have been send to __init__, but any
-        changes can be passed to make()
-
         Keywords:
-        cmds: a dictionary of commands
         """
-
-        self.cmds.update(cmds)
-
-        # Make the transmission curve for the blackbody photons from the mirror
-        self.tc_mirror  = self.gen_master_tc(preset="mirror_bb")
-        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
-                                            temp=self.cmds["SCOPE_M1_TEMP"])
-
-        # Make the spectral curves for the atmospheric background photons
-        self.tc_atmo_bg = self.gen_master_tc(preset="atmosphere_bg")
-        self.ec_atmo_gb = sc.EmissionCurve(filename = self.cmds["ATMO_EC"])
-
-        # Make the transmission curve and PSF for the source photons
-        self.tc_source  = self.gen_master_tc(preset="source")
-        self.psf_source = self.gen_master_psf()
-
-        # Make a detector Plane
-        self.detector_noise = self.gen_detector()
+        adc_shifts = pe.adc_shift(self.cmds)       
+        return adc_shifts
 
 
-
-
-        # Here we make the optical train. This includes
-        # - the optical path for the source photons
-        #   - master transmission curve             [can be exported]
-        #       - atmosphere
-        #       - n x mirror
-        #       - instrument window
-        #       - internal mirrors
-        #       - dichroic
-        #       - filter
-        #       - detector QE
-        #   - list of wave-dep plane effects
-        #       - imperfect adc
-        #   - master psf cube
-        #       - AO psf - analytic or from file    [can be exported]
-        #       - jitter psf                        [can be exported]
-        #   - list of wave-indep plane effects
-        #       - imperfect derotation
-        #       - distortion                        [weight map can be exported]
-        #       - flat fielding                     [can be exported]
-        #   - detector
+    def _gen_field_rotation_angle(self):
+        pass
+        
+    def _gen_telescope_shake(self):
+        """
+        Keywords:
+        """
+        pix_res =   self.cmds["SIM_DETECTOR_PIX_SCALE"] / \
+                    self.cmds["SIM_OVERSAMPLING"]
+        jitter_psf = psf.GaussianPSF(   fwhm=self.cmds["SCOPE_JITTER_FWHM"], 
+                                        pix_res=pix_res)
+        return jitter_psf
+    
 
 class ads:
     pass
