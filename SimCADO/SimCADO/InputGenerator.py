@@ -22,13 +22,15 @@ try:
     import SimCADO.utils as utils
     import SimCADO.LightObject as lo
     import SimCADO.SpectralCurve as sc
+    import SimCADO.Detector as fpa
 except:
     import utils
     import LightObject as lo
     import SpectralCurve as sc
+    import Detector as fpa
 
 ################################################################################    
-#                             Generate PSF Cubes                               #
+#                       Generate Instrument Input Data                         #
 ################################################################################    
         
 def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
@@ -97,6 +99,14 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
         hdulist.writeto(filename, clobber=params["clobber"])
 
         
+
+def micado_fpa_chip(filename, **kwargs):
+    """
+    Creates a detector FITS file
+    """
+    det = fpa.Detector(**kwargs)
+    det.write(filename)
+
         
 ################################################################################    
 #                       Generate some Source objects                           #
@@ -110,17 +120,19 @@ def grid_of_stars(n, spec_type):
 def stellar_emission_curve(spec_type, mag=0):
     """
     Get an emission curve for a certain type of star
+    !! TODO scale the emission curve to the right magnitude
     """
     lam, spec = get_MS_spectra(spec_type)
     lam_res = np.median(lam[1:]-lam[:-1])
     
     lam_central = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
                    "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
+    # not done yet
     a0v_rel_flux = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
                    "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
     
     
-    return sc.EmissionCurve(lam=lam, val=spec, lam_res=0.5*lam_res, units="ph/(s m2)")
+    return sc.EmissionCurve(lam=lam, val=spec, lam_res=lam_res, units="ph/(s m2)")
     
 
 
