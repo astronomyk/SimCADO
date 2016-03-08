@@ -37,6 +37,7 @@
 
 
 import os
+from copy import deepcopy
 import warnings
 
 import numpy as np
@@ -45,6 +46,12 @@ import scipy.ndimage.interpolation as spi
 from astropy.io import fits
 from astropy.convolution import convolve, convolve_fft
 import astropy.units as u
+
+try:
+    import SimCADO.PlaneEffect as pe
+except:
+    import PlaneEffect as pe
+
 
 __all__ = ["LightObject", "Source"]
 
@@ -61,13 +68,14 @@ class LightObject(object):
                 for N sources
 
         Optional keywords:
-        - spec_ref: [int] an array holding N references joining each of the N
+        - ref: [int] an array holding N references joining each of the N
                     source pixel coordinates to one of the S unique spectra
-                    max(spec_ref) < spectra.shape[0]
+                    max(ref) < spectra.shape[0]
         - weights: [float] an array of size N with weights for each source
         """
-        self.params = cmds
-        self.size = 4096
+        self.cmds = cmds
+        #self.size = 512
+        self.size = self.cmds["IMAGE_SIZE"]
 
         self.info = dict([])
         self.info['created'] = 'yes'
@@ -77,9 +85,10 @@ class LightObject(object):
         self.spectra    = source.spectra
         self.x_orig     = source.x
         self.y_orig     = source.y
-        self.spec_ref   = source.spec_ref
+        self.ref        = source.ref.astype(int)
         self.weight     = source.weight
-        self.x, self.y  = deepcopy(self.x_orig), deepcopy(y_orig)
+        self.x, self.y  = deepcopy(self.x_orig), deepcopy(self.y_orig)
+        self.src_params = source.params
 
         # add a second dimension to self.spectra so that all the 2D calls work
         if len(self.spectra.shape) == 1:
@@ -87,16 +96,71 @@ class LightObject(object):
 
         self.array = np.zeros((self.size, self.size), dtype=np.float32)
 
+        self.lam_bin_edges = cmds.lam_bin_edges
+        self.lam_bin_centers = cmds.lam_bin_centers
 
     def __str__(self):
         return self.info['description']
 
-    def __array__(self):
-        return self.array
 
-    def __getitem__(self, i):
-        return self.x[i], self.y[i], \
-                            self.spectra[self.spec_ref[i],:] * self.weight[i]
+    def apply_optical_train(self, opt_train):
+        """
+
+        Output array is in units of [ph/s/pixel]
+        """
+        # 1. Apply the master transmission curve to all the spectra
+        #
+        # 2. For each layer between cmds.lam_bin_edges[i, i+1]
+        #   - Apply the x,y shift for the ADC
+        #       - Apply any other shifts
+        #   - Apply the PSF for the layer
+        #       - Sum up the photons in this section of the spectra
+        #   - Add the layer to the final image array
+        #
+        # 3. Apply wave-indep psfs
+        #   - field rotation
+        #   - telescope shake
+        #   - tracking error
+        #
+        # 4. Add the average number of atmo-bg and mirror-bb photons
+        # 5. Apply the instrumental distortion
+        self.array = np.zeros((self.size, self.size), dtype=np.float32)
+
+        # 1.
+        self.apply_transmission_curve(opt_train.tc_source)
+
+        # 2.
+        for i in range(len(self.cmds.lam_bin_edges[:-1])):
+            print("Wavelength slice [um]:", self.cmds.lam_bin_centers[i])
+            # apply the adc shifts
+            self.x = self.x_orig + opt_train.adc_shifts[0][i]
+            self.y = self.y_orig + opt_train.adc_shifts[1][i]
+
+            # include any other shifts here
+
+
+            # apply the psf (get_slice_photons is called within)
+            lam_min, lam_max = self.cmds.lam_bin_edges[i:i+2]
+            psf = opt_train.psf_source[i]
+            self.array += self.apply_psf(psf, lam_min, lam_max)
+
+        # 3.
+        # !!!!!!!!!!!!!!!! All of these need to be combined into a single
+        # function that traces out the path taken by the telescope, rather than
+        # having the arcs from the derotator() function being stretched by the
+        # tracking() function and then the whole thing blurred by wind_jitter()
+        #self.array = opt_train.apply_derotator(self.array)
+        #self.array = opt_train.apply_tracking(self.array)
+        #self.array = opt_train.apply_wind_jitter(self.array)
+
+        # 4.
+        if self.cmds["ATMO_BG_ON"].lower() == "yes":
+            self.array += (opt_train.n_ph_atmo + opt_train.n_ph_mirror)
+
+            
+        ######################################
+        # CAUTION WITH THE PSF NORMALISATION #
+        ######################################
 
     def shrink_to_detector(self):
         """
@@ -146,19 +210,19 @@ class LightObject(object):
         """
 
         """
-        slice_photons = self.get_slice_photons(lam_min, lam_max, zoom=10)
+        slice_photons = self.get_slice_photons(lam_min, lam_max, min_bins=10)
         slice_array = np.zeros((self.size, self.size), dtype=np.float32)
 
         # if sub pixel accuracy is needed, be prepared to wait. For this we
         # need to go through every source spectra in turn, shift the psf by
         # the decimal amount given by pos - int(pos), then place the a
         # certain slice of the psf on the output array.
-        if sub_pixel:
-            x_int, y_int = self.x.astype(int), self.y.astype(int)
-            dx, dy = self.x - x_int, self.y - y_int
-            ax, ay = np.array(slice_array.shape) // 2
-            bx, by = np.array(psf.array.shape)   // 2
+        x_int, y_int = self.x.astype(int), self.y.astype(int)
+        dx, dy = self.x - x_int, self.y - y_int
+        ax, ay = np.array(slice_array.shape) // 2
+        bx, by = np.array(psf.array.shape)   // 2
 
+        if sub_pixel:
             # for each point source in the list, add a psf to the slice_array
             for i in range(len(slice_photons)):
                 psf_tmp = spi.shift(psf.array, (dx[i],dy[i]), order=1)
@@ -182,21 +246,16 @@ class LightObject(object):
                 by1 = by + (ay1 - y_pint)
 
                 slice_array[ax0:ax1, ay0:ay1] = psf.array[bx0:bx1, by0:by1] \
-                                        * slice_photons[p] * self.weights[p]
+                                        * slice_photons[i] * self.weights[i]
 
         else:
             # If astrometric precision is not that important and everything
             # has been oversampled, use this section.
 
-            slice_array[x_int, y_int] = slice_photons * self.weights
+            slice_array[ax + x_int, ay + y_int] = slice_photons * self.weight
             slice_array = convolve_fft(slice_array, psf.array)
 
         return slice_array
-
-
-
-    def apply_plane_effect(self, plane):
-        pass
 
 
     def apply_transmission_curve(self, transmission_curve):
@@ -210,15 +269,17 @@ class LightObject(object):
         tc.resample(self.lam)
         self.spectra *= tc.val
 
-    def get_slice_photons(self, lam_min, lam_max, zoom = 10):
+
+    def get_slice_photons(self, lam_min, lam_max, min_bins=10):
         """
-        Caluclate how many photons for each source exist in the wavelength bin
+        Calculate how many photons for each source exist in the wavelength bin
         defined by lam_min and lam_max.
 
         Keywords:
 
         Optional keywords:
-        - zoom
+        - min_bins : float
+            the minimum number of spectral bins counted per layer
         """
         # Check if the slice limits are within the spectrum wavelength range
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
@@ -235,24 +296,32 @@ class LightObject(object):
         if self.lam[i1] < lam_max and i1 < len(self.lam):
             i1 += 1
 
-        n_bins = zoom * (i1 - i0)
-        lam_zoom  = np.linspace(lam_min, lam_max, n_bins)
-        spec_zoom = np.zeros((self.spectra.shape[0], len(lam_zoom)))
-
-        # spec_zoom = np.asarray([np.interp(lam_zoom, lam[i0:i1], spec[i0:i1])
-        # for spec in spectra])
-        for i in range(len(self.spectra)):
-            spec_zoom[i,:] = np.interp(lam_zoom, self.lam[i0:i1],
+        # If there are less than min_bins between i0 and i1, then interpolate
+        if i1 - i0 < min_bins:
+            lam_zoom  = np.linspace(lam_min, lam_max, min_bins)
+            spec_zoom = np.zeros((self.spectra.shape[0], len(lam_zoom)))
+            for i in range(len(self.spectra)):
+                spec_zoom[i,:] = np.interp(lam_zoom, self.lam[i0:i1],
                                                         self.spectra[i,i0:i1])
-
-        slice_photons = np.sum(spec_zoom, axis=1)
+            spec_photons = np.sum(spec_zoom, axis=1)
+        else:
+            spec_photons = np.sum(self.spectra[:,i0:i1], axis=1)
+        
+        slice_photons = spec_photons[self.ref]
         return slice_photons
 
     def to_ADU(self):
         """
         Convert the photons/electrons to ADU for reading out
         """
-        return self.array * self.params["FPA_GAIN"]
+        return self.array * self.cmds["FPA_GAIN"]
+
+    def __array__(self):
+        return self.array
+
+    def __getitem__(self, i):
+        return self.x[i], self.y[i], \
+                            self.spectra[self.ref[i],:] * self.weight[i]
 
     def __mul__(self, x):
         newlight = deepcopy(self)
@@ -306,7 +375,7 @@ class Source(object):
     - spectra
     - x
     - y
-    - spec_ref
+    - ref
     - weight
 
     Keyword arguments
@@ -318,7 +387,7 @@ class Source(object):
     """
 
     def __init__(self, filename=None,
-                lam=None, spec_arr=None, x=None, y=None, ref=None, weight=None,
+                lam=None, spectra=None, x=None, y=None, ref=None, weight=None,
                 **kwargs):
 
         self.params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
@@ -335,8 +404,8 @@ class Source(object):
                 self.read(filename)
             else:
                 self._from_cube(self, filename)
-        elif not None in (lam, spec_arr, x, y, ref):
-            self._from_arrays(lam, spec_arr, x, y, ref, weight)
+        elif not None in (lam, spectra, x, y, ref):
+            self._from_arrays(lam, spectra, x, y, ref, weight)
         else:
             raise ValueError("Trouble with inputs. Could not create Source")
 
@@ -367,7 +436,7 @@ class Source(object):
         #print((factor*self.units).unit)
 
         self.units = (factor*self.units).unit
-        self.spec_arr *= factor
+        self.spectra *= factor
 
 
     def _from_cube(self, filename, **kwargs):
@@ -388,7 +457,7 @@ class Source(object):
         x, y = np.where(flux_map != 0)
 
         self.lam = np.linspace(lam_min, lam_max, hdr["NAXIS3"])
-        self.spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
+        self.spectra = np.swapaxes(ipt[:,x,y], 0, 1)
         self.x, self.y = x,y
         self.ref = np.arange(len(x))
         self.weight = np.ones(len(x))
@@ -401,20 +470,20 @@ class Source(object):
 
         self._convert_to_photons()
 
-    def _from_arrays(self, lam, spec_arr, x, y, ref, weight=None):
+    def _from_arrays(self, lam, spectra, x, y, ref, weight=None):
         """
         Make a Source object from a series of lists
         """
         self.lam = lam
-        self.spec_arr = spec_arr
+        self.spectra = spectra
         self.x = x
         self.y = y
         self.ref = ref
         self.weight = weight   if weight is not None   else np.array([1]*len(x))
         self.lam_res = np.median(lam[1:] - lam[:-1])
 
-        if len(spec_arr.shape) == 1:
-            self.spec_arr = np.array((spec_arr, spec_arr))
+        if len(spectra.shape) == 1:
+            self.spectra = np.array((spectra, spectra))
 
         self._convert_to_photons()
 
@@ -437,7 +506,7 @@ class Source(object):
         lam_min, lam_max = hdr1["LAM_MIN"], hdr1["LAM_MAX"]
         self.lam_res     = hdr1["LAM_RES"]
         self.lam = np.linspace(lam_min, lam_max, hdr1["NAXIS1"])
-        self.spec_arr = dat1
+        self.spectra = dat1
 
         if "BUNIT"  in hdr0.keys():     self.params["units"]   = u.Unit(hdr0["BUNIT"])
         if "EXPTIME" in hdr0.keys():    self.params["exptime"] = hdr0["EXPTIME"]
@@ -458,10 +527,10 @@ class Source(object):
 
         Just a place holder so that I know what's going on with the input table
         * The fist extension [0] contains an "image" of size 4 x N where N is the
-        amount of sources. The 4 columns are x, y, spec_ref, weight.
+        amount of sources. The 4 columns are x, y, ref, weight.
         * The second extension [1] contains an "image" with the spectra of each
         source. The image is M x len(spectrum), where M is the number of unique
-        spectra in the source list. max(spec_ref) = M - 1
+        spectra in the source list. max(ref) = M - 1
         """
 
         # hdr = fits.getheader("../../../PreSim/Input_cubes/GC2.fits")
@@ -470,7 +539,7 @@ class Source(object):
         # x,y = np.where(flux_map != 0)
         # ref = np.arange(len(x))
         # weight = np.ones(len(x))
-        # spec_arr = np.swapaxes(ipt[:,x,y], 0, 1)
+        # spectra = np.swapaxes(ipt[:,x,y], 0, 1)
         # lam = np.linspace(0.2,2.5,231)
 
         xyHDU = fits.PrimaryHDU(np.array((self.x, self.y, self.ref, self.weight)))
@@ -486,7 +555,7 @@ class Source(object):
 
         xyHDU.header["SIM_CUBE"] = "SOURCE"
 
-        specHDU = fits.ImageHDU(self.spec_arr)
+        specHDU = fits.ImageHDU(self.spectra)
         specHDU.header["CRVAL1"] = self.lam[0]
         specHDU.header["CRPIX1"] = 0
         specHDU.header["CDELT1"] = self.lam_res
@@ -496,14 +565,6 @@ class Source(object):
 
         hdu = fits.HDUList([xyHDU, specHDU])
         hdu.writeto(filename, clobber=True)
-
-
-    def image_to_light(filename):
-        pass
-
-    def ascii_to_light(filename):
-        pass
-
 
 
 ###############################################################
