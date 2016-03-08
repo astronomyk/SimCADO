@@ -213,7 +213,7 @@ def source_from_stars(spec_type, x, y, distance=None, dist_mod=None,
         weight = np.array([weight]*len(spec_type))
 
     # Create a LightObject.Source object and write it to a file
-    obj = lo.Source(lam=lam, spec_arr=spectra, x=x, y=y, ref=ref, weight=weight,
+    obj = lo.Source(lam=lam, spectra=spectra, x=x, y=y, ref=ref, weight=weight,
                     **params)
     if filename is not None:
         obj.write(filename)
