@@ -357,9 +357,12 @@ class EmissionCurve(TransmissionCurve):
     - area: [m2] float or int for the collecting area of M1
     - units: string or astropy.unit for calculating the number of photons
              per voxel
+
+    Return values are in [ph/s/voxel]
     """
     def __init__(self, **kwargs):
-        default_params = {  "pix_res" :0.004,
+        default_params = {  "exptime" :1
+                            "pix_res" :0.004,
                             "area"    :978,
                             "units"   :"ph/(s m2 micron arcsec2)"}
         if "units" not in kwargs.keys():
@@ -385,7 +388,7 @@ class EmissionCurve(TransmissionCurve):
         factor = 1.*self.params["units"]
 
         # The delivered EmissionCurve should be in ph/s/voxel
-        #if u.s      in bases: factor *= self.params["exptime"]
+        if u.s  not in bases: factor /= self.params["exptime"]*u.s
         if u.m      in bases: factor *= self.params["area"]*u.m**2
         if u.arcsec in bases: factor *= (self.params["pix_res"]*u.arcsec)**2
         if u.micron in bases: factor *= self.params["lam_res"]*u.um
@@ -402,6 +405,8 @@ class EmissionCurve(TransmissionCurve):
         Parameters
         ==========
         - lam_min, lam_max: the wavelength limits
+        
+        Return values are in [ph/s/pixel]
         """
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
             warnings.warn("wavelength limits outside wavelength range")
@@ -429,6 +434,8 @@ class BlackbodyCurve(EmissionCurve):
     - temp: [deg C] float for the average temperature of the blackbody
     - pix_res: [arcsec] float or int for the field of view for each pixel
     - area: [m2] float or int for the emitting surface
+    
+    Return values are in units of [ph/s/voxel]
     """
 
     def __init__(self, lam, temp, **kwargs):
