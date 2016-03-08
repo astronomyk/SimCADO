@@ -275,14 +275,41 @@ class TransmissionCurve(object):
 
         return tcnew
 
+    # def __mul__(self, tc):
+        # """
+        # Product of a TransmissionCurve with a scalar or another Curve
+        # If tc is a TransmissionCurve and does not have the same lam, it is
+        # resampled first.
+        # """
+
+        # tcnew = deepcopy(self)
+
+        # if not hasattr(tc, "val"):
+            # tcnew.val *= tc
+        # else:
+            # ### TODO: This comparison needs work
+            # if not np.all(self.lam == tc.lam):
+                # tc.resample(self.lam)
+            # tcnew.val *= tc.val
+
+        # tcnew.lam_orig = tcnew.lam
+        # tcnew.val_orig = tcnew.val
+
+        # return tcnew        
+
     def __mul__(self, tc):
         """
         Product of a TransmissionCurve with a scalar or another Curve
         If tc is a TransmissionCurve and does not have the same lam, it is
         resampled first.
         """
-        tcnew = deepcopy(self)
 
+        tcnew = deepcopy(self)
+        
+        # EmissionCUrve takes precedence over TransmissionCurve
+        if not isinstance(self, EmissionCurve) and isinstance(tc, EmissionCurve):
+            return tc * tcnew
+        
         if not hasattr(tc, "val"):
             tcnew.val *= tc
         else:
@@ -361,7 +388,7 @@ class EmissionCurve(TransmissionCurve):
     Return values are in [ph/s/voxel]
     """
     def __init__(self, **kwargs):
-        default_params = {  "exptime" :1
+        default_params = {  "exptime" :1,
                             "pix_res" :0.004,
                             "area"    :978,
                             "units"   :"ph/(s m2 micron arcsec2)"}
