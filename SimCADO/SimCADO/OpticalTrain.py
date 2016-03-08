@@ -65,12 +65,12 @@ class OpticalTrain(object):
             self.pix_res         = cmds.pix_res
 
             self.lam             = cmds.lam
-            self.tc_master       = sc.UnityCurve(lam=self.lam)
+            #self.tc_master       = sc.UnityCurve(lam=self.lam)
 
             self.size            = cmds["SIM_PSF_SIZE"]
-            self.psf_master      = psf.DeltaPSFCube(self.lam_bin_centers,
-                                                    size=self.size,
-                                                    pix_res=self.pix_res)
+            #self.psf_master      = psf.DeltaPSFCube(self.lam_bin_centers,
+            #                                        size=self.size,
+            #                                        pix_res=self.pix_res)
 
             self.adc_shifts      = np.zeros((len(self.lam_bin_centers),2))
             #self.distortion_map
@@ -89,35 +89,6 @@ class OpticalTrain(object):
         - cmds : UserCommands
             a dictionary of commands
         """
-        print("Generating an optical train")
-        if cmds is not None: self.cmds.update(cmds)
-
-        if cmds.verbose: print("Generating mirror emission photons")
-        # Make the transmission curve for the blackbody photons from the mirror
-        self.tc_mirror  = self._gen_master_tc(preset="mirror_bb")
-        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
-                                            temp=self.cmds["SCOPE_M1_TEMP"])
-
-        if cmds.verbose: print("Generating atmospheric emission photons")
-        # Make the spectral curves for the atmospheric background photons
-        self.tc_atmo_bg = self._gen_master_tc(preset="atmosphere_bg")
-        self.ec_atmo_gb = sc.EmissionCurve(filename = self.cmds["ATMO_EC"])
-
-        if cmds.verbose: print("Generating optical path for source photons")
-        # Make the transmission curve and PSF for the source photons
-        self.tc_source  = self._gen_master_tc(preset="source")
-        self.psf_source = self._gen_master_psf()
-
-        if cmds.verbose: print("Generating the detector array")
-        # Make a detector Plane
-        self.detector = self._gen_detector()
-
-        # Get the ADC shifts, telescope shake and field rotation angle
-        self.adc_shifts = self._gen_adc_shifts()
-        self.jitter_psf = self._gen_telescope_shake()
-        # self.field_rot = self._gen_field_rotation_angle()
-
-
 
         # Here we make the optical train. This includes
         # - the optical path for the source photons
@@ -136,12 +107,56 @@ class OpticalTrain(object):
         #   - detector
         #       - noise frame,
 
+        print("Generating an optical train")
+        if cmds is not None: self.cmds.update(cmds)
+
+        if self.cmds.verbose: print("Generating mirror emission photons")
+        # Make the transmission curve for the blackbody photons from the mirror
+        self.tc_mirror  = self._gen_master_tc(preset="mirror")
+        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
+                                            temp=self.cmds["SCOPE_M1_TEMP"])
+        self.ph_mirror  = self.ec_mirror * self.tc_mirror
+        self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+                                                           self.lam_bin_edges[-1])
+
+        if self.cmds.verbose: print("Generating atmospheric emission photons")
+        # Make the spectral curves for the atmospheric background photons
+        self.tc_atmo = self._gen_master_tc(preset="atmosphere")
+        self.ec_atmo = sc.EmissionCurve(filename = self.cmds["ATMO_EC"])
+        self.ph_atmo = self.tc_atmo * self.ec_atmo
+        self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
+                                                       self.lam_bin_edges[-1])
+
+        if self.cmds.verbose: print("Generating optical path for source photons")
+        # Make the transmission curve and PSF for the source photons
+        self.tc_source  = self._gen_master_tc(preset="source")
+        self.psf_source = self._gen_master_psf()
+
+        if self.cmds.verbose: print("Generating the detector array")
+        # Make a detector Plane
+        self.detector = self._gen_detector()
+
+        # Get the ADC shifts, telescope shake and field rotation angle
+        self.adc_shifts = self._gen_adc_shifts()
+        self.jitter_psf = self._gen_telescope_shake()
+        self.field_rot = self._gen_field_rotation_angle()
+        
+
     def read(self, filename):
         pass
 
     def save(self, filename):
         pass
 
+        
+    def apply_tracking(self, arr):
+        return pe.tracking(arr, self.cmds)
+
+    def apply_derotator(self, arr):
+        return pe.derotator(arr, self.cmds)
+    
+    def apply_wind_jitter(self, arr):
+        return pe.wind_jitter(arr, self.cmds)
 
 
     def _gen_master_tc(self, tc_keywords=None, preset=None):
@@ -149,14 +164,14 @@ class OpticalTrain(object):
         Combine a list of TransmissionCurves into one, either by specifying the
         list of command keywords (e.g. ATMO_TC) or by passing a preset keywords
 
-        Optional Parameters:
+        Optional Parameters
         ===================
         tc_keywords: a list of keywords from the .config files. E.g:
                      tc_keywords = ['ATMO_TC', 'SCOPE_M1_TC', 'INST_FILTER_TC']
         preset: a present string for the most common collections of keywords:
                 - 'source' includes all the elements seen by source photons
-                - 'atmosphere_bg' includes surfaces seen by the atmospheric BG
-                - 'mirror_bb' includes surfaces seen by the M1 blackbody photons
+                - 'atmosphere' includes surfaces seen by the atmospheric BG
+                - 'mirror' includes surfaces seen by the M1 blackbody photons
         """
 
         if tc_keywords is None:
@@ -166,9 +181,9 @@ class OpticalTrain(object):
                         'INST_FILTER_TC', 'FPA_QE']
                 if preset == "source":
                     tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
-                if preset == "atmosphere_bg":
+                if preset == "atmosphere":
                     tc_keywords = ['SCOPE_M1_TC'] + base
-                if preset == "mirror_bb":
+                if preset == "mirror":
                     tc_keywords = base
             else:
                 warnings.warn("""
@@ -183,7 +198,7 @@ class OpticalTrain(object):
             if key not in self.cmds.keys():
                 raise ValueError(key + " is not in your list of commands")
 
-            if self.cmds[key].lower() != 'none':
+            if self.cmds[key] is not None:
                 tc_dict[key] = sc.TransmissionCurve(filename=self.cmds[key],
                                                     lam_res=self.lam_res)
             else:
@@ -222,7 +237,7 @@ class OpticalTrain(object):
         # Make a PSF for the main mirror. If there is one on file, read it in
         # otherwise generate an Airy+Gaussian (or Moffat, Oliver?)
 
-        if self.cmds["SCOPE_PSF_FILE"].lower() != "none" and \
+        if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"])
             if psf_m1[0].pix_res != self.pix_res:
@@ -281,7 +296,8 @@ class OpticalTrain(object):
 
 
     def _gen_field_rotation_angle(self):
-        pass
+        return 0
+        
 
     def _gen_telescope_shake(self):
         """
@@ -293,6 +309,10 @@ class OpticalTrain(object):
                                         pix_res=pix_res)
         return jitter_psf
 
+        
 
+
+
+    
 class ads:
     pass
