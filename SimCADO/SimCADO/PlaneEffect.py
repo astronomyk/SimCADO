@@ -48,8 +48,8 @@ try:
     import SimCADO.utils as utils
 except:
     import utils
-    
-    
+
+
 __all__ = ["line_blur", "rotate_blur", "tracking", "derotator", "wind_jitter"]
 
 
@@ -130,7 +130,7 @@ def rotate_blur(arr, angle, kernel="gaussian"):
 
     return tmp_arr
 
-    
+
 def tracking(arr, cmds):
     """
     A method to simulate tracking errors
@@ -138,14 +138,14 @@ def tracking(arr, cmds):
     !! TODO, work out the shift during the DIT for the object RA, DEC etc !!
     """
     if cmds["SCOPE_DRIFT_DISTANCE"] > 0.:
-        pix_res = cmds["SIM_DETECTOR_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]    
-        kernel = cmds["SCOPE_DRIFT_PROFILE"]    
+        pix_res = cmds["SIM_DETECTOR_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]
+        kernel = cmds["SCOPE_DRIFT_PROFILE"]
         shift  = cmds["SCOPE_DRIFT_DISTANCE"] / pix_res
-        
+
         return line_blur(arr, shift, kernel=kernel, angle=0)
     else:
-        return arr    
-    
+        return arr
+
 
 def derotator(arr, cmds):
     """
@@ -155,13 +155,13 @@ def derotator(arr, cmds):
     """
     if cmds["INST_DEROT_PERFORMANCE"] < 100.:
         eff    = 1. - (cmds["INST_DEROT_PERFORMANCE"] / 100.)
-        kernel = cmds["INST_DEROT_PROFILE"]    
+        kernel = cmds["INST_DEROT_PROFILE"]
         angle  = eff * cmds["OBS_EXPTIME"] * 15 / 3600.
-        
+
         return rotate_blur(arr, angle, kernel=kernel)
     else:
         return arr
-    
+
 
 def wind_jitter(arr, cmds):
     """
@@ -174,10 +174,10 @@ def wind_jitter(arr, cmds):
     fwhm = cmds["SCOPE_JITTER_FWHM"] / pix_res
     n = (fwhm / 2.35)
     kernel = Gaussian2DKernel(n, mode="oversample")
-    
+
     return convolve_fft(arr, kernel)
 
-    
+
 def adc_shift(cmds):
     """Generates a list of x and y shifts from a UserCommands object"""
 
@@ -203,7 +203,7 @@ def adc_shift(cmds):
     ## Rotate by the paralytic angle
     x = -pixel_shift * np.sin(np.deg2rad(para_angle)) * (1. - effectiveness)
     y = -pixel_shift * np.cos(np.deg2rad(para_angle)) * (1. - effectiveness)
-    
+
     return x, y
-    
-    
+
+

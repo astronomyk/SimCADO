@@ -87,7 +87,7 @@ class TransmissionCurve(object):
                        "min_step"  :1E-4,
                        "lam_unit"  :u.um}
         self.params.update(kwargs)
-        
+
         self.info = dict([])
         self.info["Type"] = self.params["Type"]
 
@@ -98,7 +98,7 @@ class TransmissionCurve(object):
 
         ## OC: resampling should only be done when necessary
         ## KL: This ensures that the curves are on a regular grid. Not all of
-        ## the filter curve .dat files have regular bin spacing and so it is 
+        ## the filter curve .dat files have regular bin spacing and so it is
         ## impossible to define a "lam_res" for those curves. This is needed for
         ## the EmissionCurve function "photons_in_range(lam_min, lam_max)"
         ##
@@ -108,7 +108,7 @@ class TransmissionCurve(object):
             self.resample(self.params["lam_res"], action="sum")
         else:
             self.resample(self.params["lam_res"], action="average")
-            
+
 
     def __str__(self):
         return "Spectral curve:\n" + str(self.info)
@@ -117,7 +117,7 @@ class TransmissionCurve(object):
         mask = [0,1,2],[-3,-2,-1]
         return self.info["Type"]+"Curve \n"+str(self.val[mask[0]])[:-1] \
                                     +" ..."+str(self.val[mask[1]])[1:]
-        
+
     def get_data(self):
         """
         Get the wavelength and value vectors from the input parameters
@@ -232,7 +232,7 @@ class TransmissionCurve(object):
         # photons in the original data set and normalising the new 1E-5 bin
         # data set to have the same amount.
         if action == "sum": val_tmp *= (np.sum(self.val_orig) / np.sum(val_tmp))
-              
+
         self.lam = lam_tmp
         self.val = val_tmp
         self.res = lam_res
@@ -366,7 +366,7 @@ class EmissionCurve(TransmissionCurve):
             warnings.warn("""No 'units' specified in EmissionCurve.
                           Assuming ph/(s m2 micron arcsec2)""")
         default_params.update(kwargs)
-                
+
         super(EmissionCurve, self).__init__(Type = "Emission", **default_params)
         self.convert_to_photons()
 
@@ -391,7 +391,7 @@ class EmissionCurve(TransmissionCurve):
         if u.micron in bases: factor *= self.params["lam_res"]*u.um
 
         self.params["units"] = factor.unit
-        
+
         self.val *= factor.value
         self.factor = factor
 
@@ -436,7 +436,7 @@ class BlackbodyCurve(EmissionCurve):
         self.params.update(kwargs)
 
         temp += 273.15
-        
+
         lam_res = lam[1] - lam[0]
         edges = np.append(lam - 0.5 * lam_res, lam[-1] + 0.5 * lam_res)
         lam_res = edges[1:] - edges[:-1]

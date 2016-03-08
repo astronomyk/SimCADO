@@ -118,11 +118,10 @@ class Simulation(object):
 
     def run():
         pass
-        
-        
+
+
     def current_test_run():
         opt_train = ot.OpticalTrain()
-        
-        
-        
-        
+
+
+

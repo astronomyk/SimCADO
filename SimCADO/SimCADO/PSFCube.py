@@ -287,7 +287,7 @@ class DeltaPSF(PSF):
             pix_res = kwargs["pix_res"]
         else:
             pix_res = 0.004
-        
+
         super(DeltaPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Delta"
         self.info["description"] = "Delta PSF, centred at (%.1f, %.1f)" \

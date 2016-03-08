@@ -5,7 +5,7 @@
 #
 #
 # Classes:
-#   
+#
 #
 # Methods:
 #  read_config(config_file)
@@ -36,12 +36,12 @@ def read_config(config_file):
     Returns:
     -------
     A dictionary with keys 'PARAMETER' and values 'Value'.
-    Note that the values of the dictionary are strings and will have 
-    to be converted to the appropriate data type as they are needed. 
+    Note that the values of the dictionary are strings and will have
+    to be converted to the appropriate data type as they are needed.
     '''
 
     import re
-    
+
     # Read the file into a list of strings
     config_dict = dict()
 
@@ -74,13 +74,13 @@ def update_config(config_file, config_dict):
     -----
     - A configuration file in the SExtractor format:
          'PARAMETER    Value    # Comment'
-    - an existing configuration dictionary. 
+    - an existing configuration dictionary.
 
     Returns:
     -------
     A dictionary with keys 'PARAMETER' and values 'Value'.
-    Note that the values of the dictionary are strings and will have 
-    to be converted to the appropriate data type as they are needed. 
+    Note that the values of the dictionary are strings and will have
+    to be converted to the appropriate data type as they are needed.
     '''
     config_dict.update(read_config(config_file))
 
@@ -90,7 +90,7 @@ def unify(x, unit, length=1):
     """Convert all types of input to an astropy array/unit pair"""
 
     print(type(x))
-    
+
     if type(x) == u.quantity.Quantity:
         if type(x.value) == np.ndarray:
             y = x.to(unit)
@@ -107,7 +107,7 @@ def unify(x, unit, length=1):
             y = [x] * length * unit
 
     return y
-            
+
 
 ### Just a sketch
 def parallactic_angle(ha, de, lat=-24.589167):
@@ -123,17 +123,17 @@ def parallactic_angle(ha, de, lat=-24.589167):
     # Convert observation point, pole and zenith to cartesian coordinates
     x_pole = [0, 0, -1]
     print(x_pole)
-    
+
     poledist = (90. - lat)/180 * np.pi  # from north pole
     x_zenith = [0, np.sin(poledist), np.cos(poledist)]
     print(x_zenith)
-    
+
     obsdist = (90. - de)/180 * np.pi
     ha = ha/180. * np.pi
     x_obs = [np.sin(obsdist) * np.sin(ha), np.sin(obsdist) * np.cos(ha),
              np.cos(obsdist)]
     print(x_obs)
-    
+
     # normals to the great circles
     N_pole = np.cross(x_obs, x_pole)
     N_pole = N_pole/np.sqrt((N_pole**2).sum())
@@ -167,12 +167,12 @@ def parallactic_angle_2(ha, de, lat=-24.589167):
 def moffat(r, alpha, beta):
     return (beta - 1)/(np.pi * alpha**2) * (1 + (r/alpha)**2)**(-beta)
 
-    
+
 def poissonify(self, arr):
-    """ 
-    Add a realisation of the poisson process to the array 'arr'. 
+    """
+    Add a realisation of the poisson process to the array 'arr'.
 
     Keywords:
-    - arr: 
+    - arr:
     """
     return np.random.poisson(arr).astype(np.float32)

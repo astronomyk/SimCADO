@@ -43,10 +43,10 @@ class Detector(object):
         self.params = { "NAXIS1"            :4096,
                         "NAXIS2"            :4096,
                         "VERBOSE"           :False,
-                                                
+
                         "SIM_OVERSAMPLING"  :4,
                         "SIM_DETECTOR_PIX_SCALE":0.004,
-                        "OBS_EXPTIME"       :1,  
+                        "OBS_EXPTIME"       :1,
 
                         "HXRG_NUM_OUTPUTS"  :32,
                         "HXRG_NUM_ROW_OH"   :8,
@@ -76,17 +76,17 @@ class Detector(object):
 
         if filename is not None:
             self.params["FPA_NOISE_PATH"] = filename
-            
+
         if self.params["FPA_NOISE_PATH"] is not None:
             self.read(self.params["FPA_NOISE_PATH"])
         else:
             self._make_detector()
-            
-        
+
+
     def _make_detector(self, **kwargs):
         """
         Internal method for generating a detector using the NGHxRG class
-        """ 
+        """
         self.array = self.generate_hxrg_noise(**kwargs)
 
         #add_cosmic_rays(exptime)
@@ -96,17 +96,17 @@ class Detector(object):
     def read(self, filename, **kwargs):
         """
         Read in a detector FITS file
-        
+
         filename
         """
         if not os.path.exists(filename):
             raise ValueError(filename + " doesn't exist")
-        
+
         f = fits.open(filename)
         self.params.update(f[0].header)
         self.array = f[0].data
         f.close()
-        
+
     def write(self, filename=None, **kwargs):
         """
         Save a Detector frame to a FITS file
@@ -119,26 +119,26 @@ class Detector(object):
         if filename is None:
             raise ValueError("No output path was specified. " + \
                              "Use either filename= or HXRG_OUTPUT_PATH=")
-            
+
         hdu = fits.PrimaryHDU(self.array)
         hdu.header["PIX_RES"] = self.pix_res
         hdu.header["EXPTIME"] = self.exptime
         hdu.header["GAIN"]    = self.params["FPA_GAIN"]
         hdu.header["SIM_CUBE"]= "FPA_NOISE"
-        
+
         try:
             hdu.writeto(filename, clobber=True)
         except:
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
-            
+
     def add_cosmic_rays(self):
         """
         Not needed because of up-the-ramp sampling
         """
         pass
 
-        
+
     def apply_pixel_map(self):
         """
         Read in a FITS file with locations of dead pixels, or generate a series
@@ -159,7 +159,7 @@ class Detector(object):
         else:
             raise ValueError(self.params["FPA_DEAD_PIXELS"] + "does not exist")
 
-            
+
     def apply_saturation(self):
         """
         Cap all pixels that are above the well depth.
@@ -175,12 +175,12 @@ class Detector(object):
         Create a detector noise array using Bernard Rauscher's NGHxRG tool
 
         Optional Keywords:
-        - HXRG_OUTPUT_PATH: 
+        - HXRG_OUTPUT_PATH:
 
         """
         if len(kwargs) > 0 and self.verbose: print("updating ",kwargs)
         self.params.update(kwargs)
-        
+
         # HXRG needs a pca file to run. Work out what a PCA file means!!
         ng_h4rg     = HXRGNoise(naxis1   = self.params["NAXIS1"],
                                 naxis2   = self.params["NAXIS2"],
@@ -197,7 +197,7 @@ class Detector(object):
                                 u_pink   = self.params["HXRG_UNCORR_PINK"],
                                 acn      = self.params["HXRG_ALT_COL_NOISE"])
 
-                                
+
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
@@ -655,9 +655,9 @@ class HXRGNoise:
                            'PCA zero, AKA picture frame'))
         #hdu.header['HISTORY'] = 'Created_by_NGHXRG_version_' \
         #                        + str(self.nghxrg_version)
-        
+
         self.message('Exiting mknoise()')
-        
+
         if o_file is not None:
             hdu.writeto(o_file, clobber='True')
         return result

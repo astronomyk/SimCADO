@@ -86,8 +86,8 @@ class LightObject(object):
             self.spectra = np.asarray([self.spectra]*2)
 
         self.array = np.zeros((self.size, self.size), dtype=np.float32)
-        
-        
+
+
     def __str__(self):
         return self.info['description']
 
@@ -292,7 +292,7 @@ class LightObject(object):
 class Source(object):
     """
     Create a source object from a file or from arrays
-    
+
     Source class generates the arrays needed for LightObject. It takes various
     inputs and converts them to an array of positions and references to spectra
     It also converts spectra to photons/s/voxel. The default units for input
@@ -302,12 +302,12 @@ class Source(object):
     ==========
     - filename
     or
-    - lam     
-    - spectra 
-    - x       
-    - y       
+    - lam
+    - spectra
+    - x
+    - y
     - spec_ref
-    - weight  
+    - weight
 
     Keyword arguments
     =================
@@ -316,19 +316,19 @@ class Source(object):
     - exptime
     - area
     """
-    
+
     def __init__(self, filename=None,
-                lam=None, spec_arr=None, x=None, y=None, ref=None, weight=None, 
+                lam=None, spec_arr=None, x=None, y=None, ref=None, weight=None,
                 **kwargs):
-        
+
         self.params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
         self.params.update(kwargs)
-    
+
         self.units = u.Unit(self.params["units"])
         self.pix_res = self.params["pix_res"]
         self.exptime = self.params["exptime"]
         self.area = self.params["area"]
-    
+
         if filename is not None:
             hdr = fits.getheader(filename)
             if "SIM_CUBE" in hdr.keys() and hdr["SIM_CUBE"] == "SOURCE":
@@ -336,44 +336,44 @@ class Source(object):
             else:
                 self._from_cube(self, filename)
         elif not None in (lam, spec_arr, x, y, ref):
-            self._from_arrays(lam, spec_arr, x, y, ref, weight)  
+            self._from_arrays(lam, spec_arr, x, y, ref, weight)
         else:
             raise ValueError("Trouble with inputs. Could not create Source")
-            
-    
+
+
     def __repr__(self):
         return "A photon source object"
-    
-    
+
+
     def _convert_to_photons(self):
         """
         convert the spectra to photons/(s m2)
         if [arcsec] are in the units, we want to find the photons per pixel
         if [um] are in the units, we want to find the photons per wavelength bin
-        if 
-        
+        if
+
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ! Come back and put in other energy units like Jy, mag, ergs !
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         """
         self.units = u.Unit(self.params["units"])
         bases  = self.units.bases
-        
+
         factor = 1.
         if u.s      not in bases: factor /= (self.params["exptime"]*u.s)
         if u.m      not in bases: factor /= (self.params["area"]   *u.m**2)
         if u.micron     in bases: factor *= (self.params["lam_res"]*u.um)
         if u.arcsec     in bases: factor *= (self.params["pix_res"]*u.arcsec)**2
         #print((factor*self.units).unit)
-        
+
         self.units = (factor*self.units).unit
         self.spec_arr *= factor
-    
-    
+
+
     def _from_cube(self, filename, **kwargs):
         """
         Make a Source object from a cube in memory or a FITS cube on disk
-        """       
+        """
         if type(filename) == str and os.path.exists(filename):
             hdr = fits.getheader(filename)
             cube = fits.getdata(filename)
@@ -383,7 +383,7 @@ class Source(object):
         lam_res = hdr["CDELT3"]
         lam_min = hdr["CRVAL3"] - hdr["CRPIX3"] * lam_res
         lam_max = lam_min + hdr["NAXIS3"] * lam_res
-        
+
         flux_map = np.sum(cube, axis=0).astype(dtype=np.float32)
         x, y = np.where(flux_map != 0)
 
@@ -393,18 +393,18 @@ class Source(object):
         self.ref = np.arange(len(x))
         self.weight = np.ones(len(x))
 
-        if "BUNIT"  in hdr.keys():      self.units   = u.Unit(hdr["BUNIT"]) 
+        if "BUNIT"  in hdr.keys():      self.units   = u.Unit(hdr["BUNIT"])
         if "EXPTIME" in hdr.keys():     self.exptime = hdr["EXPTIME"]
-        if "AREA"   in hdr.keys():      self.area    = hdr["AREA"]          
-        if "CDELT1" in hdr.keys():      self.pix_res = hdr["CDELT1"]    
+        if "AREA"   in hdr.keys():      self.area    = hdr["AREA"]
+        if "CDELT1" in hdr.keys():      self.pix_res = hdr["CDELT1"]
         self.lam_res = lam_res
-        
+
         self._convert_to_photons()
-        
+
     def _from_arrays(self, lam, spec_arr, x, y, ref, weight=None):
         """
         Make a Source object from a series of lists
-        """       
+        """
         self.lam = lam
         self.spec_arr = spec_arr
         self.x = x
@@ -412,7 +412,7 @@ class Source(object):
         self.ref = ref
         self.weight = weight   if weight is not None   else np.array([1]*len(x))
         self.lam_res = np.median(lam[1:] - lam[:-1])
-        
+
         if len(spec_arr.shape) == 1:
             self.spec_arr = np.array((spec_arr, spec_arr))
 
@@ -428,7 +428,7 @@ class Source(object):
         dat1 = ipt[1].data
         hdr1 = ipt[1].header
         ipt.close()
-                
+
         self.x = dat0[0,:]
         self.y = dat0[1,:]
         self.ref = dat0[2,:]
@@ -438,24 +438,24 @@ class Source(object):
         self.lam_res     = hdr1["LAM_RES"]
         self.lam = np.linspace(lam_min, lam_max, hdr1["NAXIS1"])
         self.spec_arr = dat1
-        
-        if "BUNIT"  in hdr0.keys():     self.params["units"]   = u.Unit(hdr0["BUNIT"]) 
-        if "EXPTIME" in hdr0.keys():    self.params["exptime"] = hdr0["EXPTIME"]      
-        if "AREA"   in hdr0.keys():     self.params["area"]    = hdr0["AREA"]          
-        if "CDELT1" in hdr0.keys():     self.params["pix_res"] = hdr0["CDELT1"]        
+
+        if "BUNIT"  in hdr0.keys():     self.params["units"]   = u.Unit(hdr0["BUNIT"])
+        if "EXPTIME" in hdr0.keys():    self.params["exptime"] = hdr0["EXPTIME"]
+        if "AREA"   in hdr0.keys():     self.params["area"]    = hdr0["AREA"]
+        if "CDELT1" in hdr0.keys():     self.params["pix_res"] = hdr0["CDELT1"]
         self.lam_res = hdr1["LAM_RES"]
 
         self._convert_to_photons()
-        
+
     def write(self, filename):
         """
         Write the current Source object out to a FITS file
-        
+
         Parameters:
         ===========
         filename:
-        
-        
+
+
         Just a place holder so that I know what's going on with the input table
         * The fist extension [0] contains an "image" of size 4 x N where N is the
         amount of sources. The 4 columns are x, y, spec_ref, weight.
@@ -483,9 +483,9 @@ class Source(object):
         xyHDU.header["EXPTIME"] = self.params["exptime"]
         xyHDU.header["AREA"] = self.params["area"]
         xyHDU.header["CDELT1"] = self.params["pix_res"]
-        
+
         xyHDU.header["SIM_CUBE"] = "SOURCE"
-        
+
         specHDU = fits.ImageHDU(self.spec_arr)
         specHDU.header["CRVAL1"] = self.lam[0]
         specHDU.header["CRPIX1"] = 0
@@ -493,7 +493,7 @@ class Source(object):
         specHDU.header["LAM_MIN"] = self.lam[0]
         specHDU.header["LAM_MAX"] = self.lam[-1]
         specHDU.header["LAM_RES"] = self.lam_res
-        
+
         hdu = fits.HDUList([xyHDU, specHDU])
         hdu.writeto(filename, clobber=True)
 
@@ -504,8 +504,8 @@ class Source(object):
     def ascii_to_light(filename):
         pass
 
-        
-        
+
+
 ###############################################################
 # Old code from LightObject - not sure if I still need it.
 

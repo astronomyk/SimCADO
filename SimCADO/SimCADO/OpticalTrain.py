@@ -12,6 +12,17 @@
 # Methods:
 #
 #
+#
+#
+#
+# TODO List
+# =========
+# -
+#
+#
+
+
+
 
 import sys, os
 import warnings
@@ -44,10 +55,10 @@ class OpticalTrain(object):
         if fname is not None:
             if not os.path.exists(fname):
                 raise ValueError(fname+" doesn't exist")
-            
+
             self.read(fname)
         else:
-            
+
             self.lam_bin_edges   = cmds.lam_bin_edges
             self.lam_bin_centers = cmds.lam_bin_centers
             self.lam_res         = cmds.lam_res
@@ -65,8 +76,8 @@ class OpticalTrain(object):
             #self.distortion_map
 
             self.make()
-        
-        
+
+
     def make(self, cmds=None):
         """
         To make an optical system, cmds must contain all the keywords from the
@@ -78,42 +89,41 @@ class OpticalTrain(object):
         - cmds : UserCommands
             a dictionary of commands
         """
+        print("Generating an optical train")
+        if cmds is not None: self.cmds.update(cmds)
 
-        self.cmds.update(cmds)
-
+        if cmds.verbose: print("Generating mirror emission photons")
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror  = self._gen_master_tc(preset="mirror_bb")
         self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
                                             temp=self.cmds["SCOPE_M1_TEMP"])
 
+        if cmds.verbose: print("Generating atmospheric emission photons")
         # Make the spectral curves for the atmospheric background photons
         self.tc_atmo_bg = self._gen_master_tc(preset="atmosphere_bg")
         self.ec_atmo_gb = sc.EmissionCurve(filename = self.cmds["ATMO_EC"])
 
+        if cmds.verbose: print("Generating optical path for source photons")
         # Make the transmission curve and PSF for the source photons
         self.tc_source  = self._gen_master_tc(preset="source")
         self.psf_source = self._gen_master_psf()
 
+        if cmds.verbose: print("Generating the detector array")
         # Make a detector Plane
         self.detector = self._gen_detector()
-        
+
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
-        self.jitter_psf = self._gen_telescope_shake(self):
+        self.jitter_psf = self._gen_telescope_shake()
         # self.field_rot = self._gen_field_rotation_angle()
-        
-        
+
+
 
         # Here we make the optical train. This includes
         # - the optical path for the source photons
         #   - master transmission curve             [can be exported]
-        #       - atmosphere
-        #       - n x mirror
-        #       - instrument window
-        #       - internal mirrors
-        #       - dichroic
-        #       - filter
-        #       - detector QE
+        #       - atmosphere, n x mirror, instrument window, internal mirrors
+        #       - dichroic, filter, detector QE
         #   - list of wave-dep plane effects
         #       - imperfect adc
         #   - master psf cube
@@ -123,15 +133,16 @@ class OpticalTrain(object):
         #       - imperfect derotation
         #       - distortion                        [weight map can be exported]
         #       - flat fielding                     [can be exported]
-        #   - detector    
+        #   - detector
+        #       - noise frame,
 
     def read(self, filename):
         pass
 
     def save(self, filename):
         pass
-        
-        
+
+
 
     def _gen_master_tc(self, tc_keywords=None, preset=None):
         """
@@ -151,7 +162,7 @@ class OpticalTrain(object):
         if tc_keywords is None:
             if preset is not None:
                 base = ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
-                       ['INST_ADC_TC', 'INST_DICHROIC_TC', 'INST_ENTR_WINDOW_TC', 
+                       ['INST_ADC_TC', 'INST_DICHROIC_TC', 'INST_ENTR_WINDOW_TC',
                         'INST_FILTER_TC', 'FPA_QE']
                 if preset == "source":
                     tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
@@ -161,13 +172,13 @@ class OpticalTrain(object):
                     tc_keywords = base
             else:
                 warnings.warn("""
-                No presets or keywords passed to gen_master_tc(). 
+                No presets or keywords passed to gen_master_tc().
                 Setting self.tc_master = sc.UnityCurve()""")
                 self.tc_master = sc.UnityCurve()
                 return
-                
+
         tc_dict = dict([])
-                
+
         for key in tc_keywords:
             if key not in self.cmds.keys():
                 raise ValueError(key + " is not in your list of commands")
@@ -178,7 +189,7 @@ class OpticalTrain(object):
             else:
                 tc_dict[key] = sc.UnityCurve()
 
-        tc_master = sc.UnityCurve( lam=self.lam, lam_res=self.lam_res, 
+        tc_master = sc.UnityCurve( lam=self.lam, lam_res=self.lam_res,
                                    min_step=self.cmds["SIM_SPEC_MIN_STEP"])
         for key in tc_keywords:
             tc_master *= tc_dict[key]
@@ -244,7 +255,7 @@ class OpticalTrain(object):
                     psf_m1 = psf_diff.convolve(psf_seeing)
                 else:
                     psf_m1 = psf_diff
-                    
+
         psf_master = psf_m1
         return psf_master
 
@@ -257,31 +268,31 @@ class OpticalTrain(object):
         if fname is not None:
             if not os.path.exists(fname):
                 raise ValueError(fname+" doesn't exist")
-        
+
         return fpa.Detector(fname, **self.cmds)
-        
+
 
     def _gen_adc_shifts(self):
         """
         Keywords:
         """
-        adc_shifts = pe.adc_shift(self.cmds)       
+        adc_shifts = pe.adc_shift(self.cmds)
         return adc_shifts
 
 
     def _gen_field_rotation_angle(self):
         pass
-        
+
     def _gen_telescope_shake(self):
         """
         Keywords:
         """
         pix_res =   self.cmds["SIM_DETECTOR_PIX_SCALE"] / \
                     self.cmds["SIM_OVERSAMPLING"]
-        jitter_psf = psf.GaussianPSF(   fwhm=self.cmds["SCOPE_JITTER_FWHM"], 
+        jitter_psf = psf.GaussianPSF(   fwhm=self.cmds["SCOPE_JITTER_FWHM"],
                                         pix_res=pix_res)
         return jitter_psf
-    
+
 
 class ads:
     pass

@@ -1,3 +1,4 @@
+"""UserCommands.py"""
 ###############################################################################
 # UserCommands
 #
@@ -22,6 +23,11 @@
 # self.diameter
 # self.area
 # self.verbose
+#
+# TODO list
+# =========
+# - put in a defaults generator
+# - remove the need for the user_commands directory by using internal defaults
 
 
 import os, warnings
@@ -45,7 +51,7 @@ class UserCommands(object):
     - master_filename: path to the master.config file
     """
 
-    def __init__(self, user_filename=None, 
+    def __init__(self, user_filename=None,
                  master_filename="../user_commands/master.config"):
 
         self.cmds = utils.read_config(master_filename)
@@ -139,4 +145,3 @@ class UserCommands(object):
             self.cmds.update(x_dict)
         else:
             pass
-    
