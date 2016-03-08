@@ -196,14 +196,14 @@ def adc_shift(cmds):
 
     ## convert angle shift into number of pixels
     ## pixel shifts are defined with respect to last slice
-    pixel_shift = (angle_shift - angle_shift[-1]) / cmds.pix_res
-    if np.max(np.abs(pixel_shift)) > 1000:
+    rel_shift = (angle_shift - angle_shift[-1]) / cmds.pix_res
+    if np.max(np.abs(rel_shift)) > 1000:
         raise ValueError("Pixel shifts too great (>1000), check units")
 
     ## Rotate by the paralytic angle
-    x = -pixel_shift * np.sin(np.deg2rad(para_angle)) * (1. - effectiveness)
-    y = -pixel_shift * np.cos(np.deg2rad(para_angle)) * (1. - effectiveness)
+    x = -rel_shift * np.sin(np.deg2rad(para_angle)) * (1. - effectiveness)
+    y = -rel_shift * np.cos(np.deg2rad(para_angle)) * (1. - effectiveness)
 
-    return x, y
+    return x, y 
 
 
