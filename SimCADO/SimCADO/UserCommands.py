@@ -70,11 +70,16 @@ class UserCommands(object):
         self.cmds["CONFIG_MASTER"] = master_filename
         self.cmds["CONFIG_USER"]   = user_filename
 
+        # Run through the cmds and convert any "none" to None values
+        for i in self.cmds:
+            if type(self.cmds[i]) == str and self.cmds[i].lower() == "none":
+                self.cmds[i] = None
+        
         # check the output path directory and file name
-        if self.cmds["OBS_OUTPUT_DIR"] == "none":
+        if self.cmds["OBS_OUTPUT_DIR"] is None:
             self.cmds["OBS_OUTPUT_DIR"] = "./"
 
-        if self.cmds["OBS_OUTPUT_NAME"] == "none":
+        if self.cmds["OBS_OUTPUT_NAME"] is None:
             self.cmds["OBS_OUTPUT_NAME"] = "output.fits"
 
         if self.cmds["SIM_PSF_OVERSAMPLE"] == "yes":
@@ -118,13 +123,17 @@ class UserCommands(object):
                                         self.cmds["SCOPE_M1_DIAMETER_IN"]**2)
 
         self.verbose = True     if self.cmds["VERBOSE"] == "yes"    else False
-
         if self.verbose:
             print("Read in parameters from \n"+"\n".join(fnames))
-
+            
+            
+            
     def __str__(self):
         return "A dictionary of commands compiled from " + \
             self.cmds["CONFIG_MASTER"]
+
+    def __iter__(self):
+        return self.cmds.__iter__()
 
     def __getitem__(self, kw):
         return self.cmds[kw]
