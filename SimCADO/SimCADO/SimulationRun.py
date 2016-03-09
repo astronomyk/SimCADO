@@ -76,8 +76,28 @@ class Simulation(object):
     def __init__(self, cmds=None, filename=None):
         """
         """
-        self.set_user_commands(filename)
-        if  cmds  is not None: self.cmds = cmds
+        #self.set_user_commands(filename)
+        #if  cmds  is not None: self.cmds = cmds
+
+        self.cmds = uc.UserCommands()
+        self.opt = ot.OpticalTrain(self.cmds)
+        self.src = lo.Source(self.cmds["OBS_INPUT_NAME"])
+        self.obj = lo.LightObject(self.src, self.cmds)
+        self.obj.apply_optical_train(opt)
+
+        hdu = fits.PrimaryHDU(self.obj.array)
+        hdu.header["BUNIT"] = "ph/s"
+        hdu.header["CDELT1"] = opt.pix_res, "[arcsec]"
+        hdu.header["CDELT2"] = opt.pix_res, "[arcsec]"
+        hdu.header["AREA"] = opt.cmds.area, "M1 area [m2]"
+        
+        if filename is not None:
+            try: 
+                hdu.writeto(filename, clobber=True)
+            except:
+                print("Unable to save to "+filename)
+        else: return hdu
+        
 
     def set_user_commands(self, user_filename=None):
         """
@@ -118,10 +138,6 @@ class Simulation(object):
 
     def run():
         pass
-
-
-    def current_test_run():
-        opt_train = ot.OpticalTrain()
 
 
 
