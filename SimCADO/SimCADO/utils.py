@@ -25,6 +25,22 @@ from astropy import units as u
 __all__ = [ "read_config", "update_config", "unify", "parallactic_angle", 
             "atmospheric_refraction"]
 
+def msg(cmds, message, level=3):
+    """
+    Prints a message based on the level of verbosity given in cmds
+
+    Parameters
+    ==========
+    - cmds : UserCommands
+    - message : str
+    - level : int, optional
+        all messages with level <= MESSAGE_LEVEL are printed. I.e. level=5 
+        messages are not important, level=1 are very important
+    """
+    if cmds["VERBOSE"] == "yes" and level <= cmds["MESSAGE_LEVEL"]:
+        print(message)
+
+    
 ## CHECK: Turn config into a class? (subclass of dict, if anything)
 def read_config(config_file):
     '''Read SimCADO configuration file
