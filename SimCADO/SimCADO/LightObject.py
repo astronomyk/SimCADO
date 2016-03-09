@@ -124,6 +124,7 @@ class LightObject(object):
         #
         # 4. Add the average number of atmo-bg and mirror-bb photons
         # 5. Apply the instrumental distortion
+        
         self.array = np.zeros((self.size, self.size), dtype=np.float32)
 
         # 1.
@@ -131,7 +132,8 @@ class LightObject(object):
 
         # 2.
         for i in range(len(self.cmds.lam_bin_edges[:-1])):
-            print("Wavelength slice [um]:", self.cmds.lam_bin_centers[i])
+            if self.cmds.verbose: 
+                print("Wavelength slice [um]:", self.cmds.lam_bin_centers[i])
             # apply the adc shifts
             self.x = self.x_orig + opt_train.adc_shifts[0][i]
             self.y = self.y_orig + opt_train.adc_shifts[1][i]
@@ -149,25 +151,20 @@ class LightObject(object):
         # function that traces out the path taken by the telescope, rather than
         # having the arcs from the derotator() function being stretched by the
         # tracking() function and then the whole thing blurred by wind_jitter()
-        #self.array = opt_train.apply_derotator(self.array)
-        #self.array = opt_train.apply_tracking(self.array)
-        #self.array = opt_train.apply_wind_jitter(self.array)
+        self.array = opt_train.apply_derotator(self.array)
+        self.array = opt_train.apply_tracking(self.array)
+        self.array = opt_train.apply_wind_jitter(self.array)
 
         # 4.
         if self.cmds["ATMO_BG_ON"].lower() == "yes":
             self.array += (opt_train.n_ph_atmo + opt_train.n_ph_mirror)
 
-            
+        #self.array *= self.cmds.exptime
+        #self.poissonify()
+        
         ######################################
         # CAUTION WITH THE PSF NORMALISATION #
         ######################################
-
-    def shrink_to_detector(self):
-        """
-        Contract the oversampled photon array down to one that is consistent
-        with the pixel scale of the FPA
-        """
-        pass
 
 
     def poissonify(self, arr=None):
@@ -197,6 +194,8 @@ class LightObject(object):
         Optional keywords:
         - output: [False, True] if output is True, the BG emission array is
                   returned
+                  
+        Output is in [ph/s/pixel]
         """
         bg_photons = emission_curve.photons_in_range(lam_min, lam_max)
 
@@ -209,6 +208,7 @@ class LightObject(object):
     def apply_psf(self, psf, lam_min, lam_max, sub_pixel=False):
         """
 
+        Output is in [ph/s/pixel]
         """
         slice_photons = self.get_slice_photons(lam_min, lam_max, min_bins=10)
         slice_array = np.zeros((self.size, self.size), dtype=np.float32)
