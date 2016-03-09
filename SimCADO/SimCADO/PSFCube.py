@@ -677,7 +677,7 @@ class PSFCube(object):
                 hdu = fits.ImageHDU(psf.array)
             hdu.header["CDELT1"] = (psf.pix_res, "[arcsec] - Pixel resolution")
             hdu.header["CDELT2"] = (psf.pix_res, "[arcsec] - Pixel resolution")
-            hdu.header["WAVECENT"] = (self.lam_bin_centers[i],
+            hdu.header["WAVE0"]  = (self.lam_bin_centers[i],
                                       "[micron] - Wavelength of slice")
             hdu.header["NSLICES"] = (len(self), "Number of wavelength slices")
 
@@ -938,27 +938,31 @@ class UserPSFCube(PSFCube):
     """
 
     def __init__(self, filename):
-        n_slices = fits.getheader(filename, ext=0)["NSLICES"]
+        n_slices = len(fits.open(filename).info(output=False))
         psf_slices = []
         lam_bin_centers = []
 
         for i in range(n_slices):
             hdr = fits.getheader(filename, ext=i)
             self.header = hdr
-            lam_bin_centers += [hdr["WAVECENT"]]
+            lam_bin_centers += [hdr["WAVE0"]]
 
             psf = PSF(size=hdr["NAXIS1"], pix_res=hdr["CDELT1"])
             psf.set_array(fits.getdata(filename, ext=i))
-            psf.info["Type"] = hdr["PSF_TYPE"]
-            psf.info["description"] = hdr["DESCRIPT"]
-
+            try: psf.info["Type"] = hdr["PSF_TYPE"]
+            except: psf.info["Type"] = "Unknown"
+            try: psf.info["description"] = hdr["DESCRIPT"]
+            except: psf.info["description"] = "Unknown"
+            
             psf_slices += [psf]
+
+        lam_bin_centers = np.array(lam_bin_centers)
 
         super(UserPSFCube, self).__init__(lam_bin_centers)
         self.psf_slices = psf_slices
 
         self.info['description'] = "User PSF cube input from " + filename
-        self.info["Type"] = hdr["PSF_TYPE"]+"Cube"
+        self.info["Type"] = psf_slices[0].info["Type"]+"Cube"
 
 
 
@@ -1167,10 +1171,12 @@ class AiryDiskDiff2D(Fittable2DModel):
             except ValueError:
                 raise ImportError("AiryDiskDiff2D model requires scipy > 0.11.")
 
-        super(AiryDiskDiff2D, self).__init__(
-            amplitude=amplitude, x_0=x_0, y_0=y_0, radius=radius, eps=eps,
-            **kwargs)
-
+        super(AiryDiskDiff2D, self).__init__(   amplitude=amplitude, 
+                                                x_0=x_0, 
+                                                y_0=y_0, 
+                                                radius=radius, 
+                                                eps=eps,
+                                                **kwargs)
 
     # Comment and methods copied from astropy v1.1.1
     # TODO: Why does this particular model have its own special __deepcopy__
