@@ -17,7 +17,7 @@
 # self.lam_bin_edges
 # self.lam_bin_centers
 # self.pix_res
-# self.fpa_pix_res
+# self.fpa_res
 #
 # self.exptime
 # self.diameter
@@ -114,15 +114,15 @@ class UserCommands(object):
         self.lam_bin_centers = 0.5 * (self.lam_bin_edges[1:] + \
                                       self.lam_bin_edges[:-1])
 
-        self.fpa_pix_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
-        self.pix_res     = self.fpa_pix_res / self.cmds["SIM_OVERSAMPLING"]
+        self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
+        self.pix_res     = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
 
         self.exptime     = self.cmds["OBS_EXPTIME"]
         self.diameter    = self.cmds["SCOPE_M1_DIAMETER_OUT"]
         self.area        = np.pi / 4 * (self.diameter**2 - \
                                         self.cmds["SCOPE_M1_DIAMETER_IN"]**2)
 
-        self.verbose = True     if self.cmds["VERBOSE"] == "yes"    else False
+        self.verbose = True   if self.cmds["VERBOSE"] == "yes"   else False
         if self.verbose:
             print("Read in parameters from \n"+"\n".join(fnames))
             
