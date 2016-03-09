@@ -4,14 +4,6 @@
 # DESCRIPTION
 # The OpticalTrain holds all the information regarding the optical setup as
 # well as the individual objects
-
-#
-# Classes:
-#
-#
-# Methods:
-#
-#
 #
 #
 #
@@ -45,7 +37,67 @@ except:
     import utils
 
 class OpticalTrain(object):
+    """
+    The OpticalTrain object reads in or generates the information necessary to
+    model the optical path for all (3) sources of photons: the astronomical
+    source, the atmosphere and the primary mirror.
 
+    Attributes
+    ==========
+    General attributes
+    - cmds : UserCommands
+        a dictionary of commands for running the simulation
+    - detector : Detector
+        the detector to be used for the simulation
+
+    Spatial attributes (for PSFs)
+    - lam_bin_edges : 1D array
+        [um] wavelengths of the edges of the bins used for each PSF layer
+    - lam_bin_centers
+        [um] wavelengths of the centre of the bins used for each PSF layer
+    - pix_res : float
+        [arcsec] oversampled pixel resolution (NOT detector plate scale)
+    - psf_source :
+    - jitter_psf :
+    - adc_shifts
+        [pixel]
+    - field_rot :
+        [degrees]
+
+    Spectral attributes (for EmissionCurves)
+    - lam : 1D array
+        [um] Vector of wavelength bins for SpectralCurves
+    - lam_res : float
+        [um] resolution between
+    - psf_size : int
+        [pixels] The width of a PSF
+    - tc_mirror : TransmissionCurve
+        [0..1]
+    - tc_atmo : TransmissionCurve
+        [0..1]
+    - tc_source : TransmissionCurve
+        [0..1]
+    - ec_mirror : EmissionCurve
+        [ph/s/voxel]
+    - ec_atmo : EmissionCurve
+        [ph/s/voxel]
+    - ph_mirror : EmissionCurve
+        [ph/s/voxel]
+    - ph_atmo : EmissionCurve
+        [ph/s/voxel]
+    - n_ph_mirror : float
+        [ph/s]
+    - n_ph_atmo : float
+        [ph/s]
+
+
+
+
+
+
+
+
+    """
     def __init__(self, cmds):
         self.info = dict([])
 
@@ -61,19 +113,10 @@ class OpticalTrain(object):
 
             self.lam_bin_edges   = cmds.lam_bin_edges
             self.lam_bin_centers = cmds.lam_bin_centers
-            self.lam_res         = cmds.lam_res
             self.pix_res         = cmds.pix_res
 
             self.lam             = cmds.lam
-            #self.tc_master       = sc.UnityCurve(lam=self.lam)
-
-            self.size            = cmds["SIM_PSF_SIZE"]
-            #self.psf_master      = psf.DeltaPSFCube(self.lam_bin_centers,
-            #                                        size=self.size,
-            #                                        pix_res=self.pix_res)
-
-            self.adc_shifts      = np.zeros((len(self.lam_bin_centers),2))
-            #self.distortion_map
+            self.lam_res         = cmds.lam_res
 
             self.make()
 
@@ -107,40 +150,58 @@ class OpticalTrain(object):
         #   - detector
         #       - noise frame,
 
-        print("Generating an optical train")
-        if cmds is not None: self.cmds.update(cmds)
+        if self.cmds.verbose:
+            print("Generating an optical train")
+        if cmds is not None:
+            self.cmds.update(cmds)
 
-        if self.cmds.verbose: print("Generating mirror emission photons")
+        ############## MIRROR PHOTON PATH #########################
+        if self.cmds.verbose:
+            print("Generating mirror emission photons")
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror  = self._gen_master_tc(preset="mirror")
-        self.ec_mirror  = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
-                                            temp=self.cmds["SCOPE_M1_TEMP"])
+        self.ec_mirror  = sc.BlackbodyCurve(lam     =self.tc_mirror.lam,
+                                            temp    =self.cmds["SCOPE_M1_TEMP"],
+                                            pix_res =self.cmds.pix_res,
+                                            area    =self.cmds.area)
+
         self.ph_mirror  = self.ec_mirror * self.tc_mirror
         self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
                                                            self.lam_bin_edges[-1])
 
-        if self.cmds.verbose: print("Generating atmospheric emission photons")
+        ############## ATMOSPHERE PHOTON PATH #########################
+        if self.cmds.verbose:
+            print("Generating atmospheric emission photons")
         # Make the spectral curves for the atmospheric background photons
         self.tc_atmo = self._gen_master_tc(preset="atmosphere")
-        self.ec_atmo = sc.EmissionCurve(filename = self.cmds["ATMO_EC"])
+        self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
+                                        pix_res =self.cmds.pix_res,
+                                        area    =self.cmds.area)
+
         self.ph_atmo = self.tc_atmo * self.ec_atmo
         self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
                                                        self.lam_bin_edges[-1])
 
-        if self.cmds.verbose: print("Generating optical path for source photons")
+        ############## SOURCE PHOTON PATH #########################
+        if self.cmds.verbose:
+            print("Generating optical path for source photons")
         # Make the transmission curve and PSF for the source photons
         self.tc_source  = self._gen_master_tc(preset="source")
         self.psf_source = self._gen_master_psf()
 
-        if self.cmds.verbose: print("Generating the detector array")
+
+
+
+        if self.cmds.verbose:
+            print("Generating the detector array")
         # Make a detector Plane
         self.detector = self._gen_detector()
 
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
-        self.jitter_psf = self._gen_telescope_shake()
-        self.field_rot = self._gen_field_rotation_angle()
-        
+        #self.jitter_psf = self._gen_telescope_shake()
+        #self.field_rot = self._gen_field_rotation_angle()
+
 
     def read(self, filename):
         pass
@@ -148,13 +209,13 @@ class OpticalTrain(object):
     def save(self, filename):
         pass
 
-        
+
     def apply_tracking(self, arr):
         return pe.tracking(arr, self.cmds)
 
     def apply_derotator(self, arr):
         return pe.derotator(arr, self.cmds)
-    
+
     def apply_wind_jitter(self, arr):
         return pe.wind_jitter(arr, self.cmds)
 
@@ -297,22 +358,20 @@ class OpticalTrain(object):
 
     def _gen_field_rotation_angle(self):
         return 0
-        
+
 
     def _gen_telescope_shake(self):
         """
         Keywords:
         """
-        pix_res =   self.cmds["SIM_DETECTOR_PIX_SCALE"] / \
-                    self.cmds["SIM_OVERSAMPLING"]
         jitter_psf = psf.GaussianPSF(   fwhm=self.cmds["SCOPE_JITTER_FWHM"],
-                                        pix_res=pix_res)
+                                        pix_res=self.cmds.pix_res)
         return jitter_psf
 
-        
 
 
 
-    
+
+
 class ads:
     pass
