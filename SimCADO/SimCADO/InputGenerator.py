@@ -71,7 +71,8 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
                 "pix_res"       :0.001,
                 "size"          :255,
                 "oversample"    :1,
-                "clobber"       :True   }
+                "clobber"       :True   
+                "cpus"          :-1       }
     params.update(kwargs)
 
     rings = int(0.65 * params["diameter_out"] / params["flattoflat"])
@@ -90,7 +91,22 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
                      fov_arcsec=params["pix_res"] * params["size"],
                      oversample=params["oversample"])
 
-    psfHDU = [osys.calcPSF(lam * 1E-6)[0] for lam in lam_bin_centers]
+
+    # Generate the PSFs in multiple threads
+    try:
+        import multiprocessing as mp
+        if params["cpus"] < 0:
+            num_cpu = max(1, mp.cpu_count() - 1)
+        else:
+            num_cpu = min(params["cpus"], mp.cpu_count() - 1)
+        pool = mp.Pool(processes = num_cpu)
+        
+        psfHDU = [i[0] for i in pool.map(osys.calcPSF, lam_bin_centers * 1E-6)]
+    except:
+        print("Not possible to use multiple threads")
+        psfHDU = [osys.calcPSF(lam * 1E-6)[0] for lam in lam_bin_centers]
+
+
     for psf in psfHDU:
         psf.header["CDELT1"] = (params["pix_res"], "[arcsec] - Pixel resolution")
         psf.header["CDELT2"] = (params["pix_res"], "[arcsec] - Pixel resolution")
