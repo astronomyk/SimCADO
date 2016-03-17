@@ -661,3 +661,78 @@ class HXRGNoise:
         if o_file is not None:
             hdu.writeto(o_file, clobber='True')
         return result
+
+
+## TODO: What to do if dit = mindit (single read)?
+## TODO: Make breaking up into memory chunks more flexible?
+def readout_cube(image, dit, ndit=1, tro=1.3):
+    """Test readout onto a detector using cube model
+
+Parameters
+==========
+- image : a 2D image to be mapped onto the detector. Units are photons/second
+- dit : integration time [s]
+- ndit : number of integrations to average (default: 1)
+- tro : time for a single non-destructive read (default: 1.3 seconds)
+
+This function builds an intermediate cube of dimensions (nx, ny, nro) with a
+layer for  each non-destructive read.
+
+"""
+    nx, ny = image.shape
+
+
+    nro = np.int(dit / tro)
+    tpts =  (1 + np.arange(nro)) * tro
+
+    img_byte = image.nbytes
+    pix_byte = img_byte / (nx * ny)
+
+    max_byte = 2**30           ## TODO: arbitrary, function parameter?
+    max_pix = max_byte / pix_byte
+
+    cube_megabyte = img_byte * nro / 2**20
+    #print("Full cube  has {0:.1f} Megabytes".format(cube_megabyte))
+
+    ny_cut = np.int(max_pix / (nx * nro))
+    if ny_cut >= ny:
+        ny_cut = ny
+    #print("Cut image to ny={0:d} rows".format(ny_cut))
+
+    slope = np.zeros(image.shape)
+    cube = np.zeros((nx, ny_cut, nro))
+
+    y1 = 0
+    while y1 < ny:
+        
+        y2 = y1 + ny_cut
+        if y2 > ny:
+            y2 = ny
+            ny_cut = ny - y1
+            try:
+                del(cube)
+                cube = np.zeros((nx, ny_cut, nro))
+            except:
+                pass
+
+        ## Fill the cube with Poisson realization, individual reads
+        for i in range(nro):
+            cube[:,:,i] = np.random.poisson(image[:,y1:y2] * tro)
+
+        ## Build the ramp
+        sumcube = cube.cumsum(axis=2)
+
+        ## determine the slope using explicit formula calculated over cube
+        Sx = tpts.sum()
+        Sxx = (tpts * tpts).sum()
+        Sy = np.sum(sumcube, axis=2)
+        Sxy = np.sum(sumcube * tpts, axis=2)
+
+        slope[:,y1:y2] = \
+                    (nro * Sxy - Sx * Sy) / (nro * Sxx - Sx * Sx)
+
+        ## Move to next slice
+        y1 = y2
+
+    return slope
+
