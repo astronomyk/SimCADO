@@ -185,7 +185,7 @@ def moffat(r, alpha, beta):
     return (beta - 1)/(np.pi * alpha**2) * (1 + (r/alpha)**2)**(-beta)
 
 
-def poissonify(self, arr):
+def poissonify(arr):
     """
     Add a realisation of the poisson process to the array 'arr'.
 

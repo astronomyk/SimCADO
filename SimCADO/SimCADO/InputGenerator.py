@@ -71,7 +71,7 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
                 "pix_res"       :0.001,
                 "size"          :255,
                 "oversample"    :1,
-                "clobber"       :True   
+                "clobber"       :True,   
                 "cpus"          :-1       }
     params.update(kwargs)
 

@@ -14,8 +14,6 @@
 #
 
 
-
-
 import sys, os
 import warnings
 
@@ -89,12 +87,6 @@ class OpticalTrain(object):
         [ph/s]
     - n_ph_atmo : float
         [ph/s]
-
-
-
-
-
-
 
 
     """
@@ -202,6 +194,9 @@ class OpticalTrain(object):
         #self.jitter_psf = self._gen_telescope_shake()
         #self.field_rot = self._gen_field_rotation_angle()
 
+    
+    def read_detector(self, light_object, cmds):
+        return light_object
 
     def read(self, filename):
         pass

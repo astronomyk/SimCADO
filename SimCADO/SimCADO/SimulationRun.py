@@ -84,7 +84,8 @@ class Simulation(object):
         self.src = lo.Source(self.cmds["OBS_INPUT_NAME"])
         self.obj = lo.LightObject(self.src, self.cmds)
         self.obj.apply_optical_train(opt)
-
+        #self.raw_image = self.opt.read_detector(self.obj, self.cmds)
+        
         hdu = fits.PrimaryHDU(self.obj.array)
         hdu.header["BUNIT"] = "ph/s"
         hdu.header["CDELT1"] = opt.pix_res, "[arcsec]"

@@ -629,7 +629,10 @@ class PSFCube(object):
         return self.info['description']
 
     def __getitem__(self, i):
-        return self.psf_slices[i]
+        if len(self.psf_slices) > 1:
+            return self.psf_slices[i]
+        else:
+            return self.psf_slices[0]
 
     #def __array__(self):
      #   return self.psf_slices
@@ -945,10 +948,10 @@ class UserPSFCube(PSFCube):
         for i in range(n_slices):
             hdr = fits.getheader(filename, ext=i)
             self.header = hdr
-            lam_bin_centers += [hdr["WAVE0"]]
-
             psf = PSF(size=hdr["NAXIS1"], pix_res=hdr["CDELT1"])
-            psf.set_array(fits.getdata(filename, ext=i))
+            psf.set_array(fits.getdata(filename, ext=i))            
+            try: lam_bin_centers += [hdr["WAVE0"]]
+            except: lam_bin_centers += [-1]
             try: psf.info["Type"] = hdr["PSF_TYPE"]
             except: psf.info["Type"] = "Unknown"
             try: psf.info["description"] = hdr["DESCRIPT"]
