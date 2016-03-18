@@ -22,16 +22,51 @@ try:
     import SimCADO.utils as utils
     import SimCADO.LightObject as lo
     import SimCADO.SpectralCurve as sc
+    import SimCADO.PSFCube as psf
     import SimCADO.Detector as fpa
 except:
     import utils
     import LightObject as lo
     import SpectralCurve as sc
+    import PSFCube as psf
     import Detector as fpa
 
 ################################################################################
 #                       Generate Instrument Input Data                         #
 ################################################################################
+
+def diff_limited_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
+    """
+    Generate a FITS file with a diffraction limited E-ELT PSFs for a range of 
+    wavelengths by using PSFCube.AiryPSFCube()
+
+    Parameters:
+    -----------
+    lam_bin_centers: [um] the centres of each wavelength bin
+    filename: [None] path name to where the FITS file should be saved. If not
+              given, a PSFCube object is returned
+
+    Optional Parameters:
+    --------------------
+    pix_res: [arcsec] the angular resolution of the pixels. Default is 1 mas
+    diameter: [m]
+    size: [int]
+    clobber: [True/False]
+    """
+
+    params = {  "diameter"      :37,
+                "pix_res"       :0.001,
+                "size"          :255,
+                "clobber"       :True   }
+    params.update(kwargs)
+
+    myPsf = psf.AiryPSFCube(lam_bin_centers, **params)
+
+    if filename is None:
+        return myPsf
+    else:
+        myPsf.export_to_fits(filename, clobber=params["clobber"])    
+
 
 def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     """
