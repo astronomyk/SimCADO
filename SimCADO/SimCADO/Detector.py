@@ -20,6 +20,26 @@
 # Methods:
 #
 
+
+
+###################
+#
+# New structure idea:
+# Classes:
+# Detector and Chip
+
+# A Chip gets a signal [ph/s/px]. It then deals with the sampling, the 
+# saturation, the bad pixels, the readout noise and returns a 2D array
+# A Chip also has coordinate boundaries in [arcsec] which can be used by the 
+# OpticalTrain when deciding which regions of the sky to project onto a chip
+#
+# A Detector worries about how often the chips are read out, what happens to the
+# combined signal of each readout. It also worries about how to store the data
+# coming back from each chip, whether to remove a constant background, and 
+# anything else a detector frame should worry about (like different bias levels)
+
+
+
 import os
 import warnings
 import datetime
@@ -30,10 +50,15 @@ from scipy.ndimage.interpolation import zoom
 from astropy.io import fits
 from astropy.stats.funcs import median_absolute_deviation as mad
 
+try:
+    import SimCADO.LightObject as lo
+except:
+    import LightObject as lo
+
 
 class Detector(object):
 
-    def __init__(self, filename=None, **kwargs):
+    def __init__(self, cmds, filename=None):
         """
 
         Keywords:
@@ -66,7 +91,7 @@ class Detector(object):
                         "FPA_DEAD_PIXELS"   :5,
                         "FPA_GAIN"          :1,
                         "FPA_WELL_DEPTH"    :1E5    }
-        self.params.update(kwargs)
+        self.params.update(cmds.cmds)
 
         self.size = self.params["NAXIS1"]
         self.oversample = self.params["SIM_OVERSAMPLING"]
@@ -74,20 +99,24 @@ class Detector(object):
         self.fpa_res = self.params["SIM_DETECTOR_PIX_SCALE"]
         self.exptime = self.params["OBS_EXPTIME"]
 
+        self.signal = None
+
         if filename is not None:
             self.params["FPA_NOISE_PATH"] = filename
 
-        if self.params["FPA_NOISE_PATH"] is not None:
-            self.read(self.params["FPA_NOISE_PATH"])
-        else:
-            self._make_detector()
+        self._make_detector()
+
 
 
     def _make_detector(self, **kwargs):
         """
-        Internal method for generating a detector using the NGHxRG class
+        Internal method for generating a detector using the NGHxRG class or for
+        reading in the noise from a FITS file
         """
-        self.array = self.generate_hxrg_noise(**kwargs)
+        if self.params["FPA_NOISE_PATH"] is not None:
+            self.read(self.params["FPA_NOISE_PATH"])
+        else:
+            self.array = self.generate_hxrg_noise(**kwargs)
 
         #add_cosmic_rays(exptime)
         #self.apply_pixel_map()
@@ -132,10 +161,142 @@ class Detector(object):
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
 
+    def readout(self, image=None):
+        """
+        Readout the detector array
+        """
+        
+        dit = self.params["OBS_EXPTIME"]
+        ndit = self.params["OBS_NDIT"]
+        tro = self.params["OBS_NONDESTRUCT_TRO"]
+        max_byte = self.params["COMP_MAX_RAM_CHUNK_GB"] * 2**30
+        
+        if image is not None:
+            self.add_signal(image)
+        
+        out_array = np.zeros(self.signal.shape)
+        
+        if self.params["COMP_SPEED"] <= 3:
+            for n in range(ndit):
+                tmp_arr = self._readout_cube_slow(self.signal, dit, tro, max_byte)
+                
+                out_array += tmp_arr
+        
+        elif self.params["COMP_SPEED"] > 3:
+            for n in range(ndit):
+                out_array += self._readout_cube_fast(self.signal, dit)
+        
+        elif self.params["COMP_SPEED"] > 7:
+            out_array = self._readout_cube_superfast(self.signal, dit, ndit)
+            
+        out_array += self.array
+            
+
+    ## TODO: What to do if dit = mindit (single read)?
+    ## TODO: Make breaking up into memory chunks more flexible?
+    def _readout_cube_slow(image, dit, tro=1.3, max_byte=2**30):
+        """Test readout onto a detector using cube model
+
+        Parameters
+        ==========
+        - image : a 2D image to be mapped onto the detector. Units are [ph/s/pixel]
+        - dit : integration time [s]
+        - tro : time for a single non-destructive read (default: 1.3 seconds)
+
+        Optional Parameters
+        ===================
+        - max_byte : the largest possible chunk of memory that can be used for 
+                     computing the sampling slope
+        
+        This function builds an intermediate cube of dimensions (nx, ny, nro) with a
+        layer for  each non-destructive read.
+
+        Output is given in [ph/pixel]
+
+        """
+        nx, ny = image.shape
+
+        nro = np.int(dit / tro)
+        tpts =  (1 + np.arange(nro)) * tro
+
+        img_byte = image.nbytes
+        pix_byte = img_byte / (nx * ny)
+
+        #max_byte =            ## TODO: arbitrary, function parameter?
+        max_pix = max_byte / pix_byte
+
+        cube_megabyte = img_byte * nro / 2**20
+        #print("Full cube  has {0:.1f} Megabytes".format(cube_megabyte))
+
+        ny_cut = np.int(max_pix / (nx * nro))
+        if ny_cut >= ny:
+            ny_cut = ny
+        #print("Cut image to ny={0:d} rows".format(ny_cut))
+
+        slope = np.zeros(image.shape)
+        cube = np.zeros((nx, ny_cut, nro))
+
+        y1 = 0
+        while y1 < ny:
+
+            y2 = y1 + ny_cut
+            if y2 > ny:
+                y2 = ny
+                ny_cut = ny - y1
+                try:
+                    del(cube)
+                    cube = np.zeros((nx, ny_cut, nro))
+                except:
+                    pass
+
+            ## Fill the cube with Poisson realization, individual reads
+            for i in range(nro):
+                cube[:,:,i] = np.random.poisson(image[:,y1:y2] * tro)
+
+            ## Build the ramp
+            sumcube = cube.cumsum(axis=2)
+
+            ## determine the slope using explicit formula calculated over cube
+            Sx = tpts.sum()
+            Sxx = (tpts * tpts).sum()
+            Sy = np.sum(sumcube, axis=2)
+            Sxy = np.sum(sumcube * tpts, axis=2)
+
+            slope[:,y1:y2] = \
+                        (nro * Sxy - Sx * Sy) / (nro * Sxx - Sx * Sx)
+
+            ## Move to next slice
+            y1 = y2
+
+        # return values are [ph/pixel]
+        return slope * dit
+
+    def _readout_cube_fast(image, dit):
+        return np.random.poisson(image * dit)
+        
+    def _readout_cube_superfast(image, dit, ndit):
+        return np.random.poisson(image * dit * ndit)
+
+
+    def add_signal(self, image):
+        """
+        Add some signal photons to the detector array. Input units are expected
+        to be [ph/s/pixel]
+
+        Parameters
+        ==========
+        image : lo.LightObject, 2D array
+        """
+
+        if isinstance(image, lo.LightObject):
+            self.signal = image.array
+        elif isinstance(image, np.ndarray):
+            self.signal = image
+        else:
+            raise ValueError("image should be either LightObject or np.ndarray")
+
     def add_cosmic_rays(self):
-        """
-        Not needed because of up-the-ramp sampling
-        """
+        """  Not needed because of up-the-ramp sampling  """
         pass
 
 
@@ -160,14 +321,15 @@ class Detector(object):
             raise ValueError(self.params["FPA_DEAD_PIXELS"] + "does not exist")
 
 
-    def apply_saturation(self):
+    def _apply_saturation(self, arr):
         """
         Cap all pixels that are above the well depth.
         !! TODO: apply a linearity curve and shift excess light into !!
         !! neighbouring pixels !!
         """
         max_val = self.params["FPA_WELL_DEPTH"]
-        self.array[self.array > max_val] = max_val
+        arr[arr > max_val] = max_val
+        return arr
 
 
     def generate_hxrg_noise(self, **kwargs):
@@ -198,6 +360,29 @@ class Detector(object):
                                 acn      = self.params["HXRG_ALT_COL_NOISE"])
 
 
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
@@ -661,78 +846,3 @@ class HXRGNoise:
         if o_file is not None:
             hdu.writeto(o_file, clobber='True')
         return result
-
-
-## TODO: What to do if dit = mindit (single read)?
-## TODO: Make breaking up into memory chunks more flexible?
-def readout_cube(image, dit, ndit=1, tro=1.3):
-    """Test readout onto a detector using cube model
-
-Parameters
-==========
-- image : a 2D image to be mapped onto the detector. Units are photons/second
-- dit : integration time [s]
-- ndit : number of integrations to average (default: 1)
-- tro : time for a single non-destructive read (default: 1.3 seconds)
-
-This function builds an intermediate cube of dimensions (nx, ny, nro) with a
-layer for  each non-destructive read.
-
-"""
-    nx, ny = image.shape
-
-
-    nro = np.int(dit / tro)
-    tpts =  (1 + np.arange(nro)) * tro
-
-    img_byte = image.nbytes
-    pix_byte = img_byte / (nx * ny)
-
-    max_byte = 2**30           ## TODO: arbitrary, function parameter?
-    max_pix = max_byte / pix_byte
-
-    cube_megabyte = img_byte * nro / 2**20
-    #print("Full cube  has {0:.1f} Megabytes".format(cube_megabyte))
-
-    ny_cut = np.int(max_pix / (nx * nro))
-    if ny_cut >= ny:
-        ny_cut = ny
-    #print("Cut image to ny={0:d} rows".format(ny_cut))
-
-    slope = np.zeros(image.shape)
-    cube = np.zeros((nx, ny_cut, nro))
-
-    y1 = 0
-    while y1 < ny:
-        
-        y2 = y1 + ny_cut
-        if y2 > ny:
-            y2 = ny
-            ny_cut = ny - y1
-            try:
-                del(cube)
-                cube = np.zeros((nx, ny_cut, nro))
-            except:
-                pass
-
-        ## Fill the cube with Poisson realization, individual reads
-        for i in range(nro):
-            cube[:,:,i] = np.random.poisson(image[:,y1:y2] * tro)
-
-        ## Build the ramp
-        sumcube = cube.cumsum(axis=2)
-
-        ## determine the slope using explicit formula calculated over cube
-        Sx = tpts.sum()
-        Sxx = (tpts * tpts).sum()
-        Sy = np.sum(sumcube, axis=2)
-        Sxy = np.sum(sumcube * tpts, axis=2)
-
-        slope[:,y1:y2] = \
-                    (nro * Sxy - Sx * Sy) / (nro * Sxx - Sx * Sx)
-
-        ## Move to next slice
-        y1 = y2
-
-    return slope
-
