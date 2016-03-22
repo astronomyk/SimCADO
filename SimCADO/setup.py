@@ -16,24 +16,23 @@ MINOR = 1
 ATTR = 'dev'
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
-__version__ = VERSION
-
 ## Is this needed?
-#def write_version_py(filename='version.py'):
-#    cnt = """
-## THIS FILE GENERATED FROM SIMCADO SETUP.PY
-#"""
-#    a = open(filename, 'w')
-#    try:
-#        a.write(cnt % {'version': VERSION})
-#    finally:
-#        a.close()
+def write_version_py(filename='SimCADO/version.py'):
+    cnt = """
+# THIS FILE GENERATED FROM SIMCADO SETUP.PY
+version = '{}'
+"""
+    a = open(filename, 'w')
+    try:
+        a.write(cnt.format(VERSION))
+    finally:
+        a.close()
 
 from distutils.core import setup
 
 def setup_package():
     # Rewrite the version file everytime
-    #write_version_py()
+    write_version_py()
 
     setup(name = 'SimCADO',
           version = VERSION,

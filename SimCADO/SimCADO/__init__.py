@@ -5,6 +5,8 @@ End-to-end simulator for MICADO on the E-ELT
 
 """
 
+from .version import version as __version__
+
 from .Detector import *
 from .LightObject import *
 from .OpticalTrain import *
