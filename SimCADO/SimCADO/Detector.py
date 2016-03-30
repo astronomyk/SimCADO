@@ -28,14 +28,14 @@
 # Classes:
 # Detector and Chip
 
-# A Chip gets a signal [ph/s/px]. It then deals with the sampling, the 
+# A Chip gets a signal [ph/s/px]. It then deals with the sampling, the
 # saturation, the bad pixels, the readout noise and returns a 2D array
-# A Chip also has coordinate boundaries in [arcsec] which can be used by the 
+# A Chip also has coordinate boundaries in [arcsec] which can be used by the
 # OpticalTrain when deciding which regions of the sky to project onto a chip
 #
 # A Detector worries about how often the chips are read out, what happens to the
 # combined signal of each readout. It also worries about how to store the data
-# coming back from each chip, whether to remove a constant background, and 
+# coming back from each chip, whether to remove a constant background, and
 # anything else a detector frame should worry about (like different bias levels)
 
 
@@ -108,21 +108,21 @@ class Detector(object):
 
 
 
-    def _make_detector(self, **kwargs):
+    def _make_detector(self):
         """
         Internal method for generating a detector using the NGHxRG class or for
         reading in the noise from a FITS file
         """
         if self.params["FPA_NOISE_PATH"] is not None:
-            self.read(self.params["FPA_NOISE_PATH"])
+            self.open(self.params["FPA_NOISE_PATH"])
         else:
-            self.array = self.generate_hxrg_noise(**kwargs)
+            self.array = self.generate_hxrg_noise()
 
         #add_cosmic_rays(exptime)
         #self.apply_pixel_map()
         #apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
 
-    def read(self, filename, **kwargs):
+    def open(self, filename, **kwargs):
         """
         Read in a detector FITS file
 
@@ -161,40 +161,56 @@ class Detector(object):
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
 
-    def readout(self, image=None):
+    def read_out(self, image=None, dit=None, ndit=None):
         """
         Readout the detector array
         """
+
+        ###############################################
+        #!!!!!!!!!!! TODO - add dark strom !!!!!!!!!!!#
         
-        dit = self.params["OBS_EXPTIME"]
-        ndit = self.params["OBS_NDIT"]
+        dit = self.params["OBS_EXPTIME"]    if dit is None  else 1
+        ndit = int(self.params["OBS_NDIT"]) if ndit is None else 1
         tro = self.params["OBS_NONDESTRUCT_TRO"]
+        
         max_byte = self.params["COMP_MAX_RAM_CHUNK_GB"] * 2**30
+        dark = self.params["FPA_DARK_MEDIAN"]
+        
+        
         
         if image is not None:
             self.add_signal(image)
-        
+
         out_array = np.zeros(self.signal.shape)
-        
+
         if self.params["COMP_SPEED"] <= 3:
             for n in range(ndit):
-                tmp_arr = self._readout_cube_slow(self.signal, dit, tro, max_byte)
-                
+                tmp_arr = self._read_out_uptheramp(self.signal, dit, tro,
+                                                   max_byte)
                 out_array += tmp_arr
-        
+                out_array += dark * dit
+
         elif self.params["COMP_SPEED"] > 3:
             for n in range(ndit):
-                out_array += self._readout_cube_fast(self.signal, dit)
-        
+                out_array += self._read_out_fast(self.signal, dit)
+                out_array += dark * dit
+                
         elif self.params["COMP_SPEED"] > 7:
-            out_array = self._readout_cube_superfast(self.signal, dit, ndit)
+            out_array = self._read_out_superfast(self.signal, dit, ndit)
+            out_array += dark * dit * ndit
             
-        out_array += self.array
+        if self.signal is not None:
+            out_array += self.array[:self.signal.shape[0], 
+                                    :self.signal.shape[1]]
+        else:
+            out_array = self.array
             
+        return out_array
+
 
     ## TODO: What to do if dit = mindit (single read)?
     ## TODO: Make breaking up into memory chunks more flexible?
-    def _readout_cube_slow(image, dit, tro=1.3, max_byte=2**30):
+    def _read_out_uptheramp(self, image, dit, tro=1.3, max_byte=2**30):
         """Test readout onto a detector using cube model
 
         Parameters
@@ -205,9 +221,9 @@ class Detector(object):
 
         Optional Parameters
         ===================
-        - max_byte : the largest possible chunk of memory that can be used for 
+        - max_byte : the largest possible chunk of memory that can be used for
                      computing the sampling slope
-        
+
         This function builds an intermediate cube of dimensions (nx, ny, nro) with a
         layer for  each non-destructive read.
 
@@ -262,8 +278,7 @@ class Detector(object):
             Sy = np.sum(sumcube, axis=2)
             Sxy = np.sum(sumcube * tpts, axis=2)
 
-            slope[:,y1:y2] = \
-                        (nro * Sxy - Sx * Sy) / (nro * Sxx - Sx * Sx)
+            slope[:,y1:y2] = (nro * Sxy - Sx * Sy) / (nro * Sxx - Sx * Sx)
 
             ## Move to next slice
             y1 = y2
@@ -271,11 +286,11 @@ class Detector(object):
         # return values are [ph/pixel]
         return slope * dit
 
-    def _readout_cube_fast(image, dit):
+    def _read_out_fast(self, image, dit):
         return np.random.poisson(image * dit)
-        
-    def _readout_cube_superfast(image, dit, ndit):
-        return np.random.poisson(image * dit * ndit)
+
+    def _read_out_superfast(self, image, dit, ndit):
+        return np.random.poisson(image * dit * ndit) / ndit
 
 
     def add_signal(self, image):
@@ -360,29 +375,7 @@ class Detector(object):
                                 acn      = self.params["HXRG_ALT_COL_NOISE"])
 
 
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
+
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
