@@ -187,7 +187,7 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating the detector array")
         # Make a detector Plane
-        self.detector = self._gen_detector()
+        self.detector = fpa.Detector(self.cmds)
 
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
@@ -329,19 +329,6 @@ class OpticalTrain(object):
 
         psf_master = psf_m1
         return psf_master
-
-
-    def _gen_detector(self):
-        """
-        Keywords:
-        """
-        fname = self.cmds["FPA_NOISE_PATH"]
-        if fname is not None:
-            if not os.path.exists(fname):
-                raise ValueError(fname+" doesn't exist")
-
-        return fpa.Detector(fname, **self.cmds)
-
 
     def _gen_adc_shifts(self):
         """
