@@ -83,9 +83,9 @@ class LightObject(object):
 
         self.lam        = source.lam
         self.spectra    = source.spectra
-        self.x_orig     = source.x
+        self.x_orig     = source.x        
         self.y_orig     = source.y
-        self.ref        = source.ref.astype(int)
+        self.ref        = np.array(source.ref, dtype=int)
         self.weight     = source.weight
         self.x, self.y  = deepcopy(self.x_orig), deepcopy(self.y_orig)
         self.src_params = source.params
@@ -99,6 +99,21 @@ class LightObject(object):
         self.lam_bin_edges = cmds.lam_bin_edges
         self.lam_bin_centers = cmds.lam_bin_centers
 
+        
+    def _to_pixel_coords(self, ra_offset, dec_offset):
+        """
+        Return pixel coordinates 
+        """
+        factor = 1.
+        if u.Unit(self.src_params["pix_unit"]) != u.arcsec:
+            factor = u.Unit(self.src_params["pix_unit"]).to(u.arcsec)
+
+        x_pix = factor * ra_offset / self.src_params["pix_res"]
+        y_pix = factor * dec_offset / self.src_params["pix_res"]
+        
+        return x_pix, y_pix
+
+        
     def __str__(self):
         return self.info['description']
 
@@ -137,7 +152,8 @@ class LightObject(object):
             # apply the adc shifts
             self.x = self.x_orig + opt_train.adc_shifts[0][i]
             self.y = self.y_orig + opt_train.adc_shifts[1][i]
-
+            self.x, self.y = self._to_pixel_coords(self.x, self.y)
+            
             # include any other shifts here
 
 
@@ -215,16 +231,23 @@ class LightObject(object):
 
         # if sub pixel accuracy is needed, be prepared to wait. For this we
         # need to go through every source spectra in turn, shift the psf by
-        # the decimal amount given by pos - int(pos), then place the a
+        # the decimal amount given by pos - int(pos), then place a
         # certain slice of the psf on the output array.
-        x_int, y_int = self.x.astype(int), self.y.astype(int)
-        dx, dy = self.x - x_int, self.y - y_int
         ax, ay = np.array(slice_array.shape) // 2
         bx, by = np.array(psf.array.shape)   // 2
-
+        
+        # !!!!!! This is a temporary solution to the position problem !!!!!!
+        mask = (self.x > -ax) * (self.x < ax) * (self.y > -ay) *  (self.y < ay)
+        
+        x_int, y_int = self.x.astype(int), self.y.astype(int)
+        dx, dy = self.x - x_int, self.y - y_int
+        
         if sub_pixel:
             # for each point source in the list, add a psf to the slice_array
             for i in range(len(slice_photons)):
+                if not mask[i]:
+                    continue
+                
                 psf_tmp = spi.shift(psf.array, (dx[i],dy[i]), order=1)
                 x_pint, y_pint = x_int[i], y_int[i]
 
@@ -251,8 +274,8 @@ class LightObject(object):
         else:
             # If astrometric precision is not that important and everything
             # has been oversampled, use this section.
-
-            slice_array[ax + x_int, ay + y_int] = slice_photons * self.weight
+            i, j = ax + x_int[mask], ay + y_int[mask]
+            slice_array[i,j] = slice_photons[mask] * self.weight[mask]
             slice_array = convolve_fft(slice_array, psf.array)
 
         return slice_array
@@ -373,14 +396,15 @@ class Source(object):
     or
     - lam
     - spectra
-    - x
-    - y
+    - x [arcsec]
+    - y [arcsec]
     - ref
     - weight
 
     Keyword arguments
     =================
     - units
+    - pix_unit
     - pix_res
     - exptime
     - area
@@ -390,7 +414,11 @@ class Source(object):
                 lam=None, spectra=None, x=None, y=None, ref=None, weight=None,
                 **kwargs):
 
-        self.params = {"units" :"ph/s", "pix_res" :0.004, "exptime" :1, "area" :1}
+        self.params = {"units"   :"ph/s",
+                       "pix_unit":"arcsec",        
+                       "pix_res" :0.004, 
+                       "exptime" :1, 
+                       "area"    :1}
         self.params.update(kwargs)
 
         self.units = u.Unit(self.params["units"])
@@ -419,7 +447,6 @@ class Source(object):
         convert the spectra to photons/(s m2)
         if [arcsec] are in the units, we want to find the photons per pixel
         if [um] are in the units, we want to find the photons per wavelength bin
-        if
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ! Come back and put in other energy units like Jy, mag, ergs !
@@ -429,10 +456,10 @@ class Source(object):
         bases  = self.units.bases
 
         factor = 1.
-        if u.s      not in bases: factor /= (self.params["exptime"]*u.s)
-        if u.m      not in bases: factor /= (self.params["area"]   *u.m**2)
-        if u.micron     in bases: factor *= (self.params["lam_res"]*u.um)
-        if u.arcsec     in bases: factor *= (self.params["pix_res"]*u.arcsec)**2
+        if u.s      not in bases: factor /= (self.exptime*u.s)
+        if u.m      not in bases: factor /= (self.area   *u.m**2)
+        if u.micron     in bases: factor *= (self.lam_res*u.um)
+        if u.arcsec     in bases: factor *= (self.pix_res*u.arcsec)**2
         #print((factor*self.units).unit)
 
         self.units = (factor*self.units).unit
@@ -462,10 +489,11 @@ class Source(object):
         self.ref = np.arange(len(x))
         self.weight = np.ones(len(x))
 
-        if "BUNIT"  in hdr.keys():      self.units   = u.Unit(hdr["BUNIT"])
-        if "EXPTIME" in hdr.keys():     self.exptime = hdr["EXPTIME"]
-        if "AREA"   in hdr.keys():      self.area    = hdr["AREA"]
-        if "CDELT1" in hdr.keys():      self.pix_res = hdr["CDELT1"]
+        if "BUNIT"  in hdr.keys():  self.params["units"]   = u.Unit(hdr["BUNIT"])
+        if "EXPTIME" in hdr.keys(): self.params["exptime"] = hdr["EXPTIME"]
+        if "AREA"   in hdr.keys():  self.params["area"]    = hdr["AREA"]
+        if "CDELT1" in hdr.keys():  self.params["pix_res"] = hdr["CDELT1"]
+        if "CUNIT1" in hdr.keys():  self.params["pix_unit"] = hdr["CUNIT1"]
         self.lam_res = lam_res
 
         self._convert_to_photons()
@@ -473,6 +501,8 @@ class Source(object):
     def _from_arrays(self, lam, spectra, x, y, ref, weight=None):
         """
         Make a Source object from a series of lists
+        - x,y : [arcsec]
+        
         """
         self.lam = lam
         self.spectra = spectra
@@ -512,6 +542,7 @@ class Source(object):
         if "EXPTIME" in hdr0.keys():    self.params["exptime"] = hdr0["EXPTIME"]
         if "AREA"   in hdr0.keys():     self.params["area"]    = hdr0["AREA"]
         if "CDELT1" in hdr0.keys():     self.params["pix_res"] = hdr0["CDELT1"]
+        if "CUNIT1" in hdr0.keys():     self.params["pix_unit"] = u.Unit(hdr0["CUNIT1"])
         self.lam_res = hdr1["LAM_RES"]
 
         self._convert_to_photons()
@@ -552,16 +583,19 @@ class Source(object):
         xyHDU.header["EXPTIME"] = self.params["exptime"]
         xyHDU.header["AREA"] = self.params["area"]
         xyHDU.header["CDELT1"] = self.params["pix_res"]
+        xyHDU.header["CDELT2"] = self.params["pix_res"]
+        xyHDU.header["CUNIT1"] = self.params["pix_unit"]
+        xyHDU.header["CUNIT2"] = self.params["pix_unit"]
 
         xyHDU.header["SIM_CUBE"] = "SOURCE"
 
         specHDU = fits.ImageHDU(self.spectra)
-        specHDU.header["CRVAL1"] = self.lam[0]
-        specHDU.header["CRPIX1"] = 0
-        specHDU.header["CDELT1"] = self.lam_res
-        specHDU.header["LAM_MIN"] = self.lam[0]
-        specHDU.header["LAM_MAX"] = self.lam[-1]
-        specHDU.header["LAM_RES"] = self.lam_res
+        specHDU.header["CRVAL1"]  = self.lam[0]
+        specHDU.header["CRPIX1"]  = 0
+        specHDU.header["CDELT1"]  = (self.lam_res, "[um] Spectral resolution")
+        specHDU.header["LAM_MIN"] = (self.lam[0], "[um] Minimum wavelength")
+        specHDU.header["LAM_MAX"] = (self.lam[-1], "[um] Maximum wavelength")
+        specHDU.header["LAM_RES"] = (self.lam_res, "[um] Spectral resolution")
 
         hdu = fits.HDUList([xyHDU, specHDU])
         hdu.writeto(filename, clobber=True)
