@@ -174,6 +174,13 @@ def micado_fpa_chip(filename, **kwargs):
 ################################################################################
 
 def grid_of_stars(mag_range, spacing=0.5, spec_type="a0v", filename=None):
+    """
+    
+    spacing : float, optional
+        [arcsec] distance between each star. Default = 0.5 arcsec
+    """
+    
+    
     n = len(mag_range)
     side_len = int(np.sqrt(n)) + (np.sqrt(n) % 1 > 0)
     print(side_len)
@@ -210,7 +217,7 @@ def stellar_emission_curve(spec_type, distance=None, dist_mod=None, **kwargs):
                             units="ph/(s m2)", **kwargs)
 
     
-def source_1E4_Msun_cluster(distance=40, half_light_radius=1, filename=None,
+def source_1E4_Msun_cluster(distance=40000, half_light_radius=1, filename=None,
                                                                     **kwargs):
     """
     Generate a source object for a 10^4 solar mass cluster
@@ -218,7 +225,7 @@ def source_1E4_Msun_cluster(distance=40, half_light_radius=1, filename=None,
     Parameters
     ==========
     distance : float
-        [kpc] distance to the cluster
+        [pc] distance to the cluster
     half_light_radius : float
         [pc] half light radius of the cluster
     filename : str, optional
@@ -236,7 +243,7 @@ def source_1E4_Msun_cluster(distance=40, half_light_radius=1, filename=None,
     masses = np.loadtxt("../data/IMF_1E4.dat")
     spec_type = [mass_to_spec_type(mass) for mass in masses]
 
-    distance *= u.kpc
+    distance *= u.pc
     half_light_radius *= u.pc
     hwhm = (half_light_radius/distance*u.rad).to(u.arcsec).value
     sig = hwhm / 1.175
@@ -353,7 +360,7 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None, raw=False):
     - spec_type : str, [str]
         the spectral class(es) of the main sequence star(s), e.g. A0, G2V
     - distance : float, [float], optional
-        [parsec] the distance(s) to said star
+        [parsec] the distance(s) to the star(s)
     - star_catalogue : str, optional
         path name to an ASCII table with spectra of MS stars normalised to
         lam = 5556 Angstrom. Default is "../data/EC_pickles_MS.dat".
