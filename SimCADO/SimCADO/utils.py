@@ -34,10 +34,10 @@ def msg(cmds, message, level=3):
     - cmds : UserCommands
     - message : str
     - level : int, optional
-        all messages with level <= MESSAGE_LEVEL are printed. I.e. level=5 
+        all messages with level <= SIM_MESSAGE_LEVEL are printed. I.e. level=5 
         messages are not important, level=1 are very important
     """
-    if cmds["VERBOSE"] == "yes" and level <= cmds["MESSAGE_LEVEL"]:
+    if cmds["SIM_VERBOSE"] == "yes" and level <= cmds["SIM_MESSAGE_LEVEL"]:
         print(message)
 
     
@@ -79,8 +79,13 @@ def read_config(config_file):
                 comment = ""
             param, value = content.split(None, 1)
             try: config_dict[param] = float(value.strip())
-            except: config_dict[param] = value.strip()
-
+            except: 
+                config_dict[param] = value.strip()
+            
+            # Run through the cmds and convert any "none" to None values
+            if type(value) == str and value.lower() == "none":
+                config_dict[param] = None
+                    
     return config_dict
 
 
