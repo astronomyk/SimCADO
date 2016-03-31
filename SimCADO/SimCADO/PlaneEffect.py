@@ -50,18 +50,18 @@ except:
     import utils
 
 
-__all__ = ["line_blur", "rotate_blur", "tracking", "derotator", "wind_jitter"]
+__all__ = ["tracking", "derotator", "wind_jitter"]
 
 
-def gaussian_dist(x, mu, sig):
+def _gaussian_dist(x, mu, sig):
     p = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     return p / np.sum(p)
 
-def linear_dist(x):
+def _linear_dist(x):
     p = np.array([1.]*len(x))
     return p / np.sum(p)
 
-def line_blur(arr, shift, kernel="gaussian", angle=0):
+def _line_blur(arr, shift, kernel="gaussian", angle=0):
     """
     Introduce a linear blur due to tracking error.
 
@@ -83,10 +83,10 @@ def line_blur(arr, shift, kernel="gaussian", angle=0):
     n = max(int(2 * shift) + 1, 3)
     if kernel == "gaussian":
         dr = np.linspace(-3 * shift, 3 * shift, 6 * n)
-        weight = gaussian_dist(dr, 0, shift)
+        weight = _gaussian_dist(dr, 0, shift)
     else:
         dr = np.linspace(0, shift, n)
-        weight = linear_dist(dr)
+        weight = _linear_dist(dr)
 
     dx = np.cos(np.deg2rad(angle)) * dr
     dy = np.sin(np.deg2rad(angle)) * dr
@@ -97,7 +97,7 @@ def line_blur(arr, shift, kernel="gaussian", angle=0):
 
     return tmp_arr
 
-def rotate_blur(arr, angle, kernel="gaussian"):
+def _rotate_blur(arr, angle, kernel="gaussian"):
     """
     Introduce a rotational blur due to derotator error.
 
@@ -119,10 +119,10 @@ def rotate_blur(arr, angle, kernel="gaussian"):
 
     if kernel == "gaussian":
         d_ang = np.linspace(-3 * angle, 3 * angle, max(2, 6*n))
-        weight = gaussian_dist(d_ang, 0, angle)
+        weight = _gaussian_dist(d_ang, 0, angle)
     else:
         d_ang = np.linspace(0, angle, n)
-        weight = linear_dist(d_ang)
+        weight = _linear_dist(d_ang)
 
     tmp_arr = np.zeros(arr.shape)
     for ang, w in zip(d_ang, weight):
@@ -142,7 +142,7 @@ def tracking(arr, cmds):
         kernel = cmds["SCOPE_DRIFT_PROFILE"]
         shift  = cmds["SCOPE_DRIFT_DISTANCE"] / pix_res
 
-        return line_blur(arr, shift, kernel=kernel, angle=0)
+        return _line_blur(arr, shift, kernel=kernel, angle=0)
     else:
         return arr
 
@@ -158,7 +158,7 @@ def derotator(arr, cmds):
         kernel = cmds["INST_DEROT_PROFILE"]
         angle  = eff * cmds["OBS_EXPTIME"] * 15 / 3600.
 
-        return rotate_blur(arr, angle, kernel=kernel)
+        return _rotate_blur(arr, angle, kernel=kernel)
     else:
         return arr
 
@@ -175,7 +175,7 @@ def wind_jitter(arr, cmds):
     n = (fwhm / 2.35)
     kernel = Gaussian2DKernel(n, mode="oversample")
 
-    return convolve_fft(arr, kernel)
+    return convolve_fft(arr, kernel, allow_huge=True)
 
 
 def adc_shift(cmds):
