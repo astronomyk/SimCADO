@@ -118,7 +118,7 @@ class LightObject(object):
         return self.info['description']
 
 
-    def apply_optical_train(self, opt_train):
+    def apply_optical_train(self, opt_train, chip=None):
         """
 
         Output array is in units of [ph/s/pixel]
@@ -221,7 +221,7 @@ class LightObject(object):
             self.array += bg_photons
 
 
-    def apply_psf(self, psf, lam_min, lam_max, sub_pixel=False):
+    def apply_psf(self, psf, lam_min, lam_max, sub_pixel=False, chip=None):
         """
 
         Output is in [ph/s/pixel]
@@ -333,11 +333,6 @@ class LightObject(object):
         slice_photons = spec_photons[self.ref]
         return slice_photons
 
-    def to_ADU(self):
-        """
-        Convert the photons/electrons to ADU for reading out
-        """
-        return self.array * self.cmds["FPA_GAIN"]
 
     def __array__(self):
         return self.array
@@ -428,7 +423,7 @@ class Source(object):
 
         if filename is not None:
             hdr = fits.getheader(filename)
-            if "SIM_CUBE" in hdr.keys() and hdr["SIM_CUBE"] == "SOURCE":
+            if "SIMCADO" in hdr.keys() and hdr["SIMCADO"] == "SOURCE":
                 self.read(filename)
             else:
                 self._from_cube(self, filename)
@@ -587,7 +582,7 @@ class Source(object):
         xyHDU.header["CUNIT1"] = self.params["pix_unit"]
         xyHDU.header["CUNIT2"] = self.params["pix_unit"]
 
-        xyHDU.header["SIM_CUBE"] = "SOURCE"
+        xyHDU.header["SIMCADO"] = "SOURCE"
 
         specHDU = fits.ImageHDU(self.spectra)
         specHDU.header["CRVAL1"]  = self.lam[0]
