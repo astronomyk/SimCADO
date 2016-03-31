@@ -195,6 +195,12 @@ class PSF(object):
         new_arr = spi.zoom(self.array, scale_factor, order=1)
         new_arr *= np.sum(self.array)/np.sum(new_arr)
 
+        # catch any even-numbered arrays
+        if new_arr.shape[0] % 2 == 0:
+            tmp_arr = np.zeros((new_arr.shape[0]+1, new_arr.shape[1]+1))
+            tmp_arr[:new_arr.shape[0], :new_arr.shape[1]] = new_arr
+            new_arr = spi.shift(tmp_arr, 0.5, order=5)
+            
         ############################################################
         # Not happy with the way the returned type is not the same #
         # as the original type. The new object is a plain PSF      #
