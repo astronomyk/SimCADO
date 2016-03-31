@@ -22,13 +22,13 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 try:
-    import SimCADO.Detector as fpa
+    import SimCADO.Detector2 as fpa
     import SimCADO.PSFCube as psf
     import SimCADO.SpectralCurve as sc
     import SimCADO.PlaneEffect as pe
     import SimCADO.utils as utils
 except:
-    import Detector as fpa
+    import Detector2 as fpa
     import PSFCube as psf
     import SpectralCurve as sc
     import PlaneEffect as pe
@@ -95,7 +95,7 @@ class OpticalTrain(object):
 
         self.cmds = cmds
 
-        fname = self.cmds["OPTICAL_TRAIN_IN_PATH"]
+        fname = self.cmds["SIM_OPT_TRAIN_IN_PATH"]
         if fname is not None:
             if not os.path.exists(fname):
                 raise ValueError(fname+" doesn't exist")
@@ -182,12 +182,12 @@ class OpticalTrain(object):
         self.psf_source = self._gen_master_psf()
 
 
-
-
+        ############## DETECTOR #########################
         if self.cmds.verbose:
             print("Generating the detector array")
         # Make a detector Plane
         self.detector = fpa.Detector(self.cmds)
+        self.chips = self.detector.chips
 
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
@@ -351,9 +351,5 @@ class OpticalTrain(object):
         return jitter_psf
 
 
-
-
-
-
-class ads:
+class bloedsinn():
     pass
