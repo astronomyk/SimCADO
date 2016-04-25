@@ -20,6 +20,7 @@
 
 import numpy as np
 from astropy import units as u
+from astropy.io import fits
 
 ## These functions are exported to the package
 __all__ = [ "read_config", "update_config", "unify", "parallactic_angle", 
@@ -31,7 +32,7 @@ def msg(cmds, message, level=3):
 
     Parameters
     ==========
-    - cmds : UserCommands
+    - cmds : commands
     - message : str
     - level : int, optional
         all messages with level <= SIM_MESSAGE_LEVEL are printed. I.e. level=5 
@@ -264,3 +265,22 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     ang = np.rad2deg(R * 3600)
 
     return ang
+    
+    
+def nearest(arr, val):
+    """ Return the index of the value from 'arr' which is closest to 'val' """
+    if type(val) in (list, tuple, np.ndarray):
+        arr = np.array(arr)
+        return [nearest(arr, i) for i in val]
+    
+    d = arr - val
+    i = np.where(abs(d) == np.min(abs(d)))[0][0]
+    return i
+
+
+def add_keyword(filename, keyword, value, comment="", ext=0):
+    """Add a keyword, value pair to an extension header in a FITS file """
+    f = fits.open(filename, mode="update")
+    f[ext].header[keyword] = (value, comment)
+    f.flush()
+    f.close()

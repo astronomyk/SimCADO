@@ -1,8 +1,8 @@
 ###############################################################################
-# Detector
+# detector
 #
 # DESCRIPTION
-# The Detector class holds information on the conversion from photons to
+# The detector class holds information on the conversion from photons to
 # photoelectrons as well as the additional electron noise introduced by the
 # readout electronics and pixel characteristics. These include:
 # - saturation,
@@ -15,7 +15,7 @@
 #
 #
 # Classes:
-#  Detector(object)
+#  detector(object)
 #
 # Methods:
 #
@@ -26,14 +26,14 @@
 #
 # New structure idea:
 # Classes:
-# Detector and Chip
+# detector and Chip
 
 # A Chip gets a signal [ph/s/px]. It then deals with the sampling, the
 # saturation, the bad pixels, the readout noise and returns a 2D array
 # A Chip also has coordinate boundaries in [arcsec] which can be used by the
-# OpticalTrain when deciding which regions of the sky to project onto a chip
+# optics when deciding which regions of the sky to project onto a chip
 #
-# A Detector worries about how often the chips are read out, what happens to the
+# A detector worries about how often the chips are read out, what happens to the
 # combined signal of each readout. It also worries about how to store the data
 # coming back from each chip, whether to remove a constant background, and
 # anything else a detector frame should worry about (like different bias levels)
@@ -47,81 +47,102 @@ import datetime
 import numpy as np
 from scipy.ndimage.interpolation import zoom
 
-from astropy.io import fits
-from astropy.stats.funcs import median_absolute_deviation as mad
+from astropy.io import fits, ascii
 
 try:
-    import SimCADO.LightObject as lo
+    import SimCADO.source as lo
+    import SimCADO.spectral as sc
 except:
-    import LightObject as lo
+    import source as lo
+    import spectral as sc
+        
+class detector(object):
 
-
-class Detector(object):
-
-    def __init__(self, cmds, filename=None):
+    def __init__(self, cmds):
         """
 
         Keywords:
 
         """
 
-        self.params = { "NAXIS1"            :4096,
-                        "NAXIS2"            :4096,
-                        "VERBOSE"           :False,
-
-                        "SIM_OVERSAMPLING"  :4,
-                        "SIM_DETECTOR_PIX_SCALE":0.004,
-                        "OBS_EXPTIME"       :1,
-
-                        "HXRG_NUM_OUTPUTS"  :32,
-                        "HXRG_NUM_ROW_OH"   :8,
-                        "HXRG_PCA0_FILENAME":"../data/FPA_nirspec_pca0.fits",
-                        "HXRG_OUTPUT_PATH"  :None,
-                        "HXRG_PEDESTAL"     :4,
-                        "HXRG_CORR_PINK"    :3,
-                        "HXRG_UNCORR_PINK"  :1,
-                        "HXRG_ALT_COL_NOISE":0.5,
-
-                        "FPA_NOISE_PATH"    :None,
-                        "FPA_READOUT_MEDIAN":4,
-                        "FPA_DARK_MEDIAN"   :0.01,
-                        "FPA_QE_FILENAME"   :None,
-                        "FPA_DISTORTION_MAP":None,
-                        "FPA_LINEARITY_CURVE":None,
-                        "FPA_DEAD_PIXELS"   :5,
-                        "FPA_GAIN"          :1,
-                        "FPA_WELL_DEPTH"    :1E5    }
-        self.params.update(cmds.cmds)
-
-        self.size = self.params["NAXIS1"]
-        self.oversample = self.params["SIM_OVERSAMPLING"]
-        self.pix_res = self.params["SIM_DETECTOR_PIX_SCALE"] / self.oversample
-        self.fpa_res = self.params["SIM_DETECTOR_PIX_SCALE"]
-        self.exptime = self.params["OBS_EXPTIME"]
+        # 1. Read in the chip layout
+        # 2. Generate chip objects
+        # 3. Check if the a noise file has been given
+            # if not, generate new noise files
+            # else: read in the noise file
+            # if the noise file has many 
+        
+        self.cmds = cmds
+        
+        self.layout = ascii.read(self.cmds["FPA_CHIP_LAYOUT"])
+        self.chips  = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i], 
+                            self.layout["x_len"][i], self.layout["y_len"][i], 
+                            self.layout["pix_res"][i], self.layout["id"][i]) 
+                       for i in range(len(self.layout["x_cen"]))]
+        
+        self.oversample = self.cmds["SIM_OVERSAMPLING"]
+        self.fpa_res = self.layout["pix_res"]
+        self.exptime = self.cmds["OBS_EXPTIME"]
+        self.ndit    = self.cmds["OBS_NDIT"]
+        self.tro     = self.cmds["OBS_NONDESTRUCT_TRO"]
 
         self.signal = None
+            
 
-        if filename is not None:
-            self.params["FPA_NOISE_PATH"] = filename
-
-        self._make_detector()
-
-
-
-    def _make_detector(self):
+    def read_out(self, output=False, filename=None, chips=None, **kwargs):
         """
-        Internal method for generating a detector using the NGHxRG class or for
-        reading in the noise from a FITS file
         """
-        if self.params["FPA_NOISE_PATH"] is not None:
-            self.open(self.params["FPA_NOISE_PATH"])
+        self.cmds.update(kwargs)
+        
+        if filename is None and output is False: 
+            if self.cmds["OBS_OUTPUT_DIR"] is None:
+                self.cmds["OBS_OUTPUT_DIR"] = "./"
+            if self.cmds["OBS_OUTPUT_NAME"] is None:
+                self.cmds["OBS_OUTPUT_NAME"] = "output.fits"
+            filename = self.cmds["OBS_OUTPUT_DIR"] + self.cmds["OBS_OUTPUT_NAME"]
+        
+        if chips is not None and not hasattr(chips, "__len__"):
+            chips = [chips]
+        
+        if chips is None:
+            num_chips = len(self.chips)
         else:
-            self.array = self.generate_hxrg_noise()
+            num_chips = len(chips)
+        
+        for i in range(num_chips):
+            ######
+            # Put in a catch here so that only the chips specified in "chips"
+            # are readout
+            ######
+            array = self.chips[i].read_out(self.cmds)
+                        
+            if i == 0:
+                hdus = [fits.PrimaryHDU(array)]
+            else:
+                hdus += [fits.ImageHDU(array)]
+            
+            hdus[i].header["CDELT1"] = (self.chips[i].pix_res, "[arcsec] Pixel resolution")
+            hdus[i].header["CDELT2"] = (self.chips[i].pix_res, "[arcsec] Pixel resolution")
+            hdus[i].header["CRVAL1"] = (self.chips[i].x_cen, "[arcsec] central pixel relative to detector centre")
+            hdus[i].header["CRVAL2"] = (self.chips[i].y_cen, "[arcsec] central pixel relative to detector centre")
+            hdus[i].header["CRPIX1"] = (self.chips[i].naxis1 // 2, "central pixel")
+            hdus[i].header["CRPIX2"] = (self.chips[i].naxis2 // 2, "central pixel")
+            hdus[i].header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
 
-        #add_cosmic_rays(exptime)
-        #self.apply_pixel_map()
-        #apply_saturation("FPA_WELL_DEPTH", "FPA_LINEARITY_CURVE")
+            hdus[i].header["BUNIT"] = ("ph/s", "")
+            
+            hdus[i].header["EXPTIME"] = (self.exptime, "[s] Exposure time")
+            hdus[i].header["NDIT"]  = (self.ndit, "Number of exposures")
+            hdus[i].header["TRO"]   = (self.tro, "[s] Time between non-destructive readouts")
 
+        hdulist = fits.HDUList(hdus)
+        
+        if output is True:
+            return hdulist
+        else:
+            hdulist.writeto(filename, clobber=True)
+        
+            
     def open(self, filename, **kwargs):
         """
         Read in a detector FITS file
@@ -138,7 +159,7 @@ class Detector(object):
 
     def write(self, filename=None, **kwargs):
         """
-        Save a Detector frame to a FITS file
+        Save a detector frame to a FITS file
 
         filename : path to output FITS file. Default:  ../output/H4RG_noise.fits
         """
@@ -153,7 +174,7 @@ class Detector(object):
         hdu.header["PIX_RES"] = self.pix_res
         hdu.header["EXPTIME"] = self.exptime
         hdu.header["GAIN"]    = self.params["FPA_GAIN"]
-        hdu.header["SIM_CUBE"]= "FPA_NOISE"
+        hdu.header["SIMCADO"]= "FPA_NOISE"
 
         try:
             hdu.writeto(filename, clobber=True)
@@ -161,7 +182,134 @@ class Detector(object):
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
 
-    def read_out(self, image=None, dit=None, ndit=None):
+
+
+    
+    
+class Chip(object):
+
+    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, id=None):
+        """
+        Parameters
+        ==========
+        x_cen, y_cen : float
+            [arcsec] the coordinates of the centre of the chip
+        x_len, y_len : int
+            the number of pixels per dimension
+        pix_res : float
+            [arcsec] the field of view per pixel
+        """
+        
+        self.x_cen  = x_cen
+        self.y_cen  = y_cen
+        self.naxis1 = x_len
+        self.naxis2 = y_len
+        self.pix_res = pix_res
+        self.id     = id
+        
+        dx = (x_len // 2) * pix_res
+        dy = (y_len // 2) * pix_res
+        self.x_min = x_cen - dx
+        self.x_max = x_cen + dx
+        self.y_min = y_cen - dy
+        self.y_max = y_cen + dy
+           
+        self.array = None
+   
+   
+    def add_signal(self, signal):
+        """
+        Add some signal photons to the detector array. Input units are expected
+        to be [ph/s/pixel]
+        
+        Parameters
+        ==========
+        signal : np.ndarray, float, int
+        """
+        if type(signal) == np.ndarray:
+            if signal.shape[0] == self.naxis1 and signal.shape[1] == self.naxis2:
+                if self.array is None:
+                    self.array = signal
+                else:
+                    self.array += signal
+            else:
+                raise ValueError(str(signal.shape) + " != " + \
+                                 str((self.naxis1, self.naxis2)))
+        elif not hasattr(signal, "__len__"):
+            self.array += signal
+
+
+    def add_uniform_background(self, emission, lam_min, lam_max, output=False):
+        """
+        Take an EmissionCurve and some wavelength boundaries, lam_min lam_max,
+        and sum up the photons in between. Add those to the source array.
+
+        Keywords:
+        - emission_curve: EmissionCurve object with background emission photons
+        - lam_min, lam_max: the wavelength limits
+
+        Optional keywords:
+        - output: [False, True] if output is True, the BG emission array is
+                  returned
+                  
+        Output is in [ph/s/pixel]
+        """
+        
+        if type(emission) == sc.EmissionCurve:
+            bg_photons = emission.photons_in_range(lam_min, lam_max)        
+        elif type(emission) in (float, int):
+            bg_photons = emission
+        else:
+            bg_photons = 0
+            warnings.warn("type(emission) invalid. No background added")
+        
+        if output is True:
+            return bg_photons * np.ones(self.array.shape, dtype=np.float32)
+        else:
+            self.array += bg_photons
+            
+
+    def apply_pixel_map(self, pixel_map_path=None, dead_pix=None, 
+                        max_well_depth=1E5):
+        """
+        Read in a FITS file with locations of dead pixels, or generate a series
+        of random coordinates and random weights for those pixels
+        """        
+        try:
+            pixel_map = fits.getdata(pixel_map_path)
+            if self.array.shape != pixel_map.shape:
+                raise ValueError("pixel_map.shape != detector_array.shape")
+            self.array += pixel_map * max_well_depth
+        except:
+            if dead_pix is not None:
+                n = int(self.naxis1 * self.naxis2 * dead_pix / 100)
+                x = np.random.randint(self.naxis1, size=n)
+                y = np.random.randint(self.naxis2, size=n)
+                z = np.random.random(n)
+                self.array[x,y] += z * max_well_depth
+            else:
+                raise ValueError("Couldn't apply pixel_map")
+
+
+    def _apply_saturation(self, arr):
+        """
+        Cap all pixels that are above the well depth.
+        !! TODO: apply a linearity curve and shift excess light into !!
+        !! neighbouring pixels !!
+        """
+        max_val = self.params["FPA_WELL_DEPTH"]
+        arr[arr > max_val] = max_val
+        return arr
+                                 
+                                 
+    def reset_chip(self):
+        """
+        """
+        ### TODO - add in persistence 
+        self.array = None
+
+
+    def read_out(self, cmds):
         """
         Readout the detector array
         """
@@ -169,44 +317,41 @@ class Detector(object):
         ###############################################
         #!!!!!!!!!!! TODO - add dark strom !!!!!!!!!!!#
         
-        dit = self.params["OBS_EXPTIME"]    if dit is None  else 1
-        ndit = int(self.params["OBS_NDIT"]) if ndit is None else 1
-        tro = self.params["OBS_NONDESTRUCT_TRO"]
+        dit     = cmds["OBS_EXPTIME"]
+        ndit    = int(cmds["OBS_NDIT"])
+        tro     = cmds["OBS_NONDESTRUCT_TRO"]
+        max_byte = cmds["SIM_MAX_RAM_CHUNK_GB"] * 2**30
+        dark    = cmds["FPA_DARK_MEDIAN"]
         
-        max_byte = self.params["COMP_MAX_RAM_CHUNK_GB"] * 2**30
-        dark = self.params["FPA_DARK_MEDIAN"]
+        if self.array is None:
+            self.array = np.zeros((self.naxis1, self.naxis2))
         
+        out_array = np.zeros(self.array.shape, dtype=np.float32)
         
-        
-        if image is not None:
-            self.add_signal(image)
-
-        out_array = np.zeros(self.signal.shape)
-
-        if self.params["COMP_SPEED"] <= 3:
+        if cmds["SIM_SPEED"] <= 3:
             for n in range(ndit):
-                tmp_arr = self._read_out_uptheramp(self.signal, dit, tro,
+                out_array += self._read_out_uptheramp(self.array, dit, tro,
                                                    max_byte)
-                out_array += tmp_arr
                 out_array += dark * dit
 
-        elif self.params["COMP_SPEED"] > 3:
+        elif cmds["SIM_SPEED"] > 3 and cmds["SIM_SPEED"] <= 7:
             for n in range(ndit):
-                out_array += self._read_out_fast(self.signal, dit)
+                out_array += self._read_out_fast(self.array, dit)
                 out_array += dark * dit
                 
-        elif self.params["COMP_SPEED"] > 7:
-            out_array = self._read_out_superfast(self.signal, dit, ndit)
+        elif cmds["SIM_SPEED"] > 7:
+            out_array = self._read_out_superfast(self.array, dit, ndit)
             out_array += dark * dit * ndit
-            
-        if self.signal is not None:
-            out_array += self.array[:self.signal.shape[0], 
-                                    :self.signal.shape[1]]
-        else:
-            out_array = self.array
-            
-        return out_array
+           
+        #### TODO #########
+        # add read out noise for every readout 
+        out_array += self._read_noise_frame(cmds) * ndit
 
+        if cmds["OBS_REMOVE_CONST_BG"].lower() == "yes":
+            min_val = np.min(out_array)
+            out_array -= min_val
+        
+        return out_array
 
     ## TODO: What to do if dit = mindit (single read)?
     ## TODO: Make breaking up into memory chunks more flexible?
@@ -289,65 +434,32 @@ class Detector(object):
     def _read_out_fast(self, image, dit):
         return np.random.poisson(image * dit)
 
+        
     def _read_out_superfast(self, image, dit, ndit):
-        return np.random.poisson(image * dit * ndit) / ndit
+        # As noise increases with sqrt(t), we 
+        exptime = dit * ndit
+        return np.random.poisson(image * np.sqrt(exptime)) * np.sqrt(exptime)
 
 
-    def add_signal(self, image):
+    def _read_noise_frame(self, cmds):
         """
-        Add some signal photons to the detector array. Input units are expected
-        to be [ph/s/pixel]
-
-        Parameters
-        ==========
-        image : lo.LightObject, 2D array
+        Read in read-out-noise from the FITS file specified by FPA_NOISE_PATH
         """
-
-        if isinstance(image, lo.LightObject):
-            self.signal = image.array
-        elif isinstance(image, np.ndarray):
-            self.signal = image
+        if cmds["FPA_NOISE_PATH"] is not None:
+            n = len(fits.info(cmds["FPA_NOISE_PATH"], False))
+            layer = np.random.randint(n)
+            tmp = fits.getdata(cmds["FPA_NOISE_PATH"], layer)
+            return tmp[:self.naxis1, :self.naxis2]
         else:
-            raise ValueError("image should be either LightObject or np.ndarray")
-
-    def add_cosmic_rays(self):
-        """  Not needed because of up-the-ramp sampling  """
-        pass
-
-
-    def apply_pixel_map(self):
-        """
-        Read in a FITS file with locations of dead pixels, or generate a series
-        of random coordinates and random weights for those pixels
-        """
-        if type(self.params["FPA_DEAD_PIXELS"]) == float:
-            n = int(self.size**2 * self.params["FPA_DEAD_PIXELS"] / 100)
-            x = np.random.randint(self.size, size=n)
-            y = np.random.randint(self.size, size=n)
-            z = np.random.random(n)
-            self.array[x,y] = self.params["FPA_WELL_DEPTH"] * z
-
-        elif os.path.exists(self.params["FPA_DEAD_PIXELS"]):
-            pixel_map = fits.getdata(self.params["FPA_DEAD_PIXELS"])
-            if self.array.shape != pixel_map.shape:
-                raise ValueError("pixel_map.shape != detector_array.shape")
-            self.array *= pixel_map
-        else:
-            raise ValueError(self.params["FPA_DEAD_PIXELS"] + "does not exist")
-
-
-    def _apply_saturation(self, arr):
-        """
-        Cap all pixels that are above the well depth.
-        !! TODO: apply a linearity curve and shift excess light into !!
-        !! neighbouring pixels !!
-        """
-        max_val = self.params["FPA_WELL_DEPTH"]
-        arr[arr > max_val] = max_val
-        return arr
-
-
-    def generate_hxrg_noise(self, **kwargs):
+            if cmds["HXRG_OUTPUT_PATH"] is not None:
+                self._generate_hxrg_noise(cmds)
+                tmp = fits.getdata(cmds["HXRG_OUTPUT_PATH"])
+                return tmp[:self.naxis1, :self.naxis2]
+            else:
+                return self._generate_hxrg_noise(cmds)
+                
+        
+    def _generate_hxrg_noise(self, cmds):
         """
         Create a detector noise array using Bernard Rauscher's NGHxRG tool
 
@@ -359,23 +471,59 @@ class Detector(object):
         self.params.update(kwargs)
 
         # HXRG needs a pca file to run. Work out what a PCA file means!!
-        ng_h4rg     = HXRGNoise(naxis1   = self.params["NAXIS1"],
-                                naxis2   = self.params["NAXIS2"],
-                                n_out    = self.params["HXRG_NUM_OUTPUTS"],
-                                nroh     = self.params["HXRG_NUM_ROW_OH"],
-                                pca0_file= self.params["HXRG_PCA0_FILENAME"],
-                                verbose  = self.params["VERBOSE"])
+        ng_h4rg     = HXRGNoise(naxis1   = cmds["CHIP_NAXIS1"],
+                                naxis2   = cmds["CHIP_NAXIS2"],
+                                n_out    = cmds["HXRG_NUM_OUTPUTS"],
+                                nroh     = cmds["HXRG_NUM_ROW_OH"],
+                                pca0_file= cmds["HXRG_PCA0_FILENAME"],
+                                verbose  = cmds["SIM_VERBOSE"])
 
         # Make a noise file
-        return  ng_h4rg.mknoise(o_file   = self.params["HXRG_OUTPUT_PATH"],
-                                rd_noise = self.params["FPA_READOUT_MEDIAN"],
-                                pedestal = self.params["HXRG_PEDESTAL"],
-                                c_pink   = self.params["HXRG_CORR_PINK"],
-                                u_pink   = self.params["HXRG_UNCORR_PINK"],
-                                acn      = self.params["HXRG_ALT_COL_NOISE"])
+        noise = ng_h4rg.mknoise(o_file   = cmds["HXRG_OUTPUT_PATH"],
+                                rd_noise = cmds["FPA_READOUT_MEDIAN"],
+                                pedestal = cmds["HXRG_PEDESTAL"],
+                                c_pink   = cmds["HXRG_CORR_PINK"],
+                                u_pink   = cmds["HXRG_UNCORR_PINK"],
+                                acn      = cmds["HXRG_ALT_COL_NOISE"])
+        
+        return noise
 
 
+    def __array__(self):
+        return self.array
 
+    def __mul__(self, x):
+        psf_new = deepcopy(self)
+        return psf_new.array * x
+
+    def __add__(self, x):
+        psf_new = deepcopy(self)
+        return psf_new.array + x
+
+    def __sub__(self, x):
+        psf_new = deepcopy(self)
+        return psf_new.array - x
+
+    def __rmul__(self, x):
+        return self.__mul__(x)
+
+    def __radd__(self, x):
+        return self.__add__(x)
+
+    def __rsub__(self, x):
+        psf_new = deepcopy(self)
+        return x - psf_new.array
+
+    def __imul__(self, x):
+        return self.__mul__(x)
+
+    def __iadd__(self, x):
+        return self.__add__(x)
+
+    def __isub__(self, x):
+        return self.__sub__(x)
+        
+        
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
@@ -388,7 +536,6 @@ class Detector(object):
 # from astropy.io import fits
 # import numpy as np
 # from scipy.ndimage.interpolation import zoom
-# from astropy.stats.funcs import median_absolute_deviation as mad
 # import datetime
 # import matplotlib.pyplot as plt # Handy for debugging
 
