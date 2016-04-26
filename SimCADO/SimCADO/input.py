@@ -446,10 +446,24 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None, raw=False,
 # be generated according to masses in an IMF.
 
 
+def mass_to_Mv(mass):
+    """
+    Calculate the V-band absolute magnitude of a star based on mass
+    """
+    mass = mass.value if type(mass) == u.quantity.Quantity else mass
+    
+    f = np.array([ -0.40960919,   1.28000053,  -0.43203104,  -1.48032921,
+                    2.74563706,  -4.61182633,  -0.38868252,   8.58781463,
+                  -12.21570688,   4.90158585])
+    Mv = np.polyval(f, np.log10(mass))
+
+    return Mv
+
+
 
 def mass_to_temp(mass):
     """
-    Caluclate an approximate surface temperature based on mass
+    Calculate an approximate surface temperature based on mass
     """
     mass = mass.value if type(mass) == u.quantity.Quantity else mass
 
@@ -488,15 +502,7 @@ def mass_to_flux5556A(mass, distance=10*u.pc, in_photons=True):
 
     mass = mass.value          if type(mass) == u.quantity.Quantity     else mass
     distance = distance * u.pc if type(distance) != u.quantity.Quantity else distance
-    temp = mass_to_temp(mass)
-
-    f = np.array([-10.57984516,  139.88537641, -624.14454692,  935.92676894])
-
-    if type(temp) == u.quantity.Quantity:
-        logT = np.log10(temp.value)
-    else:
-        np.log10(temp)
-    Mv = np.polyval(f, logT)
+    Mv = mass_to_Mv(mass)
 
     # janskys = (3580 * u.Jy * 10**(-0.4*Mv) * (10*u.pc / distance)**2).to(u.Jy)
     if in_photons:

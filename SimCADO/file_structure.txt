@@ -2,13 +2,13 @@ SimCADO-dev
 |
 |-- SimCADO
 |    |
-|    |-- Detector.py
-|    |-- LightObject.py
-|    |-- OpticalTrain.py
-|    |-- SpectralCurve.py
-|    |-- SimulationRun.py
-|    |-- PlaneEffect.py
-|    |-- PSFCube.py
+|    |-- detector.py
+|    |-- source.py
+|    |-- optics.py
+|    |-- spectral.py
+|    |-- simulation.py
+|    |-- spatial.py
+|    |-- psf.py
 |    |-- utils.py
 |    |
 |
@@ -37,12 +37,7 @@ SimCADO-dev
 |
 -- user_commands
 |    |
-|    |-- user.config
-|    |-- master.config
-|    |-- atmosphere.config
-|    |-- telescope.config
-|    |-- detector.config
-|    |-- observation.config
+|    |-- default.config
 |    |
 |
 |

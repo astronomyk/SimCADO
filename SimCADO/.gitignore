@@ -2,5 +2,6 @@
 *.py[co]
 __pycache__
 *.FITS
+*.old
 !FPA_nirspec_pca0.fits
 !skytable.fits
