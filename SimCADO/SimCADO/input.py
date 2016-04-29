@@ -232,11 +232,11 @@ def stellar_emission_curve(spec_type, distance=None, dist_mod=None,
                                in_photons=in_photons)
     lam_res = np.median(lam[1:]-lam[:-1])
 
-    lam_central = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
-                   "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
+    #lam_central = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
+    #               "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
     # not done yet
-    a0v_rel_flux = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
-                   "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
+    #a0v_rel_flux = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
+    #                "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
 
     return sc.EmissionCurve(lam=lam, val=spec, lam_res=lam_res, 
                             units="ph/(s m2)", **kwargs)
@@ -502,8 +502,17 @@ def mass_to_flux5556A(mass, distance=10*u.pc, in_photons=True):
 
     mass = mass.value          if type(mass) == u.quantity.Quantity     else mass
     distance = distance * u.pc if type(distance) != u.quantity.Quantity else distance
-    Mv = mass_to_Mv(mass)
+    
+    # Interestingly the round about way, i.e. fitting mass --> temp --> Mv 
+    # is more accurate than the direct fit - mass --> Mv
+    temp = mass_to_temp(mass)
 
+    f = np.array([-10.57984516,  139.88537641, -624.14454692,  935.92676894])
+    logT = np.log10(temp.value)
+
+    Mv = np.polyval(f, logT)
+    Mv = mass_to_Mv(mass) - 1.1
+    
     # janskys = (3580 * u.Jy * 10**(-0.4*Mv) * (10*u.pc / distance)**2).to(u.Jy)
     if in_photons:
         photons = (996 * u.Unit("ph/(s cm2 Angstrom)") * 10**(-0.4*Mv) * \
@@ -515,6 +524,7 @@ def mass_to_flux5556A(mass, distance=10*u.pc, in_photons=True):
                                                         (10*u.pc / distance)**2)
         return ergs.to(u.erg/u.s/u.m**2/u.um).value
     
+
 
 
 def mass_to_lifetime(mass):

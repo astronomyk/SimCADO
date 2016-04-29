@@ -476,7 +476,7 @@ class BlackbodyCurve(EmissionCurve):
         edges = np.append(lam - 0.5 * lam_res, lam[-1] + 0.5 * lam_res)
         lam_res = edges[1:] - edges[:-1]
 
-        # I is in W sr-1 m-3
+        # I is in W sr-1 m-3 : [erg/s/sr/cm2/um]
         I = 2. * c.h * c.c**2 / (lam * u.um)**5 / \
             (np.exp(c.h * c.c / (c.k_B * (temp*u.K) * (lam*u.um))) - 1.) / u.sr
 
