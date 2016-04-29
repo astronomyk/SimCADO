@@ -1,8 +1,6 @@
 """
 End-to-end simulator for MICADO on the E-ELT
 ============================================
-
-
 """
 
 from .version import version as __version__
@@ -17,3 +15,4 @@ from .spectral import *
 #from .SpectralGrating import *
 from .simulation import *
 from .utils import *
+from .defaults import *
