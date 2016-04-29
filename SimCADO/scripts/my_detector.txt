@@ -1,0 +1,4 @@
+#  id    x_cen    y_cen   x_len   y_len   pix_res
+#        arcsec   arcsec   pixel  pixel    arcsec
+    0        0        0      500    500     0.004
+    1       10        0      500    500     0.004
