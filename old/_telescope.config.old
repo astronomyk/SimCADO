@@ -1,0 +1,51 @@
+################################################################################
+# Options for saving and reusing optical trains
+
+OPTICAL_TRAIN_IN_PATH   none        #
+OPTICAL_TRAIN_OUT_PATH  none        #
+
+
+################################################################################
+# Parameters regarding the telescope
+
+SCOPE_ALTITUDE          3060        # meters above sea level
+SCOPE_LATITUDE          -24.589167  # decimal degrees
+SCOPE_LONGITUDE         -70.192222  # decimal degrees
+
+SCOPE_PSF_FILE          ../data/PSF_J4.fits        # import a PSF from a file or generate PSF internally
+#SCOPE_PSF_FILE          none
+SCOPE_AO_EFFECTIVENESS  100         # [%] percentage of seeing PSF corrected by AO - 100% = diff limited, 0% = 0.6" seeing
+SCOPE_JITTER_FWHM       0.001       # [arcsec] gaussian telescope jitter (wind, tracking)
+SCOPE_DRIFT_DISTANCE    0           # [arcsec/sec] the drift in tracking by the telescope
+SCOPE_DRIFT_PROFILE     linear      # [linear, gaussian] the drift profile. If linear, simulates when tracking is off. If gaussian, simulates rms distance of tracking errors
+
+# Similar details can be specified for each individual mirror by copying these
+# keywords and replacing M1 with Mx. Properties not explicitly specified are
+# inherited from M1.
+SCOPE_NUM_MIRRORS       6           # number of reflecting surfaces
+SCOPE_M1_DIAMETER_OUT   37.3        # meters
+SCOPE_M1_DIAMETER_IN    11.1        # meters
+SCOPE_M1_TC             ../data/TC_mirror_mgf2agal.dat
+SCOPE_M1_TEMP           0           # deg Celsius - temperature of mirror
+SCOPE_M2_DIAMETER_OUT   4.2         # meters
+SCOPE_M2_DIAMETER_IN    0.          # meters
+SCOPE_M3_DIAMETER_OUT   3.8         # meters
+SCOPE_M3_DIAMETER_IN    0.          # meters
+
+
+################################################################################
+# Parameters regarding the instrument
+
+INST_TEMPERATURE        -190        # deg Celsius - inside temp of instrument
+INST_ENTR_WINDOW_TC     none
+INST_DICHROIC_TC        none
+INST_FILTER_TC          J          # either specify a standard broadband filter of a file path to a transmission curve
+
+INST_ADC_PERFORMANCE    100         # [%] how well the ADC does its job
+INST_ADC_NO_SURFACES    4           # number of surfaces in the ADC
+INST_ADC_TC             None        # transmission curve of the ADC
+
+INST_DEROT_PERFORMANCE  100         # [%] how well the derotator derotates
+INST_DEROT_PROFILE      linear      # [linear, gaussian] the profile with which it does it's job
+
+INST_DISTORTION_MAP     none        # path to distortion map
