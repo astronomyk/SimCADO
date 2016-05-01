@@ -22,11 +22,11 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 try:
-    import SimCADO.detector as fpa
-    import SimCADO.psf as psf
-    import SimCADO.spectral as sc
-    import SimCADO.spatial as pe
-    import SimCADO.utils as utils
+    import simcado.detector as fpa
+    import simcado.psf as psf
+    import simcado.spectral as sc
+    import simcado.spatial as pe
+    import simcado.utils as utils
 except:
     import detector as fpa
     import psf as psf
@@ -34,6 +34,9 @@ except:
     import spatial as pe
     import utils
 
+    
+__all__ = ["OpticalTrain"]
+    
 class OpticalTrain(object):
     """
     The OpticalTrain object reads in or generates the information necessary to
@@ -192,7 +195,7 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating the detector array")
         # Make a detector Plane
-        self.detector = fpa.detector(self.cmds)
+        self.detector = fpa.Detector(self.cmds)
         self.chips = self.detector.chips
 
         # Get the ADC shifts, telescope shake and field rotation angle
@@ -298,7 +301,7 @@ class OpticalTrain(object):
 
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-            psf_m1 = psf.Userpsf(self.cmds["SCOPE_PSF_FILE"], 
+            psf_m1 = psf.UserPSF(self.cmds["SCOPE_PSF_FILE"], 
                                      self.lam_bin_centers)
             if psf_m1[0].pix_res != self.pix_res:
                 psf_m1 = psf_m1.resample(self.pix_res)
@@ -310,12 +313,12 @@ class OpticalTrain(object):
             fwhm = (1.22*u.rad * self.lam_bin_centers * u.um / \
                                             (m1_diam * u.m)).to(u.arcsec).value
             if psf_type == "Moffat":
-                psf_m1 = psf.Moffatpsf(self.lam_bin_centers,
+                psf_m1 = psf.MoffatPSFCube(self.lam_bin_centers,
                                            fwhm=fwhm,
                                            pix_res=self.pix_res,
                                            size=self.psf_size)
             elif psf_type == "Airy":
-                psf_diff = psf.Airypsf(self.lam_bin_centers,
+                psf_diff = psf.AiryPSFCube(self.lam_bin_centers,
                                            fwhm=fwhm,
                                            pix_res=self.pix_res,
                                            size=self.psf_size)
@@ -323,7 +326,7 @@ class OpticalTrain(object):
                 # Get the Gaussian seeing PSF
                 if ao_eff < 100.:
                     fwhm = (1. - ao_eff/100.) * self.cmds["OBS_SEEING"]
-                    psf_seeing = psf.Gaussianpsf(self.lam_bin_centers,
+                    psf_seeing = psf.GaussianPSF(self.lam_bin_centers,
                                                     fwhm=fwhm,
                                                     pix_res=self.pix_res)
 

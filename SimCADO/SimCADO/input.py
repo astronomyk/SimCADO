@@ -20,11 +20,11 @@ from astropy.io import fits, ascii
 import astropy.units as u
 
 try:
-    import SimCADO.utils as utils
-    import SimCADO.source as lo
-    import SimCADO.spectral as sc
-    import SimCADO.psf as psf
-    import SimCADO.detector as fpa
+    import simcado.utils as utils
+    import simcado.source as lo
+    import simcado.spectral as sc
+    import simcado.psf as psf
+    import simcado.detector as fpa
 except:
     import utils
     import source as lo
@@ -32,6 +32,12 @@ except:
     import psf as psf
     import detector as fpa
 
+    
+__all__ = ["diff_limited_eelt_psf_cube", "poppy_eelt_psf_cube", 
+           "grid_of_stars", "stellar_emission_curve", "source_1E4_Msun_cluster",
+           "source_from_stars"]
+
+    
 ################################################################################
 #                       Generate Instrument optics Data                         #
 ################################################################################
@@ -184,12 +190,6 @@ def _get_poppy_psf(osys, lam):
     return osys.calcPSF(lam * 1E-6)[0]
         
 
-def micado_fpa_chip(filename, **kwargs):
-    """
-    Creates a detector FITS file
-    """
-    det = fpa.detector(**kwargs)
-    det.write(filename)
 
 
 ################################################################################

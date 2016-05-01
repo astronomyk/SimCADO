@@ -41,7 +41,7 @@ def setup_package():
           author_email = "karl.jansky@univie.ac.at,oliver.czoske@univie.ac.at",
           url = "none",
           package_dir={'SimCADO': 'SimCADO'}, 
-          packages=['SimCADO'],
+          packages=['simcado'],
           scripts = ['scripts/simcado.py'],
           package_data = {'SimCADO': ['data/*']},
           )

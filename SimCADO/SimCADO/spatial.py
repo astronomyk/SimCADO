@@ -45,12 +45,12 @@ import scipy.ndimage as spi
 from astropy.convolution import convolve_fft, Gaussian2DKernel
 
 try:
-    import SimCADO.utils as utils
+    import simcado.utils as utils
 except:
     import utils
 
 
-__all__ = ["tracking", "derotator", "wind_jitter"]
+__all__ = ["tracking", "derotator", "wind_jitter", "adc_shift"]
 
 
 def _gaussian_dist(x, mu, sig):

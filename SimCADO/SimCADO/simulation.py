@@ -55,12 +55,12 @@ from astropy.io import fits
 import astropy.units as u
 
 try:
-    import SimCADO.psf as psf
-    import SimCADO.spectral as sc
-    import SimCADO.source as lo
-    import SimCADO.commands as uc
-    import SimCADO.optics as ot
-    import SimCADO.utils as utils
+    import simcado.psf as psf
+    import simcado.spectral as sc
+    import simcado.source as lo
+    import simcado.commands as uc
+    import simcado.optics as ot
+    import simcado.utils as utils
 except:
     import psf as psf
     import spectral as sc

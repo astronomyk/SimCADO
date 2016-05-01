@@ -50,13 +50,17 @@ from scipy.ndimage.interpolation import zoom
 from astropy.io import fits, ascii
 
 try:
-    import SimCADO.source as lo
-    import SimCADO.spectral as sc
+    import simcado.source as lo
+    import simcado.spectral as sc
 except:
     import source as lo
     import spectral as sc
-        
-class detector(object):
+
+__all__ = ["Detector", "Chip"]
+
+
+    
+class Detector(object):
 
     def __init__(self, cmds):
         """

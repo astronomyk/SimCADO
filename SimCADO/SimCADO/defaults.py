@@ -4,8 +4,16 @@ import numpy as np
 import multiprocessing as mp
 import astropy.io.fits as fits
 
-import detector as fpa
-import opticsGenerator as ig
+try:
+    import simcado.detector as fpa
+    import simcado.input as ig
+except:
+    import detector as fpa
+    import input as ig
+    
+
+__all__ = ["make_noise_cube", "make_poppy_cube"]
+    
 
 def _make_noise(i):
     ng_h4rg = fpa.HXRGNoise(naxis1 = 4096, naxis2 = 4096, n_out = 32, nroh = 8,

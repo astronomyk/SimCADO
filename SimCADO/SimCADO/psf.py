@@ -25,7 +25,7 @@
 #   - AiryPSF        (first_zero, eccentricity=0, angle=0)
 #   - DeltaPSF       (x=0, y=0)
 #   - LinePSF        (x0, x1, y0, y1, angle=0)
-#   - UserPSF        (filename, ext_no=0)
+#   - UserPSFCube        (filename, ext_no=0)
 #
 #
 # === MULTIPLE PSFS IN A CUBE ===
@@ -64,14 +64,14 @@
 #  AiryPSF(PSF)
 #  DeltaPSF(PSF)
 #  LinePSF(PSF)
-#  UserPSF(PSF)
+#  UserPSFCube(PSF)
 #
 #  Deltapsf(psf)
 #  Airypsf(psf)
 #  Gaussianpsf(psf)
 #  Moffatpsf(psf)
-#  Combinedpsf(psf)
-#  Userpsf(psf)
+#  CombinedPSFCube(psf)
+#  UserPSFCube(psf)
 #  ADC_psf(psf)
 #
 #
@@ -104,7 +104,7 @@ from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
 
 try:
-    import SimCADO.utils as utils
+    import simcado.utils as utils
 except:
     import utils
 
@@ -114,8 +114,9 @@ except:
 
 
 ## These classes and functions are exported to the package
-__all__ = ["psf", "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF",
-           "DeltaPSF"]
+__all__ = [ "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF", "DeltaPSF", 
+            "CombinedPSFCube", "UserPSFCube", 
+            ]
 
 
 ###############################################################################
@@ -128,8 +129,8 @@ __all__ = ["psf", "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF",
 # AiryPSF       fwhm                pix_res=0.004, size=f(fwhm)
 # GaussianPSF   fwhm                pix_res=0.004, size=f(fwhm)
 # MoffatPSF     fwhm                pix_res=0.004, size=f(fwhm)
-# CombinedPSF   psf_list            size=f(psf_list)
-# UserPSF       filename,           pix_res=0.004, size=f(filename), fits_ext=0
+# CombinedPSFCube   psf_list            size=f(psf_list)
+# UserPSFCube       filename,           pix_res=0.004, size=f(filename), fits_ext=0
 
 
 
@@ -469,7 +470,7 @@ class MoffatPSF(PSF):
         if "mode" in kwargs.keys():
             mode = kwargs["mode"]
         else:
-            if self.size > 100:
+            if size > 100:
                 mode = "linear_interp"
             else:
                 mode = 'oversample'
@@ -591,8 +592,8 @@ class UserPSF(PSF):
 # AiryPSF       fwhm                pix_res=0.004, size=f(fwhm)
 # GaussianPSF   fwhm                pix_res=0.004, size=f(fwhm)
 # MoffatPSF     fwhm                pix_res=0.004, size=f(fwhm)
-# CombinedPSF   psf_list            size=f(psf_list)
-# UserPSF       filename,           pix_res=0.004, size=f(filename), fits_ext=0
+# CombinedPSFCube   psf_list            size=f(psf_list)
+# UserPSFCube       filename,           pix_res=0.004, size=f(filename), fits_ext=0
 
 #    Keywords:
 #    - type:
@@ -600,17 +601,17 @@ class UserPSF(PSF):
 
 #    Bound keywords:
 #    - fwhm : needed for AiryPSF, GaussianPSF, MoffatPSF
-#    - psf_list: needed for CombinedPSF
-#    - filename: needed for UserPSF
+#    - psf_list: needed for CombinedPSFCube
+#    - filename: needed for UserPSFCube
 
 #    Optional keywords
 #    - size:
 #    - pix_res:
 #    - position: optional in DeltaPSF
-#    - fits_ext: optional in UserPSF
+#    - fits_ext: optional in UserPSFCube
 
 
-class psf(object):
+class PSFCube(object):
     """Class holding wavelength dependent point spread function.
     Special functions:
     - len(self) return the number of layers in the psf
@@ -767,7 +768,7 @@ class psf(object):
 
 
 
-class Deltapsf(psf):
+class DeltaPSFCube(PSFCube):
     """
     Generate a list of DeltaPSFs for wavelengths defined in lam_bin_centers
 
@@ -784,7 +785,7 @@ class Deltapsf(psf):
     """
 
     def __init__(self, lam_bin_centers, positions=(0, 0), **kwargs):
-        super(Deltapsf, self).__init__(lam_bin_centers)
+        super(DeltaPSFCube, self).__init__(lam_bin_centers)
 
         if not hasattr(positions[0], "__len__"):
             positions = [positions]*len(self)
@@ -796,7 +797,7 @@ class Deltapsf(psf):
         self.info["Type"] = "DeltaCube"
 
 
-class Airypsf(psf):
+class AiryPSFCube(PSFCube):
     """
     Generate a list of AiryPSFs for wavelengths defined in lam_bin_centers
 
@@ -810,7 +811,7 @@ class Airypsf(psf):
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
-        super(Airypsf, self).__init__(lam_bin_centers)
+        super(AiryPSFCube, self).__init__(lam_bin_centers)
 
         if "diameter" in kwargs.keys():
             self.diameter = kwargs["diameter"]
@@ -837,7 +838,7 @@ class Airypsf(psf):
         self.info["Type"] = "AiryCube"
 
 
-class Gaussianpsf(psf):
+class GaussianPSFCube(PSFCube):
     """
     Generate a list of GaussianPSFs for wavelengths defined in lam_bin_centers
 
@@ -851,7 +852,7 @@ class Gaussianpsf(psf):
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
-        super(Gaussianpsf, self).__init__(lam_bin_centers)
+        super(GaussianPSFCube, self).__init__(lam_bin_centers)
 
         if "diameter" in kwargs.keys():
             self.diameter = kwargs["diameter"]
@@ -870,7 +871,7 @@ class Gaussianpsf(psf):
         self.info['description'] = "List of Gaussian function PSFs"
         self.info["Type"] = "GaussianCube"
 
-class Moffatpsf(psf):
+class MoffatPSFCube(PSFCube):
     """
     Generate a list of MoffatPSFs for wavelengths defined in lam_bin_centers
 
@@ -884,7 +885,7 @@ class Moffatpsf(psf):
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
-        super(Moffatpsf, self).__init__(lam_bin_centers)
+        super(MoffatPSFCube, self).__init__(lam_bin_centers)
 
         if "diameter" in kwargs.keys():
             self.diameter = kwargs["diameter"]
@@ -903,9 +904,9 @@ class Moffatpsf(psf):
         self.info['description'] = "List of Moffat function PSFs"
         self.info["Type"] = "MoffatCube"
 
-class Combinedpsf(psf):
+class CombinedPSFCube(PSFCube):
     """
-    Generate a list of CombinedPSFs from the list of psfs in psf_list
+    Generate a list of CombinedPSFCubes from the list of psfs in psf_list
 
     Keywords:
     - lam_bin_centers: [um] a list with the centres of each wavelength slice
@@ -926,7 +927,7 @@ class Combinedpsf(psf):
             raise ValueError("Wavelength arrays of psf cubes are not equal")
         lam_bin_centers = lam_list[0]
 
-        super(Combinedpsf, self).__init__(lam_bin_centers)
+        super(CombinedPSFCube, self).__init__(lam_bin_centers)
 
         self.info['description'] = "Master psf cube from list"
         self.info["Type"] = "CombinedCube"
@@ -935,12 +936,12 @@ class Combinedpsf(psf):
             self.info['PSF%02d' % (i+1)] = psf_list[i].info['description']
 
         for i in range(len(self)):
-            self.psf_slices[i] = CombinedPSF([psf[i] for psf in psf_list],
+            self.psf_slices[i] = CombinedPSFCube([psf[i] for psf in psf_list],
                                              **kwargs)
 
 
 
-class Userpsf(psf):
+class UserPSFCube(PSFCube):
     """
     Read in a psf previously saved as a FITS file
     Keywords needed for a psf to be read in:
@@ -1004,7 +1005,7 @@ class Userpsf(psf):
 
         lam_bin_centers = np.array(lam_bin_centers)
 
-        super(Userpsf, self).__init__(lam_bin_centers)
+        super(UserPSFCube, self).__init__(lam_bin_centers)
         self.psf_slices = psf_slices
 
         self.info['description'] = "User PSF cube input from " + filename
@@ -1012,7 +1013,7 @@ class Userpsf(psf):
 
 
 
-class ADC_psf(Deltapsf):
+class ADC_PSFCube(DeltaPSFCube):
     """
     Generates a Deltapsf with the shifts required to mimic the ADC at a
     certain efficiency
@@ -1073,7 +1074,7 @@ class ADC_psf(Deltapsf):
         y = -pixel_shift * np.cos(np.deg2rad(para_angle)) * (1. - effectiveness)
         positions = [(xi, yi) for xi, yi in zip(x, y)]
 
-        super(ADC_psf, self).__init__(lam_bin_centers,
+        super(ADC_PSFCube, self).__init__(lam_bin_centers,
                                           positions=positions,
                                           pix_res=pix_res)
         self.info["Type"] = "ADC_psf"

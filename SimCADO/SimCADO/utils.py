@@ -24,8 +24,9 @@ from astropy.io import fits
 
 ## These functions are exported to the package
 __all__ = [ "read_config", "update_config", "unify", "parallactic_angle", 
-            "atmospheric_refraction"]
+            "poissonify", "atmospheric_refraction", "nearest", "add_keyword"]
 
+      
 def msg(cmds, message, level=3):
     """
     Prints a message based on the level of verbosity given in cmds

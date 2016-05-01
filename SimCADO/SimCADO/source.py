@@ -48,12 +48,12 @@ from astropy.convolution import convolve, convolve_fft
 import astropy.units as u
 
 try:
-    import SimCADO.spatial as pe
+    import simcado.spatial as pe
 except:
     import spatial as pe
 
 
-__all__ = ["source", "Source"]
+__all__ = ["Source"]
 
 
 # add_uniform_background() moved to detector
@@ -122,7 +122,7 @@ class Source(object):
         else:
             raise ValueError("Trouble with inputs. Could not create Source")
 
-        self.ref = self.ref.astype(int)
+        self.ref = np.array(self.ref, dtype=int)
         self.x_orig = deepcopy(self.x)
         self.y_orig = deepcopy(self.y)
 

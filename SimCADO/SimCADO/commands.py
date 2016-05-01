@@ -33,12 +33,15 @@
 import os, warnings
 import numpy as np
 try:
-    import SimCADO.spectral as sc
-    import SimCADO.utils as utils
+    import simcado.spectral as sc
+    import simcado.utils as utils
 except:
     import spectral as sc
     import utils as utils
 
+    
+__all__ = ["UserCommands"]    
+    
 
 class UserCommands(object):
     """
