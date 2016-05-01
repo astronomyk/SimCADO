@@ -1,0 +1,3 @@
+
+# THIS FILE GENERATED FROM SIMCADO SETUP.PY
+version = '0.1dev'
