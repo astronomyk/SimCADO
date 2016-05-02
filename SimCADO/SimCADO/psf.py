@@ -1,6 +1,6 @@
-"""PSFs and PSF Cubes"""
+"""psf.py"""
 ###############################################################################
-# psf
+# PSFs and PSFCubes
 #
 # DESCRIPTION
 #
@@ -9,7 +9,7 @@
 #
 # === SINGLE PSFS ===
 #
-# We need to start by generating a single PSF in order to generate a psf.
+# We need to start by generating a single PSF in order to generate a PSFCube.
 # We need to know the spatial characteristics of the PSF:
 # The commonalities of all PSFs are:
 #   - pix_width
@@ -110,13 +110,20 @@ except:
 
 
 
-## TODO - Add a ellipticity to the GaussianPSFplt.plot() ##
+## TODO 
+# - Add a ellipticity to the GaussianPSF
+# - Make sure MoffatPSF works
+
 
 
 ## These classes and functions are exported to the package
-__all__ = [ "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF", "DeltaPSF", 
-            "CombinedPSFCube", "UserPSFCube", 
-            ]
+__all__ = [ "PSF", "PSFCube", 
+            "MoffatPSF", "MoffatPSFCube", 
+            "AiryPSF", "AiryPSFCube",
+            "GaussianPSF", "GaussianPSFCube",
+            "DeltaPSF", "DeltaPSFCube"
+            "CombinedPSF", "CombinedPSFCube",
+            "UserPSF", "UserPSFCube"  ]
 
 
 ###############################################################################
@@ -137,9 +144,13 @@ __all__ = [ "PSF", "MoffatPSF", "AiryPSF", "GaussianPSF", "DeltaPSF",
 class PSF(object):
     """Point spread function (single layer) base class
 
-    Needed keywords arguments:
-    - size: [int] the size length of the array in pixels
-    - pix_res: [arcsec] the pixel scale used in the array
+    
+    Parameters
+    ==========
+    - size : int
+        [pixel] the side length of the array
+    - pix_res : float
+        [arcsec] the pixel scale of the array
     """
 
     def __init__(self, size, pix_res):

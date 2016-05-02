@@ -1,18 +1,16 @@
+"""optics.py"""
 ###############################################################################
 # OpticalTrain
 #
 # DESCRIPTION
-# The OpticalTrain holds all the information regarding the optical setup as
+# The OpticalTrain holds all the information regarding the optical path as
 # well as the individual objects
-#
-#
 #
 # TODO List
 # =========
-# -
+# - Make the Detector independent of the OpticalTrain
+# - Implement saving and reloading of OpticalTrain objects
 #
-#
-
 
 import sys, os
 import warnings
@@ -301,7 +299,7 @@ class OpticalTrain(object):
 
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-            psf_m1 = psf.UserPSF(self.cmds["SCOPE_PSF_FILE"], 
+            psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"], 
                                      self.lam_bin_centers)
             if psf_m1[0].pix_res != self.pix_res:
                 psf_m1 = psf_m1.resample(self.pix_res)
