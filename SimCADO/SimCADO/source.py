@@ -167,14 +167,14 @@ class Source(object):
 
         if not hasattr(chips, "__len__"):
             chips = [chips]
-        
+
+        # 1.
+        self.apply_transmission_curve(opt_train.tc_source)
+            
         for chip_i in chips:
     
             # 0.
             image = None
-
-            # 1.
-            self.apply_transmission_curve(opt_train.tc_source)
 
             # 2.
             for i in range(len(opt_train.lam_bin_edges[:-1])):
