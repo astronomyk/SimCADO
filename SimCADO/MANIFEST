@@ -25,11 +25,14 @@ data\TC_filter_V.dat
 data\TC_filter_Y.dat
 data\TC_filter_z.dat
 data\TC_mirror_mgf2agal.dat
+data\default.config
 data\skytable.fits
 docs\Assumptions.md
 docs\Data_model.md
+docs\Docstrings.md
 docs\Future_ideas.md
 docs\Problems.md
+docs\Usage.md
 scripts\simcado.py
 simcado\__init__.py
 simcado\commands.py
@@ -46,4 +49,3 @@ simcado\spectral.py
 simcado\spectralgrating.py
 simcado\utils.py
 simcado\version.py
-user_commands\default.config
