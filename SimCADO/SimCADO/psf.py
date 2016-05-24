@@ -1229,12 +1229,12 @@ class AiryDiskDiff2D(Fittable2DModel):
             except ValueError:
                 raise ImportError("AiryDiskDiff2D model requires scipy > 0.11.")
 
-        super(AiryDiskDiff2D, self).__init__(   amplitude=amplitude, 
-                                                x_0=x_0, 
-                                                y_0=y_0, 
-                                                radius=radius, 
-                                                eps=eps,
-                                                **kwargs)
+        super(AiryDiskDiff2D, self).__init__(amplitude=amplitude, 
+                                             x_0=x_0, 
+                                             y_0=y_0, 
+                                             radius=radius, 
+                                             eps=eps,
+                                             **kwargs)
 
     # Comment and methods copied from astropy v1.1.1
     # TODO: Why does this particular model have its own special __deepcopy__
