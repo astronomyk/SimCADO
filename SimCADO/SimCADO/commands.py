@@ -223,11 +223,11 @@ class UserCommands(object):
          
         self.cmds = utils.read_config(default)
 
-        if user_filename is not None:
+        if filename is not None:
             self.cmds.update(utils.read_config(filename))
 
-        self.cmds["CONFIG_USER"]   = user_filename
-        self.cmds["CONFIG_DEFAULT"] = default_filename
+        self.cmds["CONFIG_USER"]   = filename
+        self.cmds["CONFIG_DEFAULT"] = default
 
         # check the output path directory and file name
         if self.cmds["OBS_OUTPUT_DIR"] is None:
@@ -240,11 +240,6 @@ class UserCommands(object):
             self.cmds["PSF_MODE"] = "oversample"
         else:
             self.cmds["PSF_MODE"] = "linear_interp"
-
-        # Check for a filter curve file or a standard broadband name
-        if self.cmds["INST_FILTER_TC"] in ["I", "z", "Y", "J", "H", "Ks", "K"]:
-            self.cmds["INST_FILTER_TC"] = "../data/TC_filter_" + \
-                                            self.cmds["INST_FILTER_TC"] + ".dat"
 
         self._update_attributes()
 
@@ -292,7 +287,7 @@ class UserCommands(object):
         ```
         """
 
-        if isinstance(new_dict, commands):
+        if isinstance(new_dict, UserCommands):
             self.cmds.update(new_dict.cmds)
         elif isinstance(new_dict, dict):
             self.cmds.update(new_dict)
@@ -321,6 +316,11 @@ class UserCommands(object):
         Update the UserCommand convenience attributes
         """
 
+        # Check for a filter curve file or a standard broadband name
+        if self.cmds["INST_FILTER_TC"] in ["I", "z", "Y", "J", "H", "Ks", "K"]:
+            self.cmds["INST_FILTER_TC"] = "../data/TC_filter_" + \
+                                            self.cmds["INST_FILTER_TC"] + ".dat"
+        
         self.fpa_res    = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.pix_res    = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
 
