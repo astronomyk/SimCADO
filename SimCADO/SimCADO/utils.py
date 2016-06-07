@@ -17,7 +17,6 @@
 #
 
 
-
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
@@ -285,3 +284,20 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
     f[ext].header[keyword] = (value, comment)
     f.flush()
     f.close()
+
+    
+    
+def plot_detector_layout():
+    """Plot the detector layout. NOT FINISHED """
+
+    plt.figure(figsize=(10,10))
+    clr = ["g"]
+
+    for i in range(9):
+        chip = opt.chips[i]
+        plt.plot((chip.x_min,chip.x_max), (chip.y_min,chip.y_min),c=clr[i%len(clr)])
+        plt.plot((chip.x_min,chip.x_max), (chip.y_max,chip.y_max),c=clr[i%len(clr)])
+        plt.plot((chip.x_min,chip.x_min), (chip.y_min,chip.y_max),c=clr[i%len(clr)])
+        plt.plot((chip.x_max,chip.x_max), (chip.y_min,chip.y_max),c=clr[i%len(clr)])
+        plt.text(chip.x_cen,chip.y_cen,str(i),fontsize=14)
+        plt.xlabel("Distance [arcsec]", fontsize=14); plt.ylabel("Distance [arcsec]", fontsize=14)
