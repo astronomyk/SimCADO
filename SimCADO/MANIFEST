@@ -25,6 +25,7 @@ data\TC_filter_V.dat
 data\TC_filter_Y.dat
 data\TC_filter_z.dat
 data\TC_mirror_mgf2agal.dat
+data\TC_window.dat
 data\default.config
 data\skytable.fits
 docs\Assumptions.md
