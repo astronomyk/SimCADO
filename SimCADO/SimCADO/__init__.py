@@ -2,17 +2,29 @@
 End-to-end simulator for MICADO on the E-ELT
 ============================================
 """
+# Import all the modules to go under simcado.detector
+from . import detector
+from . import source  
+from . import optics  
+from . import commands
+from . import utils
+from . import optics_utils
+from . import psf
+from . import spatial
+from . import spectral
+from . import defaults
 
 from .version import version as __version__
 
-from .detector         import *
-from .source           import *
-from .optics           import *
-#from .psf              import *
-#from .spatial          import *
-from .commands         import *
-#from .spectral         import *
+# import specific Classes from the modules to be accessible in the global 
+# namespace
+from .detector  import Detector, Chip
+from .source    import Source
+from .optics    import OpticalTrain
+from .commands  import UserCommands
+
+# don't import these ones just yet
 #from .SpectralGrating  import * 
 #from .simulation       import *
-#from .utils            import *
-#from .defaults         import *    
+
+
