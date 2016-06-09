@@ -1,6 +1,2 @@
 include *.txt
 include PKG-INFO
-recursive-include data *
-recursive-include docs *.md
-recursive-include user_commands *.config
-
