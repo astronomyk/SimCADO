@@ -12,12 +12,12 @@
 
 # Is this the version number scheme that we want?
 MAJOR = 0
-MINOR = 1
+MINOR = 2
 ATTR = 'dev'
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
 ## Is this needed?
-def write_version_py(filename='SimCADO/version.py'):
+def write_version_py(filename='simcado/version.py'):
     cnt = """
 # THIS FILE GENERATED FROM SIMCADO SETUP.PY
 version = '{}'
@@ -39,11 +39,12 @@ def setup_package():
           description = "MICADO Instrument simulator",
           author = "Kieran Leschinski, Oliver Czoske",
           author_email = "karl.jansky@univie.ac.at,oliver.czoske@univie.ac.at",
-          url = "none",
-          package_dir={'SimCADO': 'SimCADO'}, 
-          packages=['simcado'],
+          url = "http://homepage.univie.ac.at/kieran.leschinski/",
+          package_dir={'simcado': 'simcado'}, 
+          packages=['simcado', 'simcado.tests'],
           scripts = ['scripts/simcado.py'],
-          package_data = {'SimCADO': ['data/*']},
+          include_package_data=True,
+          package_data = {'simcado': ['data/*', 'docs/*']},
           )
     
     
