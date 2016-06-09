@@ -8,11 +8,11 @@ UserCommands is essentially a dictionary that holds all the variables that
 the user may wish to change. It also has some set variables like `pix_res`
 that can be accessed directly, instead of from the dictionary.
 
-UserCommands is imported directly into the simcado package and is accessable 
+UserCommands is imported directly into the simcado package and is accessable
 from the main package - `simcado.UserCommands`
 
-If UserCommands is called without any arguments, the default values for MICADO 
-are used. 
+If UserCommands is called without any arguments, the default values for MICADO
+are used.
 
 
 Routines
@@ -60,7 +60,7 @@ keywords - e.g. for the keywords for the instrument:
 """
 
 
-import os, warnings
+import os, warnings, shutil, inspect
 import numpy as np
 try:
     import simcado.spectral as sc
@@ -69,46 +69,47 @@ except:
     import spectral as sc
     import utils as utils
 
+__file__ = sc.__file__
     
-__all__ = ["UserCommands"]    
-    
+__all__ = ["UserCommands"]
+
 
 class UserCommands(object):
     """
     An extended dictionary with the parameters needed for running a simulation
 
-    
+
     Summary
     -------
-    A `UserCommands` object contains a dictionary which holds all the keywords 
+    A `UserCommands` object contains a dictionary which holds all the keywords
     from the `default.config` file. It also has attributes which represent the
     frequently used variables, i.e. `pix_res`, `lam_bin_edges`, `exptime`, etc
-    
+
     `<UserCommands>.cmds` is a dictionary that holds all the variables
-    the user may wish to change. It also has some set variables like 
-    `<UserCommands>.pix_res` that can be accessed directly, instead of from the 
+    the user may wish to change. It also has some set variables like
+    `<UserCommands>.pix_res` that can be accessed directly, instead of from the
     dictionary.
 
-    `UserCommands` is imported directly into the simcado package and is 
+    `UserCommands` is imported directly into the simcado package and is
     accessable from the main package - `simcado.UserCommands`
 
-    If UserCommands is called without any arguments, the default values for 
-    MICADO and the E-ELT are used. 
+    If UserCommands is called without any arguments, the default values for
+    MICADO and the E-ELT are used.
 
-    
+
     Parameters
     ----------
     filename : str
         path to the user's .config file
     default : str, optional
         path to the default.config file.
-    
-    
+
+
     Attributes
     ----------
     Internal dictionaries
     cmds : dict
-        the dictionary which holds all the keyword-value pairs needed for 
+        the dictionary which holds all the keyword-value pairs needed for
         running a simualtion
     obs : dict
         parameters about the observation
@@ -124,15 +125,15 @@ class UserCommands(object):
         parameters about the detector array (FPA - Focal Plane Array)
     hxrg : dict
         parameters about the chip noise (HxRG - HAWAII 4RG chip series)
-    
+
     Attributes pertaining to the purely spectral data sets (e.g. transmission
     curves, stellar spectra, etc)
     lam : np.ndarray
-        a vector containing the centres of the wavelength bins used when 
+        a vector containing the centres of the wavelength bins used when
         resampling the spectra or transmission curves
     lam_res : float
         [um] the resolution of the `lam`
-        
+
     Attributes pertaining to the binning in spectral space for which different
     PSFs need to be used
     lam_psf_res : float
@@ -141,13 +142,13 @@ class UserCommands(object):
         [um] the edge of the spectral bin for each layer
     lam_bin_centers : array-like
         [um] the centres of the spectral bin for each layer
-    
+
     Attributes pertaining to the binning in the spatial plane
     pix_res : float
         [arcsec] the internal (oversampled) spatial resolution of the simulation
     fpa_res : float
         [arcsec] the field of view of the individual pixels on the detector
-    
+
     General attributes
     verbose : bool
         Flag for printing intermediate results to the screen (default=True)
@@ -157,8 +158,8 @@ class UserCommands(object):
         [m] outer diamter of the primary aperture (i.e. M1)
     area : float
         [m^2] effective area of the primary aperture (i.e. M1)
-    
-    
+
+
     Methods
     -------
     update(new_dict)
@@ -167,7 +168,7 @@ class UserCommands(object):
         returns the keys in the `UserCommands.cmds` dictionary
     values()
         returns the values in the `UserCommands.cmds` dictionary
-    
+
     Raises
     ------
 
@@ -183,7 +184,7 @@ class UserCommands(object):
 
     Examples
     --------
-    By default `UserCommands` contains the parameters needed to generate the 
+    By default `UserCommands` contains the parameters needed to generate the
     MICADO optical train:
     ```
     >>> import simcado
@@ -191,7 +192,7 @@ class UserCommands(object):
     >>> my_cmds["SCOPE_M1_DIAMETER_OUT"]
     37.3
     ```
-    
+
     `UserCommands` supports indexing like a dictionary object.
     ```
     >>> my_cmds["SCOPE_M1_DIAMETER_OUT"] = 8.2
@@ -212,41 +213,44 @@ class UserCommands(object):
     ...
     ```
     """
-    
-    
-    def __init__(self, filename=None,
-                 default="../data/default.config"):
+
+
+    def __init__(self, filename=None):
 
         """
         Create an extended dictionary of simulation parameters
         """
-         
-        self.cmds = utils.read_config(default)
+        self.pkg_dir = os.path.split(__file__)[0]
+        default = os.path.join(self.pkg_dir, "data", "default.config")
 
+        # read in the default keywords
+        self.cmds = utils.read_config(default)
+        
+        # turn any "none" strings into python None values
+        self._convert_none()
+        
+        # read in the users wishes
         if filename is not None:
             self.cmds.update(utils.read_config(filename))
-
+        
+        # set the default paths and file names 
+        self._default_data()            
+        
         self.cmds["CONFIG_USER"]   = filename
         self.cmds["CONFIG_DEFAULT"] = default
-
-        # check the output path directory and file name
-        if self.cmds["OBS_OUTPUT_DIR"] is None:
-            self.cmds["OBS_OUTPUT_DIR"] = "./"
-
-        if self.cmds["OBS_OUTPUT_NAME"] is None:
-            self.cmds["OBS_OUTPUT_NAME"] = "output.fits"
 
         if self.cmds["SIM_PSF_OVERSAMPLE"] == "yes":
             self.cmds["PSF_MODE"] = "oversample"
         else:
             self.cmds["PSF_MODE"] = "linear_interp"
 
+        # update the UserCommand "special" attributes
         self._update_attributes()
 
         if self.verbose:
             print("Read in parameters from \n"+"\n".join(fnames))
+                
 
-            
     def update(self, new_dict):
         """
         Update nultiple entries of a `UserCommands` dictionary
@@ -254,26 +258,26 @@ class UserCommands(object):
 
         Summary
         -------
-        `update(new_dict)` takes either a normal python `dict` object or a 
-        `UserCommands` object. Only keywords that match those in the 
-        `UserCommands` object will be updated. No warning is given for 
+        `update(new_dict)` takes either a normal python `dict` object or a
+        `UserCommands` object. Only keywords that match those in the
+        `UserCommands` object will be updated. No warning is given for
         misspelled keywords.
-        
+
         To update single items in the dictionary, it is recommended to simply
-        call the key and update the value - i.e `<UserCommands>[key] = value`. 
-        
+        call the key and update the value - i.e `<UserCommands>[key] = value`.
+
         Parameters
         ----------
         new_dict : dict, `UserCommands`
 
-       
+
         Raises
         ------
 
         See Also
         --------
         UserCommands
-        
+
         Notes
         -----
 
@@ -295,21 +299,92 @@ class UserCommands(object):
             raise ValueError("Cannot update with type: "+type(new_dict))
         self._update_attributes()
 
-        
+
     def keys(self):
         """
         Return the keys in the `UserCommands.cmds` dictionary
         """
         return self.cmds.keys()
 
+        
     def values(self):
         """
         Return the values in the `UserCommands.cmds` dictionary
         """
         return self.cmds.values()
-            
-            
-            
+
+
+    def _convert_none(self):
+        for key,value in zip(self.cmds.keys(), self.cmds.values()):
+            if type(value) == str and value.lower() == "none":
+                self.cmds[key] = None
+        
+
+    def _default_data(self):
+   
+        if self.cmds["OBS_OUTPUT_DIR"] in (None, "none", "default"):
+            self.cmds["OBS_OUTPUT_DIR"] = "./"
+
+        if self.cmds["SIM_OPT_TRAIN_OUT_PATH"] in (None, "none", "default"):            
+            self.cmds["SIM_OPT_TRAIN_OUT_PATH"] = "./"
+
+        if self.cmds["SIM_DETECTOR_OUT_PATH"] in (None, "none", "default"):
+            self.cmds["SIM_DETECTOR_OUT_PATH"] = "./"
+
+        if self.cmds["ATMO_TC"] == "default":
+            self.cmds["ATMO_TC"] = \
+                os.path.join(self.pkg_dir, "data", "skytable.fits")
+
+        if self.cmds["ATMO_EC"] =="default":
+            self.cmds["ATMO_EC"] = \
+                os.path.join(self.pkg_dir, "data", "skytable.fits")
+
+        if self.cmds["SCOPE_PSF_FILE"] == "default":
+            self.cmds["SCOPE_PSF_FILE"] = \
+                os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
+
+        if self.cmds["SCOPE_M1_TC"] == "default":
+            self.cmds["SCOPE_M1_TC"] = \
+                os.path.join(self.pkg_dir, "data", "TC_mirror_mgf2agal.dat")
+
+        if self.cmds["INST_ENTR_WINDOW_TC"] == "default":
+            self.cmds["INST_ENTR_WINDOW_TC"] = \
+                os.path.join(self.pkg_dir, "data", "TC_window.dat")
+
+        if self.cmds["INST_DICHROIC_TC"] == "default":
+            self.cmds["INST_DICHROIC_TC"] = \
+                os.path.join(self.pkg_dir, "data", "TC_dichroic.dat")
+
+        if self.cmds["INST_ADC_TC"] == "default":
+            self.cmds["INST_ADC_TC"] = \
+                os.path.join(self.pkg_dir, "data", "TC_ADC.dat")
+
+        if self.cmds["INST_DISTORTION_MAP"] == "default":
+            self.cmds["INST_DISTORTION_MAP"] = None
+                
+        if self.cmds["FPA_QE"] == "default":
+            self.cmds["FPA_QE"] = \
+                os.path.join(self.pkg_dir, "data", "TC_detector_H4RG.dat")
+                
+        if self.cmds["FPA_NOISE_PATH"] == "default":
+            self.cmds["FPA_NOISE_PATH"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_noise.fits")
+
+        if self.cmds["FPA_LINEARITY_CURVE"] == "default":
+            self.cmds["FPA_LINEARITY_CURVE"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_linearity.dat")
+
+        if self.cmds["FPA_PIXEL_MAP"] == "default":
+            self.cmds["FPA_PIXEL_MAP"] = None
+
+        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default"):
+            self.cmds["FPA_CHIP_LAYOUT"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
+                
+        if self.cmds["HXRG_PCA0_FILENAME"] in (None, "none", "default"):
+            self.cmds["HXRG_PCA0_FILENAME"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_nirspec_pca0.fits")
+
 
     def _update_attributes(self):
         """
@@ -318,9 +393,11 @@ class UserCommands(object):
 
         # Check for a filter curve file or a standard broadband name
         if self.cmds["INST_FILTER_TC"] in ["I", "z", "Y", "J", "H", "Ks", "K"]:
-            self.cmds["INST_FILTER_TC"] = "../data/TC_filter_" + \
-                                            self.cmds["INST_FILTER_TC"] + ".dat"
-        
+            fname = "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat"
+            self.cmds["INST_FILTER_TC"] = \
+                os.path.join(self.pkg_dir, "data", fname)
+                                             
+
         self.fpa_res    = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.pix_res    = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
 
@@ -369,29 +446,32 @@ class UserCommands(object):
     def _get_lam_bin_edges(self, lam_min, lam_max):
         """
         Generates an array with the bin edges of the layers in spectral space
-        
-        
+
+
         Parameters
         ----------
         lam_min, lam_max : float
             [um] the minimum and maximum wavelengths of the filter range
-        
-        
+
+
         Notes
         -------
-        Atmospheric diffraction causes blurring in an image. To model this 
-        effect the spectra from a `Source` object are cut into bins based on 
-        how far the photons at different wavelength are diffracted from the 
+        Atmospheric diffraction causes blurring in an image. To model this
+        effect the spectra from a `Source` object are cut into bins based on
+        how far the photons at different wavelength are diffracted from the
         image center. The threshold for defining a new layer based on the how
         far a certain bin will move is given by `SIM_ADC_SHIFT_THRESHOLD`. The
         default value is 1 pixel.
-        """
         
+        The PSF also causes blurring as it spreads out over a bandpass. This
+        also needed to be taken into account
+        """
+
         effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
         if effectiveness == 1.:
             lam_bin_edges = np.array([lam_min, lam_max])
             return lam_bin_edges
-            
+
         shift_threshold = self.cmds["SIM_ADC_SHIFT_THRESHOLD"]
 
         ## get the angle shift for each slice
@@ -417,6 +497,23 @@ class UserCommands(object):
                for i in np.unique(int_shift)[::-1]]
         lam_bin_edges = np.array(lam[idx + [len(lam)-1]])
 
+        # Now check to see if the PSF blurring is the controlling factor. If so,
+        # take the lam_bin_edges for the PSF blurring
+        
+        diam = self.cmds["SCOPE_M1_DIAMETER_OUT"]
+        d_ang = self.pix_res * shift_threshold
+
+        lam2 = [lam_min]
+        ang0 = (lam_min*1E-6) / diam * 1.22*53*3600
+
+        i=1
+        while lam[-1] < lam_max and i<100:
+            lam2 += [(ang0 + d_ang*i) * diam / (1.22*53*3600) * 1E6]
+            i+=1
+        
+        if len(lam2) > len(lam_bin_edges):
+            lam_bin_edges = lam2
+        
         return lam_bin_edges
 
 
@@ -432,7 +529,7 @@ class UserCommands(object):
         self.fpa    = {i:self.cmds[i] for i in self.cmds.keys() if "FPA" in i}
         self.hxrg   = {i:self.cmds[i] for i in self.cmds.keys() if "HXRG" in i}
 
-   
+
     def __str__(self):
         if self.cmds["CONFIG_USER"] is not None:
             return "A dictionary of commands compiled from " + \
@@ -454,6 +551,23 @@ class UserCommands(object):
     ### Add to the update that all the cmds.variable are updated when
     ### the dicts are updated
 
-    
+
+
+def dump_defaults(dir="./"):
+    """ Dump the default.config file to a path specified by the user"""
+    pkgdir = os.path.split(__file__)[0]
+
+    dir = os.path.dirname(dir)
+    shutil.copy(os.path.join(pkgdir,"data","default.config"), dir)
+
+
+def dump_chip_layout(dir="./"):
+    """ Dump the FPA_chip_layout.dat file to a path specified by the user"""
+    pkgdir = os.path.split(__file__)[0]
+
+    dir = os.path.dirname(dir)
+    shutil.copy(os.path.join(pkgdir,"data","FPA_chip_layout.dat"), dir)
+
+
 class __bloedsinn():
     pass
