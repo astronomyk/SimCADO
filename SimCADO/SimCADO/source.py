@@ -127,7 +127,7 @@ class Source(object):
         self.y_orig = deepcopy(self.y)
 
 
-    def apply_optical_train(self, opt_train, chips, **kwargs):
+    def apply_optical_train(self, opt_train, detector, chips=0, **kwargs):
         """
 
         Output array is in units of [ph/s/pixel]
@@ -147,8 +147,10 @@ class Source(object):
                   "SCOPE_DRIFT_DISTANCE"    :0     }
         params.update(kwargs)
 
-        # 0. Create a canvas onto which we splat the PSFed sources 
+        
         # 1. Apply the master transmission curve to all the spectra
+        #
+        # 1.5 Create a canvas onto which we splat the PSFed sources 
         #
         # 2. For each layer between cmds.lam_bin_edges[i, i+1]
         #   - Apply the x,y shift for the ADC
@@ -173,7 +175,7 @@ class Source(object):
             
         for chip_i in chips:
     
-            # 0.
+            # 1.5
             image = None
 
             # 2.
@@ -193,12 +195,17 @@ class Source(object):
                 lam_min, lam_max = opt_train.lam_bin_edges[i:i+2]
                 psf = opt_train.psf_source[i]
 
+                oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                 if image == None:
                     image = self.image_in_range(psf, lam_min, lam_max,
-                                                opt_train.chips[chip_i])
+                                                detector.chips[chip_i],
+                                                pix_res=opt_train.pix_res,
+                                                oversample=oversample)
                 else:
                     image += self.image_in_range(psf, lam_min, lam_max,
-                                                 opt_train.chips[chip_i])
+                                                 detector.chips[chip_i],
+                                                 pix_res=opt_train.pix_res,
+                                                 oversample=oversample)
 
             # 3.
             # !!!!!!!!!!!!!! All of these need to be combined into a single
@@ -216,7 +223,7 @@ class Source(object):
             # 4.
             image += (opt_train.n_ph_atmo + opt_train.n_ph_mirror)
 
-            self.project_onto_chip(image, opt_train.chips[chip_i])
+            self.project_onto_chip(image, detector.chips[chip_i])
 
         ######################################
         # CAUTION WITH THE PSF NORMALISATION #
@@ -265,7 +272,7 @@ class Source(object):
         params = {"pix_res"     :0.004,
                   "sub_pixel"   :False,
                   "oversample"  :1      }
-
+                 
         params.update(kwargs)
 
         if chip is not None:
