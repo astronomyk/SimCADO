@@ -25,13 +25,16 @@ try:
     import simcado.spectral as sc
     import simcado.psf as psf
     import simcado.detector as fpa
+    __file__ = sc.__file__
 except:
     import utils
     import source as lo
     import spectral as sc
     import psf as psf
     import detector as fpa
+    __file__ = "./spectral.py"
 
+__pkg_dir__ = os.path.split(__file__)[0]
     
 __all__ = ["diff_limited_eelt_psf_cube", "poppy_eelt_psf_cube", 
            "grid_of_stars", "stellar_emission_curve", "source_1E4_Msun_cluster",
@@ -262,10 +265,12 @@ def source_1E4_Msun_cluster(distance=40000, half_light_radius=1, filename=None,
 
     Returns a Source object
     """
+    fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
+    masses = np.loadtxt(fname)
+    
     params = {"pix_res" :0.004}
     params.update(kwargs)
     
-    masses = np.loadtxt("../data/IMF_1E4.dat")
     spec_type = [mass_to_spec_type(mass) for mass in masses]
 
     distance *= u.pc
@@ -398,8 +403,11 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None, raw=False,
         It is assumed that the wavelength column of any pickles_table is in [um]
         Units of the returned spectra are [ph/s/m2]
     """
+    
+    
     if pickles_table is None:
-        pickles_table = ascii.read("../data/EC_pickles_MS.dat")
+        fname = os.path.join(__pkg_dir__, "data", "EC_pickles_MS.dat")
+        pickles_table = ascii.read(fname)
     cat = pickles_table
 
     if type(spec_type) in (list, tuple):
