@@ -55,6 +55,7 @@ simcado\docs\Data_model.md
 simcado\docs\Docstrings.md
 simcado\docs\Future_ideas.md
 simcado\docs\Problems.md
+simcado\docs\SimCADO_quick_and_dirty.ipynb
 simcado\docs\Usage.md
 simcado\tests\__init__.py
 simcado\tests\test_atmosphere.py
