@@ -65,11 +65,13 @@ import numpy as np
 try:
     import simcado.spectral as sc
     import simcado.utils as utils
+    __file__ = sc.__file__
 except:
     import spectral as sc
     import utils as utils
+    __file__ = "./spectral.py"
+    
 
-__file__ = sc.__file__
     
 __all__ = ["UserCommands"]
 
@@ -247,8 +249,8 @@ class UserCommands(object):
         # update the UserCommand "special" attributes
         self._update_attributes()
 
-        if self.verbose:
-            print("Read in parameters from \n"+"\n".join(fnames))
+        if self.verbose and filename is not None:
+            print("Read in parameters from "+filename)
                 
 
     def update(self, new_dict):
@@ -466,11 +468,15 @@ class UserCommands(object):
         The PSF also causes blurring as it spreads out over a bandpass. This
         also needed to be taken into account
         """
-
+        if self.cmds["SIM_VERBOSE"] == "yes":
+                print("Determining lam_bin_edges")
+        
         effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
-        if effectiveness == 1.:
-            lam_bin_edges = np.array([lam_min, lam_max])
-            return lam_bin_edges
+        
+        # This is redundant because also need to look at the PSF width
+        #if effectiveness == 1.:
+        #    lam_bin_edges = np.array([lam_min, lam_max])
+        #    return lam_bin_edges
 
         shift_threshold = self.cmds["SIM_ADC_SHIFT_THRESHOLD"]
 
@@ -495,7 +501,7 @@ class UserCommands(object):
         int_shift = np.array(rel_shift / shift_threshold, dtype=np.int)
         idx = [np.where(int_shift == i)[0][0]
                for i in np.unique(int_shift)[::-1]]
-        lam_bin_edges = np.array(lam[idx + [len(lam)-1]])
+        lam_bin_edges_adc = np.array(lam[idx + [len(lam)-1]])
 
         # Now check to see if the PSF blurring is the controlling factor. If so,
         # take the lam_bin_edges for the PSF blurring
@@ -503,17 +509,25 @@ class UserCommands(object):
         diam = self.cmds["SCOPE_M1_DIAMETER_OUT"]
         d_ang = self.pix_res * shift_threshold
 
-        lam2 = [lam_min]
+        lam_bin_edges_psf = [lam_min]
         ang0 = (lam_min*1E-6) / diam * 1.22*53*3600
 
         i=1
-        while lam[-1] < lam_max and i<100:
-            lam2 += [(ang0 + d_ang*i) * diam / (1.22*53*3600) * 1E6]
+        while lam_bin_edges_psf[-1] < lam_max:
+            lam_bin_edges_psf += [(ang0 + d_ang*i) * diam / (1.22*53*3600) * 1E6]
             i+=1
+            if i > 1000: raise ValueError("lam_bin_edges needs >1000 values")
+        lam_bin_edges_psf[-1] = lam_max
         
-        if len(lam2) > len(lam_bin_edges):
-            lam_bin_edges = lam2
+        lam_bin_edges = np.unique(np.concatenate(
+                                    (np.round(lam_bin_edges_psf, 3), 
+                                     np.round(lam_bin_edges_adc, 3))))
         
+        if self.cmds["SIM_VERBOSE"] == "yes":
+            print("PSF edges were", np.round(lam_bin_edges_psf,3))
+            print("ADC edges were", np.round(lam_bin_edges_adc,3))
+            print("All edges were", np.round(lam_bin_edges,3))
+            
         return lam_bin_edges
 
 
