@@ -230,11 +230,12 @@ class Detector(object):
         self.layout = ascii.read(self.cmds["FPA_CHIP_LAYOUT"])
         self.chips  = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i], 
                             self.layout["x_len"][i], self.layout["y_len"][i], 
-                            self.layout["pix_res"][i], self.layout["id"][i]) 
+                            self.cmds["SIM_DETECTOR_PIX_SCALE"], 
+                            self.layout["id"][i]) 
                        for i in range(len(self.layout["x_cen"]))]
         
         self.oversample = self.cmds["SIM_OVERSAMPLING"]
-        self.fpa_res = self.layout["pix_res"]
+        self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.exptime = self.cmds["OBS_EXPTIME"]
         self.ndit    = self.cmds["OBS_NDIT"]
         self.tro     = self.cmds["OBS_NONDESTRUCT_TRO"]
