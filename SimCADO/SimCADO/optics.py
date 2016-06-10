@@ -188,13 +188,13 @@ class OpticalTrain(object):
         self.tc_source  = self._gen_master_tc(preset="source")
         self.psf_source = self._gen_master_psf()
 
-
-        ############## detector #########################
-        if self.cmds.verbose:
-            print("Generating the detector array")
+        # Detector has been outsourced - this is irrelevant now
+          ############## detector #########################
+        #if self.cmds.verbose:
+        #    print("Generating the detector array")
         # Make a detector Plane
-        self.detector = fpa.Detector(self.cmds)
-        self.chips = self.detector.chips
+        #self.detector = fpa.Detector(self.cmds)
+        #self.chips = self.detector.chips
 
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
