@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import numpy as np
 
 import multiprocessing as mp
@@ -11,13 +11,15 @@ except:
     import detector as fpa
     import input as ig
     
-
+__pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["make_noise_cube", "make_poppy_cube"]
     
 
 def _make_noise(i):
+    pca_file = os.path.join(__pkg_dir__,"data","FPA_nirspec_pca0.fits")
+
     ng_h4rg = fpa.HXRGNoise(naxis1 = 4096, naxis2 = 4096, n_out = 32, nroh = 8,
-                            pca0_file = "../data/FPA_nirspec_pca0.fits")
+                            pca0_file = pca_file)
     return ng_h4rg.mknoise(o_file = None, rd_noise = 5, pedestal = 4,
                            c_pink = 3, u_pink = 1, acn = 0.5)
 
