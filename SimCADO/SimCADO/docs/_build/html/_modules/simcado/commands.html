@@ -1,0 +1,712 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>simcado.commands &mdash; simcado 0.2dev documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="simcado 0.2dev documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for simcado.commands</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains classes which control how a simulation is run</span>
+
+
+<span class="sd">Summary</span>
+<span class="sd">-------</span>
+<span class="sd">UserCommands is essentially a dictionary that holds all the variables that</span>
+<span class="sd">the user may wish to change. It also has some set variables like `pix_res`</span>
+<span class="sd">that can be accessed directly, instead of from the dictionary.</span>
+
+<span class="sd">UserCommands is imported directly into the simcado package and is accessable</span>
+<span class="sd">from the main package - `simcado.UserCommands`</span>
+
+<span class="sd">If UserCommands is called without any arguments, the default values for MICADO</span>
+<span class="sd">are used.</span>
+
+
+<span class="sd">Routines</span>
+<span class="sd">--------</span>
+<span class="sd">`UserCommands(filename, default=&lt;path_to_default&gt;)`</span>
+
+
+<span class="sd">See Also</span>
+<span class="sd">--------</span>
+<span class="sd">Class that require a `UserCommands` object directly include:</span>
+<span class="sd">- `Detector`</span>
+<span class="sd">- `OpticalTrain`</span>
+
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+<span class="sd">By default `UserCommands` contains the parameters needed to generate the MICADO</span>
+<span class="sd">optical train:</span>
+<span class="sd">```</span>
+<span class="sd">&gt;&gt;&gt; import simcado</span>
+<span class="sd">&gt;&gt;&gt; my_cmds = simcado.UserCommands()</span>
+<span class="sd">&gt;&gt;&gt; my_cmds[&quot;SCOPE_M1_DIAMETER_OUT&quot;]</span>
+<span class="sd">37.3</span>
+<span class="sd">```</span>
+
+<span class="sd">To list the keywords that are available:</span>
+<span class="sd">```</span>
+<span class="sd">&gt;&gt;&gt; my_cmds.keys()</span>
+<span class="sd">...</span>
+<span class="sd">```</span>
+
+<span class="sd">The UserCommands object also contains smaller dictionaries for each category of</span>
+<span class="sd">keywords - e.g. for the keywords for the instrument:</span>
+<span class="sd">```</span>
+<span class="sd">&gt;&gt;&gt; my_cmds.inst</span>
+<span class="sd">...</span>
+<span class="sd">```</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">warnings</span><span class="o">,</span> <span class="nn">shutil</span><span class="o">,</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">simcado.spectral</span> <span class="kn">as</span> <span class="nn">sc</span>
+    <span class="kn">import</span> <span class="nn">simcado.utils</span> <span class="kn">as</span> <span class="nn">utils</span>
+    <span class="n">__file__</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">__file__</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">spectral</span> <span class="kn">as</span> <span class="nn">sc</span>
+    <span class="kn">import</span> <span class="nn">utils</span> <span class="kn">as</span> <span class="nn">utils</span>
+    <span class="n">__file__</span> <span class="o">=</span> <span class="s2">&quot;./spectral.py&quot;</span>
+    
+<span class="n">__pkg_dir__</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">__file__</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;UserCommands&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="UserCommands"><a class="viewcode-back" href="../../code.html#simcado.UserCommands">[docs]</a><span class="k">class</span> <span class="nc">UserCommands</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An extended dictionary with the parameters needed for running a simulation</span>
+
+
+<span class="sd">    Summary</span>
+<span class="sd">    -------</span>
+<span class="sd">    A `UserCommands` object contains a dictionary which holds all the keywords</span>
+<span class="sd">    from the `default.config` file. It also has attributes which represent the</span>
+<span class="sd">    frequently used variables, i.e. `pix_res`, `lam_bin_edges`, `exptime`, etc</span>
+
+<span class="sd">    `&lt;UserCommands&gt;.cmds` is a dictionary that holds all the variables</span>
+<span class="sd">    the user may wish to change. It also has some set variables like</span>
+<span class="sd">    `&lt;UserCommands&gt;.pix_res` that can be accessed directly, instead of from the</span>
+<span class="sd">    dictionary.</span>
+
+<span class="sd">    `UserCommands` is imported directly into the simcado package and is</span>
+<span class="sd">    accessable from the main package - `simcado.UserCommands`</span>
+
+<span class="sd">    If UserCommands is called without any arguments, the default values for</span>
+<span class="sd">    MICADO and the E-ELT are used.</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        path to the user&#39;s .config file</span>
+<span class="sd">    default : str, optional</span>
+<span class="sd">        path to the default.config file.</span>
+
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Internal dictionaries</span>
+<span class="sd">    cmds : dict</span>
+<span class="sd">        the dictionary which holds all the keyword-value pairs needed for</span>
+<span class="sd">        running a simualtion</span>
+<span class="sd">    obs : dict</span>
+<span class="sd">        parameters about the observation</span>
+<span class="sd">    sim : dict</span>
+<span class="sd">        parameters about the simualtion</span>
+<span class="sd">    atmo : dict</span>
+<span class="sd">        parameters about the atmosphere</span>
+<span class="sd">    scope : dict</span>
+<span class="sd">        parameters about the telescope</span>
+<span class="sd">    inst : dict</span>
+<span class="sd">        parameters about the instrument</span>
+<span class="sd">    fpa : dict</span>
+<span class="sd">        parameters about the detector array (FPA - Focal Plane Array)</span>
+<span class="sd">    hxrg : dict</span>
+<span class="sd">        parameters about the chip noise (HxRG - HAWAII 4RG chip series)</span>
+
+<span class="sd">    Attributes pertaining to the purely spectral data sets (e.g. transmission</span>
+<span class="sd">    curves, stellar spectra, etc)</span>
+<span class="sd">    lam : np.ndarray</span>
+<span class="sd">        a vector containing the centres of the wavelength bins used when</span>
+<span class="sd">        resampling the spectra or transmission curves</span>
+<span class="sd">    lam_res : float</span>
+<span class="sd">        [um] the resolution of the `lam`</span>
+
+<span class="sd">    Attributes pertaining to the binning in spectral space for which different</span>
+<span class="sd">    PSFs need to be used</span>
+<span class="sd">    lam_psf_res : float</span>
+<span class="sd">        [um] the spectal &quot;distance&quot; between layers - i.e. width of the bins</span>
+<span class="sd">    lam_bin_edges : array-like</span>
+<span class="sd">        [um] the edge of the spectral bin for each layer</span>
+<span class="sd">    lam_bin_centers : array-like</span>
+<span class="sd">        [um] the centres of the spectral bin for each layer</span>
+
+<span class="sd">    Attributes pertaining to the binning in the spatial plane</span>
+<span class="sd">    pix_res : float</span>
+<span class="sd">        [arcsec] the internal (oversampled) spatial resolution of the simulation</span>
+<span class="sd">    fpa_res : float</span>
+<span class="sd">        [arcsec] the field of view of the individual pixels on the detector</span>
+
+<span class="sd">    General attributes</span>
+<span class="sd">    verbose : bool</span>
+<span class="sd">        Flag for printing intermediate results to the screen (default=True)</span>
+<span class="sd">    exptime : float</span>
+<span class="sd">        [s] exposure time of a single DIT</span>
+<span class="sd">    diameter : float</span>
+<span class="sd">        [m] outer diamter of the primary aperture (i.e. M1)</span>
+<span class="sd">    area : float</span>
+<span class="sd">        [m^2] effective area of the primary aperture (i.e. M1)</span>
+
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    update(new_dict)</span>
+<span class="sd">        updates the current `UserCommands` object from another dict-like object</span>
+<span class="sd">    keys()</span>
+<span class="sd">        returns the keys in the `UserCommands.cmds` dictionary</span>
+<span class="sd">    values()</span>
+<span class="sd">        returns the values in the `UserCommands.cmds` dictionary</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    Detector, OpticalTrain</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    By default `UserCommands` contains the parameters needed to generate the</span>
+<span class="sd">    MICADO optical train:</span>
+<span class="sd">    ```</span>
+<span class="sd">    &gt;&gt;&gt; import simcado</span>
+<span class="sd">    &gt;&gt;&gt; my_cmds = simcado.UserCommands()</span>
+<span class="sd">    &gt;&gt;&gt; my_cmds[&quot;SCOPE_M1_DIAMETER_OUT&quot;]</span>
+<span class="sd">    37.3</span>
+<span class="sd">    ```</span>
+
+<span class="sd">    `UserCommands` supports indexing like a dictionary object.</span>
+<span class="sd">    ```</span>
+<span class="sd">    &gt;&gt;&gt; my_cmds[&quot;SCOPE_M1_DIAMETER_OUT&quot;] = 8.2</span>
+<span class="sd">    &gt;&gt;&gt; my_cmds[&quot;SCOPE_M1_DIAMETER_OUT&quot;]</span>
+<span class="sd">    8.2</span>
+<span class="sd">    ```</span>
+
+<span class="sd">    To list the keywords that are available:</span>
+<span class="sd">    ```</span>
+<span class="sd">    &gt;&gt;&gt; my_cmds.keys()</span>
+<span class="sd">    ...</span>
+<span class="sd">    ```</span>
+
+<span class="sd">    The `UserCommands` object also contains smaller dictionaries for each category</span>
+<span class="sd">    of keywords - e.g. for the keywords describing the instrument:</span>
+<span class="sd">    ```</span>
+<span class="sd">    &gt;&gt;&gt; my_cmds.inst</span>
+<span class="sd">    ...</span>
+<span class="sd">    ```</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an extended dictionary of simulation parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">__file__</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">default</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;default.config&quot;</span><span class="p">)</span>
+
+        <span class="c1"># read in the default keywords</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">read_config</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+        
+        <span class="c1"># turn any &quot;none&quot; strings into python None values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_convert_none</span><span class="p">()</span>
+        
+        <span class="c1"># read in the users wishes</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">read_config</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
+        
+        <span class="c1"># set the default paths and file names </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_data</span><span class="p">()</span>            
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;CONFIG_USER&quot;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;CONFIG_DEFAULT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">default</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_PSF_OVERSAMPLE&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;PSF_MODE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;oversample&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;PSF_MODE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;linear_interp&quot;</span>
+
+        <span class="c1"># update the UserCommand &quot;special&quot; attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_attributes</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">and</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Read in parameters from &quot;</span><span class="o">+</span><span class="n">filename</span><span class="p">)</span>
+                
+
+<div class="viewcode-block" id="UserCommands.update"><a class="viewcode-back" href="../../code.html#simcado.UserCommands.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update nultiple entries of a `UserCommands` dictionary</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+<span class="sd">        `update(new_dict)` takes either a normal python `dict` object or a</span>
+<span class="sd">        `UserCommands` object. Only keywords that match those in the</span>
+<span class="sd">        `UserCommands` object will be updated. No warning is given for</span>
+<span class="sd">        misspelled keywords.</span>
+
+<span class="sd">        To update single items in the dictionary, it is recommended to simply</span>
+<span class="sd">        call the key and update the value - i.e `&lt;UserCommands&gt;[key] = value`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        new_dict : dict, `UserCommands`</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        UserCommands</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        View the default commands</span>
+<span class="sd">        ```</span>
+<span class="sd">        &gt;&gt;&gt; import simcado</span>
+<span class="sd">        &gt;&gt;&gt; my_cmds = simcado.UserCommands()</span>
+<span class="sd">        &gt;&gt;&gt; print(my_cmds.cmds)</span>
+<span class="sd">        ```</span>
+<span class="sd">        </span>
+<span class="sd">        Change a single command</span>
+<span class="sd">        ```</span>
+<span class="sd">        &gt;&gt;&gt; my_cmds[&quot;OBS_EXPTIME&quot;] = 60</span>
+<span class="sd">        ```</span>
+<span class="sd">        </span>
+<span class="sd">        Change a series of commands at once</span>
+<span class="sd">        ```</span>
+<span class="sd">        &gt;&gt;&gt; new_cmds = {&quot;OBS_EXPTIME&quot; : 60 , &quot;OBS_NDIT&quot; : 10}</span>
+<span class="sd">        &gt;&gt;&gt; my_cmds.update(new_cmds)</span>
+<span class="sd">        ```</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_dict</span><span class="p">,</span> <span class="n">UserCommands</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new_dict</span><span class="o">.</span><span class="n">cmds</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_dict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new_dict</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot update with type: &quot;</span><span class="o">+</span><span class="nb">type</span><span class="p">(</span><span class="n">new_dict</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_attributes</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="UserCommands.keys"><a class="viewcode-back" href="../../code.html#simcado.UserCommands.keys">[docs]</a>    <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the keys in the `UserCommands.cmds` dictionary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span></div>
+
+        
+<div class="viewcode-block" id="UserCommands.values"><a class="viewcode-back" href="../../code.html#simcado.UserCommands.values">[docs]</a>    <span class="k">def</span> <span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the values in the `UserCommands.cmds` dictionary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">values</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_convert_none</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Turn all string &quot;none&quot; or &quot;None&quot; values into python `None` values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+        
+
+    <span class="k">def</span> <span class="nf">_default_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Input system-specific path names for the default package data files </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+   
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_OUTPUT_DIR&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_OUTPUT_DIR&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;./output.fits&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_OPT_TRAIN_OUT_PATH&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">):</span>            
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_OPT_TRAIN_OUT_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;./&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_DETECTOR_OUT_PATH&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_DETECTOR_OUT_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;./&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;ATMO_TC&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;ATMO_TC&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;skytable.fits&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;ATMO_EC&quot;</span><span class="p">]</span> <span class="o">==</span><span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;ATMO_EC&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;skytable.fits&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_PSF_FILE&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_PSF_FILE&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;PSF_POPPY.fits&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_M1_TC&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_M1_TC&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;TC_mirror_mgf2agal.dat&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_ENTR_WINDOW_TC&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_ENTR_WINDOW_TC&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;TC_window.dat&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_DICHROIC_TC&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_DICHROIC_TC&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;TC_dichroic.dat&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_ADC_TC&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_ADC_TC&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;TC_ADC.dat&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_DISTORTION_MAP&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_DISTORTION_MAP&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+                
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_QE&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_QE&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;TC_detector_H4RG.dat&quot;</span><span class="p">)</span>
+                
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_NOISE_PATH&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_NOISE_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;FPA_noise.fits&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_LINEARITY_CURVE&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_LINEARITY_CURVE&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;FPA_linearity.dat&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_PIXEL_MAP&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_PIXEL_MAP&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_CHIP_LAYOUT&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_CHIP_LAYOUT&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;FPA_chip_layout.dat&quot;</span><span class="p">)</span>
+                
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_PCA0_FILENAME&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_PCA0_FILENAME&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;FPA_nirspec_pca0.fits&quot;</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_update_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the UserCommand convenience attributes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Check for a filter curve file or a standard broadband name</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_FILTER_TC&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="s2">&quot;Y&quot;</span><span class="p">,</span> <span class="s2">&quot;J&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;Ks&quot;</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">]:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;TC_filter_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_FILTER_TC&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.dat&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_FILTER_TC&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+                                             
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fpa_res</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_DETECTOR_PIX_SCALE&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fpa_res</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_OVERSAMPLING&quot;</span><span class="p">]</span>
+
+        <span class="c1"># if SIM_USE_FILTER_LAM is true, then use the filter curve to set the</span>
+        <span class="c1"># wavelength boundaries where the filter is &lt; SIM_FILTER_THRESHOLD</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_USE_FILTER_LAM&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">:</span>
+            <span class="n">tc_filt</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">TransmissionCurve</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s1">&#39;INST_FILTER_TC&#39;</span><span class="p">])</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">tc_filt</span><span class="o">.</span><span class="n">val</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_FILTER_THRESHOLD&quot;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">i0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="n">mask</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">mask</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">tc_filt</span><span class="o">.</span><span class="n">lam</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span>   <span class="o">=</span> <span class="n">tc_filt</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="n">i0</span><span class="p">],</span> <span class="n">tc_filt</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_LAM_MIN&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_LAM_MAX&quot;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_LAM_TC_BIN_WIDTH&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span> <span class="o">+</span> <span class="mf">1E-7</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span><span class="p">)</span>
+
+        <span class="c1">#self.lam_psf_res = self.cmds[&quot;SIM_LAM_PSF_BIN_WIDTH&quot;]</span>
+        <span class="c1">#self.lam_bin_edges = np.arange(lam_min,</span>
+        <span class="c1">#                               lam_max + self.lam_psf_res + 1E-7,</span>
+        <span class="c1">#                               self.lam_psf_res)</span>
+        <span class="c1"># make lam_bin_edges according to how great the ADC offsets are</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_bin_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_lam_bin_edges</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_bin_centers</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam_bin_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> \
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">lam_bin_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">exptime</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_EXPTIME&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_M1_DIAMETER_OUT&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">area</span>       <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">diameter</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> \
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_M1_DIAMETER_IN&quot;</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_N_MIRRORS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_NUM_MIRRORS&quot;</span><span class="p">]</span> <span class="o">+</span> \
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_NUM_MIRRORS&quot;</span><span class="p">]</span> <span class="o">+</span> \
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_NUM_EXT_MIRRORS&quot;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="bp">True</span>   <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_VERBOSE&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span>   <span class="k">else</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_split_categories</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_get_lam_bin_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates an array with the bin edges of the layers in spectral space</span>
+
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lam_min, lam_max : float</span>
+<span class="sd">            [um] the minimum and maximum wavelengths of the filter range</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -------</span>
+<span class="sd">        Atmospheric diffraction causes blurring in an image. To model this</span>
+<span class="sd">        effect the spectra from a `Source` object are cut into bins based on</span>
+<span class="sd">        how far the photons at different wavelength are diffracted from the</span>
+<span class="sd">        image center. The threshold for defining a new layer based on the how</span>
+<span class="sd">        far a certain bin will move is given by `SIM_ADC_SHIFT_THRESHOLD`. The</span>
+<span class="sd">        default value is 1 pixel.</span>
+<span class="sd">        </span>
+<span class="sd">        The PSF also causes blurring as it spreads out over a bandpass. This</span>
+<span class="sd">        also needed to be taken into account</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_VERBOSE&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Determining lam_bin_edges&quot;</span><span class="p">)</span>
+        
+        <span class="n">effectiveness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;INST_ADC_PERFORMANCE&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">100.</span>
+        
+        <span class="c1"># This is redundant because also need to look at the PSF width</span>
+        <span class="c1">#if effectiveness == 1.:</span>
+        <span class="c1">#    lam_bin_edges = np.array([lam_min, lam_max])</span>
+        <span class="c1">#    return lam_bin_edges</span>
+
+        <span class="n">shift_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_ADC_SHIFT_THRESHOLD&quot;</span><span class="p">]</span>
+
+        <span class="c1">## get the angle shift for each slice</span>
+        <span class="n">lam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span> <span class="o">+</span> <span class="mf">1E-7</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
+        <span class="n">angle_shift</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">atmospheric_refraction</span><span class="p">(</span> <span class="n">lam</span><span class="p">,</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_ZENITH_DIST&quot;</span><span class="p">],</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;ATMO_TEMPERATURE&quot;</span><span class="p">],</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;ATMO_REL_HUMIDITY&quot;</span><span class="p">],</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;ATMO_PRESSURE&quot;</span><span class="p">],</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_LATITUDE&quot;</span><span class="p">],</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_ALTITUDE&quot;</span><span class="p">])</span>
+
+        <span class="c1">## convert angle shift into number of pixels</span>
+        <span class="c1">## pixel shifts are defined with respect to last slice</span>
+        <span class="n">rel_shift</span> <span class="o">=</span> <span class="p">(</span><span class="n">angle_shift</span> <span class="o">-</span> <span class="n">angle_shift</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">rel_shift</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Pixel shifts too great (&gt;1000), check units&quot;</span><span class="p">)</span>
+
+        <span class="c1">## Rotate by the paralytic angle</span>
+        <span class="n">rel_shift</span> <span class="o">*=</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">-</span> <span class="n">effectiveness</span><span class="p">)</span>
+        <span class="n">int_shift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rel_shift</span> <span class="o">/</span> <span class="n">shift_threshold</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">int_shift</span> <span class="o">==</span> <span class="n">i</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+               <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">int_shift</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="n">lam_bin_edges_adc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lam</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="c1"># Now check to see if the PSF blurring is the controlling factor. If so,</span>
+        <span class="c1"># take the lam_bin_edges for the PSF blurring</span>
+        
+        <span class="n">diam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SCOPE_M1_DIAMETER_OUT&quot;</span><span class="p">]</span>
+        <span class="n">d_ang</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">*</span> <span class="n">shift_threshold</span>
+
+        <span class="n">lam_bin_edges_psf</span> <span class="o">=</span> <span class="p">[</span><span class="n">lam_min</span><span class="p">]</span>
+        <span class="n">ang0</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam_min</span><span class="o">*</span><span class="mf">1E-6</span><span class="p">)</span> <span class="o">/</span> <span class="n">diam</span> <span class="o">*</span> <span class="mf">1.22</span><span class="o">*</span><span class="mi">53</span><span class="o">*</span><span class="mi">3600</span>
+
+        <span class="n">i</span><span class="o">=</span><span class="mi">1</span>
+        <span class="k">while</span> <span class="n">lam_bin_edges_psf</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lam_max</span><span class="p">:</span>
+            <span class="n">lam_bin_edges_psf</span> <span class="o">+=</span> <span class="p">[(</span><span class="n">ang0</span> <span class="o">+</span> <span class="n">d_ang</span><span class="o">*</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">diam</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.22</span><span class="o">*</span><span class="mi">53</span><span class="o">*</span><span class="mi">3600</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1E6</span><span class="p">]</span>
+            <span class="n">i</span><span class="o">+=</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;lam_bin_edges needs &gt;1000 values&quot;</span><span class="p">)</span>
+        <span class="n">lam_bin_edges_psf</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam_max</span>
+        
+        <span class="n">lam_bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                                    <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">lam_bin_edges_psf</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> 
+                                     <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">lam_bin_edges_adc</span><span class="p">,</span> <span class="mi">3</span><span class="p">))))</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_VERBOSE&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;PSF edges were&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">lam_bin_edges_psf</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;ADC edges were&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">lam_bin_edges_adc</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;All edges were&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">lam_bin_edges</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+            
+        <span class="k">return</span> <span class="n">lam_bin_edges</span>
+
+
+    <span class="k">def</span> <span class="nf">_split_categories</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate smaller category-specific dictionaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obs</span>    <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;OBS&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sim</span>    <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;SIM&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atmo</span>   <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;ATMO&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scope</span>  <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;SCOPE&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inst</span>   <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;INST&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fpa</span>    <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;FPA&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hxrg</span>   <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;HXRG&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">}</span>
+
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;CONFIG_USER&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;A dictionary of commands compiled from &quot;</span> <span class="o">+</span> \
+                                                        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;CONFIG_USER&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;A dictionary of default commands&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">__iter__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">key</span><span class="o">+</span><span class="s2">&quot; not in UserCommands.keys()&quot;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_attributes</span><span class="p">()</span></div>
+
+
+    <span class="c1">### Add to the update that all the cmds.variable are updated when</span>
+    <span class="c1">### the dicts are updated</span>
+
+
+<span class="k">def</span> <span class="nf">dump_defaults</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="s2">&quot;./&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;freq&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Dump the frequent.config file to a path specified by the user</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dir : str, optional</span>
+<span class="sd">        path where the .config file is to be saved</span>
+<span class="sd">    type : str, optional</span>
+<span class="sd">        [&quot;freq&quot;, &quot;all&quot;] amount of keywords to save. &quot;freq&quot; only prints the most</span>
+<span class="sd">        frequently used keywords. &quot;all&quot; prints all of them</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="nb">dir</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="s2">&quot;freq&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;frequent.config&quot;</span>
+    <span class="k">elif</span> <span class="s2">&quot;all&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;default.config&quot;</span>
+        
+    <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">__pkg_dir__</span><span class="p">,</span><span class="s2">&quot;data&quot;</span><span class="p">,</span><span class="n">fname</span><span class="p">),</span> <span class="nb">dir</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">dump_chip_layout</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="s2">&quot;./&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Dump the FPA_chip_layout.dat file to a path specified by the user</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dir : str, optional</span>
+<span class="sd">        path where the chip layout file is to be saved</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="nb">dir</span><span class="p">)</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">__pkg_dir__</span><span class="p">,</span><span class="s2">&quot;data&quot;</span><span class="p">,</span><span class="s2">&quot;FPA_chip_layout.dat&quot;</span><span class="p">),</span> <span class="nb">dir</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">__bloedsinn</span><span class="p">():</span>
+    <span class="k">pass</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Kieran Leschinski, Oliver Czoske.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

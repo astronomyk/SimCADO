@@ -1,0 +1,1102 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>simcado.source &mdash; simcado 0.2dev documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="simcado 0.2dev documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for simcado.source</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1"># source</span>
+<span class="c1">#</span>
+<span class="c1"># DESCRIPTION</span>
+<span class="c1"># The source is essentially a list of spectra and a list of positions. The</span>
+<span class="c1"># list of positions contains a reference to the relevant spectra. The advantage</span>
+<span class="c1"># here is that if there are repeated spectra in a data cube, we can reduce the</span>
+<span class="c1"># amount of calculations needed. Furthermore, if the input is originally a list</span>
+<span class="c1"># of stars, etc where the position of a star is not always and integer multiple</span>
+<span class="c1"># of the plate scale, we can keep the information until the PSFs are needed.</span>
+<span class="c1">#</span>
+<span class="c1"># The source contains two arrays:</span>
+<span class="c1">#  - PositionArray:</span>
+<span class="c1">#  - SpectrumArray</span>
+
+
+<span class="c1"># Flow of events</span>
+<span class="c1"># - Generate the lists of spectra and positions</span>
+<span class="c1"># - Apply the transmission curves [SpectrumArray]</span>
+<span class="c1"># - shrink the 1D spectra to the resolution of the psf layers [SpectrumArray]</span>
+<span class="c1"># - apply any 2D spatials [PositionArray]</span>
+<span class="c1"># for i in len(slices)</span>
+<span class="c1">#   - generate a working slice [PositionArray, SpectrumArray, WorkingSlice]</span>
+<span class="c1">#   - Apply the PSF for the appropriate wavelength [WorkingSlice]</span>
+<span class="c1">#   - Apply any wavelength dependent spatials [WorkingSlice]</span>
+<span class="c1">#   - apply Poisson noise to the photons in the slice [WorkingSlice]</span>
+<span class="c1">#   - add the WorkingSlice to the FPA [WorkingSlice, FPArray]</span>
+
+
+<span class="c1">## TODO implement conversions to Source object from:</span>
+<span class="c1"># ascii</span>
+<span class="c1">#    x,y,mag,[temp]</span>
+<span class="c1">#    x,y,type</span>
+<span class="c1"># images</span>
+<span class="c1">#    JHK</span>
+<span class="c1">#    cube</span>
+
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.ndimage.interpolation</span> <span class="kn">as</span> <span class="nn">spi</span>
+
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span><span class="p">,</span> <span class="n">ascii</span>
+<span class="kn">from</span> <span class="nn">astropy.convolution</span> <span class="kn">import</span> <span class="n">convolve</span><span class="p">,</span> <span class="n">convolve_fft</span>
+<span class="kn">import</span> <span class="nn">astropy.units</span> <span class="kn">as</span> <span class="nn">u</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">simcado.spatial</span> <span class="kn">as</span> <span class="nn">pe</span>
+    <span class="n">__file__</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">__file__</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">spatial</span> <span class="kn">as</span> <span class="nn">pe</span>
+    <span class="n">__file__</span> <span class="o">=</span> <span class="s2">&quot;./spatial.py&quot;</span>
+    
+<span class="n">__pkg_dir__</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">__file__</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Source&quot;</span><span class="p">]</span>
+
+
+<span class="c1"># add_uniform_background() moved to detector</span>
+<span class="c1"># get_slice_photons() renamed to photons_in_range() and moved to Source</span>
+<span class="c1"># apply_transmission_curve() moved to Source</span>
+<span class="c1"># apply_optical_train() moved to Source</span>
+
+
+<div class="viewcode-block" id="Source"><a class="viewcode-back" href="../../code.html#simcado.Source">[docs]</a><span class="k">class</span> <span class="nc">Source</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a source object from a file or from arrays</span>
+
+<span class="sd">    Source class generates the arrays needed for source. It takes various</span>
+<span class="sd">    inputs and converts them to an array of positions and references to spectra</span>
+<span class="sd">    It also converts spectra to photons/s/voxel. The default units for input</span>
+<span class="sd">    data is ph/s</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ==========</span>
+<span class="sd">    - filename</span>
+<span class="sd">    or</span>
+<span class="sd">    - lam</span>
+<span class="sd">    - spectra</span>
+<span class="sd">    - x [arcsec]</span>
+<span class="sd">    - y [arcsec]</span>
+<span class="sd">    - ref</span>
+<span class="sd">    - weight</span>
+
+<span class="sd">    Keyword arguments</span>
+<span class="sd">    =================</span>
+<span class="sd">    - units</span>
+<span class="sd">    - pix_unit</span>
+<span class="sd">    - pix_res</span>
+<span class="sd">    - exptime</span>
+<span class="sd">    - area</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                <span class="n">lam</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">spectra</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ref</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;units&quot;</span>   <span class="p">:</span><span class="s2">&quot;ph/s&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;pix_unit&quot;</span><span class="p">:</span><span class="s2">&quot;arcsec&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;pix_res&quot;</span> <span class="p">:</span><span class="mf">0.004</span><span class="p">,</span>
+                       <span class="s2">&quot;exptime&quot;</span> <span class="p">:</span><span class="mi">1</span><span class="p">,</span>
+                       <span class="s2">&quot;area&quot;</span>    <span class="p">:</span><span class="mi">1</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;created&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;yes&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;List of spectra and their positions&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;units&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exptime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;exptime&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;area&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">hdr</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;SIMCADO&quot;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">and</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;SIMCADO&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;SOURCE&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_from_cube</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">spectra</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">ref</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_from_arrays</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">spectra</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">ref</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Trouble with inputs. Could not create Source&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_orig</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_orig</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Source.apply_optical_train"><a class="viewcode-back" href="../../code.html#simcado.Source.apply_optical_train">[docs]</a>    <span class="k">def</span> <span class="nf">apply_optical_train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opt_train</span><span class="p">,</span> <span class="n">detector</span><span class="p">,</span> <span class="n">chips</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply all effects along the optical path to the source photons</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        opt_train : simcado.OpticalTrain</span>
+<span class="sd">            the object containing all information on what is to happen to the</span>
+<span class="sd">            photons as they travel from the source to the detector</span>
+<span class="sd">        detector : simcado.Detector</span>
+<span class="sd">            the object representing the detector</span>
+<span class="sd">        chips : int, list</span>
+<span class="sd">            Default is &quot;all&quot;</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Output array is in units of [ph/s/pixel] where the pixel is internal</span>
+<span class="sd">        oversampled pixels - not the pixel size of the detector chips</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;verbose&quot;</span>     <span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+                  <span class="s2">&quot;ATMO_BG_ON&quot;</span>  <span class="p">:</span><span class="s2">&quot;yes&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;INST_DEROT_PERFORMANCE&quot;</span>  <span class="p">:</span><span class="mi">100</span><span class="p">,</span>
+                  <span class="s2">&quot;SCOPE_JITTER_FWHM&quot;</span>       <span class="p">:</span><span class="mi">0</span><span class="p">,</span>
+                  <span class="s2">&quot;SCOPE_DRIFT_DISTANCE&quot;</span>    <span class="p">:</span><span class="mi">0</span>     <span class="p">}</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        
+        <span class="c1"># 1. Apply the master transmission curve to all the spectra</span>
+        <span class="c1">#</span>
+        <span class="c1"># 1.5 Create a canvas onto which we splat the PSFed sources </span>
+        <span class="c1">#</span>
+        <span class="c1"># 2. For each layer between cmds.lam_bin_edges[i, i+1]</span>
+        <span class="c1">#   - Apply the x,y shift for the ADC</span>
+        <span class="c1">#       - Apply any other shifts</span>
+        <span class="c1">#   - Apply the PSF for the layer</span>
+        <span class="c1">#       - Sum up the photons in this section of the spectra</span>
+        <span class="c1">#   - Add the layer to the final image array</span>
+        <span class="c1">#</span>
+        <span class="c1"># 3. Apply wave-indep psfs</span>
+        <span class="c1">#   - field rotation</span>
+        <span class="c1">#   - telescope shake</span>
+        <span class="c1">#   - tracking error</span>
+        <span class="c1">#</span>
+        <span class="c1"># 3.5 Up until now everything is ph/s/m2/bin</span>
+        <span class="c1">#     Apply the collecting area of the telescope</span>
+        <span class="c1">#</span>
+        <span class="c1"># 4. Add the average number of atmo-bg and mirror-bb photons</span>
+        <span class="c1"># 5. Apply the instrumental distortion</span>
+
+        <span class="k">if</span> <span class="n">chips</span> <span class="o">==</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">chips</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span>
+            <span class="n">chips</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">detector</span><span class="o">.</span><span class="n">chips</span><span class="p">))</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">chips</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="n">chips</span> <span class="o">=</span> <span class="p">[</span><span class="n">chips</span><span class="p">]</span>
+
+        <span class="c1"># 1.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">apply_transmission_curve</span><span class="p">(</span><span class="n">opt_train</span><span class="o">.</span><span class="n">tc_source</span><span class="p">)</span>
+            
+        <span class="k">for</span> <span class="n">chip_i</span> <span class="ow">in</span> <span class="n">chips</span><span class="p">:</span>
+    
+            <span class="c1"># 1.5</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="bp">None</span>
+
+            <span class="c1"># 2.</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">opt_train</span><span class="o">.</span><span class="n">lam_bin_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])):</span>
+                
+                <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;verbose&quot;</span><span class="p">]:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Wavelength slice [um]:&quot;</span><span class="p">,</span> \
+                                            <span class="n">opt_train</span><span class="o">.</span><span class="n">lam_bin_centers</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="c1"># apply the adc shifts</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_orig</span> <span class="o">+</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">adc_shifts</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_orig</span> <span class="o">+</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">adc_shifts</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+
+                <span class="c1"># include any other shifts here</span>
+
+
+                <span class="c1"># apply the psf (get_slice_photons is called within)</span>
+                <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span> <span class="o">=</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">lam_bin_edges</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span>
+                <span class="n">psf</span> <span class="o">=</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">psf_source</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+                <span class="n">oversample</span> <span class="o">=</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_OVERSAMPLING&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">image</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_in_range</span><span class="p">(</span><span class="n">psf</span><span class="p">,</span> <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span>
+                                                <span class="n">detector</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">chip_i</span><span class="p">],</span>
+                                                <span class="n">pix_res</span><span class="o">=</span><span class="n">opt_train</span><span class="o">.</span><span class="n">pix_res</span><span class="p">,</span>
+                                                <span class="n">oversample</span><span class="o">=</span><span class="n">oversample</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">image</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_in_range</span><span class="p">(</span><span class="n">psf</span><span class="p">,</span> <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span>
+                                                 <span class="n">detector</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">chip_i</span><span class="p">],</span>
+                                                 <span class="n">pix_res</span><span class="o">=</span><span class="n">opt_train</span><span class="o">.</span><span class="n">pix_res</span><span class="p">,</span>
+                                                 <span class="n">oversample</span><span class="o">=</span><span class="n">oversample</span><span class="p">)</span>
+
+            <span class="c1"># 3.</span>
+            <span class="c1"># !!!!!!!!!!!!!! All of these need to be combined into a single</span>
+            <span class="c1"># function that traces out the path taken by the telescope, </span>
+            <span class="c1"># rather than having the arcs from the derotator() function </span>
+            <span class="c1"># being stretched by the tracking() function and then the whole </span>
+            <span class="c1"># thing blurred by wind_jitter()</span>
+            <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;INST_DEROT_PERFORMANCE&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="n">image</span> <span class="o">=</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">apply_derotator</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;SCOPE_DRIFT_DISTANCE&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span><span class="p">:</span>
+                <span class="n">image</span> <span class="o">=</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">apply_tracking</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;SCOPE_JITTER_FWHM&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span><span class="p">:</span>
+                <span class="n">image</span> <span class="o">=</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">apply_wind_jitter</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+            <span class="c1"># 3.5</span>
+            <span class="n">image</span> <span class="o">*=</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">cmds</span><span class="o">.</span><span class="n">area</span>                
+                
+            <span class="c1"># 4.</span>
+            <span class="n">image</span> <span class="o">+=</span> <span class="p">(</span><span class="n">opt_train</span><span class="o">.</span><span class="n">n_ph_atmo</span> <span class="o">+</span> <span class="n">opt_train</span><span class="o">.</span><span class="n">n_ph_mirror</span><span class="p">)</span>
+
+            <span class="c1"># 5. </span>
+            
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">project_onto_chip</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">detector</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">chip_i</span><span class="p">])</span></div>
+
+        <span class="c1">######################################</span>
+        <span class="c1"># CAUTION WITH THE PSF NORMALISATION #</span>
+        <span class="c1">######################################</span>
+
+
+    <span class="k">def</span> <span class="nf">project_onto_chip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">chip</span><span class="p">):</span>
+
+        <span class="n">scale_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">/</span> <span class="n">chip</span><span class="o">.</span><span class="n">pix_res</span>
+        <span class="n">chip_arr</span> <span class="o">=</span> <span class="n">spi</span><span class="o">.</span><span class="n">zoom</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">scale_factor</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">chip_arr</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">chip_arr</span><span class="p">)</span>
+
+        <span class="n">chip</span><span class="o">.</span><span class="n">add_signal</span><span class="p">(</span><span class="n">chip_arr</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Source.image_in_range"><a class="viewcode-back" href="../../code.html#simcado.Source.image_in_range">[docs]</a>    <span class="k">def</span> <span class="nf">image_in_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">psf</span><span class="p">,</span> <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span> <span class="n">chip</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the sources that fall in the chip area and generate an image for</span>
+<span class="sd">        the wavelength range [lam_min, lam_max)</span>
+
+<span class="sd">        Output is in [ph/s/pixel]</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ==========</span>
+<span class="sd">        psf : psf.PSF object</span>
+<span class="sd">            The PSF that the sources will be convolved with</span>
+<span class="sd">        lam_min, lam_max : float</span>
+<span class="sd">            [um] the wavelength range relevant for the psf</span>
+<span class="sd">        chip : detector.Chip object</span>
+<span class="sd">            the chip that will be seeing this image. If chip is None, an image</span>
+<span class="sd">            covering the entire Source region will be generated at a resolution</span>
+<span class="sd">            of `pix_res`. This could take a long time!</span>
+
+<span class="sd">        **kwargs</span>
+<span class="sd">        ========</span>
+<span class="sd">        sub_pixel : bool</span>
+<span class="sd">            if sub-pixel accuracy is needed, each source is shifted individually.</span>
+<span class="sd">            Default is False</span>
+<span class="sd">        pix_res : float</span>
+<span class="sd">            [arcsec] the field of view of each pixel. Default is 0.004 arcsec</span>
+<span class="sd">        oversample : int</span>
+<span class="sd">            the psf images will be oversampled to better conserve flux.</span>
+<span class="sd">            Default is 1 (i.e. not oversampled)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;pix_res&quot;</span>     <span class="p">:</span><span class="mf">0.004</span><span class="p">,</span>
+                  <span class="s2">&quot;sub_pixel&quot;</span>   <span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+                  <span class="s2">&quot;oversample&quot;</span>  <span class="p">:</span><span class="mi">1</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">chip</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">&gt;</span> <span class="n">chip</span><span class="o">.</span><span class="n">x_min</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">&lt;</span> <span class="n">chip</span><span class="o">.</span><span class="n">x_max</span><span class="p">)</span> <span class="o">*</span> \
+                   <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">&gt;</span> <span class="n">chip</span><span class="o">.</span><span class="n">y_min</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">&lt;</span> <span class="n">chip</span><span class="o">.</span><span class="n">y_max</span><span class="p">)</span>
+            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">chip</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;oversample&quot;</span><span class="p">]</span>
+            <span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">chip</span><span class="o">.</span><span class="n">x_min</span><span class="p">,</span> <span class="n">chip</span><span class="o">.</span><span class="n">x_max</span><span class="p">,</span>
+            <span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">chip</span><span class="o">.</span><span class="n">y_min</span><span class="p">,</span> <span class="n">chip</span><span class="o">.</span><span class="n">y_max</span>
+            <span class="n">x_cen</span><span class="p">,</span> <span class="n">y_cen</span> <span class="o">=</span> <span class="n">chip</span><span class="o">.</span><span class="n">x_cen</span><span class="p">,</span> <span class="n">chip</span><span class="o">.</span><span class="n">y_cen</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">True</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">))</span>
+            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;oversample&quot;</span><span class="p">]</span>
+            <span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">),</span>
+            <span class="n">x_cen</span><span class="p">,</span> <span class="n">y_cen</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_max</span> <span class="o">+</span> <span class="n">xmin</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">y_max</span> <span class="o">+</span> <span class="n">ymin</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+
+        <span class="n">naxis1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">x_max</span> <span class="o">-</span> <span class="n">x_min</span><span class="p">)</span> <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">])</span>
+        <span class="n">naxis2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_max</span> <span class="o">-</span> <span class="n">y_min</span><span class="p">)</span> <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">])</span>
+
+        <span class="n">slice_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">naxis1</span><span class="p">,</span> <span class="n">naxis2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">slice_photons</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">photons_in_range</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span> <span class="n">min_bins</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        
+        <span class="n">x_pix</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_cen</span><span class="p">)</span> <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="n">y_pix</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">y_cen</span><span class="p">)</span> <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+
+
+        <span class="c1"># if sub pixel accuracy is needed, be prepared to wait. For this we</span>
+        <span class="c1"># need to go through every source spectra in turn, shift the psf by</span>
+        <span class="c1"># the decimal amount given by pos - int(pos), then place a</span>
+        <span class="c1"># certain slice of the psf on the output array.</span>
+        <span class="n">ax</span><span class="p">,</span> <span class="n">ay</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">slice_array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">bx</span><span class="p">,</span> <span class="n">by</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>   <span class="o">//</span> <span class="mi">2</span>
+
+        <span class="n">x_int</span><span class="p">,</span> <span class="n">y_int</span> <span class="o">=</span> <span class="n">x_pix</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="n">y_pix</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_int</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">y_int</span>
+
+        <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;sub_pixel&quot;</span><span class="p">]:</span>
+            <span class="c1"># for each point source in the list, add a psf to the slice_array</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slice_photons</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">psf_tmp</span> <span class="o">=</span> <span class="n">spi</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="p">(</span><span class="n">dx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">dy</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">x_pint</span><span class="p">,</span> <span class="n">y_pint</span> <span class="o">=</span> <span class="n">x_int</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">y_int</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+                <span class="c1"># Find the slice borders for the array where the psf will go</span>
+                <span class="n">ax0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">x_pint</span> <span class="o">-</span> <span class="n">bx</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">x_pint</span><span class="p">))),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">ax1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">x_pint</span> <span class="o">+</span> <span class="n">bx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                                 <span class="p">[</span><span class="n">slice_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">x_pint</span><span class="p">))),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">ay0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">y_pint</span> <span class="o">-</span> <span class="n">by</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">y_pint</span><span class="p">))),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">ay1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">y_pint</span> <span class="o">+</span> <span class="n">by</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                                 <span class="p">[</span><span class="n">slice_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">y_pint</span><span class="p">))),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+                <span class="c1"># the slice limits of the psf array are found by taking the</span>
+                <span class="c1"># pixel distance from the x,y position to the slice limits</span>
+                <span class="c1"># of the slice_array. This distance is subtracted from the</span>
+                <span class="c1"># centre of the psf array.</span>
+                <span class="n">bx0</span> <span class="o">=</span> <span class="n">bx</span> <span class="o">-</span> <span class="p">(</span><span class="n">x_pint</span> <span class="o">-</span> <span class="n">ax0</span><span class="p">)</span>
+                <span class="n">bx1</span> <span class="o">=</span> <span class="n">bx</span> <span class="o">+</span> <span class="p">(</span><span class="n">ax1</span> <span class="o">-</span> <span class="n">x_pint</span><span class="p">)</span>
+                <span class="n">by0</span> <span class="o">=</span> <span class="n">by</span> <span class="o">-</span> <span class="p">(</span><span class="n">y_pint</span> <span class="o">-</span> <span class="n">ay0</span><span class="p">)</span>
+                <span class="n">by1</span> <span class="o">=</span> <span class="n">by</span> <span class="o">+</span> <span class="p">(</span><span class="n">ay1</span> <span class="o">-</span> <span class="n">y_pint</span><span class="p">)</span>
+
+                <span class="n">slice_array</span><span class="p">[</span><span class="n">ax0</span><span class="p">:</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ay0</span><span class="p">:</span><span class="n">ay1</span><span class="p">]</span> <span class="o">=</span> <span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">bx0</span><span class="p">:</span><span class="n">bx1</span><span class="p">,</span> <span class="n">by0</span><span class="p">:</span><span class="n">by1</span><span class="p">]</span> \
+                                        <span class="o">*</span> <span class="n">slice_photons</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># If astrometric precision is not that important and everything</span>
+            <span class="c1"># has been oversampled, use this section.</span>
+            <span class="c1">#  - ax, ay are the pixel coordinates of the image centre</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span><span class="n">lam_max</span><span class="p">)</span>
+
+            <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">ax</span> <span class="o">+</span> <span class="n">x_int</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">ay</span> <span class="o">+</span> <span class="n">y_int</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+            <span class="n">slice_array</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">slice_photons</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="c1"># * self.weight[mask]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">slice_array</span> <span class="o">=</span> <span class="n">convolve_fft</span><span class="p">(</span><span class="n">slice_array</span><span class="p">,</span> <span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">allow_huge</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">slice_array</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="n">slice_array</span><span class="p">,</span> <span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">slice_array</span></div>
+
+
+<div class="viewcode-block" id="Source.photons_in_range"><a class="viewcode-back" href="../../code.html#simcado.Source.photons_in_range">[docs]</a>    <span class="k">def</span> <span class="nf">photons_in_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span> <span class="n">min_bins</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate how many photons for each source exist in the wavelength range</span>
+<span class="sd">        defined by lam_min and lam_max.</span>
+
+<span class="sd">        Keywords</span>
+<span class="sd">        ========</span>
+<span class="sd">        - lam_min, lam_max : float</span>
+
+<span class="sd">        Optional keywords:</span>
+<span class="sd">        - min_bins : float</span>
+<span class="sd">            the minimum number of spectral bins counted per layer</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if the slice limits are within the spectrum wavelength range</span>
+        <span class="k">if</span> <span class="n">lam_min</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">or</span> <span class="n">lam_max</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">print</span><span class="p">((</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;lam_min or lam_max outside wavelength range&quot;</span> <span class="o">+</span> \
+                                                                <span class="s2">&quot;of spectra&quot;</span><span class="p">)</span>
+
+        <span class="c1"># find the closest indices i0, i1 which match the limits</span>
+        <span class="n">x0</span><span class="p">,</span> <span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam</span> <span class="o">-</span> <span class="n">lam_min</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam</span> <span class="o">-</span> <span class="n">lam_max</span><span class="p">)</span>
+        <span class="n">i0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x0</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x0</span><span class="p">))[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x1</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x1</span><span class="p">))[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="n">i0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">lam_min</span> <span class="ow">and</span> <span class="n">i0</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">i0</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lam_max</span> <span class="ow">and</span> <span class="n">i1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">):</span>
+            <span class="n">i1</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># If there are less than min_bins between i0 and i1, then interpolate</span>
+        <span class="k">if</span> <span class="n">i1</span> <span class="o">-</span> <span class="n">i0</span> <span class="o">&lt;</span> <span class="n">min_bins</span><span class="p">:</span>
+            <span class="n">lam_zoom</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span> <span class="n">min_bins</span><span class="p">)</span>
+            <span class="n">spec_zoom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">spectra</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">lam_zoom</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spectra</span><span class="p">)):</span>
+                <span class="n">spec_zoom</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">lam_zoom</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="n">i0</span><span class="p">:</span><span class="n">i1</span><span class="p">],</span>
+                                                        <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">i0</span><span class="p">:</span><span class="n">i1</span><span class="p">])</span>
+            <span class="n">spec_photons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">spec_zoom</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">spec_photons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spectra</span><span class="p">[:,</span><span class="n">i0</span><span class="p">:</span><span class="n">i1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">slice_photons</span> <span class="o">=</span> <span class="n">spec_photons</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span>
+        <span class="k">return</span> <span class="n">slice_photons</span></div>
+
+
+<div class="viewcode-block" id="Source.apply_transmission_curve"><a class="viewcode-back" href="../../code.html#simcado.Source.apply_transmission_curve">[docs]</a>    <span class="k">def</span> <span class="nf">apply_transmission_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transmission_curve</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply the values from a TransmissionCurve object to self.spectra</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - transmission_curve: The TransmissionCurve to be applied</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tc</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">transmission_curve</span><span class="p">)</span>
+        <span class="n">tc</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span> <span class="o">*=</span> <span class="n">tc</span><span class="o">.</span><span class="n">val</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_convert_to_photons</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        convert the spectra to photons/(s m2)</span>
+<span class="sd">        if [arcsec] are in the units, we want to find the photons per pixel</span>
+<span class="sd">        if [um] are in the units, we want to find the photons per wavelength bin</span>
+
+<span class="sd">        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</span>
+<span class="sd">        ! Come back and put in other energy units like Jy, mag, ergs !</span>
+<span class="sd">        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;units&quot;</span><span class="p">])</span>
+        <span class="n">bases</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">bases</span>
+
+        <span class="n">factor</span> <span class="o">=</span> <span class="mf">1.</span>
+        <span class="k">if</span> <span class="n">u</span><span class="o">.</span><span class="n">s</span>      <span class="ow">not</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span> <span class="n">factor</span> <span class="o">/=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exptime</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">u</span><span class="o">.</span><span class="n">m</span>      <span class="ow">not</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span> <span class="n">factor</span> <span class="o">/=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">area</span>   <span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">u</span><span class="o">.</span><span class="n">micron</span>     <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span> <span class="n">factor</span> <span class="o">*=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">um</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">u</span><span class="o">.</span><span class="n">arcsec</span>     <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span> <span class="n">factor</span> <span class="o">*=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">arcsec</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+        <span class="c1">#print((factor*self.units).unit)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="p">(</span><span class="n">factor</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">)</span><span class="o">.</span><span class="n">unit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span> <span class="o">*=</span> <span class="n">factor</span>
+
+
+    <span class="k">def</span> <span class="nf">_from_cube</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a Source object from a cube in memory or a FITS cube on disk</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+            <span class="n">hdr</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">cube</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">filename</span><span class="o">+</span><span class="s2">&quot; doesn&#39;t exist&quot;</span><span class="p">)</span>
+
+        <span class="n">lam_res</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;CDELT3&quot;</span><span class="p">]</span>
+        <span class="n">lam_min</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;CRVAL3&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;CRPIX3&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">lam_res</span>
+        <span class="n">lam_max</span> <span class="o">=</span> <span class="n">lam_min</span> <span class="o">+</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;NAXIS3&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">lam_res</span>
+
+        <span class="n">flux_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cube</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">flux_map</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;NAXIS3&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">ipt</span><span class="p">[:,</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="s2">&quot;BUNIT&quot;</span>  <span class="ow">in</span> <span class="n">hdr</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>  <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;units&quot;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;BUNIT&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="s2">&quot;EXPTIME&quot;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;exptime&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;AREA&quot;</span>   <span class="ow">in</span> <span class="n">hdr</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>  <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;area&quot;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;AREA&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;CDELT1&quot;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>  <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;CUNIT1&quot;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>  <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_unit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;CUNIT1&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span> <span class="o">=</span> <span class="n">lam_res</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_convert_to_photons</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_from_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">spectra</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">ref</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a Source object from a series of lists</span>
+<span class="sd">        - x,y : [arcsec]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam</span> <span class="o">=</span> <span class="n">lam</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span> <span class="o">=</span> <span class="n">spectra</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref</span> <span class="o">=</span> <span class="n">ref</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">weight</span>   <span class="k">if</span> <span class="n">weight</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>   <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">lam</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">lam</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spectra</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">spectra</span><span class="p">,</span> <span class="n">spectra</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_convert_to_photons</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Source.read"><a class="viewcode-back" href="../../code.html#simcado.Source.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read in a previously saved Source FITS file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ipt</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">dat0</span> <span class="o">=</span> <span class="n">ipt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">hdr0</span> <span class="o">=</span> <span class="n">ipt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">dat1</span> <span class="o">=</span> <span class="n">ipt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">hdr1</span> <span class="o">=</span> <span class="n">ipt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">ipt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">dat0</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">dat0</span><span class="p">[</span><span class="mi">1</span><span class="p">,:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref</span> <span class="o">=</span> <span class="n">dat0</span><span class="p">[</span><span class="mi">2</span><span class="p">,:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">dat0</span><span class="p">[</span><span class="mi">3</span><span class="p">,:]</span>
+
+        <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span> <span class="o">=</span> <span class="n">hdr1</span><span class="p">[</span><span class="s2">&quot;LAM_MIN&quot;</span><span class="p">],</span> <span class="n">hdr1</span><span class="p">[</span><span class="s2">&quot;LAM_MAX&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span>     <span class="o">=</span> <span class="n">hdr1</span><span class="p">[</span><span class="s2">&quot;LAM_RES&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span> <span class="n">hdr1</span><span class="p">[</span><span class="s2">&quot;NAXIS1&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span> <span class="o">=</span> <span class="n">dat1</span>
+
+        <span class="k">if</span> <span class="s2">&quot;BUNIT&quot;</span>  <span class="ow">in</span> <span class="n">hdr0</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>     <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;units&quot;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="n">hdr0</span><span class="p">[</span><span class="s2">&quot;BUNIT&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="s2">&quot;EXPTIME&quot;</span> <span class="ow">in</span> <span class="n">hdr0</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>    <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;exptime&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hdr0</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;AREA&quot;</span>   <span class="ow">in</span> <span class="n">hdr0</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>     <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;area&quot;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">hdr0</span><span class="p">[</span><span class="s2">&quot;AREA&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;CDELT1&quot;</span> <span class="ow">in</span> <span class="n">hdr0</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>     <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hdr0</span><span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;CUNIT1&quot;</span> <span class="ow">in</span> <span class="n">hdr0</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>     <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_unit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="n">hdr0</span><span class="p">[</span><span class="s2">&quot;CUNIT1&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span> <span class="o">=</span> <span class="n">hdr1</span><span class="p">[</span><span class="s2">&quot;LAM_RES&quot;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_convert_to_photons</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Source.write"><a class="viewcode-back" href="../../code.html#simcado.Source.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write the current Source object out to a FITS file</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        ===========</span>
+<span class="sd">        filename:</span>
+
+
+<span class="sd">        Just a place holder so that I know what&#39;s going on with the input table</span>
+<span class="sd">        * The fist extension [0] contains an &quot;image&quot; of size 4 x N where N is the</span>
+<span class="sd">        amount of sources. The 4 columns are x, y, ref, weight.</span>
+<span class="sd">        * The second extension [1] contains an &quot;image&quot; with the spectra of each</span>
+<span class="sd">        source. The image is M x len(spectrum), where M is the number of unique</span>
+<span class="sd">        spectra in the source list. max(ref) = M - 1</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># hdr = fits.getheader(&quot;../../../PreSim/Input_cubes/GC2.fits&quot;)</span>
+        <span class="c1"># ipt = fits.getdata(&quot;../../../PreSim/Input_cubes/GC2.fits&quot;)</span>
+        <span class="c1"># flux_map = np.sum(ipt, axis=0).astype(dtype=np.float32)</span>
+        <span class="c1"># x,y = np.where(flux_map != 0)</span>
+        <span class="c1"># ref = np.arange(len(x))</span>
+        <span class="c1"># weight = np.ones(len(x))</span>
+        <span class="c1"># spectra = np.swapaxes(ipt[:,x,y], 0, 1)</span>
+        <span class="c1"># lam = np.linspace(0.2,2.5,231)</span>
+
+        <span class="n">xyHDU</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)))</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;X_COL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;Y_COL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;2&quot;</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;REF_COL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3&quot;</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;W_COL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;4&quot;</span>
+
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;BUNIT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;exptime&quot;</span><span class="p">]</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;AREA&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;area&quot;</span><span class="p">]</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CDELT2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CUNIT1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_unit&quot;</span><span class="p">]</span>
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CUNIT2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_unit&quot;</span><span class="p">]</span>
+
+        <span class="n">xyHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;SIMCADO&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SOURCE&quot;</span>
+
+        <span class="n">specHDU</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spectra</span><span class="p">)</span>
+        <span class="n">specHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CRVAL1&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">specHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CRPIX1&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">specHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span><span class="p">,</span> <span class="s2">&quot;[um] Spectral resolution&quot;</span><span class="p">)</span>
+        <span class="n">specHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;LAM_MIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;[um] Minimum wavelength&quot;</span><span class="p">)</span>
+        <span class="n">specHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;LAM_MAX&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;[um] Maximum wavelength&quot;</span><span class="p">)</span>
+        <span class="n">specHDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;LAM_RES&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam_res</span><span class="p">,</span> <span class="s2">&quot;[um] Spectral resolution&quot;</span><span class="p">)</span>
+
+        <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">xyHDU</span><span class="p">,</span> <span class="n">specHDU</span><span class="p">])</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;A photon source object&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__array__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectra</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">i</span><span class="p">],:]</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">newsrc</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">newsrc</span><span class="o">.</span><span class="n">array</span> <span class="o">*=</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="n">newsrc</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">newsrc</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">newsrc</span><span class="o">.</span><span class="n">array</span> <span class="o">+=</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="n">newsrc</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">newsrc</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">newsrc</span><span class="o">.</span><span class="n">array</span> <span class="o">-=</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="n">newsrc</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sub__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+<span class="c1">##############################################################################</span>
+
+
+
+<span class="kn">import</span> <span class="nn">astropy.units</span> <span class="kn">as</span> <span class="nn">u</span>
+<span class="kn">import</span> <span class="nn">astropy.constants</span> <span class="kn">as</span> <span class="nn">c</span>
+
+
+<span class="k">def</span> <span class="nf">get_stellar_properties</span><span class="p">(</span><span class="n">spec_type</span><span class="p">,</span> <span class="n">cat</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns an astropy.Table with the list of properties for the star in </span>
+<span class="sd">    `spec_type`</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_type : str, list</span>
+<span class="sd">        The single or list of spectral types</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    props : astropy.Table or list of astropy.Tables with the paramters to the </span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">cat</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">cat</span> <span class="o">=</span> <span class="n">ascii</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">__pkg_dir__</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;EC_all_stars.csv&quot;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">spec_type</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">get_stellar_properties</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">cat</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">spec_type</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">spt</span><span class="p">,</span> <span class="n">cls</span><span class="p">,</span> <span class="n">lum</span> <span class="o">=</span> <span class="n">spec_type</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">spec_type</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">spec_type</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">cls</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">:</span>
+                <span class="n">cls</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">spt</span> <span class="o">=</span> <span class="s2">&quot;OBAFGKMLT&quot;</span><span class="p">[</span><span class="s2">&quot;OBAFGKMLT&quot;</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">spt</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">star</span> <span class="o">=</span> <span class="n">spt</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span><span class="o">+</span><span class="n">lum</span>
+            <span class="n">cls</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+            <span class="k">if</span> <span class="n">star</span> <span class="ow">in</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;Stellar_Type&quot;</span><span class="p">]:</span> <span class="k">break</span> 
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cat</span><span class="p">[</span><span class="s2">&quot;Stellar_Type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">star</span><span class="o">.</span><span class="n">upper</span><span class="p">())[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Returning properties for&quot;</span><span class="p">,</span> <span class="n">star</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">spec_type</span><span class="o">+</span><span class="s2">&quot; doesn&#39;t exist in the database&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cat</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">get_stellar_mass</span><span class="p">(</span><span class="n">spec_type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a single (or list of) float(s) with the stellar mass(es) in units </span>
+<span class="sd">    of Msol</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_type : str, list</span>
+<span class="sd">        The single or list of spectral types</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mass : float, list</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">props</span> <span class="o">=</span> <span class="n">get_stellar_properties</span><span class="p">(</span><span class="n">spec_type</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">props</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">prop</span><span class="p">[</span><span class="s2">&quot;Mass&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">props</span><span class="p">]</span> 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;Mass&quot;</span><span class="p">]</span>
+    
+    
+<span class="k">def</span> <span class="nf">get_stellar_Mv</span><span class="p">(</span><span class="n">spec_type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a single (or list of) float(s) with the V-band absolute magnitude(s)</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_type : str, list</span>
+<span class="sd">        The single or list of spectral types</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Mv : float, list</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">props</span> <span class="o">=</span> <span class="n">get_stellar_properties</span><span class="p">(</span><span class="n">spec_type</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">props</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">prop</span><span class="p">[</span><span class="s2">&quot;Mv&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">props</span><span class="p">]</span> 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;Mv&quot;</span><span class="p">]</span>
+    
+    
+<span class="k">def</span> <span class="nf">get_pickles_curve</span><span class="p">(</span><span class="n">spec_type</span><span class="p">,</span> <span class="n">cat</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the emission curve for a single or list of `spec_type`, normalised </span>
+<span class="sd">    to 5556A</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_type : str, list</span>
+<span class="sd">        The single (or list) of spectral types (i.e. &quot;A0V&quot; or [&quot;K5III&quot;, &quot;B5I&quot;])</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    lam : np.array</span>
+<span class="sd">        a single np.ndarray for the wavelength bins of the spectrum, </span>
+<span class="sd">    val : np.array (list)</span>
+<span class="sd">        a (list of) np.ndarray for the emission curve of the spectral type(s) </span>
+<span class="sd">        relative to the flux at 5556A</span>
+<span class="sd">        </span>
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Pickles 1998 - DOI: 10.1086/316197</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cat</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> 
+        <span class="n">cat</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">__pkg_dir__</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;EC_pickles.fits&quot;</span><span class="p">))</span>
+        
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">spec_type</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;lam&quot;</span><span class="p">],</span> <span class="p">[</span><span class="n">get_pickles_curve</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">cat</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">spec_type</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># split the spectral type into 3 components and generalise for Pickles</span>
+        <span class="n">spt</span><span class="p">,</span> <span class="n">cls</span><span class="p">,</span> <span class="n">lum</span> <span class="o">=</span> <span class="n">spec_type</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">spec_type</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">spec_type</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="k">if</span> <span class="n">lum</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;I&quot;</span><span class="p">:</span> 
+            <span class="n">lum</span> <span class="o">=</span> <span class="s2">&quot;Ia&quot;</span>
+        <span class="k">elif</span> <span class="n">lum</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;II&quot;</span><span class="p">:</span> 
+            <span class="n">lum</span> <span class="o">=</span> <span class="s2">&quot;III&quot;</span>
+        <span class="k">elif</span> <span class="s2">&quot;V&quot;</span> <span class="ow">in</span> <span class="n">lum</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span> 
+            <span class="n">lum</span> <span class="o">=</span> <span class="s2">&quot;V&quot;</span>
+        
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">cls</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">:</span>
+                <span class="n">cls</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">spt</span> <span class="o">=</span> <span class="s2">&quot;OBAFGKMLT&quot;</span><span class="p">[</span><span class="s2">&quot;OBAFGKMLT&quot;</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">spt</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">star</span> <span class="o">=</span> <span class="n">spt</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span><span class="o">+</span><span class="n">lum</span>
+            <span class="n">cls</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+            <span class="k">if</span> <span class="n">star</span> <span class="ow">in</span> <span class="n">cat</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">names</span><span class="p">:</span> <span class="k">break</span>
+                
+        <span class="k">if</span> <span class="n">spec_type</span> <span class="o">!=</span> <span class="n">star</span> <span class="ow">and</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">spec_type</span><span class="p">,</span> <span class="s2">&quot;isn&#39;t in Pickles. Returned&quot;</span><span class="p">,</span> <span class="n">star</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;lam&quot;</span><span class="p">],</span> <span class="n">cat</span><span class="p">[</span><span class="n">star</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">scale_pickles_to_photons</span><span class="p">(</span><span class="n">spec_type</span><span class="p">,</span> <span class="n">mag</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pull in a spectrum from the Pickles library and scale the photon flux to a </span>
+<span class="sd">    V=0 star</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_type : str</span>
+<span class="sd">        A spectral types (i.e. &quot;A0V&quot;)</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Vega has a 5556 flux of between 950 and 1000 ph/s/cm2/A. The pickles </span>
+<span class="sd">    resolution is 5 Ang. </span>
+<span class="sd">    - Therefore the flux at 5555 should be 5 * 1000 * 10^(-0.4*Mv) ph/s/cm2/bin</span>
+<span class="sd">    - Pickles catalogue is in units of Flambda [erg/s/cm2/A]</span>
+<span class="sd">    - Ergo we need to divide the pickels values by lam/0.5556[nm], then rescale</span>
+<span class="sd">    Regarding the number of photons in the 1 Ang bin at 5556 Ang</span>
+<span class="sd">    - Bohlin (2014) says F(5556)=3.44×10−9 erg cm−2 s−1 A−1 </span>
+<span class="sd">    - Values range from 3.39 to 3.46 with the majority in range 3.44 to 3.46. </span>
+<span class="sd">      Bohlin recommends 3.44</span>
+<span class="sd">    - This results in a photon flux of 962 ph cm-2 s-1 A-1 at 5556 Ang</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    
+    <span class="n">Mv</span> <span class="o">=</span> <span class="n">get_stellar_Mv</span><span class="p">(</span><span class="n">spec_type</span><span class="p">)</span>
+    <span class="n">lam</span><span class="p">,</span> <span class="n">ec</span> <span class="o">=</span> <span class="n">get_pickles_curve</span><span class="p">(</span><span class="n">spec_type</span><span class="p">)</span>
+    <span class="n">dlam</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">lam</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">dlam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dlam</span><span class="p">,</span> <span class="n">dlam</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    
+    <span class="n">lam</span> <span class="o">*=</span> <span class="mf">1E-4</span>         <span class="c1"># cover to um from Ang</span>
+    
+    <span class="c1"># Use Bohlin (2014) to determine the photon flux of a mag 0 A0V star </span>
+    <span class="c1"># at 5556 Ang</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="mf">3.44E-9</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">erg</span> <span class="o">/</span> <span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">cm</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">s</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">AA</span><span class="p">)</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">c</span><span class="o">*</span><span class="n">c</span><span class="o">.</span><span class="n">h</span><span class="o">/</span><span class="p">(</span><span class="mi">5556</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">AA</span><span class="p">)</span>
+    <span class="n">ph0</span> <span class="o">=</span> <span class="p">(</span><span class="n">F</span><span class="o">/</span><span class="n">E</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">s</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">cm</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">AA</span><span class="p">))</span>
+    
+    <span class="c1"># 5 Ang/bin * ~962 ph/s * (abs mag + apparent mag)</span>
+    <span class="n">ph_factor</span> <span class="o">=</span> <span class="n">dlam</span> <span class="o">*</span> <span class="n">ph0</span> <span class="o">*</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.4</span><span class="o">*</span><span class="p">(</span><span class="n">Mv</span> <span class="o">+</span> <span class="n">mag</span><span class="p">))</span>    
+    <span class="c1">#ph_factor = 1</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">ec</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">len</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">ec</span><span class="p">)):</span>
+            <span class="n">ec</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="p">(</span><span class="n">lam</span><span class="o">/</span><span class="mf">0.5556</span><span class="p">)</span> <span class="o">*</span> <span class="n">ph_factor</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ec</span> <span class="o">*=</span> <span class="p">(</span><span class="n">lam</span><span class="o">/</span><span class="mf">0.5556</span><span class="p">)</span> <span class="o">*</span> <span class="n">ph_factor</span>
+    
+    <span class="k">return</span> <span class="n">lam</span><span class="p">,</span> <span class="n">ec</span>
+
+
+<span class="k">def</span> <span class="nf">value_at_lambda</span><span class="p">(</span><span class="n">lam_i</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the value at a certain wavelength - i.e. val[lam] = x</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lam_i : float</span>
+<span class="sd">        the wavelength of interest</span>
+<span class="sd">    lam : np.ndarray</span>
+<span class="sd">        an array of wavelengths</span>
+<span class="sd">    val : np.ndarray</span>
+<span class="sd">        an array of values</span>
+<span class="sd">       </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">i0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">lam</span> <span class="o">&lt;=</span> <span class="n">lam_i</span><span class="p">)</span> <span class="o">==</span> <span class="bp">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">lam</span> <span class="o">&gt;</span> <span class="n">lam_i</span><span class="p">)</span> <span class="o">==</span> <span class="bp">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">lam_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">lam</span><span class="p">[</span><span class="n">i0</span><span class="p">],</span><span class="n">lam_i</span><span class="p">,</span><span class="n">lam</span><span class="p">[</span><span class="n">i1</span><span class="p">]])</span>
+    <span class="n">val_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">lam_x</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">val_i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        
+
+<span class="k">def</span> <span class="nf">zero_magnitude_photon_flux</span><span class="p">(</span><span class="n">filter_name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the number of photons for a m=0 star for a certain filter</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filt : str</span>
+<span class="sd">        the name of the broadband filter - UBVRIYzJHKKs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">filter_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="s2">&quot;UBVRIYzJHKKs&quot;</span><span class="p">:</span> 
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Filter name must be one of UBVRIYzJHKKs: &quot;</span><span class="o">+</span><span class="n">filter_name</span><span class="p">)</span>
+    
+    <span class="n">lam</span><span class="p">,</span> <span class="n">vega</span> <span class="o">=</span> <span class="n">scale_pickles_to_photons</span><span class="p">(</span><span class="s2">&quot;A0V&quot;</span><span class="p">,</span> <span class="n">mag</span><span class="o">=-</span><span class="mf">0.58</span><span class="p">)</span>
+    
+    <span class="n">vraw</span> <span class="o">=</span> <span class="n">ascii</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">__pkg_dir__</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> 
+                                   <span class="s2">&quot;TC_filter_&quot;</span><span class="o">+</span><span class="n">filter_name</span><span class="o">+</span><span class="s2">&quot;.dat&quot;</span><span class="p">))</span>
+    <span class="n">vlam</span> <span class="o">=</span> <span class="n">vraw</span><span class="p">[</span><span class="n">vraw</span><span class="o">.</span><span class="n">colnames</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="n">vval</span> <span class="o">=</span> <span class="n">vraw</span><span class="p">[</span><span class="n">vraw</span><span class="o">.</span><span class="n">colnames</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">filt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">vlam</span><span class="p">,</span> <span class="n">vval</span><span class="p">)</span>
+        
+    <span class="n">n_ph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">vega</span><span class="o">*</span><span class="n">filt</span><span class="p">)</span>
+    
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;units in [ph/s/cm2]&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n_ph</span>
+    
+
+<span class="k">def</span> <span class="nf">SED</span><span class="p">(</span><span class="n">spec_type</span><span class="p">,</span> <span class="n">filter_name</span><span class="o">=</span><span class="s2">&quot;V&quot;</span><span class="p">,</span> <span class="n">magnitude</span><span class="o">=</span><span class="mf">0.</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a scaled SED for a X type star at magnitude Y star in band Z</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_type : str</span>
+<span class="sd">        The spectral type of the star</span>
+<span class="sd">    filter_name : str, optional</span>
+<span class="sd">        [UBVRIYzJHKKs] Any braodband filter in the Vis+NIR regime. </span>
+<span class="sd">        Default is &quot;V&quot;</span>
+<span class="sd">    magnitude : float, optional</span>
+<span class="sd">        Apparent magnitude of the star. Default is 0.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    lam : np.ndarray</span>
+<span class="sd">        [um] The centre of each 5 Ang bin along the spectral axis</span>
+<span class="sd">    val : np.ndarray</span>
+<span class="sd">        [ph/s/cm2/bin] The photon flux of the star in each bin</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Original flux units are in [ph/s/cm2/AA], so we multiply the flux by 5 to </span>
+<span class="sd">    get [ph/s/cm2/bin] and then by 1E4 to get [ph/s/m2/bin]</span>
+<span class="sd">    Therefore divide by 5*1E4 if you need the flux in ph/s/cm2/Angstrom</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">filter_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="s2">&quot;UBVRIYzJHKKs&quot;</span><span class="p">:</span> 
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Filter name must be one of UBVRIYzJHKKs: &quot;</span><span class="o">+</span><span class="n">filter_name</span><span class="p">)</span>
+    
+    <span class="n">flux_0</span> <span class="o">=</span> <span class="n">zero_magnitude_photon_flux</span><span class="p">(</span><span class="n">filter_name</span><span class="p">)</span>
+    <span class="n">flux</span> <span class="o">=</span> <span class="n">flux_0</span> <span class="o">*</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">magnitude</span><span class="p">)</span>
+        
+    <span class="n">lam</span><span class="p">,</span> <span class="n">star</span> <span class="o">=</span> <span class="n">scale_pickles_to_photons</span><span class="p">(</span><span class="n">spec_type</span><span class="p">)</span>
+
+    <span class="n">vraw</span> <span class="o">=</span> <span class="n">ascii</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">__pkg_dir__</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> 
+                                   <span class="s2">&quot;TC_filter_&quot;</span><span class="o">+</span><span class="n">filter_name</span><span class="o">+</span><span class="s2">&quot;.dat&quot;</span><span class="p">))</span>
+    <span class="n">vlam</span> <span class="o">=</span> <span class="n">vraw</span><span class="p">[</span><span class="n">vraw</span><span class="o">.</span><span class="n">colnames</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="n">vval</span> <span class="o">=</span> <span class="n">vraw</span><span class="p">[</span><span class="n">vraw</span><span class="o">.</span><span class="n">colnames</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">filt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">vlam</span><span class="p">,</span> <span class="n">vval</span><span class="p">)</span>
+        
+    <span class="n">n_ph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">star</span><span class="o">*</span><span class="n">filt</span><span class="p">)</span>
+    
+    <span class="n">scale_factor</span> <span class="o">=</span> <span class="n">flux</span> <span class="o">/</span> <span class="n">n_ph</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;scale_factor, flux, n_ph, flux_0 [ph/s/cm2/bin]&quot;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">scale_factor</span><span class="p">,</span> <span class="n">flux</span><span class="p">,</span> <span class="n">n_ph</span><span class="p">,</span> <span class="n">flux_0</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Converted to [ph/s/m2/bin]&quot;</span><span class="p">)</span>
+    <span class="c1"># add in 1E4 factor for cm2 -&gt; m2 and the area factor</span>
+    <span class="n">scale_factor</span> <span class="o">*=</span> <span class="mf">1E4</span>
+    
+    <span class="k">return</span> <span class="n">lam</span><span class="p">,</span> <span class="n">star</span> <span class="o">*</span> <span class="n">scale_factor</span>
+
+
+<span class="k">def</span> <span class="nf">star_grid</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">mag_min</span><span class="p">,</span> <span class="n">mag_max</span><span class="p">,</span> <span class="nb">filter</span><span class="p">,</span> <span class="n">seperation</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">area</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a square grid of A0V stars at equal magnitude intervals</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n : float</span>
+<span class="sd">        the number of stars in the grid</span>
+<span class="sd">    mag_min, mag_max : float</span>
+<span class="sd">        [vega mag] the minimum (brightest) and maximum (faintest) magnitudes for stars in the grid</span>
+<span class="sd">    filter : str</span>
+<span class="sd">        broadband filter - B V R I Y z J H K Ks</span>
+<span class="sd">    seperation : float, optional</span>
+<span class="sd">        [arcsec] an average speration between the stars in the grid can be specified. Default is 1 arcsec</span>
+<span class="sd">    area : float, optional</span>
+<span class="sd">        [m2] collecting area of primary mirror</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    source : `simcado.Source`</span>
+<span class="sd">        </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The units of the A0V spectrum in `source` are [ph/s/bin] or [ph/s/m2/bin]</span>
+<span class="sd">    depending on if area is given.</span>
+<span class="sd">    The weight values are the scaling factors to bring a V=0 A0V spectrum down to the required magnitude for each star</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">mags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">mag_min</span><span class="p">,</span> <span class="n">mag_max</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="n">side_len</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    
+    <span class="n">x</span> <span class="o">=</span> <span class="n">seperation</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">%</span> <span class="n">side_len</span> <span class="o">-</span> <span class="p">(</span><span class="n">side_len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">seperation</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">//</span> <span class="n">side_len</span> <span class="o">-</span> <span class="p">(</span><span class="n">side_len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">lam</span><span class="p">,</span> <span class="n">spec</span> <span class="o">=</span> <span class="n">SED</span><span class="p">(</span><span class="s2">&quot;A0V&quot;</span><span class="p">,</span> <span class="n">magnitude</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">))</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.4</span><span class="o">*</span><span class="n">mags</span><span class="p">)</span> <span class="o">*</span> <span class="n">area</span>
+    
+    <span class="k">if</span> <span class="n">area</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;ph/s/m2&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;ph/s&quot;</span>
+        
+    <span class="n">src</span> <span class="o">=</span> <span class="n">Source</span><span class="p">(</span><span class="n">lam</span><span class="o">=</span><span class="n">lam</span><span class="p">,</span> <span class="n">spectra</span><span class="o">=</span><span class="n">spec</span><span class="p">,</span> 
+                 <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> 
+                 <span class="n">ref</span><span class="o">=</span><span class="n">ref</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span>
+                 <span class="n">units</span><span class="o">=</span><span class="n">units</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">src</span>
+    
+    
+<span class="k">def</span> <span class="nf">star</span><span class="p">(</span><span class="n">mag</span><span class="p">,</span> <span class="n">filt</span><span class="o">=</span><span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="n">spec_type</span><span class="o">=</span><span class="s2">&quot;A0V&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a simcado.Source object for a star with a given magnitude</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mag : float</span>
+<span class="sd">        magnitude of star</span>
+<span class="sd">    filt : str</span>
+<span class="sd">        filter in which the magnitude is given</span>
+<span class="sd">    spec_type : str, optional</span>
+<span class="sd">        the spectral type of the star, e.g. &quot;A0V&quot;, &quot;G5III&quot;</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    source : `simcado.Source`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">return</span> <span class="n">star_grid</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">filt</span><span class="p">)</span>
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Kieran Leschinski, Oliver Czoske.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

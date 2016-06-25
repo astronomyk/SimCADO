@@ -1,0 +1,1351 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>simcado.psf &mdash; simcado 0.2dev documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="simcado 0.2dev documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for simcado.psf</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;psf.py&quot;&quot;&quot;</span>
+<span class="c1">###############################################################################</span>
+<span class="c1"># PSFs and PSFCubes</span>
+<span class="c1">#</span>
+<span class="c1"># DESCRIPTION</span>
+<span class="c1">#</span>
+<span class="c1"># &quot;If you want to bake an apple pie from scratch,</span>
+<span class="c1">#     first you must create the universe&quot; - Carl Sagan</span>
+<span class="c1">#</span>
+<span class="c1"># === SINGLE PSFS ===</span>
+<span class="c1">#</span>
+<span class="c1"># We need to start by generating a single PSF in order to generate a PSFCube.</span>
+<span class="c1"># We need to know the spatial characteristics of the PSF:</span>
+<span class="c1"># The commonalities of all PSFs are:</span>
+<span class="c1">#   - pix_width</span>
+<span class="c1">#   - pix_height</span>
+<span class="c1">#   - pix_res</span>
+<span class="c1">#   - type</span>
+<span class="c1">#</span>
+<span class="c1"># The types of PSF offered: Moffat, Gaussian2D, Airy, Delta, Line, User</span>
+<span class="c1"># For each of the PSF types we need to create a subclass of PSF. Each subclass</span>
+<span class="c1"># takes its own list of parameters:</span>
+<span class="c1">#   - MoffatPSF      (alpha, beta)</span>
+<span class="c1">#   - GaussianPSF    (fwhm, eccentricity=0, angle=0)</span>
+<span class="c1">#   - AiryPSF        (first_zero, eccentricity=0, angle=0)</span>
+<span class="c1">#   - DeltaPSF       (x=0, y=0)</span>
+<span class="c1">#   - LinePSF        (x0, x1, y0, y1, angle=0)</span>
+<span class="c1">#   - UserPSFCube        (filename, ext_no=0)</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># === MULTIPLE PSFS IN A CUBE ===</span>
+<span class="c1">#</span>
+<span class="c1"># To generate a PSF cube we need to know the spectral bins and the type of PSF.</span>
+<span class="c1"># The bins are defined by a central wavelength, however a cube should also</span>
+<span class="c1"># contain the edges of each bin so that transmission and emission can be</span>
+<span class="c1"># re-binned properly.</span>
+<span class="c1">#   - lam_bin_centers</span>
+<span class="c1">#   - lam_bin_edges</span>
+<span class="c1">#   - lam_res</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># A PSF instance will have these additional arguments:</span>
+<span class="c1">#   - array ... a 2D array to hold the PSF image</span>
+<span class="c1"># A psf instance will have these additional arguments:</span>
+<span class="c1">#   - cube ... a (l,x,y) 3D array to hold the PSF cube</span>
+<span class="c1">#</span>
+<span class="c1"># As far as input goes, psf should be able to accept a dictionary with the</span>
+<span class="c1"># keywords necessary to build the cube.</span>
+<span class="c1">#</span>
+<span class="c1"># NOTES:</span>
+<span class="c1"># All wavelength values are given in [um]</span>
+<span class="c1"># All pixel dimensions are given in [arcsec]</span>
+<span class="c1"># All angles are given in [deg]</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># CLASSES:</span>
+<span class="c1">#  PSF(object)</span>
+<span class="c1">#  psf(object)</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># SUBCLASSES:</span>
+<span class="c1">#  MoffatPSF(PSF)</span>
+<span class="c1">#  GaussianPSF(PSF)</span>
+<span class="c1">#  AiryPSF(PSF)</span>
+<span class="c1">#  DeltaPSF(PSF)</span>
+<span class="c1">#  LinePSF(PSF)</span>
+<span class="c1">#  UserPSFCube(PSF)</span>
+<span class="c1">#</span>
+<span class="c1">#  Deltapsf(psf)</span>
+<span class="c1">#  Airypsf(psf)</span>
+<span class="c1">#  Gaussianpsf(psf)</span>
+<span class="c1">#  Moffatpsf(psf)</span>
+<span class="c1">#  CombinedPSFCube(psf)</span>
+<span class="c1">#  UserPSFCube(psf)</span>
+<span class="c1">#  ADC_psf(psf)</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># METHODS:</span>
+<span class="c1">#</span>
+
+
+<span class="c1"># There are two types of psf object here:</span>
+<span class="c1">#     - a cube</span>
+<span class="c1">#     - a single psf image</span>
+<span class="c1"># The cube is essentially a list of psf images, homogenized in size</span>
+<span class="c1"># Should we have separate classes for these?</span>
+<span class="c1">#</span>
+<span class="c1"># Both PSF and psf can be created from a single model or through</span>
+<span class="c1"># convolution of a list of PSF components</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.ndimage.interpolation</span> <span class="kn">as</span> <span class="nn">spi</span>
+
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">u</span>
+<span class="kn">from</span> <span class="nn">astropy.convolution</span> <span class="kn">import</span> <span class="p">(</span><span class="n">Gaussian2DKernel</span><span class="p">,</span>
+                                 <span class="n">Moffat2DKernel</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">astropy.convolution</span> <span class="kn">import</span> <span class="n">convolve_fft</span>
+<span class="kn">from</span> <span class="nn">astropy.convolution</span> <span class="kn">import</span> <span class="n">Kernel2D</span>
+<span class="kn">from</span> <span class="nn">astropy.modeling.core</span> <span class="kn">import</span> <span class="n">Fittable2DModel</span>
+<span class="kn">from</span> <span class="nn">astropy.modeling.parameters</span> <span class="kn">import</span> <span class="n">Parameter</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">simcado.utils</span> <span class="kn">as</span> <span class="nn">utils</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">utils</span>
+
+
+
+<span class="c1">## TODO </span>
+<span class="c1"># - Add a ellipticity to the GaussianPSF</span>
+<span class="c1"># - Make sure MoffatPSF works</span>
+
+
+
+<span class="c1">## These classes and functions are exported to the package</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;PSF&quot;</span><span class="p">,</span> <span class="s2">&quot;PSFCube&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;MoffatPSF&quot;</span><span class="p">,</span> <span class="s2">&quot;MoffatPSFCube&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;AiryPSF&quot;</span><span class="p">,</span> <span class="s2">&quot;AiryPSFCube&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;GaussianPSF&quot;</span><span class="p">,</span> <span class="s2">&quot;GaussianPSFCube&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DeltaPSF&quot;</span><span class="p">,</span> <span class="s2">&quot;DeltaPSFCube&quot;</span>
+            <span class="s2">&quot;CombinedPSF&quot;</span><span class="p">,</span> <span class="s2">&quot;CombinedPSFCube&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;UserPSF&quot;</span><span class="p">,</span> <span class="s2">&quot;UserPSFCube&quot;</span>  <span class="p">]</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">#                            PSF and PSF subclasses                           #</span>
+<span class="c1">###############################################################################</span>
+
+<span class="c1"># (Sub)Class    Needed              Optional</span>
+<span class="c1"># PSF           size, pix_res</span>
+<span class="c1"># DeltaPSF                          pix_res=0.004, size=f(position), position=(0,0)</span>
+<span class="c1"># AiryPSF       fwhm                pix_res=0.004, size=f(fwhm)</span>
+<span class="c1"># GaussianPSF   fwhm                pix_res=0.004, size=f(fwhm)</span>
+<span class="c1"># MoffatPSF     fwhm                pix_res=0.004, size=f(fwhm)</span>
+<span class="c1"># CombinedPSFCube   psf_list            size=f(psf_list)</span>
+<span class="c1"># UserPSFCube       filename,           pix_res=0.004, size=f(filename), fits_ext=0</span>
+
+
+
+<div class="viewcode-block" id="PSF"><a class="viewcode-back" href="../../code.html#simcado.psf.PSF">[docs]</a><span class="k">class</span> <span class="nc">PSF</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Point spread function (single layer) base class</span>
+
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ==========</span>
+<span class="sd">    - size : int</span>
+<span class="sd">        [pixel] the side length of the array</span>
+<span class="sd">    - pix_res : float</span>
+<span class="sd">        [arcsec] the pixel scale of the array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">size</span><span class="p">,</span> <span class="n">size</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">=</span> <span class="n">pix_res</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Point spread function (single layer)&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="PSF.set_array"><a class="viewcode-back" href="../../code.html#simcado.psf.PSF.set_array">[docs]</a>    <span class="k">def</span> <span class="nf">set_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">1e-15</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renormalise the array and make sure there aren&#39;t any negative values</span>
+<span class="sd">        that will screw up the flux later on</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ==========</span>
+<span class="sd">        - array: [ndarray] the array representing the PSF</span>
+<span class="sd">        - threshold: by default set to 1E-15</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span></div>
+
+<div class="viewcode-block" id="PSF.resize"><a class="viewcode-back" href="../../code.html#simcado.psf.PSF.resize">[docs]</a>    <span class="k">def</span> <span class="nf">resize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Resize the PSF. The target shape is (new_size, new_size).</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - new_size: [int] the new size of the PSF array in pixels</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+         <span class="c1"># make sure the new size is always an odd number</span>
+        <span class="k">if</span> <span class="n">new_size</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">new_size</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">arr_tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">new_size</span><span class="p">,</span> <span class="n">new_size</span><span class="p">))</span>
+        <span class="n">arr_tmp</span><span class="p">[</span><span class="n">new_size</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="n">new_size</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">convolve_fft</span><span class="p">(</span><span class="n">arr_tmp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="PSF.resample"><a class="viewcode-back" href="../../code.html#simcado.psf.PSF.resample">[docs]</a>    <span class="k">def</span> <span class="nf">resample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_pix_res</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resample the PSF array onto a new grid - Not perfect, but conserves flux</span>
+<span class="sd">        Example: new_PSF = old_PSF.resample(new_pix_res)</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - new_pix_res: [arcsec] the pixel resolution of the returned array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scale_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">new_pix_res</span><span class="p">)</span>
+        <span class="n">new_arr</span> <span class="o">=</span> <span class="n">spi</span><span class="o">.</span><span class="n">zoom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">scale_factor</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">new_arr</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">new_arr</span><span class="p">)</span>
+
+        <span class="c1"># catch any even-numbered arrays</span>
+        <span class="k">if</span> <span class="n">new_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">tmp_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">new_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">new_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">tmp_arr</span><span class="p">[:</span><span class="n">new_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">:</span><span class="n">new_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">new_arr</span>
+            <span class="n">new_arr</span> <span class="o">=</span> <span class="n">spi</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">tmp_arr</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+            
+        <span class="c1">############################################################</span>
+        <span class="c1"># Not happy with the way the returned type is not the same #</span>
+        <span class="c1"># as the original type. The new object is a plain PSF      #</span>
+        <span class="c1">############################################################</span>
+        <span class="n">new_psf</span> <span class="o">=</span> <span class="n">PSF</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">new_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pix_res</span><span class="o">=</span><span class="n">new_pix_res</span><span class="p">)</span>
+        <span class="n">new_psf</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">new_arr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_psf</span></div>
+
+<div class="viewcode-block" id="PSF.convolve"><a class="viewcode-back" href="../../code.html#simcado.psf.PSF.convolve">[docs]</a>    <span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kernel</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convolve the PSF with another kernel. The PSF keeps its shape</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - kernel: [PSF/ndarray] either a numpy.ndarray or a PSF (sub)class</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">kernel</span><span class="p">),</span> <span class="n">PSF</span><span class="p">):</span>
+            <span class="n">psf_new</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">convolve_fft</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">kernel</span><span class="o">.</span><span class="n">array</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">psf_new</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">convolve_fft</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">kernel</span><span class="p">))</span>
+        <span class="n">psf_new</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Combined&quot;</span>
+
+        <span class="k">return</span> <span class="n">psf_new</span></div>
+
+    <span class="k">def</span> <span class="nf">__array__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span> <span class="o">*</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span> <span class="o">+</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span> <span class="o">-</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sub__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeltaPSF"><a class="viewcode-back" href="../../code.html#simcado.psf.DeltaPSF">[docs]</a><span class="k">class</span> <span class="nc">DeltaPSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a PSF with a delta function at position (x,y)</span>
+
+<span class="sd">    Needed keywords arguments:</span>
+
+<span class="sd">    Optional keywords</span>
+<span class="sd">    - position: [(x,y,)] where (x,y) on the array will the delta function go,</span>
+<span class="sd">                default is (x,y) = (0,0) and is the centre of the array</span>
+<span class="sd">    - size: [int] the side length of the array in pixels</span>
+<span class="sd">    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="s2">&quot;position&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;position&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;size&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">5</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)))</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">5</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;positions are outside array borders:&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;pix_res&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="mf">0.004</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">DeltaPSF</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Delta&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Delta PSF, centred at (</span><span class="si">%.1f</span><span class="s2">, </span><span class="si">%.1f</span><span class="s2">)&quot;</span> \
+                                    <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;x_shift&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;y_shift&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">x2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">x2</span>
+        <span class="n">y2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">y2</span>
+
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">))</span>
+        <span class="n">arr</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span> <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">x1</span> <span class="o">*</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span> <span class="o">*</span> <span class="n">y1</span><span class="p">],</span> <span class="p">[</span><span class="n">x1</span> <span class="o">*</span> <span class="n">y2</span><span class="p">,</span> <span class="n">x2</span> <span class="o">*</span> <span class="n">y2</span><span class="p">]])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="AiryPSF"><a class="viewcode-back" href="../../code.html#simcado.psf.AiryPSF">[docs]</a><span class="k">class</span> <span class="nc">AiryPSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a PSF for an Airy function with an equivalent FWHM</span>
+
+<span class="sd">    Needed keywords arguments:</span>
+<span class="sd">    - fwhm: [arcsec] the equivalent FWHM of the Airy disk core.</span>
+
+<span class="sd">    Optional keywords</span>
+<span class="sd">    - size [int] the side length of the array in pixels</span>
+<span class="sd">    - pix_res [arcsec] the pixel scale used in the array, default is 0.004</span>
+<span class="sd">    - obscuration [0..1]: radius of inner obscuration as fraction of aperture</span>
+<span class="sd">      radius</span>
+<span class="sd">    - mode: [&#39;oversample&#39;,&#39;linear_interp&#39;] see Kernel2D (scipy.convolution.core)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fwhm</span><span class="p">,</span> <span class="n">obscuration</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">255</span><span class="p">,</span> <span class="n">pix_res</span><span class="o">=</span><span class="mf">0.004</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="c1"># Ensure that PSF size is at least 8 times fwhm</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="nb">round</span><span class="p">(</span><span class="mi">8</span> <span class="o">*</span> <span class="n">fwhm</span> <span class="o">/</span> <span class="n">pix_res</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="p">)))</span>
+
+        <span class="c1"># if size &gt; 511:</span>
+            <span class="c1"># size = 511</span>
+            <span class="c1"># print(&quot;FWHM [arcsec]:&quot;, fwhm, &quot;- pixel res [arcsec]:&quot;, pix_res)</span>
+            <span class="c1"># print(&quot;Array size:&quot;, size, &quot;x&quot;, size, &quot;- PSF FoV:&quot;, size * pix_res)</span>
+            <span class="c1"># warnings.warn(&quot;PSF dimensions too large - cropped to 512x512&quot;)</span>
+
+        <span class="c1"># Check for &#39;mode&#39; keyword argument</span>
+        <span class="k">if</span> <span class="s2">&quot;mode&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">mode</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;mode&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;linear_interp&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;oversample&#39;</span>
+
+        <span class="c1"># Ensure that obscuration is between 0 and 1</span>
+        <span class="k">if</span> <span class="n">obscuration</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">obscuration</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Warning: Obscuration must be between 0 and 1. Using 0.&quot;</span><span class="p">)</span>
+            <span class="n">obscuration</span> <span class="o">=</span> <span class="mf">0.</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">AiryPSF</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Airy&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> \
+            <span class="o">=</span> <span class="s2">&quot;Airy PSF, FWHM = </span><span class="si">%.1f</span><span class="s2"> mas, obscuration = </span><span class="si">%.2f</span><span class="s2">&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="n">fwhm</span> <span class="o">*</span> <span class="mf">1E3</span><span class="p">,</span> <span class="n">obscuration</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;fwhm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fwhm</span> <span class="o">*</span> <span class="mf">1E3</span>           <span class="c1"># milliarcseconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;obscuration&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obscuration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;pixel scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pix_res</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;mode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mode</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="n">fwhm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">=</span> <span class="n">pix_res</span>
+
+        <span class="c1"># These are first zero and FWHM of J1(x)/x.</span>
+        <span class="n">airy_zero</span> <span class="o">=</span> <span class="mf">3.8317059860286755</span>
+        <span class="n">airy_fwhm</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="mf">1.616339948310703</span>
+
+        <span class="c1"># rescale radial array so that the PSF has the required FWHM</span>
+        <span class="c1"># (for eps = 0)</span>
+        <span class="n">first_zero</span> <span class="o">=</span> <span class="n">fwhm</span> <span class="o">/</span> <span class="n">airy_fwhm</span> <span class="o">*</span> <span class="n">airy_zero</span> <span class="o">/</span> <span class="n">pix_res</span>
+        <span class="n">psf_arr</span> <span class="o">=</span> <span class="n">AiryDiskDiff2DKernel</span><span class="p">(</span><span class="n">first_zero</span><span class="p">,</span>
+                                       <span class="n">obscuration</span><span class="o">=</span><span class="n">obscuration</span><span class="p">,</span>
+                                       <span class="n">x_size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span>
+                                       <span class="n">y_size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span>
+                                       <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span><span class="o">.</span><span class="n">array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">psf_arr</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GaussianPSF"><a class="viewcode-back" href="../../code.html#simcado.psf.GaussianPSF">[docs]</a><span class="k">class</span> <span class="nc">GaussianPSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a PSF for an Gaussian function</span>
+
+<span class="sd">    Needed keywords arguments:</span>
+<span class="sd">    - fwhm: [arcsec] the FWHM of the PSF.</span>
+
+<span class="sd">    Optional keywords</span>
+<span class="sd">    - size: [int] the side length of the array in pixels</span>
+<span class="sd">    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004</span>
+<span class="sd">    - mode: [&#39;oversample&#39;,&#39;linear_interp&#39;] see Kernel2D (scipy.convolution.core)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fwhm</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="n">fwhm</span>
+
+        <span class="k">if</span> <span class="s2">&quot;pix_res&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="mf">0.004</span>
+
+        <span class="k">if</span> <span class="s2">&quot;size&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="nb">round</span><span class="p">(</span><span class="mi">5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">/</span> <span class="n">pix_res</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="p">)))</span>
+
+        <span class="c1"># Check for &#39;mode&#39; keyword argument</span>
+        <span class="k">if</span> <span class="s2">&quot;mode&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">mode</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;mode&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;linear_interp&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;oversample&#39;</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">GaussianPSF</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Gaussian&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Gaussian PSF, FWHM = </span><span class="si">%.1f</span><span class="s2"> mas&quot;</span> \
+                                    <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">*</span> <span class="mf">1E3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;fwhm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">*</span> <span class="mf">1E3</span>
+
+        <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">/</span> <span class="mf">2.35</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">Gaussian2DKernel</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">x_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">y_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
+                                        <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span><span class="o">.</span><span class="n">array</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MoffatPSF"><a class="viewcode-back" href="../../code.html#simcado.psf.MoffatPSF">[docs]</a><span class="k">class</span> <span class="nc">MoffatPSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a PSF for a Moffat function. Alpha is generated from the FWHM and</span>
+<span class="sd">    Beta = 4.765 (from Trujillo et al. 2001)</span>
+
+<span class="sd">    Needed keywords arguments:</span>
+<span class="sd">    - fwhm: [arcsec] the FWHM of the PSF.</span>
+
+<span class="sd">    Optional keywords</span>
+<span class="sd">    - size: [int] the side length of the array in pixels</span>
+<span class="sd">    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004</span>
+<span class="sd">    - mode: [&#39;oversample&#39;,&#39;linear_interp&#39;] see Kernel2D (scipy.convolution.core)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fwhm</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="n">fwhm</span>
+
+        <span class="k">if</span> <span class="s2">&quot;pix_res&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="mf">0.004</span>
+
+        <span class="k">if</span> <span class="s2">&quot;size&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="nb">round</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">/</span> <span class="n">pix_res</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="p">)))</span>
+
+        <span class="c1"># Check for &#39;mode&#39; keyword argument</span>
+        <span class="k">if</span> <span class="s2">&quot;mode&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">mode</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;mode&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;linear_interp&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;oversample&#39;</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">MoffatPSF</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">)</span>
+
+        <span class="n">beta</span> <span class="o">=</span> <span class="mf">4.765</span> <span class="c1">### Trujillo et al. 2001</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">beta</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Moffat&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Moffat PSF, FWHM = </span><span class="si">%.1f</span><span class="s2">, alpha = </span><span class="si">%.1f</span><span class="s2">&quot;</span>\
+                                       <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">*</span> <span class="mf">1E3</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;fwhm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">*</span> <span class="mf">1E3</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">Moffat2DKernel</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">x_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
+                                      <span class="n">y_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span><span class="o">.</span><span class="n">array</span><span class="p">)</span></div>
+
+
+
+<span class="k">class</span> <span class="nc">CombinedPSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a PSF from a collection of several PSFs.</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - psf_list: [list] A list of PSF objects</span>
+
+<span class="sd">    Optional keywords:</span>
+<span class="sd">    - size: [int] the side length in pixels of the array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">psf_list</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate a master psf through convolution of a list of psfs&quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">copy</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">psf_list</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">psf_list</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;psf_list requires more than 1 PSF object&quot;</span><span class="p">)</span>
+
+        <span class="n">pix_res_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">psf</span><span class="o">.</span><span class="n">pix_res</span> <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">psf_list</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">res</span> <span class="o">==</span> <span class="n">pix_res_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">pix_res_list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Not all PSFs have the same pixel resolution&quot;</span><span class="p">)</span>
+
+        <span class="n">pix_res</span> <span class="o">=</span> <span class="n">pix_res_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="s2">&quot;size&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">size_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">psf</span><span class="o">.</span><span class="n">size</span> <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">psf_list</span><span class="p">]</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">size_list</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="c1">## Compensate for the shift in centre due to a DeltaPSF</span>
+        <span class="n">shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span> <span class="o">+</span> <span class="p">[</span><span class="n">psf</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">psf_list</span> \
+                                        <span class="k">if</span> <span class="n">psf</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Delta&quot;</span><span class="p">])</span>
+        <span class="n">size</span> <span class="o">+=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">shifts</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+        <span class="n">arr_tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">size</span><span class="p">,</span> <span class="n">size</span><span class="p">))</span>
+        <span class="n">arr_tmp</span><span class="p">[</span><span class="n">size</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">psf_list</span><span class="p">:</span>
+            <span class="n">arr_tmp</span> <span class="o">=</span> <span class="n">convolve_fft</span><span class="p">(</span><span class="n">arr_tmp</span><span class="p">,</span> <span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">CombinedPSF</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Combined&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Combined PSF from &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">psf_list</span><span class="p">))</span> \
+                                                                <span class="o">+</span> <span class="s2">&quot;PSF objects&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">arr_tmp</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="UserPSF"><a class="viewcode-back" href="../../code.html#simcado.psf.UserPSF">[docs]</a><span class="k">class</span> <span class="nc">UserPSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Import a PSF from a FITS file.</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - filename: [str] path to the FITS file to be read in</span>
+
+<span class="sd">    Optional keywords</span>
+<span class="sd">    - fits_ext: [int] the FITS extension number (default 0) for the data</span>
+<span class="sd">    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="s2">&quot;pix_res&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="mf">0.004</span>
+
+        <span class="k">if</span> <span class="s2">&quot;fits_ext&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">fits_ext</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;fits_ext&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fits_ext</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fits_ext</span> <span class="o">=</span> <span class="n">fits_ext</span>
+
+        <span class="n">header</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fits_ext</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fits_ext</span><span class="p">)</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;NAXIS1&quot;</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">UserPSF</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;User&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;PSF from FITS file: &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;size&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">])</span></div>
+
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">#                       psf and psf subclasses                        #</span>
+<span class="c1">###############################################################################</span>
+
+<span class="c1"># (Sub)Class    Needed              Optional</span>
+<span class="c1"># PSF           size, pix_res</span>
+<span class="c1"># DeltaPSF                          pix_res=0.004, size=f(position), position=(0,0)</span>
+<span class="c1"># AiryPSF       fwhm                pix_res=0.004, size=f(fwhm)</span>
+<span class="c1"># GaussianPSF   fwhm                pix_res=0.004, size=f(fwhm)</span>
+<span class="c1"># MoffatPSF     fwhm                pix_res=0.004, size=f(fwhm)</span>
+<span class="c1"># CombinedPSFCube   psf_list            size=f(psf_list)</span>
+<span class="c1"># UserPSFCube       filename,           pix_res=0.004, size=f(filename), fits_ext=0</span>
+
+<span class="c1">#    Keywords:</span>
+<span class="c1">#    - type:</span>
+<span class="c1">#    - lam_bin_centers</span>
+
+<span class="c1">#    Bound keywords:</span>
+<span class="c1">#    - fwhm : needed for AiryPSF, GaussianPSF, MoffatPSF</span>
+<span class="c1">#    - psf_list: needed for CombinedPSFCube</span>
+<span class="c1">#    - filename: needed for UserPSFCube</span>
+
+<span class="c1">#    Optional keywords</span>
+<span class="c1">#    - size:</span>
+<span class="c1">#    - pix_res:</span>
+<span class="c1">#    - position: optional in DeltaPSF</span>
+<span class="c1">#    - fits_ext: optional in UserPSFCube</span>
+
+
+<div class="viewcode-block" id="PSFCube"><a class="viewcode-back" href="../../code.html#simcado.psf.PSFCube">[docs]</a><span class="k">class</span> <span class="nc">PSFCube</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class holding wavelength dependent point spread function.</span>
+<span class="sd">    Special functions:</span>
+<span class="sd">    - len(self) return the number of layers in the psf</span>
+<span class="sd">    - self[i] returns the PSF object for layer i. If the __array__ function</span>
+<span class="sd">      is called, self[i] will return the array associated with the instance</span>
+<span class="sd">      e.g plt.imshow(self[i]) will plot PSF.array from self.psf_slices[i]</span>
+<span class="sd">    - Maths operators *,+,- act equally on all PSF.arrays in self.psf_slices</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - lam_bin_centers: [um] the centre of each wavelength slice</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_bin_centers</span> <span class="o">=</span> <span class="n">lam_bin_centers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;created&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;yes&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Point spread function (multiple layer)&quot;</span>
+
+
+<div class="viewcode-block" id="PSFCube.resize"><a class="viewcode-back" href="../../code.html#simcado.psf.PSFCube.resize">[docs]</a>    <span class="k">def</span> <span class="nf">resize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Resize the list of PSFs. The target shape is (new_size, new_size).</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - new_size: [int] the new size of the PSF array in pixels</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">:</span>
+            <span class="n">psf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">new_size</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PSFCube.resample"><a class="viewcode-back" href="../../code.html#simcado.psf.PSFCube.resample">[docs]</a>    <span class="k">def</span> <span class="nf">resample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_pix_res</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resample the the list of PSF array onto a new grid and return the new</span>
+<span class="sd">        grid - Not perfect, but conserves flux</span>
+<span class="sd">        Example: new_PSF = old_PSF.resample(new_pix_res)</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - new_pix_res: [arcsec] the pixel resolution of the returned array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">## TODO: Check whether this makes sense</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">psf</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">new_pix_res</span><span class="p">)</span> <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="PSFCube.export_to_fits"><a class="viewcode-back" href="../../code.html#simcado.psf.PSFCube.export_to_fits">[docs]</a>    <span class="k">def</span> <span class="nf">export_to_fits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="o">**</span><span class="n">header_info</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Export the psf to a FITS file for later use</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - filename</span>
+<span class="sd">        - **header_info: A dict with extra header keys and values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">## TODO: Check pylint recommendations</span>
+        <span class="n">ext_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">psf</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">psf</span><span class="o">.</span><span class="n">pix_res</span><span class="p">,</span> <span class="s2">&quot;[arcsec] - Pixel resolution&quot;</span><span class="p">)</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CDELT2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">psf</span><span class="o">.</span><span class="n">pix_res</span><span class="p">,</span> <span class="s2">&quot;[arcsec] - Pixel resolution&quot;</span><span class="p">)</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;WAVE0&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam_bin_centers</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                                      <span class="s2">&quot;[micron] - Wavelength of slice&quot;</span><span class="p">)</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;NSLICES&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="s2">&quot;Number of wavelength slices&quot;</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="n">k</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">k</span><span class="p">)</span>
+
+            <span class="n">ext_list</span> <span class="o">+=</span> <span class="p">[</span><span class="n">hdu</span><span class="p">]</span>
+
+        <span class="n">hdu_list</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">ext_list</span><span class="p">)</span>
+        <span class="n">hdu_list</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PSFCube.convolve"><a class="viewcode-back" href="../../code.html#simcado.psf.PSFCube.convolve">[docs]</a>    <span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kernel_list</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convolve a list of PSFs with a list of kernels&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">kernel_list</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;len(PSF_slices):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">),</span>
+                  <span class="s2">&quot;len(kernel_list):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">kernel_list</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of kernels must equal number of PSFs&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">psf</span><span class="p">,</span> <span class="n">kernel</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">,</span> <span class="n">kernel_list</span><span class="p">):</span>
+            <span class="n">psf</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">kernel</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Complex&quot;</span></div>
+        
+    
+<div class="viewcode-block" id="PSFCube.nearest"><a class="viewcode-back" href="../../code.html#simcado.psf.PSFCube.nearest">[docs]</a>    <span class="k">def</span> <span class="nf">nearest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the PSF closest to the desired wavelength, lam [um] &quot;&quot;&quot;</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">nearest</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam_bin_centers</span><span class="p">,</span> <span class="n">lam</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span></div>
+        
+    
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span>        
+        
+    
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;len(arguments) must equal len(PSFs)&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">psf</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="n">psf</span> <span class="o">*</span> <span class="n">y</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;len(arguments) must equal len(PSFs)&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">psf</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="n">psf</span> <span class="o">+</span> <span class="n">y</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;len(arguments) must equal len(PSFs)&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">psf</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="n">psf</span> <span class="o">-</span> <span class="n">y</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__sub__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+
+<span class="k">class</span> <span class="nc">DeltaPSFCube</span><span class="p">(</span><span class="n">PSFCube</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a list of DeltaPSFs for wavelengths defined in lam_bin_centers</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    ===========</span>
+<span class="sd">    - lam_bin_centers: [um] the centre of each wavelength slice</span>
+
+<span class="sd">    Optional Parameters:</span>
+<span class="sd">    ====================</span>
+<span class="sd">    - positions: [(x,y)] either a tuple, or a list of tuples denoting the</span>
+<span class="sd">                 position of the delta function</span>
+<span class="sd">    - pix_res: [arcsec], pixel scale of the PSF. Default is 0.004 arcsec</span>
+<span class="sd">    - size: [int], side length of the PSF array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">,</span> <span class="n">positions</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DeltaPSFCube</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="n">positions</span> <span class="o">=</span> <span class="p">[</span><span class="n">positions</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">DeltaPSF</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">positions</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;List of Delta function PSFs&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;DeltaCube&quot;</span>
+
+
+<div class="viewcode-block" id="AiryPSFCube"><a class="viewcode-back" href="../../code.html#simcado.psf.AiryPSFCube">[docs]</a><span class="k">class</span> <span class="nc">AiryPSFCube</span><span class="p">(</span><span class="n">PSFCube</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a list of AiryPSFs for wavelengths defined in lam_bin_centers</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - lam_bin_centers: [um] a list with the centres of each wavelength slice</span>
+
+<span class="sd">    Optional keywords:</span>
+<span class="sd">    - fwhm: [arcsec] the equivalent FWHM of the PSF.</span>
+<span class="sd">    - diameter: [m] diamter of primary mirror. Default is 39.3m.</span>
+<span class="sd">    - mode: [&#39;oversample&#39;,&#39;linear_interp&#39;] see Kernel2D (scipy.convolution.core)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AiryPSFCube</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;diameter&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;diameter&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="mf">39.3</span>
+
+        <span class="k">if</span> <span class="s2">&quot;obscuration&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">obscuration</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;obscuration&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">obscuration</span> <span class="o">=</span> <span class="mf">11.1</span><span class="o">/</span><span class="mf">39.3</span>
+
+        <span class="k">if</span> <span class="n">fwhm</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># lam in um, diameter in m, 206265 is 1 rad in arcsec</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="p">[</span><span class="mi">206265</span> <span class="o">*</span> <span class="mf">1.22</span> <span class="o">*</span> <span class="n">lam</span> <span class="o">*</span> <span class="mf">1E-6</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> \
+                                                    <span class="k">for</span> <span class="n">lam</span> <span class="ow">in</span> <span class="n">lam_bin_centers</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fwhm</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="p">[</span><span class="n">fwhm</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="n">fwhm</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span> <span class="o">=</span> <span class="p">[</span><span class="n">AiryPSF</span><span class="p">(</span><span class="n">fwhm</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;List of Airy function PSFs&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;AiryCube&quot;</span></div>
+
+
+<div class="viewcode-block" id="GaussianPSFCube"><a class="viewcode-back" href="../../code.html#simcado.psf.GaussianPSFCube">[docs]</a><span class="k">class</span> <span class="nc">GaussianPSFCube</span><span class="p">(</span><span class="n">PSFCube</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a list of GaussianPSFs for wavelengths defined in lam_bin_centers</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - lam_bin_centers: [um] a list with the centres of each wavelength slice</span>
+
+<span class="sd">    Optional keywords:</span>
+<span class="sd">    - fwhm: [arcsec] the FWHM of the PSF.</span>
+<span class="sd">    - diameter: [m] diamter of primary mirror. Default is 39.3m.</span>
+<span class="sd">    - mode: [&#39;oversample&#39;,&#39;linear_interp&#39;] see Kernel2D (scipy.convolution.core)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GaussianPSFCube</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;diameter&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;diameter&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="mf">39.3</span>
+
+        <span class="k">if</span> <span class="n">fwhm</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># lam in um, diameter in m, 206265 is 1 rad in arcsec</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="p">[</span><span class="mi">206265</span> <span class="o">*</span> <span class="mf">1.22</span> <span class="o">*</span> <span class="n">lam</span> <span class="o">*</span> <span class="mf">1E-6</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> \
+                                                    <span class="k">for</span> <span class="n">lam</span> <span class="ow">in</span> <span class="n">lam_bin_centers</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fwhm</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="p">[</span><span class="n">fwhm</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span> <span class="o">=</span> <span class="p">[</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">fwhm</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;List of Gaussian function PSFs&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GaussianCube&quot;</span></div>
+
+<div class="viewcode-block" id="MoffatPSFCube"><a class="viewcode-back" href="../../code.html#simcado.psf.MoffatPSFCube">[docs]</a><span class="k">class</span> <span class="nc">MoffatPSFCube</span><span class="p">(</span><span class="n">PSFCube</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a list of MoffatPSFs for wavelengths defined in lam_bin_centers</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - lam_bin_centers: [um] a list with the centres of each wavelength slice</span>
+
+<span class="sd">    Optional keywords:</span>
+<span class="sd">    - fwhm: [arcsec] the FWHM of the PSF.</span>
+<span class="sd">    - diameter: [m] diamter of primary mirror. Default is 39.3m.</span>
+<span class="sd">    - mode: [&#39;oversample&#39;,&#39;linear_interp&#39;] see Kernel2D (scipy.convolution.core)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MoffatPSFCube</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;diameter&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;diameter&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="mf">39.3</span>
+
+        <span class="k">if</span> <span class="n">fwhm</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># lam in um, diameter in m, 206265 is 1 rad in arcsec</span>
+            <span class="n">rad2arcsec</span> <span class="o">=</span> <span class="mi">3600</span> <span class="o">*</span> <span class="mf">180.</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="n">rad2arcsec</span> <span class="o">*</span> <span class="mf">1.22</span> <span class="o">*</span> <span class="n">lam_bin_centers</span> <span class="o">*</span> <span class="mf">1E-6</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fwhm</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="p">[</span><span class="n">fwhm</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span> <span class="o">=</span> <span class="p">[</span><span class="n">MoffatPSF</span><span class="p">(</span><span class="n">fwhm</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fwhm</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;List of Moffat function PSFs&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;MoffatCube&quot;</span></div>
+
+<div class="viewcode-block" id="CombinedPSFCube"><a class="viewcode-back" href="../../code.html#simcado.psf.CombinedPSFCube">[docs]</a><span class="k">class</span> <span class="nc">CombinedPSFCube</span><span class="p">(</span><span class="n">PSFCube</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a list of CombinedPSFCubes from the list of psfs in psf_list</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - lam_bin_centers: [um] a list with the centres of each wavelength slice</span>
+
+<span class="sd">    Optional keywords:</span>
+<span class="sd">    - fwhm: [arcsec] the FWHM of the PSF.</span>
+<span class="sd">    - diameter: [m] diamter of primary mirror. Default is 39.3m.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">psf_list</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">psf_list</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">psf_list</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;psf_list only takes a list of psf objects&quot;</span><span class="p">)</span>
+
+        <span class="c1">## Check that the wavelengths are equal</span>
+        <span class="n">lam_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">cube</span><span class="o">.</span><span class="n">lam_bin_centers</span> <span class="k">for</span> <span class="n">cube</span> <span class="ow">in</span> <span class="n">psf_list</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="nb">all</span><span class="p">(</span><span class="n">lam</span> <span class="o">==</span> <span class="n">lam_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">lam</span> <span class="ow">in</span> <span class="n">lam_list</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Wavelength arrays of psf cubes are not equal&quot;</span><span class="p">)</span>
+        <span class="n">lam_bin_centers</span> <span class="o">=</span> <span class="n">lam_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">CombinedPSFCube</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Master psf cube from list&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;CombinedCube&quot;</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">psf_list</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;PSF</span><span class="si">%02d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="n">psf_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">CombinedPSFCube</span><span class="p">([</span><span class="n">psf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">psf_list</span><span class="p">],</span>
+                                             <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="UserPSFCube"><a class="viewcode-back" href="../../code.html#simcado.psf.UserPSFCube">[docs]</a><span class="k">class</span> <span class="nc">UserPSFCube</span><span class="p">(</span><span class="n">PSFCube</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read in a psf previously saved as a FITS file</span>
+<span class="sd">    Keywords needed for a psf to be read in:</span>
+<span class="sd">    NSLICES, WAVECENT, NAXIS1, CDELT1, PSF_TYPE, DESCRIPT</span>
+
+<span class="sd">    N.B. A separate function will exist to convert foreign PSF FITS files into</span>
+<span class="sd">    psf readable FITS files</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - filename: the path to the FITS file holding the cube</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span> 
+            <span class="n">lam_bin_centers</span> <span class="o">=</span> <span class="p">[</span><span class="n">lam_bin_centers</span><span class="p">]</span>
+        
+        <span class="n">n_slices</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">output</span><span class="o">=</span><span class="bp">False</span><span class="p">))</span>
+        <span class="n">psf_slices</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="c1"># pull out the wavelengths in the PSF FITS files</span>
+        <span class="n">psf_lam_cen</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_slices</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span> <span class="n">psf_lam_cen</span> <span class="o">+=</span> <span class="p">[</span><span class="n">f</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;WAVE0&quot;</span><span class="p">]]</span>
+            <span class="k">except</span><span class="p">:</span> 
+                <span class="k">try</span><span class="p">:</span> <span class="n">psf_lam_cen</span> <span class="o">+=</span> <span class="p">[</span><span class="n">f</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;WAVELENG&quot;</span><span class="p">]]</span>
+                <span class="k">except</span><span class="p">:</span> 
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;Could not determine wavelength of PSF in</span>
+<span class="s2">                                     extension &quot;&quot;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&quot;&quot;. FITS file </span>
+<span class="s2">                                     needs either WAVE0 or WAVELENG header </span>
+<span class="s2">                                     keywords. </span><span class="se">\n</span><span class="s2"> Use SimCADO.utils.add_keyword()</span>
+<span class="s2">                                     to add WAVELENG to the FITS header&quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="c1"># If the wavelength is not in the 0.1-2.5 range, it must be in [m]</span>
+            <span class="k">if</span> <span class="n">psf_lam_cen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span> 
+                <span class="n">psf_lam_cen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">1E6</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        
+        <span class="c1"># find the closest PSFs in the file to what is needed for the psf</span>
+        <span class="n">i_slices</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">nearest</span><span class="p">(</span><span class="n">psf_lam_cen</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">)</span>
+       
+        <span class="c1"># import only the relevant PSFs</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">i_slices</span><span class="p">:</span>
+        
+            <span class="n">hdr</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">header</span> <span class="o">=</span> <span class="n">hdr</span>
+            
+            <span class="n">pix_res</span> <span class="o">=</span> <span class="n">pix_res</span><span class="o">=</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">pix_res</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;CDELT &gt; 1. Assuming the scale to be [mas]&quot;</span><span class="p">)</span>
+                <span class="n">pix_res</span> <span class="o">*=</span> <span class="mf">1E-3</span>
+            
+            <span class="n">psf</span> <span class="o">=</span> <span class="n">PSF</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;NAXIS1&quot;</span><span class="p">],</span> <span class="n">pix_res</span><span class="o">=</span><span class="n">pix_res</span><span class="p">)</span>
+            <span class="n">psf</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="n">i</span><span class="p">))</span>            
+            
+            <span class="k">try</span><span class="p">:</span> <span class="n">psf</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;PSF_TYPE&quot;</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span> <span class="n">psf</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+            <span class="k">try</span><span class="p">:</span> <span class="n">psf</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;DESCRIPT&quot;</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span> <span class="n">psf</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+            
+            <span class="n">psf_slices</span> <span class="o">+=</span> <span class="p">[</span><span class="n">psf</span><span class="p">]</span>
+
+        <span class="n">lam_bin_centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">UserPSFCube</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">psf_slices</span> <span class="o">=</span> <span class="n">psf_slices</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;User PSF cube input from &quot;</span> <span class="o">+</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">psf_slices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;Cube&quot;</span></div>
+
+
+
+<span class="k">class</span> <span class="nc">ADC_PSFCube</span><span class="p">(</span><span class="n">DeltaPSFCube</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a Deltapsf with the shifts required to mimic the ADC at a</span>
+<span class="sd">    certain efficiency</span>
+
+<span class="sd">    Keywords:</span>
+<span class="sd">    - lam_bin_centers: [um] a list with the centres of each wavelength slice</span>
+
+<span class="sd">    Optional Keywords:</span>
+<span class="sd">    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004</span>
+<span class="sd">    - OBS_PARALLACTIC_ANGLE: [deg] the orientation of the input cube relative to</span>
+<span class="sd">      the zenith</span>
+<span class="sd">    - INST_ADC_EFFICIENCY: [%] efficiency of the ADC</span>
+<span class="sd">    - SCOPE_LATITUDE: [deg] latitude of the telescope site</span>
+<span class="sd">    - SCOPE_ALTITUDE: [m] hight above sea level of the telescope site</span>
+<span class="sd">    - ATMO_REL_HUMIDITY: [%] relative humidity in percent</span>
+<span class="sd">    - OBS_ZENITH_DIST: [deg] zenith distance of the object</span>
+<span class="sd">    - ATMO_TEMPERATURE: [deg C] air temperature of the observing site in Celsius</span>
+<span class="sd">    - ATMO_PRESSURE: [mbar] air pressure of the observing site in millibar</span>
+
+<span class="sd">    The default values for the above mentioned keywords are:</span>
+<span class="sd">    0.004 arcsec, 0 deg, 100%, -24.5 deg, 3064m, 60%, 60 deg, 0 C, 750mbar</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_bin_centers</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;pix_res&quot;</span>           <span class="p">:</span><span class="mf">0.004</span><span class="p">,</span>
+                  <span class="s2">&quot;PARALLACTIC_ANGLE&quot;</span>  <span class="p">:</span><span class="mi">0</span><span class="p">,</span>
+                  <span class="s2">&quot;INST_ADC_EFFICIENCY&quot;</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span>
+                  <span class="s2">&quot;SCOPE_LATITUDE&quot;</span>     <span class="p">:</span><span class="o">-</span><span class="mf">24.5</span><span class="p">,</span>
+                  <span class="s2">&quot;SCOPE_ALTITUDE&quot;</span>     <span class="p">:</span><span class="mi">3064</span><span class="p">,</span>
+                  <span class="s2">&quot;ATMO_REL_HUMIDITY&quot;</span>  <span class="p">:</span><span class="mi">60</span><span class="p">,</span>
+                  <span class="s2">&quot;OBS_ZENITH_DIST&quot;</span>    <span class="p">:</span><span class="mi">60</span><span class="p">,</span>
+                  <span class="s2">&quot;ATMO_TEMPERATURE&quot;</span>   <span class="p">:</span><span class="mi">0</span><span class="p">,</span>
+                  <span class="s2">&quot;ATMO_PRESSURE&quot;</span>      <span class="p">:</span><span class="mi">750</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">pix_res</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;pix_res&quot;</span><span class="p">]</span>
+        <span class="n">para_angle</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;OBS_PARALLACTIC_ANGLE&quot;</span><span class="p">]</span>
+        <span class="n">effectiveness</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;INST_ADC_PERFORMANCE&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">100.</span>
+
+        <span class="c1">## get the angle shift for each slice</span>
+        <span class="n">angle_shift</span> <span class="o">=</span> <span class="p">[</span><span class="n">utils</span><span class="o">.</span><span class="n">atmospheric_refraction</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span>
+                                                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;OBS_ZENITH_DIST&quot;</span><span class="p">],</span>
+                                                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;ATMO_TEMPERATURE&quot;</span><span class="p">],</span>
+                                                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;ATMO_REL_HUMIDITY&quot;</span><span class="p">],</span>
+                                                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;ATMO_PRESSURE&quot;</span><span class="p">],</span>
+                                                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;SCOPE_LATITUDE&quot;</span><span class="p">],</span>
+                                                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;SCOPE_ALTITUDE&quot;</span><span class="p">])</span>
+                       <span class="k">for</span> <span class="n">lam</span> <span class="ow">in</span> <span class="n">lam_bin_centers</span><span class="p">]</span>
+
+        <span class="c1">## convert angle shift into number of pixels</span>
+        <span class="c1">## pixel shifts are defined with respect to last slice</span>
+        <span class="n">pixel_shift</span> <span class="o">=</span> <span class="p">(</span><span class="n">angle_shift</span> <span class="o">-</span> <span class="n">angle_shift</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">pix_res</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pixel_shift</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Pixel shifts too great (&gt;1000), check units&quot;</span><span class="p">)</span>
+
+        <span class="c1">## Rotate by the paralytic angle</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="o">-</span><span class="n">pixel_shift</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">para_angle</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">-</span> <span class="n">effectiveness</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="o">-</span><span class="n">pixel_shift</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">para_angle</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">-</span> <span class="n">effectiveness</span><span class="p">)</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="p">[(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span> <span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">yi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)]</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">ADC_PSFCube</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">lam_bin_centers</span><span class="p">,</span>
+                                          <span class="n">positions</span><span class="o">=</span><span class="n">positions</span><span class="p">,</span>
+                                          <span class="n">pix_res</span><span class="o">=</span><span class="n">pix_res</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ADC_psf&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ADC PSF cube for ADC effectiveness:&quot;</span> <span class="o">+</span> \
+                                    <span class="nb">str</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;INST_ADC_EFFICIENCY&quot;</span><span class="p">])</span> <span class="o">+</span> \
+                                    <span class="s2">&quot;, z0:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;OBS_ZENITH_DIST&quot;</span><span class="p">])</span>
+
+
+
+
+<span class="c1">## The following two classes implement a kernel for the PSF of a centrally</span>
+<span class="c1">## obscured circular aperture. The classes are modelled after the kernels</span>
+<span class="c1">## in astropy.convolution.kernel and the models in astropy.modeling.models,</span>
+<span class="c1">## both from astropy version 1.1.1.</span>
+<span class="k">class</span> <span class="nc">AiryDiskDiff2DKernel</span><span class="p">(</span><span class="n">Kernel2D</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    2D kernel for PSF for annular aperture</span>
+
+<span class="sd">    This kernel models the diffraction pattern of a circular aperture with</span>
+<span class="sd">    a central circular obscuration. This kernel is normalized to a peak</span>
+<span class="sd">    value of 1.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    radius : float</span>
+<span class="sd">        The radius of the unobscured Airy disk kernel (radius of the first</span>
+<span class="sd">        zero). Compute this from the outer aperture radius.</span>
+<span class="sd">    obscuration : float</span>
+<span class="sd">        Fraction of the aperture that is obscured (inner radius / outer radius)</span>
+<span class="sd">        Default obscuration = 0.</span>
+<span class="sd">    x_size : odd int, optional</span>
+<span class="sd">        Size in x direction of the kernel array. Default = 8 * radius.</span>
+<span class="sd">    y_size : odd int, optional</span>
+<span class="sd">        Size in y direction of the kernel array. Default = 8 * radius.</span>
+<span class="sd">    mode : str, optional</span>
+<span class="sd">        One of the following discretization modes:</span>
+<span class="sd">            * &#39;center&#39; (default)</span>
+<span class="sd">                Discretize model by taking the value</span>
+<span class="sd">                at the center of the bin.</span>
+<span class="sd">            * &#39;linear_interp&#39;</span>
+<span class="sd">                Discretize model by performing a bilinear interpolation</span>
+<span class="sd">                between the values at the corners of the bin.</span>
+<span class="sd">            * &#39;oversample&#39;</span>
+<span class="sd">                Discretize model by taking the average</span>
+<span class="sd">                on an oversampled grid.</span>
+<span class="sd">            * &#39;integrate&#39;</span>
+<span class="sd">                Discretize model by integrating the</span>
+<span class="sd">                model over the bin.</span>
+<span class="sd">    factor : number, optional</span>
+<span class="sd">        Factor of oversampling. Default factor = 10.</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    Gaussian2DKernel, Box2DKernel, Tophat2DKernel, MexicanHat2DKernel,</span>
+<span class="sd">    Ring2DKernel, TrapezoidDisk2DKernel, AiryDisk2DKernel, Moffat2DKernel</span>
+<span class="sd">    (in astropy.kernels)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Kernel response:</span>
+
+<span class="sd">     .. plot::</span>
+<span class="sd">        :include-source:</span>
+
+<span class="sd">        import matplotlib.pyplot as plt</span>
+<span class="sd">        from SimCADO.psf import AiryDiskDiff2DKernel</span>
+<span class="sd">        airydiskdiff_2D_kernel = AiryDiskDiff2DKernel(10)</span>
+<span class="sd">        plt.imshow(airydiskdiff_2D_kernel, interpolation=&#39;none&#39;, origin=&#39;lower&#39;)</span>
+<span class="sd">        plt.xlabel(&#39;x [pixels]&#39;)</span>
+<span class="sd">        plt.ylabel(&#39;y [pixels]&#39;)</span>
+<span class="sd">        plt.colorbar()</span>
+<span class="sd">        plt.show()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_is_bool</span> <span class="o">=</span> <span class="bp">False</span>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">obscuration</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">astropy.convolution.kernels</span> <span class="kn">import</span> <span class="n">_round_up_to_odd_integer</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">AiryDiskDiff2D</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">obscuration</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_size</span> <span class="o">=</span> <span class="n">_round_up_to_odd_integer</span><span class="p">(</span><span class="mi">8</span> <span class="o">*</span> <span class="n">radius</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AiryDiskDiff2DKernel</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_truncation</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="k">class</span> <span class="nc">AiryDiskDiff2D</span><span class="p">(</span><span class="n">Fittable2DModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Two dimensional Airy disk model with central obscuration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    amplitude : float</span>
+<span class="sd">        Amplitude of the function.</span>
+<span class="sd">    x_0 : float</span>
+<span class="sd">        x position of the maximum of the function</span>
+<span class="sd">    y_0 : float</span>
+<span class="sd">        y position of the maximum of the function</span>
+<span class="sd">    radius : float</span>
+<span class="sd">        The radius of the unobscured Airy disk (radius of the first zero).</span>
+<span class="sd">    eps : float</span>
+<span class="sd">        The ratio of the inner to the outer radius of an annular aperture.</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    AiryDisk2D</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Model formula:</span>
+
+<span class="sd">        .. math:: f(r) = A \\left[\\frac{2 J_1(\\frac{\\pi r}{R/R_z})}\\right]^2</span>
+
+<span class="sd">    Where :math: `J_1` is the first order Bessel function of the first</span>
+<span class="sd">    kind, :math: `r` is the radial distance from the maximum of the</span>
+<span class="sd">    function (:math: `r = \\sqrt{(x - x_0)^2 + (y - y_0)^2}`), :math:`R`</span>
+<span class="sd">    is the input ``radius`` parameter, and :math:`R_z =</span>
+<span class="sd">    1.2196698912665045`.</span>
+
+<span class="sd">    For an optical system, the radius of the first zero represents the</span>
+<span class="sd">    limiting angular resolution and is approximately 1.22 * lambda / D,</span>
+<span class="sd">    where lambda is the wavelength of the light and D is the diameter of</span>
+<span class="sd">    the aperture.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">amplitude</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">x_0</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">y_0</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">_j1</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="n">amplitude</span><span class="o">.</span><span class="n">default</span><span class="p">,</span> <span class="n">x_0</span><span class="o">=</span><span class="n">x_0</span><span class="o">.</span><span class="n">default</span><span class="p">,</span>
+                 <span class="n">y_0</span><span class="o">=</span><span class="n">y_0</span><span class="o">.</span><span class="n">default</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="o">.</span><span class="n">default</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">eps</span><span class="o">.</span><span class="n">default</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_j1</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">j1</span><span class="p">,</span> <span class="n">jn_zeros</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">_j1</span> <span class="o">=</span> <span class="n">j1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">_rz</span> <span class="o">=</span> <span class="n">jn_zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+            <span class="c1">#add a ValueError here for python3 + scipy &lt; 0.12</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;AiryDiskDiff2D model requires scipy &gt; 0.11.&quot;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">AiryDiskDiff2D</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">amplitude</span><span class="o">=</span><span class="n">amplitude</span><span class="p">,</span> 
+                                             <span class="n">x_0</span><span class="o">=</span><span class="n">x_0</span><span class="p">,</span> 
+                                             <span class="n">y_0</span><span class="o">=</span><span class="n">y_0</span><span class="p">,</span> 
+                                             <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span> 
+                                             <span class="n">eps</span><span class="o">=</span><span class="n">eps</span><span class="p">,</span>
+                                             <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="c1"># Comment and methods copied from astropy v1.1.1</span>
+    <span class="c1"># TODO: Why does this particular model have its own special __deepcopy__</span>
+    <span class="c1"># and __copy__?  If it has anything to do with the use of the j_1 function</span>
+    <span class="c1"># that should be reworked.</span>
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">):</span>
+        <span class="n">new_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">amplitude</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_0</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">y_0</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_model</span>
+
+    <span class="k">def</span> <span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">new_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">amplitude</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_0</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">y_0</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_model</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">,</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">y_0</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">eps</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Two dimensional Airy difference model function&quot;&quot;&quot;</span>
+
+        <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">y_0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">radius</span> <span class="o">/</span> <span class="n">cls</span><span class="o">.</span><span class="n">_rz</span><span class="p">)</span>
+        <span class="c1"># Since r can be zero, we have to take care to treat that case</span>
+        <span class="c1"># separately so as not to raise a numpy warning</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">rt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">r</span><span class="p">[</span><span class="n">r</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">z</span><span class="p">[</span><span class="n">r</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">cls</span><span class="o">.</span><span class="n">_j1</span><span class="p">(</span><span class="n">rt</span><span class="p">)</span> <span class="o">/</span> <span class="n">rt</span> <span class="o">-</span>
+                    <span class="mf">2.0</span> <span class="o">*</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">cls</span><span class="o">.</span><span class="n">_j1</span><span class="p">(</span><span class="n">eps</span> <span class="o">*</span> <span class="n">rt</span><span class="p">)</span> <span class="o">/</span> <span class="n">rt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">z</span> <span class="o">*=</span> <span class="n">amplitude</span>
+        <span class="k">return</span> <span class="n">z</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Kieran Leschinski, Oliver Czoske.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

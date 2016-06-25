@@ -1,24 +1,48 @@
-Documentation for the Code
-**************************
+SimCADO Documentation
+*********************
 
 .. automodule:: simcado
 
+Sources of Photon
+=================
 
-useful #1 -- auto members
-=========================
+.. autoclass:: simcado.Source
+   :members: 
 
-This is something I want to say that is not in the docstring.
+The Optical Train
+=================
 
-.. automodule:: simcado
+.. autoclass:: simcado.OpticalTrain
+   :members:
+   
+The Detector
+============
+
+.. autoclass:: simcado.Detector
    :members:
 
-useful #2 -- explicit members
-=============================
+The User Commands
+=================
 
-This is something I want to say that is not in the docstring.
+.. autoclass:: simcado.UserCommands
+   :members:
 
-.. automodule:: simcado.detector
-   :members: Detector, Chip
+Various other modules
+=====================
 
+.. automodule:: simcado.spectral
+   :members: 
+   
+.. automodule:: simcado.spatial
+   :members: 
+   
+.. automodule:: simcado.psf
+   :members: 
+
+   
+   
+   
+   
+   
 .. autoclass:: MyPublicClass
    :members:
