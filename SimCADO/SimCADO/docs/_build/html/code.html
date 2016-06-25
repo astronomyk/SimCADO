@@ -1,0 +1,454 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Documentation for the Code &mdash; simcado 0.2dev documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="simcado 0.2dev documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-simcado">
+<span id="documentation-for-the-code"></span><h1>Documentation for the Code<a class="headerlink" href="#module-simcado" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="end-to-end-simulator-for-micado-on-the-e-elt">
+<h2>End-to-end simulator for MICADO on the E-ELT<a class="headerlink" href="#end-to-end-simulator-for-micado-on-the-e-elt" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="useful-1-auto-members">
+<h2>useful #1 &#8211; auto members<a class="headerlink" href="#useful-1-auto-members" title="Permalink to this headline">¶</a></h2>
+<p>This is something I want to say that is not in the docstring.</p>
+<span class="target" id="module-simcado"></span><div class="section" id="id1">
+<h3>End-to-end simulator for MICADO on the E-ELT<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="useful-2-explicit-members">
+<h2>useful #2 &#8211; explicit members<a class="headerlink" href="#useful-2-explicit-members" title="Permalink to this headline">¶</a></h2>
+<p>This is something I want to say that is not in the docstring.</p>
+<span class="target" id="module-simcado.detector"></span><p>A description of the Chip noise properties and their positions on the Detector</p>
+<div class="section" id="summary">
+<h3>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h3>
+<p>This module holds three classes: <cite>Detector</cite>, <cite>Chip</cite> and <cite>HXRGNoise</cite>.</p>
+<p><cite>Chip</cite>
+Everything to do with photons and electrons happens in the <cite>Chip</cite> class. Each 
+<cite>Chip</cite> is initialised with a position relative to the centre of the detector 
+array, a size [in pixels] and a resolution [in arcsec]. Photons fall onto the 
+<cite>Chip`s and are read out together with the read noise characteristics of the 
+`Chip</cite>.</p>
+<p><cite>Detector</cite>
+The <cite>Detector</cite> holds the information on where the ´Chip`s are placed on the 
+focal plane. Focal plane coordinates are in [arcsec]. These coordinates are 
+either read in from a default file or determined by the user. The <cite>Detector</cite>
+object is an intermediary - it only passes photons information on the photons 
+to the <a href="#id2"><span class="problematic" id="id3">`</span></a>Chip`s. It is mainly a convenience class so that the user can read out
+all <a href="#id4"><span class="problematic" id="id5">`</span></a>Chip`s at the same time.</p>
+<p><cite>HXRGNoise</cite>
+This class is borrowed from Berhand Rauscher&#8217;s script which generates realistic 
+noise frames for the JWST NIRSpec instrument. NIRSpec uses Hawaii 2RG detectors
+but the noise properties scale well up to the H4RG chips that MICADO will use.</p>
+</div>
+<div class="section" id="routines">
+<h3>Routines<a class="headerlink" href="#routines" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt>Detector(cmds)</dt>
+<dd>builds an array of <cite>Chip`s based on a `UserCommands</cite> object</dd>
+<dt>Chip(<a href="#id6"><span class="problematic" id="id7">**</span></a>kwargs)</dt>
+<dd>coverts incoming photons into ADUs and adds in read-out noise</dd>
+<dt>HXRGNoise(<a href="#id8"><span class="problematic" id="id9">**</span></a>kwargs)</dt>
+<dd>generates realistic detector noise frames</dd>
+</dl>
+</div>
+<div class="section" id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
+<p>OpticalTrain, Source</p>
+</div>
+<div class="section" id="notes">
+<h3>Notes<a class="headerlink" href="#notes" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="references">
+<h3>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h3>
+<p>[1] Bernhard Rauscher&#8217;s HxRG Noise Generator script</p>
+</div>
+<div class="section" id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h3>
+<p>The <cite>Detector</cite> can be used in stand alone mode. In this case it outputs
+only the noise that a sealed off detector would generate</p>
+<p><code class="docutils literal"><span class="pre">`</span>
+<span class="pre">&gt;&gt;&gt;</span> <span class="pre">import</span> <span class="pre">simcado</span>
+<span class="pre">&gt;&gt;&gt;</span> <span class="pre">fpa</span> <span class="pre">=</span> <span class="pre">simcado.Detector(simcado.UserCommands())</span>
+<span class="pre">&gt;&gt;&gt;</span> <span class="pre">fpa.read_out(ouput=True,</span> <span class="pre">chips</span> <span class="pre">=</span> <span class="pre">[0])</span>
+<span class="pre">...</span>
+<span class="pre">`</span></code></p>
+<p>The <cite>Detector</cite> is more useful if we combine it with a <cite>Source</cite> object and an
+<cite>OpticalTrain</cite>. Here we create a <cite>Source</cite> object for an open cluster in the LMC
+and pass the photons arriving from it through the E-ELT and MICADO. The photons
+are then cast onto the detector array. Each <cite>Chip</cite> converts the photons to ADUs
+and adds the resulting image to an Astropy <cite>HDUList</cite>. The <cite>HDUList</cite> is then 
+written to disk.</p>
+<p><a href="#id10"><span class="problematic" id="id11">``</span></a>`
+# Create an set of commands, optical train and detector</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">simcado</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cmds</span> <span class="o">=</span> <span class="n">simcado</span><span class="o">.</span><span class="n">UserCommands</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">opt_train</span> <span class="o">=</span> <span class="n">simcado</span><span class="o">.</span><span class="n">OpticalTrain</span><span class="p">(</span><span class="n">cmds</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fpa</span> <span class="o">=</span> <span class="n">simcado</span><span class="o">.</span><span class="n">Detector</span><span class="p">(</span><span class="n">cmds</span><span class="p">)</span>
+</pre></div>
+</div>
+<p># Pass photons from a 10^4 Msun open cluster in the LMC through to the detector</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">src</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">optics_utils</span><span class="o">.</span><span class="n">source_1E4_Msun_cluster</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">src</span><span class="o">.</span><span class="n">apply_optical_train</span><span class="p">(</span><span class="n">opt_train</span><span class="p">,</span> <span class="n">fpa</span><span class="p">)</span>
+</pre></div>
+</div>
+<p># Read out the detector array to a FITS file</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fpa</span><span class="o">.</span><span class="n">read_out</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;my_raw_image.fits&quot;</span><span class="p">)</span>
+<span class="go">```</span>
+</pre></div>
+</div>
+<dl class="class">
+<dt id="simcado.detector.Detector">
+<em class="property">class </em><code class="descclassname">simcado.detector.</code><code class="descname">Detector</code><span class="sig-paren">(</span><em>cmds</em>, <em>small_fov=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Detector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Detector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a series of <cite>Chip</cite> objects for a focal plane array</p>
+<p>The <cite>Detector</cite> is a holder for the series of <cite>Chip</cite> objects which make up
+the detector array. The main advantage of the <cite>Detector</cite> object is that the
+user can read out all chips in the whole detector array at once. A 
+<cite>Detector</cite> is a parameter in the <cite>Source.apply_optical_train()</cite> method.</p>
+<dl class="docutils">
+<dt>cmds</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">UserCommands</span><dd>Commands for how to model the Detector</dd>
+</dl>
+<dl class="docutils">
+<dt>cmds</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">UserCommands</span><dd>commands for modelling the detector layout and exposures</dd>
+<dt>layout</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">astropy.table.Table</span><dd>table of positions and sizes of the chips on the focal plane</dd>
+<dt>chips</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">list</span><dd>a list of the <cite>Chips</cite> which make up the detector array</dd>
+<dt>oversample</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int</span><dd>factor between the internal angular resolution and the pixel FOV</dd>
+<dt>fpa_res</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[mas] field of view of a single pixel</dd>
+<dt>exptime</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[s] exposure time of a single DIT</dd>
+<dt>tro</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[s] time between a single non-destructive readout in up-the-ramp mode</dd>
+<dt>ndit</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int</span><dd>number of exposures (DITs)</dd>
+</dl>
+<dl class="docutils">
+<dt>read_out(output, filename, chips, <a href="#id12"><span class="problematic" id="id13">**</span></a>kwargs)</dt>
+<dd>for reading out the detector array into a FITS file</dd>
+<dt>open(filename, <a href="#id14"><span class="problematic" id="id15">**</span></a>kwargs)</dt>
+<dd>** not yet implemented ** 
+Should be moved into a general function for detector.py which returns a
+Detector object after reading in a saved detector file</dd>
+<dt>write(filename, <a href="#id16"><span class="problematic" id="id17">**</span></a>kwargs)</dt>
+<dd>** not yet implemented ** 
+Save the Detector object into a FITS file</dd>
+</dl>
+<p>Chip, Source, OpticalTrain, UserCommands</p>
+<p>Create a <cite>Detector</cite> object
+<code class="docutils literal"><span class="pre">`</span>
+<span class="pre">&gt;&gt;&gt;</span> <span class="pre">import</span> <span class="pre">simcado</span>
+<span class="pre">&gt;&gt;&gt;</span> <span class="pre">my_cmds</span> <span class="pre">=</span> <span class="pre">simcado.UserCommands()</span>
+<span class="pre">&gt;&gt;&gt;</span> <span class="pre">my_detector</span> <span class="pre">=</span> <span class="pre">simcado.Detector(my_cmds)</span>
+<span class="pre">`</span></code></p>
+<p>Read out only the first <cite>Chip</cite>
+<code class="docutils literal"><span class="pre">`</span>
+<span class="pre">&gt;&gt;&gt;</span> <span class="pre">my_detector.readout(filename=image.fits,</span> <span class="pre">chips=[0])</span>
+<span class="pre">`</span></code></p>
+<dl class="method">
+<dt id="simcado.detector.Detector.open">
+<code class="descname">open</code><span class="sig-paren">(</span><em>filename</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Detector.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Detector.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Opens a saved <cite>Detector</cite> file.</p>
+<p>** Not yet implemented ** 
+** Should be moved outside of <cite>Detector</cite> and called with 
+<cite>detector.open()</cite> **</p>
+<p>Detector objects can be saved to FITS file and read back in for later
+simulations.</p>
+<dl class="docutils">
+<dt>filename</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">str</span><dd>path to the FITS file where the <cite>Detector</cite> object is stored</dd>
+</dl>
+<p><cite>simcado.Detector</cite> object</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="simcado.detector.Detector.read_out">
+<code class="descname">read_out</code><span class="sig-paren">(</span><em>filename=None</em>, <em>to_disk=False</em>, <em>chips=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Detector.read_out"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Detector.read_out" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate the read out process of the detector array</p>
+<p>Based on the parameters set in the <cite>UserCommands</cite> object, the detector
+will read out the images stored on the <cite>Chips</cite> according to the
+specified read out scheme, i.e. Fowler, up-the-ramp, single read, etc.</p>
+<dl class="docutils">
+<dt>filename</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">str</span><dd>where the file is to be saved. If <cite>None</cite> the current directory is 
+used. Default is <cite>None</cite></dd>
+<dt>to_disk</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">bool</span><dd>a flag for where the output should go. If <cite>True</cite> the  <cite>Chip</cite> images
+will be returned to the user (i.e. in an iPython session) as an
+<cite>astropy.fits.HDUList</cite> object. If <cite>False</cite> the <cite>Chip</cite> images will be
+written to a <cite>.fits</cite> file on disk. If no <cite>filename</cite> is specified,
+the output is be called &#8220;output.fits&#8221;. The default is <cite>False</cite></dd>
+<dt>chips</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int, array-like, optional</span><dd>The chip or chips to be read out, based on the detector_layout.dat
+file. Default is the first <cite>Chip</cite> specified in the list, i.e. [0]</dd>
+</dl>
+<dl class="docutils">
+<dt><cite>if output == True:</cite></dt>
+<dd>astropy.io.fits.HDUList</dd>
+<dt><cite>else:</cite></dt>
+<dd>&lt;filename&gt;.fits file</dd>
+</dl>
+<p><a href="#id18"><span class="problematic" id="id19">**</span></a>kwargs are used to update the <cite>UserCommands</cite> object which controls 
+the <cite>Detector</cite>. Therefore any dictionay keywords can be passed in the 
+form of a dictionary, i.e. {&#8220;EXPTIME&#8221; : 60, &#8220;OBS_OUPUT_DIR&#8221; : &#8221;./&#8221;}</p>
+<p>** In the current release ** the parameter that controls which read
+mode is used is the &#8220;SIM_SPEED&#8221; command. &lt;3 = full up-the-ramp, 3 &lt;=
+SIM_SPEED &lt; 7 = stacked single read outs. &lt;7 = one single read out for
+the whole NDIT*EXPTIME time span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="simcado.detector.Detector.write">
+<code class="descname">write</code><span class="sig-paren">(</span><em>filename=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Detector.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Detector.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a <cite>Detector</cite> object out to a FITS file</p>
+<p>Writes the important information containeed in a <cite>Detector</cite> object into 
+FITS file for later use. The main information written out include: the
+layout of the detector chips, any pixel maps associated with the 
+detector chips, a linearity curve and a QE curve for the chips.</p>
+<dl class="docutils">
+<dt>filename</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span><dd>path to the FITS file where the <cite>Detector</cite> object is stored. If 
+<cite>filename=None</cite> (by default), the file written is <cite>./detector.fits</cite></dd>
+</dl>
+<p>None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simcado.detector.Chip">
+<em class="property">class </em><code class="descclassname">simcado.detector.</code><code class="descname">Chip</code><span class="sig-paren">(</span><em>x_cen</em>, <em>y_cen</em>, <em>x_len</em>, <em>y_len</em>, <em>pix_res</em>, <em>id=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Chip"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Chip" title="Permalink to this definition">¶</a></dt>
+<dd><p>Holds the &#8220;image&#8221; as seen my a single chip in the focal plane</p>
+<p>The <cite>Chip</cite> object contains information on where it is located in the focal
+plane array. The method <cite>&lt;Source&gt;.apply_optical_train()</cite> passes an image of 
+the on-sky object to each <cite>Chip</cite>. THis image is resampled to the <cite>Chip</cite>
+pixel scale. Each <cite>Chip</cite> holds the &#8220;ideal&#8221; image as an array of expectraion
+values for the level of photons arriving during an EXPTIME. The <cite>Chip</cite> then
+adds detector noise and other characteristics to the image when
+&lt;Detector&gt;.readout() is called.</p>
+<dl class="docutils">
+<dt>x_cen, y_cen</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[arcsec] the coordinates of the centre of the chip relative to the
+centre of the focal plane</dd>
+<dt>x_len, y_len</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int</span><dd>the number of pixels per dimension</dd>
+<dt>pix_res</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[arcsec] the field of view per pixel</dd>
+<dt>id</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int</span><dd>an indetification number for the chip (assuming they are not correctly 
+ordered)</dd>
+</dl>
+<dl class="docutils">
+<dt>x_cen, y_cen</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[arcsec] the coordinates of the centre of the chip relative to the
+centre of the focal plane</dd>
+<dt>nasxis1, naxis2</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int</span><dd>the number of pixels per dimension</dd>
+<dt>pix_res</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[arcsec] the field of view per pixel</dd>
+<dt>id</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span><dd>the id of the chip relative to the others on the detector array. Default is <cite>None</cite></dd>
+<dt>dx, dy</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[arcsec] half of the field of view of each chip</dd>
+<dt>x_min, x_max, y_min, y_max</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">float</span><dd>[arcsec] the borders of the chip realtive to the centre of the focal plane</dd>
+<dt>array</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span><dd>an array for holding the signal registered by the <cite>Chip</cite></dd>
+</dl>
+<dl class="docutils">
+<dt>add_signal(signal)</dt>
+<dd>adds signal to <cite>.array</cite>. The signal should be the same dimensions as 
+<cite>Chip.array</cite></dd>
+<dt>add_uniform_background(emission, lam_min, lam_max, output=False)</dt>
+<dd>adds a constant to the signal in <cite>.array</cite>. The background level is found
+by integrating the the <cite>emission</cite> curve between <cite>lam_min</cite> and <cite>lam_max</cite>.
+It output is set to <cite>True</cite>, an image with the same dimensions as 
+<cite>.array</cite> scaled to the bacground flux is returned</dd>
+<dt>apply_pixel_map(pixel_map_path=None, dead_pix=None, max_well_depth=1E5)</dt>
+<dd>applies a mask to <cite>.array</cite> representing the position of the current 
+&#8220;hot&#8221; and &#8220;dead&#8221; pixels / lines</dd>
+<dt>reset_chip()</dt>
+<dd>resets the signal on the <cite>Chip</cite> to zero. In future releases, an 
+imlementation of the persistence characteristics of the detector will 
+go here.</dd>
+</dl>
+<p>Detector, Source, UserCommands, OpticalTrain</p>
+<dl class="method">
+<dt id="simcado.detector.Chip.add_signal">
+<code class="descname">add_signal</code><span class="sig-paren">(</span><em>signal</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Chip.add_signal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Chip.add_signal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a 2D array of photon signal to the Chip</p>
+<p>Add some signal photons to the detector array. Input units are expected
+to be [ph/s/pixel]</p>
+<dl class="docutils">
+<dt>signal :&nbsp;np.ndarray</dt>
+<dd>[ph/pixel/s] photon signal. <cite>signal</cite> should have the same dimensions
+as the <cite>array</cite></dd>
+</dl>
+<p>None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="simcado.detector.Chip.add_uniform_background">
+<code class="descname">add_uniform_background</code><span class="sig-paren">(</span><em>emission</em>, <em>lam_min</em>, <em>lam_max</em>, <em>output=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Chip.add_uniform_background"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Chip.add_uniform_background" title="Permalink to this definition">¶</a></dt>
+<dd><p>&lt;One-line summary goes here&gt;</p>
+<dl class="docutils">
+<dt>x&nbsp;:&nbsp;type [, optional [, {set values} ]]</dt>
+<dd>Description&nbsp;of <cite>x</cite>. [(Default value)]</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="simcado.detector.Chip.apply_pixel_map">
+<code class="descname">apply_pixel_map</code><span class="sig-paren">(</span><em>pixel_map_path=None</em>, <em>dead_pix=None</em>, <em>max_well_depth=100000.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Chip.apply_pixel_map"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Chip.apply_pixel_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>adds &#8220;hot&#8221; and &#8220;dead&#8221; pixels to the array</p>
+<p>applies a mask to <cite>.array</cite> representing the positions of the current 
+&#8220;hot&#8221; and &#8220;dead&#8221; pixels / lines. The method either reads in a FITS file
+with locations of these pixels, or generates a series of random 
+coordinates and random weights for the pixels.</p>
+<dl class="docutils">
+<dt>pixel_map_path :&nbsp;str</dt>
+<dd>path to the FITS file. Default is None</dd>
+<dt>dead_pix</dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">int</span><dd>[%] the percentage of dead or hot pixels on the chip - only used if
+pixel_map_path = None. Default is <cite>None</cite>.</dd>
+</dl>
+<p>max_well_depth : 1E5</p>
+<p>None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="simcado.detector.Chip.read_out">
+<code class="descname">read_out</code><span class="sig-paren">(</span><em>cmds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Chip.read_out"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Chip.read_out" title="Permalink to this definition">¶</a></dt>
+<dd><p>&lt;One-line summary goes here&gt;</p>
+<dl class="docutils">
+<dt>x&nbsp; :&nbsp; type [, optional [, {set values} ]]</dt>
+<dd>Description&nbsp;of <cite>x</cite>. [(Default value)]</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="simcado.detector.Chip.reset_chip">
+<code class="descname">reset_chip</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simcado/detector.html#Chip.reset_chip"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simcado.detector.Chip.reset_chip" title="Permalink to this definition">¶</a></dt>
+<dd><p>&lt;One-line summary goes here&gt;</p>
+<dl class="docutils">
+<dt>x&nbsp; :&nbsp; type [, optional [, {set values} ]]</dt>
+<dd>Description&nbsp;of <cite>x</cite>. [(Default value)]</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Documentation for the Code</a><ul>
+<li><a class="reference internal" href="#end-to-end-simulator-for-micado-on-the-e-elt">End-to-end simulator for MICADO on the E-ELT</a></li>
+<li><a class="reference internal" href="#useful-1-auto-members">useful #1 &#8211; auto members</a><ul>
+<li><a class="reference internal" href="#id1">End-to-end simulator for MICADO on the E-ELT</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#useful-2-explicit-members">useful #2 &#8211; explicit members</a><ul>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+<li><a class="reference internal" href="#routines">Routines</a></li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+<li><a class="reference internal" href="#notes">Notes</a></li>
+<li><a class="reference internal" href="#references">References</a></li>
+<li><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/code.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Kieran Leschinski, Oliver Czoske.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+      |
+      <a href="_sources/code.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

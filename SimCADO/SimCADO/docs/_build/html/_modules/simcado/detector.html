@@ -1,0 +1,1875 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>simcado.detector &mdash; simcado 0.2dev documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="simcado 0.2dev documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for simcado.detector</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">A description of the Chip noise properties and their positions on the Detector</span>
+
+<span class="sd">Summary</span>
+<span class="sd">-------</span>
+<span class="sd">This module holds three classes: `Detector`, `Chip` and `HXRGNoise`. </span>
+
+<span class="sd">`Chip`</span>
+<span class="sd">Everything to do with photons and electrons happens in the `Chip` class. Each </span>
+<span class="sd">`Chip` is initialised with a position relative to the centre of the detector </span>
+<span class="sd">array, a size [in pixels] and a resolution [in arcsec]. Photons fall onto the </span>
+<span class="sd">`Chip`s and are read out together with the read noise characteristics of the </span>
+<span class="sd">`Chip`.</span>
+
+<span class="sd">`Detector`</span>
+<span class="sd">The `Detector` holds the information on where the ´Chip`s are placed on the </span>
+<span class="sd">focal plane. Focal plane coordinates are in [arcsec]. These coordinates are </span>
+<span class="sd">either read in from a default file or determined by the user. The `Detector`</span>
+<span class="sd">object is an intermediary - it only passes photons information on the photons </span>
+<span class="sd">to the `Chip`s. It is mainly a convenience class so that the user can read out</span>
+<span class="sd">all `Chip`s at the same time.</span>
+
+<span class="sd">`HXRGNoise`</span>
+<span class="sd">This class is borrowed from Berhand Rauscher&#39;s script which generates realistic </span>
+<span class="sd">noise frames for the JWST NIRSpec instrument. NIRSpec uses Hawaii 2RG detectors</span>
+<span class="sd">but the noise properties scale well up to the H4RG chips that MICADO will use.</span>
+
+<span class="sd">Routines</span>
+<span class="sd">--------</span>
+<span class="sd">Detector(cmds)</span>
+<span class="sd">    builds an array of `Chip`s based on a `UserCommands` object</span>
+<span class="sd">Chip(**kwargs)</span>
+<span class="sd">    coverts incoming photons into ADUs and adds in read-out noise</span>
+<span class="sd">HXRGNoise(**kwargs)</span>
+<span class="sd">    generates realistic detector noise frames</span>
+
+<span class="sd">See Also</span>
+<span class="sd">--------</span>
+<span class="sd">OpticalTrain, Source</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">[1] Bernhard Rauscher&#39;s HxRG Noise Generator script</span>
+
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+<span class="sd">The `Detector` can be used in stand alone mode. In this case it outputs</span>
+<span class="sd">only the noise that a sealed off detector would generate</span>
+
+<span class="sd">```</span>
+<span class="sd">&gt;&gt;&gt; import simcado</span>
+<span class="sd">&gt;&gt;&gt; fpa = simcado.Detector(simcado.UserCommands())</span>
+<span class="sd">&gt;&gt;&gt; fpa.read_out(ouput=True, chips = [0])</span>
+<span class="sd">...</span>
+<span class="sd">```</span>
+
+<span class="sd">The `Detector` is more useful if we combine it with a `Source` object and an</span>
+<span class="sd">`OpticalTrain`. Here we create a `Source` object for an open cluster in the LMC</span>
+<span class="sd">and pass the photons arriving from it through the E-ELT and MICADO. The photons</span>
+<span class="sd">are then cast onto the detector array. Each `Chip` converts the photons to ADUs</span>
+<span class="sd">and adds the resulting image to an Astropy `HDUList`. The `HDUList` is then </span>
+<span class="sd">written to disk.</span>
+
+<span class="sd">```</span>
+<span class="sd"># Create an set of commands, optical train and detector</span>
+
+<span class="sd">&gt;&gt;&gt; import simcado</span>
+<span class="sd">&gt;&gt;&gt; cmds = simcado.UserCommands()</span>
+<span class="sd">&gt;&gt;&gt; opt_train = simcado.OpticalTrain(cmds)</span>
+<span class="sd">&gt;&gt;&gt; fpa = simcado.Detector(cmds)</span>
+
+<span class="sd"># Pass photons from a 10^4 Msun open cluster in the LMC through to the detector</span>
+
+<span class="sd">&gt;&gt;&gt; src = sim.optics_utils.source_1E4_Msun_cluster()</span>
+<span class="sd">&gt;&gt;&gt; src.apply_optical_train(opt_train, fpa)</span>
+
+<span class="sd"># Read out the detector array to a FITS file</span>
+
+<span class="sd">&gt;&gt;&gt; fpa.read_out(filename=&quot;my_raw_image.fits&quot;)</span>
+<span class="sd">```</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">############################</span>
+<span class="c1">#       TODO</span>
+<span class="c1"># - update open, write - remove references to self.params</span>
+
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">warnings</span><span class="o">,</span> <span class="nn">datetime</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.ndimage.interpolation</span> <span class="kn">import</span> <span class="n">zoom</span>
+
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span><span class="p">,</span> <span class="n">ascii</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">simcado.spectral</span> <span class="kn">as</span> <span class="nn">sc</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">spectral</span> <span class="kn">as</span> <span class="nn">sc</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Detector&quot;</span><span class="p">,</span> <span class="s2">&quot;Chip&quot;</span><span class="p">]</span>
+
+
+    
+<div class="viewcode-block" id="Detector"><a class="viewcode-back" href="../../code.html#simcado.detector.Detector">[docs]</a><span class="k">class</span> <span class="nc">Detector</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a series of `Chip` objects for a focal plane array</span>
+
+<span class="sd">    </span>
+<span class="sd">    Summary</span>
+<span class="sd">    -------</span>
+<span class="sd">    The `Detector` is a holder for the series of `Chip` objects which make up</span>
+<span class="sd">    the detector array. The main advantage of the `Detector` object is that the</span>
+<span class="sd">    user can read out all chips in the whole detector array at once. A </span>
+<span class="sd">    `Detector` is a parameter in the `Source.apply_optical_train()` method.</span>
+<span class="sd">    </span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cmds : UserCommands</span>
+<span class="sd">        Commands for how to model the Detector</span>
+<span class="sd">       </span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cmds : UserCommands</span>
+<span class="sd">        commands for modelling the detector layout and exposures</span>
+<span class="sd">    layout : astropy.table.Table</span>
+<span class="sd">        table of positions and sizes of the chips on the focal plane</span>
+<span class="sd">    chips : list</span>
+<span class="sd">        a list of the `Chips` which make up the detector array</span>
+<span class="sd">    oversample : int</span>
+<span class="sd">        factor between the internal angular resolution and the pixel FOV</span>
+<span class="sd">    fpa_res : float</span>
+<span class="sd">        [mas] field of view of a single pixel</span>
+<span class="sd">    exptime : float</span>
+<span class="sd">        [s] exposure time of a single DIT</span>
+<span class="sd">    tro : float</span>
+<span class="sd">        [s] time between a single non-destructive readout in up-the-ramp mode</span>
+<span class="sd">    ndit : int</span>
+<span class="sd">        number of exposures (DITs)</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    read_out(output, filename, chips, **kwargs)</span>
+<span class="sd">        for reading out the detector array into a FITS file</span>
+<span class="sd">    open(filename, **kwargs)</span>
+<span class="sd">        ** not yet implemented ** </span>
+<span class="sd">        Should be moved into a general function for detector.py which returns a</span>
+<span class="sd">        Detector object after reading in a saved detector file</span>
+<span class="sd">        </span>
+<span class="sd">    write(filename, **kwargs)</span>
+<span class="sd">        ** not yet implemented ** </span>
+<span class="sd">        Save the Detector object into a FITS file</span>
+<span class="sd">    </span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    Chip, Source, OpticalTrain, UserCommands</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Create a `Detector` object</span>
+<span class="sd">    ```</span>
+<span class="sd">    &gt;&gt;&gt; import simcado</span>
+<span class="sd">    &gt;&gt;&gt; my_cmds = simcado.UserCommands()</span>
+<span class="sd">    &gt;&gt;&gt; my_detector = simcado.Detector(my_cmds)</span>
+<span class="sd">    ```</span>
+<span class="sd">    </span>
+<span class="sd">    Read out only the first `Chip`</span>
+<span class="sd">    ```</span>
+<span class="sd">    &gt;&gt;&gt; my_detector.readout(filename=image.fits, chips=[0])</span>
+<span class="sd">    ```</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmds</span><span class="p">,</span> <span class="n">small_fov</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="c1"># 1. Read in the chip layout</span>
+        <span class="c1"># 2. Generate chip objects</span>
+        <span class="c1"># 3. Check if a noise file has been given</span>
+            <span class="c1"># if not, generate new noise files</span>
+            <span class="c1"># else: read in the noise file</span>
+            <span class="c1"># if the noise file has many extensions, choose several random </span>
+            <span class="c1">#    extensions</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span> <span class="o">=</span> <span class="n">cmds</span>
+        
+        <span class="k">if</span> <span class="n">small_fov</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">ascii</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;#  id    x_cen    y_cen   x_len   y_len</span>
+<span class="s2">                                        #       arcsec   arcsec   pixel   pixel</span>
+<span class="s2">                                         0        0        0    1024    1024&quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">ascii</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_CHIP_LAYOUT&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chips</span>  <span class="o">=</span> <span class="p">[</span><span class="n">Chip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">[</span><span class="s2">&quot;x_cen&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">[</span><span class="s2">&quot;y_cen&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> 
+                            <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">[</span><span class="s2">&quot;x_len&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">[</span><span class="s2">&quot;y_len&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> 
+                            <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_DETECTOR_PIX_SCALE&quot;</span><span class="p">],</span> 
+                            <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">])</span> 
+                       <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">[</span><span class="s2">&quot;x_cen&quot;</span><span class="p">]))]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">oversample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_OVERSAMPLING&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fpa_res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_DETECTOR_PIX_SCALE&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exptime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_EXPTIME&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ndit</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_NDIT&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tro</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_NONDESTRUCT_TRO&quot;</span><span class="p">]</span>
+            
+
+<div class="viewcode-block" id="Detector.read_out"><a class="viewcode-back" href="../../code.html#simcado.detector.Detector.read_out">[docs]</a>    <span class="k">def</span> <span class="nf">read_out</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">to_disk</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">chips</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate the read out process of the detector array</span>
+<span class="sd">    </span>
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+<span class="sd">        Based on the parameters set in the `UserCommands` object, the detector</span>
+<span class="sd">        will read out the images stored on the `Chips` according to the</span>
+<span class="sd">        specified read out scheme, i.e. Fowler, up-the-ramp, single read, etc. </span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str</span>
+<span class="sd">            where the file is to be saved. If `None` the current directory is </span>
+<span class="sd">            used. Default is `None`</span>
+<span class="sd">        to_disk : bool</span>
+<span class="sd">            a flag for where the output should go. If `True` the  `Chip` images</span>
+<span class="sd">            will be returned to the user (i.e. in an iPython session) as an</span>
+<span class="sd">            `astropy.fits.HDUList` object. If `False` the `Chip` images will be</span>
+<span class="sd">            written to a `.fits` file on disk. If no `filename` is specified,</span>
+<span class="sd">            the output is be called &quot;output.fits&quot;. The default is `False`</span>
+<span class="sd">        chips : int, array-like, optional</span>
+<span class="sd">            The chip or chips to be read out, based on the detector_layout.dat</span>
+<span class="sd">            file. Default is the first `Chip` specified in the list, i.e. [0]</span>
+<span class="sd">            </span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        `if output == True:`</span>
+<span class="sd">            astropy.io.fits.HDUList</span>
+<span class="sd">        `else:`</span>
+<span class="sd">            &lt;filename&gt;.fits file </span>
+<span class="sd">        </span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+<span class="sd">        **kwargs are used to update the `UserCommands` object which controls </span>
+<span class="sd">        the `Detector`. Therefore any dictionay keywords can be passed in the </span>
+<span class="sd">        form of a dictionary, i.e. {&quot;EXPTIME&quot; : 60, &quot;OBS_OUPUT_DIR&quot; : &quot;./&quot;}</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        </span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        ** In the current release ** the parameter that controls which read</span>
+<span class="sd">        mode is used is the &quot;SIM_SPEED&quot; command. &lt;3 = full up-the-ramp, 3 &lt;=</span>
+<span class="sd">        SIM_SPEED &lt; 7 = stacked single read outs. &lt;7 = one single read out for</span>
+<span class="sd">        the whole NDIT*EXPTIME time span.</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1">#removed kwargs</span>
+        <span class="c1">#self.cmds.update(kwargs)</span>
+        
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">to_disk</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span> 
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_OUTPUT_DIR&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_OUTPUT_DIR&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;./output.fits&quot;</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_OUTPUT_DIR&quot;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">chips</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">chips</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="n">ro_chips</span> <span class="o">=</span> <span class="p">[</span><span class="n">chips</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">chips</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">chips</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="n">ro_chips</span> <span class="o">=</span> <span class="n">chips</span>
+        <span class="k">elif</span> <span class="n">chips</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ro_chips</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Something wrong with `chips`&quot;</span><span class="p">)</span>
+        
+        <span class="n">pri_hdu_flag</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ro_chips</span><span class="p">:</span>
+            <span class="c1">######</span>
+            <span class="c1"># Put in a catch here so that only the chips specified in &quot;chips&quot;</span>
+            <span class="c1"># are read out</span>
+            <span class="c1">######</span>
+            
+            
+            <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">read_out</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cmds</span><span class="p">)</span>
+                        
+            <span class="k">if</span> <span class="n">pri_hdu_flag</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+                <span class="n">hdus</span> <span class="o">=</span> <span class="p">[</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">array</span><span class="p">)]</span>
+                <span class="n">pri_hdu_flag</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">hdus</span> <span class="o">+=</span> <span class="p">[</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">array</span><span class="p">)]</span>
+            
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">pix_res</span><span class="p">,</span> 
+                                                    <span class="s2">&quot;[arcsec] Pixel resolution&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CDELT2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">pix_res</span><span class="p">,</span>
+                                                    <span class="s2">&quot;[arcsec] Pixel resolution&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CRVAL1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">x_cen</span><span class="p">,</span> 
+                        <span class="s2">&quot;[arcsec] central pixel relative to detector centre&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CRVAL2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">y_cen</span><span class="p">,</span> 
+                        <span class="s2">&quot;[arcsec] central pixel relative to detector centre&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CRPIX1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">naxis1</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> 
+                                                                <span class="s2">&quot;central pixel&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CRPIX2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">naxis2</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> 
+                                                                <span class="s2">&quot;central pixel&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CHIP_ID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;Chip ID&quot;</span><span class="p">)</span>
+
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;BUNIT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;ph/s&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exptime</span><span class="p">,</span> <span class="s2">&quot;[s] Exposure time&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;NDIT&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ndit</span><span class="p">,</span> <span class="s2">&quot;Number of exposures&quot;</span><span class="p">)</span>
+            <span class="n">hdus</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;TRO&quot;</span><span class="p">]</span>   <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tro</span><span class="p">,</span> 
+                                    <span class="s2">&quot;[s] Time between non-destructive readouts&quot;</span><span class="p">)</span>
+
+        <span class="n">hdulist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">hdus</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">to_disk</span> <span class="ow">is</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">hdulist</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">hdulist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+        
+            
+<div class="viewcode-block" id="Detector.open"><a class="viewcode-back" href="../../code.html#simcado.detector.Detector.open">[docs]</a>    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Opens a saved `Detector` file. </span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+<span class="sd">        ** Not yet implemented ** </span>
+<span class="sd">        ** Should be moved outside of `Detector` and called with </span>
+<span class="sd">        `detector.open()` **</span>
+<span class="sd">        </span>
+<span class="sd">        Detector objects can be saved to FITS file and read back in for later</span>
+<span class="sd">        simulations. </span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str</span>
+<span class="sd">            path to the FITS file where the `Detector` object is stored</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        `simcado.Detector` object</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+     
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">filename</span> <span class="o">+</span> <span class="s2">&quot; doesn&#39;t exist&quot;</span><span class="p">)</span>
+
+        <span class="n">f</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+        
+<div class="viewcode-block" id="Detector.write"><a class="viewcode-back" href="../../code.html#simcado.detector.Detector.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write a `Detector` object out to a FITS file</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+<span class="sd">        Writes the important information containeed in a `Detector` object into </span>
+<span class="sd">        FITS file for later use. The main information written out include: the</span>
+<span class="sd">        layout of the detector chips, any pixel maps associated with the </span>
+<span class="sd">        detector chips, a linearity curve and a QE curve for the chips.</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str, optional</span>
+<span class="sd">            path to the FITS file where the `Detector` object is stored. If </span>
+<span class="sd">            `filename=None` (by default), the file written is `./detector.fits`</span>
+<span class="sd">            </span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;OBS_OUTPUT_DIR&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No output path was specified. &quot;</span> <span class="o">+</span> \
+                             <span class="s2">&quot;Use either filename= or HXRG_OUTPUT_PATH=&quot;</span><span class="p">)</span>
+
+        <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;PIX_RES&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">exptime</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;FPA_GAIN&quot;</span><span class="p">]</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;SIMCADO&quot;</span><span class="p">]</span><span class="o">=</span> <span class="s2">&quot;FPA_NOISE&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">filename</span><span class="o">+</span><span class="s2">&quot; exists and is busy. OS won&#39;t let me write&quot;</span><span class="p">)</span></div></div>
+
+    
+<span class="k">def</span> <span class="nf">plot_detector_layout</span><span class="p">(</span><span class="n">detector</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Plot the detector layout. NOT FINISHED &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;matplotlib can&#39;t be found&quot;</span><span class="p">)</span>
+    
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+    <span class="n">clr</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;g&quot;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">9</span><span class="p">):</span>
+        <span class="n">chip</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">chips</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">((</span><span class="n">chip</span><span class="o">.</span><span class="n">x_min</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">x_max</span><span class="p">),</span> <span class="p">(</span><span class="n">chip</span><span class="o">.</span><span class="n">y_min</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">y_min</span><span class="p">),</span><span class="n">c</span><span class="o">=</span><span class="n">clr</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">clr</span><span class="p">)])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">((</span><span class="n">chip</span><span class="o">.</span><span class="n">x_min</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">x_max</span><span class="p">),</span> <span class="p">(</span><span class="n">chip</span><span class="o">.</span><span class="n">y_max</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">y_max</span><span class="p">),</span><span class="n">c</span><span class="o">=</span><span class="n">clr</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">clr</span><span class="p">)])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">((</span><span class="n">chip</span><span class="o">.</span><span class="n">x_min</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">x_min</span><span class="p">),</span> <span class="p">(</span><span class="n">chip</span><span class="o">.</span><span class="n">y_min</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">y_max</span><span class="p">),</span><span class="n">c</span><span class="o">=</span><span class="n">clr</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">clr</span><span class="p">)])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">((</span><span class="n">chip</span><span class="o">.</span><span class="n">x_max</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">x_max</span><span class="p">),</span> <span class="p">(</span><span class="n">chip</span><span class="o">.</span><span class="n">y_min</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">y_max</span><span class="p">),</span><span class="n">c</span><span class="o">=</span><span class="n">clr</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">clr</span><span class="p">)])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">chip</span><span class="o">.</span><span class="n">x_cen</span><span class="p">,</span><span class="n">chip</span><span class="o">.</span><span class="n">y_cen</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">),</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Distance [arcsec]&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">);</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Distance [arcsec]&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        
+    
+<div class="viewcode-block" id="Chip"><a class="viewcode-back" href="../../code.html#simcado.detector.Chip">[docs]</a><span class="k">class</span> <span class="nc">Chip</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Holds the &quot;image&quot; as seen my a single chip in the focal plane</span>
+
+
+<span class="sd">    Summary</span>
+<span class="sd">    -------</span>
+<span class="sd">    The `Chip` object contains information on where it is located in the focal</span>
+<span class="sd">    plane array. The method `&lt;Source&gt;.apply_optical_train()` passes an image of </span>
+<span class="sd">    the on-sky object to each `Chip`. THis image is resampled to the `Chip`</span>
+<span class="sd">    pixel scale. Each `Chip` holds the &quot;ideal&quot; image as an array of expectraion</span>
+<span class="sd">    values for the level of photons arriving during an EXPTIME. The `Chip` then</span>
+<span class="sd">    adds detector noise and other characteristics to the image when</span>
+<span class="sd">    &lt;Detector&gt;.readout() is called.</span>
+
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x_cen, y_cen : float</span>
+<span class="sd">        [arcsec] the coordinates of the centre of the chip relative to the</span>
+<span class="sd">        centre of the focal plane</span>
+<span class="sd">    x_len, y_len : int</span>
+<span class="sd">        the number of pixels per dimension</span>
+<span class="sd">    pix_res : float</span>
+<span class="sd">        [arcsec] the field of view per pixel</span>
+<span class="sd">    id : int</span>
+<span class="sd">        an indetification number for the chip (assuming they are not correctly </span>
+<span class="sd">        ordered)</span>
+<span class="sd">        </span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x_cen, y_cen : float</span>
+<span class="sd">        [arcsec] the coordinates of the centre of the chip relative to the</span>
+<span class="sd">        centre of the focal plane</span>
+<span class="sd">    nasxis1, naxis2 : int</span>
+<span class="sd">        the number of pixels per dimension</span>
+<span class="sd">    pix_res : float</span>
+<span class="sd">        [arcsec] the field of view per pixel</span>
+<span class="sd">    id : int, optional</span>
+<span class="sd">        the id of the chip relative to the others on the detector array. Default is `None`</span>
+<span class="sd">    dx, dy : float</span>
+<span class="sd">        [arcsec] half of the field of view of each chip</span>
+<span class="sd">    x_min, x_max, y_min, y_max : float</span>
+<span class="sd">        [arcsec] the borders of the chip realtive to the centre of the focal plane        </span>
+<span class="sd">    array : np.ndarray</span>
+<span class="sd">        an array for holding the signal registered by the `Chip`</span>
+
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    add_signal(signal)</span>
+<span class="sd">        adds signal to `.array`. The signal should be the same dimensions as </span>
+<span class="sd">        `Chip.array`</span>
+<span class="sd">    add_uniform_background(emission, lam_min, lam_max, output=False)</span>
+<span class="sd">        adds a constant to the signal in `.array`. The background level is found</span>
+<span class="sd">        by integrating the the `emission` curve between `lam_min` and `lam_max`.</span>
+<span class="sd">        It output is set to `True`, an image with the same dimensions as </span>
+<span class="sd">        `.array` scaled to the bacground flux is returned</span>
+<span class="sd">    apply_pixel_map(pixel_map_path=None, dead_pix=None, max_well_depth=1E5)</span>
+<span class="sd">        applies a mask to `.array` representing the position of the current </span>
+<span class="sd">        &quot;hot&quot; and &quot;dead&quot; pixels / lines</span>
+<span class="sd">    reset_chip()</span>
+<span class="sd">        resets the signal on the `Chip` to zero. In future releases, an </span>
+<span class="sd">        imlementation of the persistence characteristics of the detector will </span>
+<span class="sd">        go here.</span>
+<span class="sd">       </span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    Detector, Source, UserCommands, OpticalTrain</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_cen</span><span class="p">,</span> <span class="n">y_cen</span><span class="p">,</span> <span class="n">x_len</span><span class="p">,</span> <span class="n">y_len</span><span class="p">,</span> <span class="n">pix_res</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_cen</span>  <span class="o">=</span> <span class="n">x_cen</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_cen</span>  <span class="o">=</span> <span class="n">y_cen</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span> <span class="o">=</span> <span class="n">x_len</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span> <span class="o">=</span> <span class="n">y_len</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_res</span> <span class="o">=</span> <span class="n">pix_res</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span>     <span class="o">=</span> <span class="nb">id</span>
+        
+        <span class="n">dx</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_len</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">pix_res</span>
+        <span class="n">dy</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_len</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">pix_res</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_min</span> <span class="o">=</span> <span class="n">x_cen</span> <span class="o">-</span> <span class="n">dx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_max</span> <span class="o">=</span> <span class="n">x_cen</span> <span class="o">+</span> <span class="n">dx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_min</span> <span class="o">=</span> <span class="n">y_cen</span> <span class="o">-</span> <span class="n">dy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_max</span> <span class="o">=</span> <span class="n">y_cen</span> <span class="o">+</span> <span class="n">dy</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="bp">None</span>
+   
+   
+<div class="viewcode-block" id="Chip.add_signal"><a class="viewcode-back" href="../../code.html#simcado.detector.Chip.add_signal">[docs]</a>    <span class="k">def</span> <span class="nf">add_signal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signal</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add a 2D array of photon signal to the Chip</span>
+<span class="sd">       </span>
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+<span class="sd">        Add some signal photons to the detector array. Input units are expected</span>
+<span class="sd">        to be [ph/s/pixel]</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        signal : np.ndarray</span>
+<span class="sd">            [ph/pixel/s] photon signal. `signal` should have the same dimensions</span>
+<span class="sd">            as the `array`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span> <span class="ow">and</span> <span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">signal</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">+=</span> <span class="n">signal</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; != &quot;</span> <span class="o">+</span> \
+                                 <span class="nb">str</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">)))</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">+=</span> <span class="n">signal</span></div>
+
+
+<div class="viewcode-block" id="Chip.add_uniform_background"><a class="viewcode-back" href="../../code.html#simcado.detector.Chip.add_uniform_background">[docs]</a>    <span class="k">def</span> <span class="nf">add_uniform_background</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emission</span><span class="p">,</span> <span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Take an EmissionCurve and some wavelength boundaries, lam_min lam_max,</span>
+<span class="sd">        and sum up the photons in between. Add those to the source array.</span>
+
+<span class="sd">        Keywords:</span>
+<span class="sd">        - emission_curve: EmissionCurve object with background emission photons</span>
+<span class="sd">        - lam_min, lam_max: the wavelength limits</span>
+
+<span class="sd">        Optional keywords:</span>
+<span class="sd">        - output: [False, True] if output is True, the BG emission array is</span>
+<span class="sd">                  returned</span>
+<span class="sd">                  </span>
+<span class="sd">        Output is in [ph/s/pixel]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">emission</span><span class="p">)</span> <span class="o">==</span> <span class="n">sc</span><span class="o">.</span><span class="n">EmissionCurve</span><span class="p">:</span>
+            <span class="n">bg_photons</span> <span class="o">=</span> <span class="n">emission</span><span class="o">.</span><span class="n">photons_in_range</span><span class="p">(</span><span class="n">lam_min</span><span class="p">,</span> <span class="n">lam_max</span><span class="p">)</span>        
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">emission</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">bg_photons</span> <span class="o">=</span> <span class="n">emission</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bg_photons</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;type(emission) invalid. No background added&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">bg_photons</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">+=</span> <span class="n">bg_photons</span></div>
+            
+
+<div class="viewcode-block" id="Chip.apply_pixel_map"><a class="viewcode-back" href="../../code.html#simcado.detector.Chip.apply_pixel_map">[docs]</a>    <span class="k">def</span> <span class="nf">apply_pixel_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_map_path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">dead_pix</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
+                        <span class="n">max_well_depth</span><span class="o">=</span><span class="mf">1E5</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        adds &quot;hot&quot; and &quot;dead&quot; pixels to the array</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+<span class="sd">        applies a mask to `.array` representing the positions of the current </span>
+<span class="sd">        &quot;hot&quot; and &quot;dead&quot; pixels / lines. The method either reads in a FITS file</span>
+<span class="sd">        with locations of these pixels, or generates a series of random </span>
+<span class="sd">        coordinates and random weights for the pixels.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pixel_map_path : str</span>
+<span class="sd">            path to the FITS file. Default is None</span>
+<span class="sd">        dead_pix : int</span>
+<span class="sd">            [%] the percentage of dead or hot pixels on the chip - only used if</span>
+<span class="sd">            pixel_map_path = None. Default is `None`.</span>
+<span class="sd">        max_well_depth : 1E5</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+ 
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pixel_map</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">pixel_map_path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">pixel_map</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;pixel_map.shape != detector_array.shape&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">+=</span> <span class="n">pixel_map</span> <span class="o">*</span> <span class="n">max_well_depth</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">dead_pix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span> <span class="o">*</span> <span class="n">dead_pix</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">]</span> <span class="o">+=</span> <span class="n">z</span> <span class="o">*</span> <span class="n">max_well_depth</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Couldn&#39;t apply pixel_map&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_apply_saturation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Cap all pixels that are above the well depth.</span>
+<span class="sd">        !! TODO: apply a linearity curve and shift excess light into !!</span>
+<span class="sd">        !! neighbouring pixels !!</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">max_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;FPA_WELL_DEPTH&quot;</span><span class="p">]</span>
+        <span class="n">arr</span><span class="p">[</span><span class="n">arr</span> <span class="o">&gt;</span> <span class="n">max_val</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_val</span>
+        <span class="k">return</span> <span class="n">arr</span>
+                                 
+                                 
+<div class="viewcode-block" id="Chip.reset_chip"><a class="viewcode-back" href="../../code.html#simcado.detector.Chip.reset_chip">[docs]</a>    <span class="k">def</span> <span class="nf">reset_chip</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">### TODO - add in persistence </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="bp">None</span></div>
+
+
+<div class="viewcode-block" id="Chip.read_out"><a class="viewcode-back" href="../../code.html#simcado.detector.Chip.read_out">[docs]</a>    <span class="k">def</span> <span class="nf">read_out</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmds</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Readout the detector array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1">###############################################</span>
+        <span class="c1">#!!!!!!!!!!! TODO - add dark strom !!!!!!!!!!!#</span>
+        
+        <span class="n">dit</span>     <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_EXPTIME&quot;</span><span class="p">]</span>
+        <span class="n">ndit</span>    <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_NDIT&quot;</span><span class="p">])</span>
+        <span class="n">tro</span>     <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_NONDESTRUCT_TRO&quot;</span><span class="p">]</span>
+        <span class="n">max_byte</span> <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_MAX_RAM_CHUNK_GB&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">30</span>
+        <span class="n">dark</span>    <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_DARK_MEDIAN&quot;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+        <span class="c1"># At this point, the only negatives come from the convolution.</span>
+        <span class="c1"># Remove them for the Poisson process</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="n">out_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_SPEED&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndit</span><span class="p">):</span>
+                <span class="n">out_array</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_out_uptheramp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">dit</span><span class="p">,</span> <span class="n">tro</span><span class="p">,</span>
+                                                   <span class="n">max_byte</span><span class="p">)</span>
+                <span class="n">out_array</span> <span class="o">+=</span> <span class="n">dark</span> <span class="o">*</span> <span class="n">dit</span>
+
+        <span class="k">elif</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_SPEED&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_SPEED&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">7</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndit</span><span class="p">):</span>
+                <span class="n">out_array</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_out_fast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">dit</span><span class="p">)</span>
+                <span class="n">out_array</span> <span class="o">+=</span> <span class="n">dark</span> <span class="o">*</span> <span class="n">dit</span>
+                
+        <span class="k">elif</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_SPEED&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">7</span><span class="p">:</span>
+            <span class="n">out_array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_out_superfast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">dit</span><span class="p">,</span> <span class="n">ndit</span><span class="p">)</span>
+            <span class="n">out_array</span> <span class="o">+=</span> <span class="n">dark</span> <span class="o">*</span> <span class="n">dit</span> <span class="o">*</span> <span class="n">ndit</span>
+            
+        <span class="c1">#### TODO #########</span>
+        <span class="c1"># add read out noise for every readout </span>
+        <span class="n">out_array</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_noise_frame</span><span class="p">(</span><span class="n">cmds</span><span class="p">)</span> <span class="o">*</span> <span class="n">ndit</span>
+
+        <span class="k">if</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;OBS_REMOVE_CONST_BG&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">:</span>
+            <span class="n">min_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">out_array</span><span class="p">)</span>
+            <span class="n">out_array</span> <span class="o">-=</span> <span class="n">min_val</span>
+        
+        <span class="k">return</span> <span class="n">out_array</span></div>
+
+    <span class="c1">## TODO: What to do if dit = min_dit (single read)?</span>
+    <span class="c1">## TODO: Make breaking up into memory chunks more flexible?</span>
+    <span class="k">def</span> <span class="nf">_read_out_uptheramp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">dit</span><span class="p">,</span> <span class="n">tro</span><span class="o">=</span><span class="mf">1.3</span><span class="p">,</span> <span class="n">max_byte</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Test readout onto a detector using cube model</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ==========</span>
+<span class="sd">        image : </span>
+<span class="sd">            a 2D image to be mapped onto the detector. Units are [ph/s/pixel]</span>
+<span class="sd">        dit : </span>
+<span class="sd">            integration time [s]</span>
+<span class="sd">        tro : </span>
+<span class="sd">            time for a single non-destructive read (default: 1.3 seconds)</span>
+
+<span class="sd">        Optional Parameters</span>
+<span class="sd">        ===================</span>
+<span class="sd">        max_byte : </span>
+<span class="sd">            the largest possible chunk of memory that can be used for computing </span>
+<span class="sd">            the sampling slope</span>
+
+<span class="sd">        This function builds an intermediate cube of dimensions (nx, ny, nro) with a</span>
+<span class="sd">        layer for  each non-destructive read.</span>
+
+<span class="sd">        Output is given in [ph/pixel]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="n">nro</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">dit</span> <span class="o">/</span> <span class="n">tro</span><span class="p">)</span>
+        <span class="n">tpts</span> <span class="o">=</span>  <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nro</span><span class="p">))</span> <span class="o">*</span> <span class="n">tro</span>
+
+        <span class="n">img_byte</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">nbytes</span>
+        <span class="n">pix_byte</span> <span class="o">=</span> <span class="n">img_byte</span> <span class="o">/</span> <span class="p">(</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">)</span>
+
+        <span class="c1">#max_byte =            ## TODO: arbitrary, function parameter?</span>
+        <span class="n">max_pix</span> <span class="o">=</span> <span class="n">max_byte</span> <span class="o">/</span> <span class="n">pix_byte</span>
+
+        <span class="n">cube_megabyte</span> <span class="o">=</span> <span class="n">img_byte</span> <span class="o">*</span> <span class="n">nro</span> <span class="o">/</span> <span class="mi">2</span><span class="o">**</span><span class="mi">20</span>
+        <span class="c1">#print(&quot;Full cube  has {0:.1f} Megabytes&quot;.format(cube_megabyte))</span>
+
+        <span class="n">ny_cut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">max_pix</span> <span class="o">/</span> <span class="p">(</span><span class="n">nx</span> <span class="o">*</span> <span class="n">nro</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ny_cut</span> <span class="o">&gt;=</span> <span class="n">ny</span><span class="p">:</span>
+            <span class="n">ny_cut</span> <span class="o">=</span> <span class="n">ny</span>
+        <span class="c1">#print(&quot;Cut image to ny={0:d} rows&quot;.format(ny_cut))</span>
+
+        <span class="n">slope</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">cube</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny_cut</span><span class="p">,</span> <span class="n">nro</span><span class="p">))</span>
+
+        <span class="n">y1</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">y1</span> <span class="o">&lt;</span> <span class="n">ny</span><span class="p">:</span>
+
+            <span class="n">y2</span> <span class="o">=</span> <span class="n">y1</span> <span class="o">+</span> <span class="n">ny_cut</span>
+            <span class="k">if</span> <span class="n">y2</span> <span class="o">&gt;</span> <span class="n">ny</span><span class="p">:</span>
+                <span class="n">y2</span> <span class="o">=</span> <span class="n">ny</span>
+                <span class="n">ny_cut</span> <span class="o">=</span> <span class="n">ny</span> <span class="o">-</span> <span class="n">y1</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">del</span><span class="p">(</span><span class="n">cube</span><span class="p">)</span>
+                    <span class="n">cube</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny_cut</span><span class="p">,</span> <span class="n">nro</span><span class="p">))</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+            <span class="c1">## Fill the cube with Poisson realization, individual reads</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nro</span><span class="p">):</span>
+                <span class="n">cube</span><span class="p">[:,:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">image</span><span class="p">[:,</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">]</span> <span class="o">*</span> <span class="n">tro</span><span class="p">)</span>
+
+            <span class="c1">## Build the ramp</span>
+            <span class="n">sumcube</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+            <span class="c1">## determine the slope using explicit formula calculated over cube</span>
+            <span class="n">Sx</span> <span class="o">=</span> <span class="n">tpts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">Sxx</span> <span class="o">=</span> <span class="p">(</span><span class="n">tpts</span> <span class="o">*</span> <span class="n">tpts</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">Sy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sumcube</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">Sxy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sumcube</span> <span class="o">*</span> <span class="n">tpts</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+            <span class="n">slope</span><span class="p">[:,</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">nro</span> <span class="o">*</span> <span class="n">Sxy</span> <span class="o">-</span> <span class="n">Sx</span> <span class="o">*</span> <span class="n">Sy</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">nro</span> <span class="o">*</span> <span class="n">Sxx</span> <span class="o">-</span> <span class="n">Sx</span> <span class="o">*</span> <span class="n">Sx</span><span class="p">)</span>
+
+            <span class="c1">## Move to next slice</span>
+            <span class="n">y1</span> <span class="o">=</span> <span class="n">y2</span>
+
+        <span class="c1"># return values are [ph/pixel]</span>
+        <span class="k">return</span> <span class="n">slope</span> <span class="o">*</span> <span class="n">dit</span>
+
+    <span class="k">def</span> <span class="nf">_read_out_fast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">dit</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">image</span> <span class="o">*</span> <span class="n">dit</span><span class="p">)</span>
+
+        
+    <span class="k">def</span> <span class="nf">_read_out_superfast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">dit</span><span class="p">,</span> <span class="n">ndit</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># As noise increases with sqrt(t), we </span>
+        <span class="n">exptime</span> <span class="o">=</span> <span class="n">dit</span> <span class="o">*</span> <span class="n">ndit</span>
+        <span class="n">image2</span> <span class="o">=</span> <span class="n">image</span> <span class="o">*</span> <span class="n">exptime</span>
+        <span class="n">image2</span><span class="p">[</span><span class="n">image2</span> <span class="o">&gt;</span> <span class="mf">2.14E9</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.14E9</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">image2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_read_noise_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmds</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read in read-out-noise from the FITS file specified by FPA_NOISE_PATH</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_USE_NOISE&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;no&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">))</span>
+        
+        <span class="k">if</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_NOISE_PATH&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_NOISE_PATH&quot;</span><span class="p">],</span> <span class="bp">False</span><span class="p">))</span>
+            <span class="n">layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_NOISE_PATH&quot;</span><span class="p">],</span> <span class="n">layer</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">tmp</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="s2">&quot;gen&quot;</span> <span class="ow">in</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_NOISE_PATH&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_OUTPUT_PATH&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_generate_hxrg_noise</span><span class="p">(</span><span class="n">cmds</span><span class="p">)</span>
+                <span class="n">tmp</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_OUTPUT_PATH&quot;</span><span class="p">])</span>
+                <span class="k">return</span> <span class="n">tmp</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_hxrg_noise</span><span class="p">(</span><span class="n">cmds</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">))</span>
+        
+        
+    <span class="k">def</span> <span class="nf">_generate_hxrg_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmds</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;One-line summary goes here&gt;</span>
+
+
+<span class="sd">        Summary</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x  :  type [, optional [, {set values} ]]</span>
+<span class="sd">            Description of `x`. [(Default value)]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+
+<span class="sd">        Keyword Arguments (**kwargs)</span>
+<span class="sd">        ----------------------------</span>
+
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a detector noise array using Bernard Rauscher&#39;s NGHxRG tool</span>
+
+<span class="sd">        Optional Keywords:</span>
+<span class="sd">        - HXRG_OUTPUT_PATH:</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> <span class="k">print</span><span class="p">(</span><span class="s2">&quot;updating &quot;</span><span class="p">,</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># HXRG needs a pca file to run. Work out what a PCA file means!!</span>
+        <span class="n">ng_h4rg</span>     <span class="o">=</span> <span class="n">HXRGNoise</span><span class="p">(</span><span class="n">naxis1</span>   <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;CHIP_NAXIS1&quot;</span><span class="p">],</span>
+                                <span class="n">naxis2</span>   <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;CHIP_NAXIS2&quot;</span><span class="p">],</span>
+                                <span class="n">n_out</span>    <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_NUM_OUTPUTS&quot;</span><span class="p">],</span>
+                                <span class="n">nroh</span>     <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_NUM_ROW_OH&quot;</span><span class="p">],</span>
+                                <span class="n">pca0_file</span><span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_PCA0_FILENAME&quot;</span><span class="p">],</span>
+                                <span class="n">verbose</span>  <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;SIM_VERBOSE&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Make a noise file</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">ng_h4rg</span><span class="o">.</span><span class="n">mknoise</span><span class="p">(</span><span class="n">o_file</span>   <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_OUTPUT_PATH&quot;</span><span class="p">],</span>
+                                <span class="n">rd_noise</span> <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;FPA_READOUT_MEDIAN&quot;</span><span class="p">],</span>
+                                <span class="n">pedestal</span> <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_PEDESTAL&quot;</span><span class="p">],</span>
+                                <span class="n">c_pink</span>   <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_CORR_PINK&quot;</span><span class="p">],</span>
+                                <span class="n">u_pink</span>   <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_UNCORR_PINK&quot;</span><span class="p">],</span>
+                                <span class="n">acn</span>      <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="s2">&quot;HXRG_ALT_COL_NOISE&quot;</span><span class="p">])</span>
+        
+        <span class="k">return</span> <span class="n">noise</span>
+
+
+    <span class="k">def</span> <span class="nf">__array__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span> <span class="o">*</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span> <span class="o">+</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span> <span class="o">-</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">psf_new</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">psf_new</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sub__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+        
+        
+<span class="c1">###############################################################################</span>
+<span class="c1">#                       NGHXRG by Bernard Rauscher                            #</span>
+<span class="c1">#             see the paper: http://arxiv.org/abs/1509.06264                  #</span>
+<span class="c1">#           downloaded from: http://jwst.nasa.gov/publications.html           #</span>
+<span class="c1">###############################################################################</span>
+
+<span class="c1"># dependencies include: astropy, numpy, scipy [, datetime, warnings, os]</span>
+<span class="c1"># import os</span>
+<span class="c1"># import warnings</span>
+<span class="c1"># from astropy.io import fits</span>
+<span class="c1"># import numpy as np</span>
+<span class="c1"># from scipy.ndimage.interpolation import zoom</span>
+<span class="c1"># import datetime</span>
+<span class="c1"># import matplotlib.pyplot as plt # Handy for debugging</span>
+
+<span class="c1">#warnings.filterwarnings(&#39;ignore&#39;)</span>
+
+<span class="k">class</span> <span class="nc">HXRGNoise</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    HXRGNoise is a class for making realistic Teledyne HxRG system</span>
+<span class="sd">    noise. The noise model includes correlated, uncorrelated,</span>
+<span class="sd">    stationary, and non-stationary components. The default parameters</span>
+<span class="sd">    make noise that resembles Channel 1 of JWST NIRSpec. NIRSpec uses</span>
+<span class="sd">    H2RG detectors. They are read out using four video outputs at</span>
+<span class="sd">    1.e+5 pix/s/output.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># These class variables are common to all HxRG detectors</span>
+    <span class="n">nghxrg_version</span> <span class="o">=</span> <span class="mf">2.3</span> <span class="c1"># Software version</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">naxis1</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">naxis2</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">naxis3</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">n_out</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">dt</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">nroh</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">nfoh</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">pca0_file</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                 <span class="n">reverse_scan_direction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                 <span class="n">reference_pixel_border_width</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate Teledyne HxRG+SIDECAR ASIC system noise.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            naxis1      - X-dimension of the FITS cube</span>
+<span class="sd">            naxis2      - Y-dimension of the FITS cube</span>
+<span class="sd">            naxis3      - Z-dimension of the FITS cube</span>
+<span class="sd">                          (number of up-the-ramp samples)</span>
+<span class="sd">            n_out       - Number of detector outputs</span>
+<span class="sd">            nfoh        - New frame overhead in rows. This allows for a short</span>
+<span class="sd">                          wait at the end of a frame before starting the next</span>
+<span class="sd">                          one.</span>
+<span class="sd">            nroh        - New row overhead in pixels. This allows for a short</span>
+<span class="sd">                          wait at the end of a row before starting the next one.</span>
+<span class="sd">            dt          - Pixel dwell time in seconds</span>
+<span class="sd">            pca0_file   - Name of a FITS file that contains PCA-zero</span>
+<span class="sd">            verbose     - Enable this to provide status reporting</span>
+<span class="sd">            reference_pixel_border_width - Width of reference pixel border</span>
+<span class="sd">                                           around image area</span>
+<span class="sd">            reverse_scan_direction - Enable this to reverse the fast scanner</span>
+<span class="sd">                                     readout directions. This</span>
+<span class="sd">                                     capability was added to support</span>
+<span class="sd">                                     Teledyne&#39;s programmable fast scan</span>
+<span class="sd">                                     readout directions. The default</span>
+<span class="sd">                                     setting =False corresponds to</span>
+<span class="sd">                                     what HxRG detectors default to</span>
+<span class="sd">                                     upon power up.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># ======================================================================</span>
+        <span class="c1">#</span>
+        <span class="c1"># DEFAULT CLOCKING PARAMETERS</span>
+        <span class="c1">#</span>
+        <span class="c1"># The following parameters define the default HxRG clocking pattern. The</span>
+        <span class="c1"># parameters that define the default noise model are defined in the</span>
+        <span class="c1"># mknoise() method.</span>
+        <span class="c1">#</span>
+        <span class="c1"># ======================================================================</span>
+
+        <span class="c1"># Default clocking pattern is JWST NIRSpec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span>    <span class="o">=</span> <span class="mi">2048</span>  <span class="k">if</span> <span class="n">naxis1</span>   <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">naxis1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span>    <span class="o">=</span> <span class="mi">2048</span>  <span class="k">if</span> <span class="n">naxis2</span>   <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">naxis2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span>    <span class="o">=</span> <span class="mi">1</span>     <span class="k">if</span> <span class="n">naxis3</span>   <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">naxis3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_out</span>     <span class="o">=</span> <span class="mi">4</span>     <span class="k">if</span> <span class="n">n_out</span>    <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span>        <span class="o">=</span> <span class="mf">1.e-5</span> <span class="k">if</span> <span class="n">dt</span>       <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nroh</span>      <span class="o">=</span> <span class="mi">12</span>    <span class="k">if</span> <span class="n">nroh</span>     <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">nroh</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nfoh</span>      <span class="o">=</span> <span class="mi">1</span>     <span class="k">if</span> <span class="n">nfoh</span>     <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">nfoh</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_pixel_border_width</span> <span class="o">=</span> <span class="mi">4</span> \
+                                            <span class="k">if</span> <span class="n">reference_pixel_border_width</span> <span class="ow">is</span> \
+                                            <span class="bp">None</span> <span class="k">else</span> <span class="n">reference_pixel_border_width</span>
+
+        <span class="c1"># Initialize PCA-zero file and make sure that it exists and is a file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pca0_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;NGHXRG_HOME&#39;</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;/nirspec_pca0.fits&#39;</span> <span class="k">if</span> \
+                         <span class="n">pca0_file</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">pca0_file</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pca0_file</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;There was an error finding pca0_file! Check to be&#39;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;sure that the NGHXRG_HOME shell environment&#39;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;variable is set correctly and that the&#39;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;$NGHXRG_HOME/ directory contains the desired PCA0&#39;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;file. The default is nirspec_pca0.fits.&#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+
+
+        <span class="c1"># ======================================================================</span>
+
+        <span class="c1"># Configure status reporting</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+
+        <span class="c1"># Configure readout direction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reverse_scan_direction</span> <span class="o">=</span> <span class="n">reverse_scan_direction</span>
+
+        <span class="c1"># Compute the number of pixels in the fast-scan direction per</span>
+        <span class="c1"># output</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_out</span>
+
+        <span class="c1"># Compute the number of time steps per integration, per</span>
+        <span class="c1"># output</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nstep</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nroh</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nfoh</span><span class="p">)</span>\
+                     <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span>
+
+        <span class="c1"># For adding in ACN, it is handy to have masks of the even</span>
+        <span class="c1"># and odd pixels on one output neglecting any gaps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_even</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_odd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_even</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="p">,</span><span class="mi">2</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m_even</span><span class="p">[:,:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m_odd</span><span class="p">[:,:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span><span class="n">x</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_even</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_even</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_even</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_odd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_odd</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_odd</span><span class="p">))</span>
+
+        <span class="c1"># Also for adding in ACN, we need a mask that point to just</span>
+        <span class="c1"># the real pixels in ordered vectors of just the even or odd</span>
+        <span class="c1"># pixels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_short</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nfoh</span><span class="p">,</span> \
+                                      <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nroh</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_short</span><span class="p">[:,:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,:</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_short</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_short</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_short</span><span class="p">))</span>
+
+        <span class="c1"># Define frequency arrays</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nstep</span><span class="p">)</span> <span class="c1"># Frequencies for nstep elements</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">nstep</span><span class="p">)</span> <span class="c1"># ... for 2*nstep elements</span>
+
+        <span class="c1"># Define pinkening filters. F1 and p_filter1 are used to</span>
+        <span class="c1"># generate ACN. F2 and p_filter2 are used to generate 1/f noise.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="c1"># Hard code for 1/f noise until proven otherwise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_filter1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">f1</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_filter2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">f2</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_filter1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_filter2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+
+
+        <span class="c1"># Initialize pca0. This includes scaling to the correct size,</span>
+        <span class="c1"># zero offsetting, and renormalization. We use robust statistics</span>
+        <span class="c1"># because pca0 is real data</span>
+        <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pca0_file</span><span class="p">)</span>
+        <span class="n">naxis1</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis1&#39;</span><span class="p">]</span>
+        <span class="n">naxis2</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis2&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">naxis1</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span> <span class="ow">or</span> <span class="n">naxis2</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">):</span>
+            <span class="n">zoom_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span> <span class="o">/</span> <span class="n">naxis1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pca0</span> <span class="o">=</span> <span class="n">zoom</span><span class="p">(</span><span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">zoom_factor</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wrap&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pca0</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pca0</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pca0</span><span class="p">)</span> <span class="c1"># Zero offset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pca0</span> <span class="o">/=</span> <span class="p">(</span><span class="mf">1.4826</span><span class="o">*</span><span class="n">mad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pca0</span><span class="p">))</span> <span class="c1"># Renormalize</span>
+
+
+    <span class="k">def</span> <span class="nf">message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message_text</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Used for status reporting</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;NG: &#39;</span> <span class="o">+</span> <span class="n">message_text</span> <span class="o">+</span> <span class="s1">&#39; at DATETIME = &#39;</span><span class="p">,</span> \
+                  <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">white_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nstep</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate white noise for an HxRG including all time steps</span>
+<span class="sd">        (actual pixels and overheads).</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            nstep - Length of vector returned</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">nstep</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">pink_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a vector of non-periodic pink noise.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            mode - Selected from {&#39;pink&#39;, &#39;acn&#39;}</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Configure depending on mode setting</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="ow">is</span> <span class="s1">&#39;pink&#39;</span><span class="p">:</span>
+            <span class="n">nstep</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">nstep</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f2</span>
+            <span class="n">p_filter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_filter2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nstep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nstep</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f1</span>
+            <span class="n">p_filter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_filter1</span>
+
+        <span class="c1"># Generate seed noise</span>
+        <span class="n">mynoise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">white_noise</span><span class="p">(</span><span class="n">nstep</span><span class="p">)</span>
+
+        <span class="c1"># Save the mean and standard deviation of the first</span>
+        <span class="c1"># half. These are restored later. We do not subtract the mean</span>
+        <span class="c1"># here. This happens when we multiply the FFT by the pinkening</span>
+        <span class="c1"># filter which has no power at f=0.</span>
+        <span class="n">the_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">mynoise</span><span class="p">[:</span><span class="n">nstep</span><span class="o">//</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">the_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">mynoise</span><span class="p">[:</span><span class="n">nstep</span><span class="o">//</span><span class="mi">2</span><span class="p">])</span>
+
+        <span class="c1"># Apply the pinkening filter.</span>
+        <span class="n">thefft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfft</span><span class="p">(</span><span class="n">mynoise</span><span class="p">)</span>
+        <span class="n">thefft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">thefft</span><span class="p">,</span> <span class="n">p_filter</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfft</span><span class="p">(</span><span class="n">thefft</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="p">[:</span><span class="n">nstep</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span> <span class="c1"># Keep 1st half</span>
+
+        <span class="c1"># Restore the mean and standard deviation</span>
+        <span class="n">result</span> <span class="o">*=</span> <span class="n">the_std</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">result</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">+</span> <span class="n">the_mean</span>
+
+        <span class="c1"># Done</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+
+
+    <span class="k">def</span> <span class="nf">mknoise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">o_file</span><span class="p">,</span> <span class="n">rd_noise</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">pedestal</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">c_pink</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                <span class="n">u_pink</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">acn</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">pca0_amp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                <span class="n">reference_pixel_noise_ratio</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ktc_noise</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                <span class="n">bias_offset</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bias_amp</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a FITS cube containing only noise.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            o_file   - Output filename</span>
+<span class="sd">            pedestal - Magnitude of pedestal drift in electrons</span>
+<span class="sd">            rd_noise - Standard deviation of read noise in electrons</span>
+<span class="sd">            c_pink   - Standard deviation of correlated pink noise in electrons</span>
+<span class="sd">            u_pink   - Standard deviation of uncorrelated pink noise in</span>
+<span class="sd">                       electrons</span>
+<span class="sd">            acn      - Standard deviation of alterating column noise in</span>
+<span class="sd">                       electrons</span>
+<span class="sd">            pca0     - Standard deviation of pca0 in electrons</span>
+<span class="sd">            reference_pixel_noise_ratio - Ratio of the standard deviation of</span>
+<span class="sd">                                          the reference pixels to the regular</span>
+<span class="sd">                                          pixels. Reference pixels are usually</span>
+<span class="sd">                                          a little lower noise.</span>
+<span class="sd">            ktc_noise   - kTC noise in electrons. Set this equal to</span>
+<span class="sd">                          sqrt(k*T*C_pixel)/q_e, where k is Boltzmann&#39;s</span>
+<span class="sd">                          constant, T is detector temperature, and C_pixel is</span>
+<span class="sd">                          pixel capacitance. For an H2RG, the pixel capacitance</span>
+<span class="sd">                          is typically about 40 fF.</span>
+<span class="sd">            bias_offset - On average, integrations stare here in electrons. Set</span>
+<span class="sd">                          this so that all pixels are in range.</span>
+<span class="sd">            bias_amp    - A multiplicative factor that we multiply PCA-zero by</span>
+<span class="sd">                          to simulate a bias pattern. This is completely</span>
+<span class="sd">                          independent from adding in &quot;picture frame&quot; noise.</span>
+
+<span class="sd">        Note1:</span>
+<span class="sd">        Because of the noise correlations, there is no simple way to</span>
+<span class="sd">        predict the noise of the simulated images. However, to a</span>
+<span class="sd">        crude first approximation, these components add in</span>
+<span class="sd">        quadrature.</span>
+
+<span class="sd">        Note2:</span>
+<span class="sd">        The units in the above are mostly &quot;electrons&quot;. This follows convention</span>
+<span class="sd">        in the astronomical community. From a physics perspective, holes are</span>
+<span class="sd">        actually the physical entity that is collected in Teledyne&#39;s p-on-n</span>
+<span class="sd">        (p-type implants in n-type bulk) HgCdTe architecture.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Starting mknoise()&#39;</span><span class="p">)</span>
+
+        <span class="c1"># ======================================================================</span>
+        <span class="c1">#</span>
+        <span class="c1"># DEFAULT NOISE PARAMETERS</span>
+        <span class="c1">#</span>
+        <span class="c1"># These defaults create noise similar to that seen in the JWST NIRSpec.</span>
+        <span class="c1">#</span>
+        <span class="c1"># ======================================================================</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span>  <span class="o">=</span> <span class="mf">5.2</span>      <span class="k">if</span> <span class="n">rd_noise</span>     <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">rd_noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pedestal</span>  <span class="o">=</span> <span class="mi">4</span>        <span class="k">if</span> <span class="n">pedestal</span>     <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">pedestal</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">c_pink</span>    <span class="o">=</span> <span class="mi">3</span>        <span class="k">if</span> <span class="n">c_pink</span>       <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">c_pink</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">u_pink</span>    <span class="o">=</span> <span class="mi">1</span>        <span class="k">if</span> <span class="n">u_pink</span>       <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">u_pink</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">acn</span>       <span class="o">=</span> <span class="o">.</span><span class="mi">5</span>       <span class="k">if</span> <span class="n">acn</span>          <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">acn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pca0_amp</span>  <span class="o">=</span> <span class="o">.</span><span class="mi">2</span>       <span class="k">if</span> <span class="n">pca0_amp</span>     <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">pca0_amp</span>
+
+        <span class="c1"># Change this only if you know that your detector is different from a</span>
+        <span class="c1"># typical H2RG.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_pixel_noise_ratio</span> <span class="o">=</span> <span class="mf">0.8</span> <span class="k">if</span> \
+            <span class="n">reference_pixel_noise_ratio</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">reference_pixel_noise_ratio</span>
+
+        <span class="c1"># These are used only when generating cubes. They are</span>
+        <span class="c1"># completely removed when the data are calibrated to</span>
+        <span class="c1"># correlated double sampling or slope images. We include</span>
+        <span class="c1"># them in here to make more realistic looking raw cubes.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ktc_noise</span>   <span class="o">=</span> <span class="mf">29.</span>   <span class="k">if</span> <span class="n">ktc_noise</span>   <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">ktc_noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_offset</span> <span class="o">=</span> <span class="mf">5000.</span> <span class="k">if</span> <span class="n">bias_offset</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">bias_offset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_amp</span>    <span class="o">=</span> <span class="mf">500.</span>  <span class="k">if</span> <span class="n">bias_amp</span>    <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">bias_amp</span>
+
+        <span class="c1"># ======================================================================</span>
+
+        <span class="c1"># Initialize the result cube. For up-the-ramp integrations,</span>
+        <span class="c1"># we also add a bias pattern. Otherwise, we assume</span>
+        <span class="c1"># that the aim was to simulate a two dimensional correlated</span>
+        <span class="c1"># double sampling image or slope image.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Initializing results cube&#39;</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">),</span> \
+                          <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Inject a bias pattern and kTC noise. If there are no reference pixels,</span>
+            <span class="c1"># we know that we are dealing with a subarray. In this case, we do not</span>
+            <span class="c1"># inject any bias pattern for now.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_pixel_border_width</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">bias_pattern</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pca0</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">bias_amp</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_offset</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">bias_pattern</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_offset</span>
+
+            <span class="c1"># Add in some kTC noise. Since this should always come out</span>
+            <span class="c1"># in calibration, we do not attempt to model it in detail.</span>
+            <span class="n">bias_pattern</span> <span class="o">+=</span> \
+                         <span class="bp">self</span><span class="o">.</span><span class="n">ktc_noise</span> <span class="o">*</span> \
+                         <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">))</span>
+
+            <span class="c1"># Ensure that there are no negative pixel values. Data cubes</span>
+            <span class="c1"># are converted to unsigned integer before writing.</span>
+            <span class="n">bias_pattern</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bias_pattern</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">bias_pattern</span><span class="p">)</span>
+
+            <span class="c1"># Add in the bias pattern</span>
+            <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">):</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">z</span><span class="p">,:,:]</span> <span class="o">+=</span> <span class="n">bias_pattern</span>
+
+
+        <span class="c1"># Make white read noise. This is the same for all pixels.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Generating rd_noise&#39;</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_pixel_border_width</span> <span class="c1"># Easier to work with</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_pixel_noise_ratio</span>  <span class="c1"># Easier to work with</span>
+        <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">):</span>
+            <span class="n">here</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">w</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span> <span class="c1"># Ref. pixel border exists</span>
+                <span class="c1"># Add both reference and regular pixels</span>
+                <span class="n">here</span><span class="p">[:</span><span class="n">w</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">r</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span> <span class="o">*</span> \
+                             <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">((</span><span class="n">w</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">))</span>
+                <span class="n">here</span><span class="p">[</span><span class="o">-</span><span class="n">w</span><span class="p">:,:]</span> <span class="o">=</span> <span class="n">r</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span> <span class="o">*</span> \
+                              <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">((</span><span class="n">w</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">))</span>
+                <span class="n">here</span><span class="p">[:,:</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span> <span class="o">*</span> \
+                             <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span><span class="n">w</span><span class="p">))</span>
+                <span class="n">here</span><span class="p">[:,</span><span class="o">-</span><span class="n">w</span><span class="p">:]</span> <span class="o">=</span> <span class="n">r</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span> <span class="o">*</span> \
+                              <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">,</span><span class="n">w</span><span class="p">))</span>
+                <span class="c1"># Make noisy regular pixels</span>
+                <span class="n">here</span><span class="p">[</span><span class="n">w</span><span class="p">:</span><span class="o">-</span><span class="n">w</span><span class="p">,</span><span class="n">w</span><span class="p">:</span><span class="o">-</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span> <span class="o">*</span> \
+                                  <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span> \
+                                  <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">w</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">w</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span> <span class="c1"># Ref. pixel border does not exist</span>
+                <span class="c1"># Add only regular pixels</span>
+                <span class="n">here</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span>\
+                                                                  <span class="bp">self</span><span class="o">.</span><span class="n">naxis1</span><span class="p">))</span>
+            <span class="c1"># Add the noise in to the result</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">z</span><span class="p">,:,:]</span> <span class="o">+=</span> <span class="n">here</span>
+
+
+        <span class="c1"># Add correlated pink noise.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Adding c_pink noise&#39;</span><span class="p">)</span>
+        <span class="n">tt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">c_pink</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pink_noise</span><span class="p">(</span><span class="s1">&#39;pink&#39;</span><span class="p">)</span> <span class="c1"># tt is a temp. variable</span>
+        <span class="n">tt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">tt</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nfoh</span><span class="p">,</span> \
+                             <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nroh</span><span class="p">))[:,:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,:</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_out</span><span class="p">):</span>
+            <span class="n">x0</span> <span class="o">=</span> <span class="n">op</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span>
+            <span class="n">x1</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reverse_scan_direction</span> <span class="ow">is</span> <span class="bp">False</span><span class="p">:</span>
+                <span class="c1"># Teledyne&#39;s default fast-scan directions</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="n">op</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                    <span class="n">result</span><span class="p">[:,:,</span><span class="n">x0</span><span class="p">:</span><span class="n">x1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">tt</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">result</span><span class="p">[:,:,</span><span class="n">x0</span><span class="p">:</span><span class="n">x1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">tt</span><span class="p">[:,:,::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Reverse the fast-scan directions.</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="n">op</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">result</span><span class="p">[:,:,</span><span class="n">x0</span><span class="p">:</span><span class="n">x1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">tt</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">result</span><span class="p">[:,:,</span><span class="n">x0</span><span class="p">:</span><span class="n">x1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">tt</span><span class="p">[:,:,::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+
+
+        <span class="c1"># Add uncorrelated pink noise. Because this pink noise is stationary and</span>
+        <span class="c1"># different for each output, we don&#39;t need to flip it.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Adding u_pink noise&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_out</span><span class="p">):</span>
+            <span class="n">x0</span> <span class="o">=</span> <span class="n">op</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span>
+            <span class="n">x1</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span>
+            <span class="n">tt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">u_pink</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pink_noise</span><span class="p">(</span><span class="s1">&#39;pink&#39;</span><span class="p">)</span>
+            <span class="n">tt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">tt</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nfoh</span><span class="p">,</span> \
+                             <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">nroh</span><span class="p">))[:,:</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,:</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="p">]</span>
+            <span class="n">result</span><span class="p">[:,:,</span><span class="n">x0</span><span class="p">:</span><span class="n">x1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">tt</span>
+
+        <span class="c1"># Add ACN</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Adding acn noise&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_out</span><span class="p">):</span>
+
+            <span class="c1"># Generate new pink noise for each even and odd vector.</span>
+            <span class="c1"># We give these the abstract names &#39;a&#39; and &#39;b&#39; so that we</span>
+            <span class="c1"># can use a previously worked out formula to turn them</span>
+            <span class="c1"># back into an image section.</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acn</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pink_noise</span><span class="p">(</span><span class="s1">&#39;acn&#39;</span><span class="p">)</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acn</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pink_noise</span><span class="p">(</span><span class="s1">&#39;acn&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Pick out just the real pixels (i.e. ignore the gaps)</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_short</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_short</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span>
+
+            <span class="c1"># Reformat into an image section. This uses the formula</span>
+            <span class="c1"># mentioned above.</span>
+            <span class="n">acn_cube</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">))),</span>
+                                  <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">xsize</span><span class="p">))</span>
+
+            <span class="c1"># Add in the ACN. Because pink noise is stationary, we can</span>
+            <span class="c1"># ignore the readout directions. There is no need to flip</span>
+            <span class="c1"># acn_cube before adding it in.</span>
+            <span class="n">x0</span> <span class="o">=</span> <span class="n">op</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span>
+            <span class="n">x1</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">xsize</span>
+            <span class="n">result</span><span class="p">[:,:,</span><span class="n">x0</span><span class="p">:</span><span class="n">x1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">acn_cube</span>
+
+
+        <span class="c1"># Add PCA-zero. The PCA-zero template is modulated by 1/f.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pca0_amp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Adding PCA-zero &quot;picture frame&quot; noise&#39;</span><span class="p">)</span>
+            <span class="n">gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pink_noise</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;pink&#39;</span><span class="p">)</span>
+            <span class="n">zoom_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">gamma</span><span class="p">)</span>
+            <span class="n">gamma</span> <span class="o">=</span> <span class="n">zoom</span><span class="p">(</span><span class="n">gamma</span><span class="p">,</span> <span class="n">zoom_factor</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;mirror&#39;</span><span class="p">)</span>
+            <span class="n">gamma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">gamma</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">naxis2</span><span class="p">):</span>
+                    <span class="n">result</span><span class="p">[</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">,:]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pca0_amp</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">pca0</span><span class="p">[</span><span class="n">y</span><span class="p">,:]</span><span class="o">*</span><span class="n">gamma</span><span class="p">[</span><span class="n">z</span><span class="p">,</span><span class="n">y</span><span class="p">]</span>
+
+
+        <span class="c1"># If the data cube has only 1 frame, reformat into a 2-dimensional</span>
+        <span class="c1"># image.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Reformatting cube into image&#39;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,:]</span>
+
+        <span class="c1"># If the data cube has more than one frame, convert to unsigned</span>
+        <span class="c1"># integer</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">naxis3</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Converting to 16-bit unsigned integer&#39;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;uint16&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Write the result to a FITS file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Writing FITS file&#39;</span><span class="p">)</span>
+        <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">()</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;RD_NOISE&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_noise</span><span class="p">,</span> <span class="s1">&#39;Read noise&#39;</span><span class="p">))</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;PEDESTAL&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pedestal</span><span class="p">,</span> <span class="s1">&#39;Pedestal drifts&#39;</span><span class="p">))</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;C_PINK&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">c_pink</span><span class="p">,</span> <span class="s1">&#39;Correlated pink&#39;</span><span class="p">))</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;U_PINK&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">u_pink</span><span class="p">,</span> <span class="s1">&#39;Uncorrelated pink&#39;</span><span class="p">))</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;ACN&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acn</span><span class="p">,</span> <span class="s1">&#39;Alternating column noise&#39;</span><span class="p">))</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;PCA0&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pca0_amp</span><span class="p">,</span> \
+                           <span class="s1">&#39;PCA zero, AKA picture frame&#39;</span><span class="p">))</span>
+        <span class="c1">#hdu.header[&#39;HISTORY&#39;] = &#39;Created_by_NGHXRG_version_&#39; \</span>
+        <span class="c1">#                        + str(self.nghxrg_version)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">(</span><span class="s1">&#39;Exiting mknoise()&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">o_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">o_file</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="s1">&#39;True&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+        
+<span class="k">class</span> <span class="nc">bloedsinn</span><span class="p">:</span>
+    <span class="k">pass</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Kieran Leschinski, Oliver Czoske.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
