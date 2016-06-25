@@ -71,7 +71,7 @@ except:
     import utils as utils
     __file__ = "./spectral.py"
     
-
+__pkg_dir__ = os.path.split(__file__)[0]
     
 __all__ = ["UserCommands"]
 
@@ -285,9 +285,20 @@ class UserCommands(object):
 
         Examples
         --------
+        View the default commands
         ```
         >>> import simcado
         >>> my_cmds = simcado.UserCommands()
+        >>> print(my_cmds.cmds)
+        ```
+        
+        Change a single command
+        ```
+        >>> my_cmds["OBS_EXPTIME"] = 60
+        ```
+        
+        Change a series of commands at once
+        ```
         >>> new_cmds = {"OBS_EXPTIME" : 60 , "OBS_NDIT" : 10}
         >>> my_cmds.update(new_cmds)
         ```
@@ -317,15 +328,21 @@ class UserCommands(object):
 
 
     def _convert_none(self):
+        """
+        Turn all string "none" or "None" values into python `None` values
+        """
         for key,value in zip(self.cmds.keys(), self.cmds.values()):
             if type(value) == str and value.lower() == "none":
                 self.cmds[key] = None
         
 
     def _default_data(self):
+        """
+        Input system-specific path names for the default package data files 
+        """
    
         if self.cmds["OBS_OUTPUT_DIR"] in (None, "none", "default"):
-            self.cmds["OBS_OUTPUT_DIR"] = "./"
+            self.cmds["OBS_OUTPUT_DIR"] = "./output.fits"
 
         if self.cmds["SIM_OPT_TRAIN_OUT_PATH"] in (None, "none", "default"):            
             self.cmds["SIM_OPT_TRAIN_OUT_PATH"] = "./"
@@ -449,7 +466,7 @@ class UserCommands(object):
         """
         Generates an array with the bin edges of the layers in spectral space
 
-
+        
         Parameters
         ----------
         lam_min, lam_max : float
@@ -469,7 +486,7 @@ class UserCommands(object):
         also needed to be taken into account
         """
         if self.cmds["SIM_VERBOSE"] == "yes":
-                print("Determining lam_bin_edges")
+            print("Determining lam_bin_edges")
         
         effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
         
@@ -558,6 +575,9 @@ class UserCommands(object):
         return self.cmds[key]
 
     def __setitem__(self, key, val):
+        if key not in self.cmds.keys():
+            raise ValueError(key+" not in UserCommands.keys()")
+        
         self.cmds[key] = val
         self._update_attributes()
 
@@ -566,21 +586,40 @@ class UserCommands(object):
     ### the dicts are updated
 
 
-
-def dump_defaults(dir="./"):
-    """ Dump the default.config file to a path specified by the user"""
-    pkgdir = os.path.split(__file__)[0]
+def dump_defaults(dir="./", type="freq"):
+    """ 
+    Dump the frequent.config file to a path specified by the user
+    
+    Parameters
+    ----------
+    dir : str, optional
+        path where the .config file is to be saved
+    type : str, optional
+        ["freq", "all"] amount of keywords to save. "freq" only prints the most
+        frequently used keywords. "all" prints all of them
+    """
 
     dir = os.path.dirname(dir)
-    shutil.copy(os.path.join(pkgdir,"data","default.config"), dir)
+    
+    if "freq" in type.lower():
+        fname = "frequent.config"
+    elif "all" in type.lower():
+        fname = "default.config"
+        
+    shutil.copy(os.path.join(__pkg_dir__,"data",fname), dir)
 
 
 def dump_chip_layout(dir="./"):
-    """ Dump the FPA_chip_layout.dat file to a path specified by the user"""
-    pkgdir = os.path.split(__file__)[0]
-
+    """ 
+    Dump the FPA_chip_layout.dat file to a path specified by the user
+    
+    Parameters
+    ----------
+    dir : str, optional
+        path where the chip layout file is to be saved
+    """
     dir = os.path.dirname(dir)
-    shutil.copy(os.path.join(pkgdir,"data","FPA_chip_layout.dat"), dir)
+    shutil.copy(os.path.join(__pkg_dir__,"data","FPA_chip_layout.dat"), dir)
 
 
 class __bloedsinn():
