@@ -77,7 +77,7 @@ class TransmissionCurve(object):
               the first column is wavelength in [um] and the second is the
               transmission coefficient between [0,1]
     """
-    def __init__(self, **kwargs):
+    def __init__(self, filename=None, **kwargs):
         # TODO: remove automatic resampling to lam_res. This should
         #       only be done when requested (i.e. lam_res in kwargs)
         # See answer below
@@ -86,6 +86,10 @@ class TransmissionCurve(object):
                        "Type"      :"Transmission",
                        "min_step"  :1E-4,
                        "lam_unit"  :u.um}
+        
+        if filename is not None and type(filename) == str:
+            self.params["filename"] = filename
+                       
         self.params.update(kwargs)
 
         self.info = dict([])
@@ -504,7 +508,6 @@ class UnityCurve(TransmissionCurve):
         val = np.asarray([val]*len(lam))
         super(UnityCurve, self).__init__(lam=lam, val=val, **kwargs)
 
-        
         
 class FilterSet(object):
     """
