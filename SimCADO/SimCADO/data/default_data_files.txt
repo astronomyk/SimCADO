@@ -10,7 +10,7 @@ FPA_noise.fits
 
 Source properties
 -----------------
-EC_abs_mag.dat
+EC_all_stars.csv
 IMF_1E4.dat
 IMF_1E5.dat
 
@@ -20,7 +20,7 @@ PSF_POPPY.fits
 
 Emission curves
 ---------------
-EC_pickles_MS.dat
+EC_pickles.fits
 skytable.fits
 
 Transmission curves
