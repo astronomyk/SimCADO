@@ -22,9 +22,11 @@ simcado\spectral.py
 simcado\spectralgrating.py
 simcado\utils.py
 simcado\version.py
-simcado\data\EC_abs_mag.dat
+simcado\data\EC_all_stars.csv
+simcado\data\EC_pickles.fits
 simcado\data\EC_pickles_MS.dat
 simcado\data\FPA_chip_layout.dat
+simcado\data\FPA_chip_layout_small.dat
 simcado\data\FPA_linearity.dat
 simcado\data\FPA_nirspec_pca0.fits
 simcado\data\FPA_noise.fits
@@ -42,6 +44,7 @@ simcado\data\TC_filter_J.dat
 simcado\data\TC_filter_K.dat
 simcado\data\TC_filter_Ks.dat
 simcado\data\TC_filter_R.dat
+simcado\data\TC_filter_U.dat
 simcado\data\TC_filter_V.dat
 simcado\data\TC_filter_Y.dat
 simcado\data\TC_filter_z.dat
@@ -49,6 +52,7 @@ simcado\data\TC_mirror_mgf2agal.dat
 simcado\data\TC_window.dat
 simcado\data\default.config
 simcado\data\default_data_files.txt
+simcado\data\frequent.config
 simcado\data\skytable.fits
 simcado\docs\Assumptions.md
 simcado\docs\Data_model.md
@@ -57,6 +61,8 @@ simcado\docs\Future_ideas.md
 simcado\docs\Problems.md
 simcado\docs\SimCADO_quick_and_dirty.ipynb
 simcado\docs\Usage.md
+simcado\docs\docstrings.txt
+simcado\docs\output.fits
 simcado\tests\__init__.py
 simcado\tests\test_atmosphere.py
 simcado\tests\test_spectral_curve.py

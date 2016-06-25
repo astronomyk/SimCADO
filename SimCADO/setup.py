@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-"""SimCADO: A python package to simulate MICADO
-
+"""
+SimCADO: A python package to simulate MICADO
 """
 
 ## BEFORE importing distutils, remove MANIFEST. distutils doesn't properly
@@ -10,11 +10,23 @@
 #if os.path.exists('MANIFEST'):
 #    os.remove('MANIFEST')
 
+def get_old_version(filename='simcado/version.py'):
+    f = open(filename, "r")
+    for i in range(3): vers = f.readline()
+    print(vers)
+    vers = vers.replace("dev", "").replace("'","").split(".")[-1]
+    return int(float(vers))
+
+    
+    
 # Is this the version number scheme that we want?
 MAJOR = 0
 MINOR = 2
+TINY = get_old_version() + 1
 ATTR = 'dev'
-VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
+VERSION = '%d.%d.%d%s' % (MAJOR, MINOR, TINY, ATTR)
+
+
 
 ## Is this needed?
 def write_version_py(filename='simcado/version.py'):
