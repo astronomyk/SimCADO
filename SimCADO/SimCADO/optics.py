@@ -32,9 +32,10 @@ except:
     import spatial as pe
     import utils
 
-    
+__file__ = sc.__file__
+__pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["OpticalTrain"]
-    
+
 class OpticalTrain(object):
     """
     The OpticalTrain object reads in or generates the information necessary to
@@ -44,18 +45,18 @@ class OpticalTrain(object):
     Attributes
     ==========
     General attributes
+    ------------------
     - cmds : commands
         a dictionary of commands for running the simulation
-    - detector : detector
-        the detector to be used for the simulation
 
     Spatial attributes (for PSFs)
+    -----------------------------
     - lam_bin_edges : 1D array
         [um] wavelengths of the edges of the bins used for each PSF layer
     - lam_bin_centers
         [um] wavelengths of the centre of the bins used for each PSF layer
     - pix_res : float
-        [arcsec] oversampled pixel resolution (NOT detector plate scale)
+        [arcsec] infernal oversampled pixel resolution (NOT detector plate scale)
     - psf_source :
     - jitter_psf :
     - adc_shifts
@@ -64,6 +65,7 @@ class OpticalTrain(object):
         [degrees]
 
     Spectral attributes (for EmissionCurves)
+    ----------------------------------------
     - lam : 1D array
         [um] Vector of wavelength bins for spectrals
     - lam_res : float
@@ -121,7 +123,7 @@ class OpticalTrain(object):
         changes can be passed to make()
 
         Parameters
-        ==========
+        ----------
         - cmds : commands
             a dictionary of commands
         """
@@ -158,29 +160,44 @@ class OpticalTrain(object):
                                             pix_res =self.cmds.pix_res,
                                             area    =self.cmds.area)
 
-        self.ph_mirror  = self.ec_mirror * self.tc_mirror
-        self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
-                                                           self.lam_bin_edges[-1])
+
+        if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
+            self.ph_mirror  = self.ec_mirror * self.tc_mirror
+            self.n_ph_mirror = \
+                         self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+                                                         self.lam_bin_edges[-1])
+        else:
+            self.ph_mirror = None
+            self.n_ph_mirror = 0.
+
 
         ############## ATMOSPHERE PHOTON PATH #########################
         if self.cmds.verbose:
             print("Generating atmospheric emission photons")
         # Make the spectral curves for the atmospheric background photons
         self.tc_atmo = self._gen_master_tc(preset="atmosphere")
-            
-        if self.cmds["ATMO_EC"] is not None:
-            self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
-                                            pix_res =self.cmds.pix_res,
-                                            area    =self.cmds.area)
-            self.ph_atmo = self.tc_atmo * self.ec_atmo
-            self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
+
+        if self.cmds["ATMO_USE_ATMO_BG"].lower() == "yes":
+        
+            if self.cmds["ATMO_EC"] is not None:
+                self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
+                                                pix_res =self.cmds.pix_res,
+                                                area    =self.cmds.area)
+                self.ph_atmo = self.tc_atmo * self.ec_atmo
+                self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
                                                            self.lam_bin_edges[-1])
+            else:
+                self.ec_atmo = None
+                self.ph_atmo = None
+                self.n_ph_atmo = self.cmds["ATMO_BG_PHOTONS"]
+        
         else:
             self.ec_atmo = None
             self.ph_atmo = None
-            self.n_ph_atmo = self.cmds["ATMO_BG_PHOTONS"]
-
+            self.n_ph_atmo = 0.
+                
             
+
         ############## SOURCE PHOTON PATH #########################
         if self.cmds.verbose:
             print("Generating optical path for source photons")
@@ -299,7 +316,7 @@ class OpticalTrain(object):
 
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-            psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"], 
+            psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
             if psf_m1[0].pix_res != self.pix_res:
                 psf_m1 = psf_m1.resample(self.pix_res)
@@ -356,5 +373,21 @@ class OpticalTrain(object):
         return jitter_psf
 
 
+def get_filter_curve(filt):
+    """
+    Return a transmission curve object for a broad band filter
+
+    Notes
+    -----
+    Acceptable filter names are B V R I Y z J H K Ks
+    """
+    if filt not in "BVRIYzJHKKs":
+        raise ValueError("filter not recognised: "+filt)
+    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filt+".dat")
+    return sc.TransmissionCurve(filename=fname)
+        
+                
+        
+        
 class bloedsinn():
     pass
