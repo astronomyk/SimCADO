@@ -55,7 +55,7 @@ except:
     import spatial as pe
     import spectral as sc
     __file__ = "./spatial.py"
-    
+
 __pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["Source"]
 
@@ -90,7 +90,6 @@ class Source(object):
     =================
     - units
     - pix_unit
-    - pix_res
     - exptime
     - area
     """
@@ -101,7 +100,6 @@ class Source(object):
 
         self.params = {"units"   :"ph/s",
                        "pix_unit":"arcsec",
-                       "pix_res" :0.004,
                        "exptime" :1,
                        "area"    :1}
         self.params.update(kwargs)
@@ -111,7 +109,6 @@ class Source(object):
         self.info['description'] = "List of spectra and their positions"
 
         self.units = u.Unit(self.params["units"])
-        self.pix_res = self.params["pix_res"]
         self.exptime = self.params["exptime"]
         self.area = self.params["area"]
 
@@ -134,7 +131,7 @@ class Source(object):
     def apply_optical_train(self, opt_train, detector, chips="all", **kwargs):
         """
         Apply all effects along the optical path to the source photons
-        
+
         Parameters
         ----------
         opt_train : simcado.OpticalTrain
@@ -151,17 +148,17 @@ class Source(object):
         oversampled pixels - not the pixel size of the detector chips
 
         """
-        params = {"verbose"     :False,
-                  "ATMO_BG_ON"  :"yes",
+        params = {"verbose"     :opt_train.cmds.verbose,
                   "INST_DEROT_PERFORMANCE"  :100,
                   "SCOPE_JITTER_FWHM"       :0,
                   "SCOPE_DRIFT_DISTANCE"    :0     }
         params.update(kwargs)
 
-        
+        self.pix_res=opt_train.pix_res
+
         # 1. Apply the master transmission curve to all the spectra
         #
-        # 1.5 Create a canvas onto which we splat the PSFed sources 
+        # 1.5 Create a canvas onto which we splat the PSFed sources
         #
         # 2. For each layer between cmds.lam_bin_edges[i, i+1]
         #   - Apply the x,y shift for the ADC
@@ -183,21 +180,21 @@ class Source(object):
 
         if chips == None or str(chips).lower() == "all":
             chips = np.arange(len(detector.chips))
-        
+
         if not hasattr(chips, "__len__"):
             chips = [chips]
 
         # 1.
         self.apply_transmission_curve(opt_train.tc_source)
-            
+
         for chip_i in chips:
-    
+
             # 1.5
             image = None
 
             # 2.
             for i in range(len(opt_train.lam_bin_edges[:-1])):
-                
+
                 if params["verbose"]:
                     print("Wavelength slice [um]:", \
                                             opt_train.lam_bin_centers[i])
@@ -226,9 +223,9 @@ class Source(object):
 
             # 3.
             # !!!!!!!!!!!!!! All of these need to be combined into a single
-            # function that traces out the path taken by the telescope, 
-            # rather than having the arcs from the derotator() function 
-            # being stretched by the tracking() function and then the whole 
+            # function that traces out the path taken by the telescope,
+            # rather than having the arcs from the derotator() function
+            # being stretched by the tracking() function and then the whole
             # thing blurred by wind_jitter()
             if params["INST_DEROT_PERFORMANCE"] < 100:
                 image = opt_train.apply_derotator(image)
@@ -238,14 +235,12 @@ class Source(object):
                 image = opt_train.apply_wind_jitter(image)
 
             # 3.5
-            image *= opt_train.cmds.area                
-                
+            image *= opt_train.cmds.area
+
             # 4.
             image += (opt_train.n_ph_atmo + opt_train.n_ph_mirror)
 
-            # 5. 
-            
-            
+            # 5.
             self.project_onto_chip(image, detector.chips[chip_i])
 
         ######################################
@@ -254,8 +249,20 @@ class Source(object):
 
 
     def project_onto_chip(self, image, chip):
+        """
+        Re-project the photons onto the same grid as the detectors use
 
+        Parameters
+        ----------
+        image : np.ndarray
+            the image to be re-projected
+        chip : detector.Chip
+            the chip object where the image will land
+        """
+
+        chip.reset_chip()
         scale_factor = self.pix_res / chip.pix_res
+
         chip_arr = spi.zoom(image, scale_factor, order=1)
         chip_arr *= np.sum(image) / np.sum(chip_arr)
 
@@ -310,14 +317,14 @@ class Source(object):
             params["pix_res"] /= params["oversample"]
             x_min, x_max = np.min(self.x), np.max(self.x)
             y_min, y_max = np.min(self.y), np.max(self.y),
-            x_cen, y_cen = (x_max + xmin) / 2, (y_max + ymin) / 2
+            x_cen, y_cen = (x_max + x_min) / 2, (y_max + y_min) / 2
 
         naxis1 = int((x_max - x_min) / params["pix_res"])
         naxis2 = int((y_max - y_min) / params["pix_res"])
 
         slice_array = np.zeros((naxis1, naxis2), dtype=np.float32)
         slice_photons = self.photons_in_range(lam_min, lam_max, min_bins=10)
-        
+
         x_pix = (self.x - x_cen) / params["pix_res"]
         y_pix = (self.y - y_cen) / params["pix_res"]
 
@@ -332,9 +339,12 @@ class Source(object):
         x_int, y_int = x_pix.astype(int), y_pix.astype(int)
         dx, dy = self.x - x_int, self.y - y_int
 
-        if params["sub_pixel"]:
+        print("Creating layer between [um]:",lam_min,lam_max)
+
+        if params["sub_pixel"] == True:
             # for each point source in the list, add a psf to the slice_array
             for i in range(len(slice_photons)):
+
                 if not mask[i]:
                     continue
 
@@ -361,14 +371,17 @@ class Source(object):
                 slice_array[ax0:ax1, ay0:ay1] = psf.array[bx0:bx1, by0:by1] \
                                         * slice_photons[i] * self.weights[i]
 
+        elif params["sub_pixel"] == "raw":
+            i, j = ax + x_int[mask], ay + y_int[mask]
+            slice_array[i,j] = slice_photons[mask]
+
         else:
             # If astrometric precision is not that important and everything
             # has been oversampled, use this section.
             #  - ax, ay are the pixel coordinates of the image centre
-            print(lam_min,lam_max)
 
             i, j = ax + x_int[mask], ay + y_int[mask]
-            slice_array[i,j] = slice_photons[mask]# * self.weight[mask]
+            slice_array[i,j] = slice_photons[mask]  # * self.weight[mask]
             try:
                 slice_array = convolve_fft(slice_array, psf.array, allow_huge=True)
             except:
@@ -377,19 +390,22 @@ class Source(object):
         return slice_array
 
 
-    def photons_in_range(self, lam_min, lam_max, min_bins=10, mask=None):
+    def photons_in_range(self, lam_min=None, lam_max=None, min_bins=10, mask=None):
         """
         Calculate how many photons for each source exist in the wavelength range
         defined by lam_min and lam_max.
 
-        Keywords
-        ========
-        - lam_min, lam_max : float
-
-        Optional keywords:
-        - min_bins : float
+        Parameters
+        ----------
+        lam_min, lam_max : float, optional
+            [um] integrate photons between these two limits. If both are `None`,
+            limits are set at lam[0], lam[-1] for the source's wavelength range
+        min_bins : float, optional
             the minimum number of spectral bins counted per layer
         """
+        if lam_min is None: lam_min = self.lam[0]
+        if lam_max is None: lam_max = self.lam[-1]
+
         # Check if the slice limits are within the spectrum wavelength range
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
             print((lam_min, lam_max), (self.lam[0], self.lam[-1]))
@@ -508,6 +524,7 @@ class Source(object):
 
         self._convert_to_photons()
 
+        
     def read(self, filename):
         """
         Read in a previously saved Source FITS file
@@ -606,8 +623,9 @@ class Source(object):
 
     def __mul__(self, x):
         newsrc = deepcopy(self)
-        
-        if type(x) == sc.TransmissionCurve:
+
+        if type(x) in (sc.TransmissionCurve, sc.EmissionCurve,
+                       sc.UnityCurve, sc.BlackbodyCurve):
             newsrc.apply_transmission_curve(x)
         else:
             newsrc.array *= x
@@ -619,19 +637,19 @@ class Source(object):
             if self.units != x.units:
                 raise ValueError("units are not compatible: " + \
                                   str(self.units) + ", " + str(x.units))
-                                  
+
             newsrc.lam = self.lam
             newsrc.spectra = self.spectra.tolist()
             for spec in x.spectra:
                 tmp = np.interp(self.lam, x.lam, spec)
                 newsrc.spectra += [tmp]
             newsrc.spectra = np.asarray(newsrc.spectra)
-            
+
             newsrc.x = np.append(self.x, x.x)
             newsrc.y = np.append(self.y, x.y)
             newsrc.ref = np.append(self.ref, x.ref + x.spectra.shape[0])
             newsrc.weight = np.append(self.weight, x.weight)
-            
+
         else:
             newsrc.array += x
         return newsrc
@@ -670,20 +688,20 @@ import astropy.constants as c
 
 def get_stellar_properties(spec_type, cat=None, verbose=False):
     """
-    Returns an astropy.Table with the list of properties for the star in 
+    Returns an astropy.Table with the list of properties for the star in
     `spec_type`
-    
+
     Parameters
     ----------
     spec_type : str, list
         The single or list of spectral types
-        
+
     Returns
     -------
-    props : astropy.Table or list of astropy.Tables with the paramters to the 
-    
+    props : astropy.Table or list of astropy.Tables with the paramters to the
+
     """
-    
+
     if cat is None:
         cat = ascii.read(os.path.join(__pkg_dir__, "data", "EC_all_stars.csv"))
 
@@ -697,9 +715,9 @@ def get_stellar_properties(spec_type, cat=None, verbose=False):
                 spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
             star = spt+str(cls)+lum
             cls += 1
-            
-            if star in cat["Stellar_Type"]: break 
-        
+
+            if star in cat["Stellar_Type"]: break
+
         try:
             n = np.where(cat["Stellar_Type"] == star.upper())[0][0]
             if verbose: print("Returning properties for", star)
@@ -710,154 +728,154 @@ def get_stellar_properties(spec_type, cat=None, verbose=False):
 
 def get_stellar_mass(spec_type):
     """
-    Returns a single (or list of) float(s) with the stellar mass(es) in units 
+    Returns a single (or list of) float(s) with the stellar mass(es) in units
     of Msol
-    
+
     Parameters
     ----------
     spec_type : str, list
         The single or list of spectral types
-        
+
     Returns
     -------
     mass : float, list
-    
+
     """
-    
+
     props = get_stellar_properties(spec_type)
-    
+
     if type(props) in (list, tuple):
-        return [prop["Mass"] for prop in props] 
+        return [prop["Mass"] for prop in props]
     else:
         return props["Mass"]
-    
-    
+
+
 def get_stellar_Mv(spec_type):
     """
     Returns a single (or list of) float(s) with the V-band absolute magnitude(s)
-    
+
     Parameters
     ----------
     spec_type : str, list
         The single or list of spectral types
-        
+
     Returns
     -------
     Mv : float, list
-    
+
     """
-    
+
     props = get_stellar_properties(spec_type)
-    
+
     if type(props) in (list, tuple):
-        return [prop["Mv"] for prop in props] 
+        return [prop["Mv"] for prop in props]
     else:
         return props["Mv"]
-    
-    
+
+
 def get_pickles_curve(spec_type, cat=None, verbose=False):
     """
-    Returns the emission curve for a single or list of `spec_type`, normalised 
+    Returns the emission curve for a single or list of `spec_type`, normalised
     to 5556A
-    
+
     Parameters
     ----------
     spec_type : str, list
         The single (or list) of spectral types (i.e. "A0V" or ["K5III", "B5I"])
-        
+
     Returns
     -------
     lam : np.array
-        a single np.ndarray for the wavelength bins of the spectrum, 
+        a single np.ndarray for the wavelength bins of the spectrum,
     val : np.array (list)
-        a (list of) np.ndarray for the emission curve of the spectral type(s) 
+        a (list of) np.ndarray for the emission curve of the spectral type(s)
         relative to the flux at 5556A
-        
+
     References
     ----------
     Pickles 1998 - DOI: 10.1086/316197
-    
+
     """
-    if cat is None: 
+    if cat is None:
         cat = fits.getdata(os.path.join(__pkg_dir__, "data", "EC_pickles.fits"))
-        
+
     if type(spec_type) in (list, tuple):
         return cat["lam"], [get_pickles_curve(i, cat)[1] for i in spec_type]
     else:
         # split the spectral type into 3 components and generalise for Pickles
         spt, cls, lum = spec_type[0], int(spec_type[1]), spec_type[2:]
-        if lum.upper() == "I": 
+        if lum.upper() == "I":
             lum = "Ia"
-        elif lum.upper() == "II": 
+        elif lum.upper() == "II":
             lum = "III"
-        elif "V" in lum.upper(): 
+        elif "V" in lum.upper():
             lum = "V"
-        
-        
+
+
         for i in range(10):
             if cls > 9:
                 cls = 0
                 spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
             star = spt+str(cls)+lum
             cls += 1
-            
+
             if star in cat.columns.names: break
-                
+
         if spec_type != star and verbose:
             print(spec_type, "isn't in Pickles. Returned", star)
-            
+
         return cat["lam"], cat[star]
 
 
 def scale_pickles_to_photons(spec_type, mag=0):
     """
-    Pull in a spectrum from the Pickles library and scale the photon flux to a 
+    Pull in a spectrum from the Pickles library and scale the photon flux to a
     V=0 star
-    
+
     Parameters
     ----------
     spec_type : str
         A spectral types (i.e. "A0V")
-    
+
     Notes
     -----
-    - Vega has a 5556 flux of between 950 and 1000 ph/s/cm2/A. The pickles 
-    resolution is 5 Ang. 
+    - Vega has a 5556 flux of between 950 and 1000 ph/s/cm2/A. The pickles
+    resolution is 5 Ang.
     - Therefore the flux at 5555 should be 5 * 1000 * 10^(-0.4*Mv) ph/s/cm2/bin
     - Pickles catalogue is in units of Flambda [erg/s/cm2/A]
     - Ergo we need to divide the pickels values by lam/0.5556[nm], then rescale
     Regarding the number of photons in the 1 Ang bin at 5556 Ang
-    - Bohlin (2014) says F(5556)=3.44×10−9 erg cm−2 s−1 A−1 
-    - Values range from 3.39 to 3.46 with the majority in range 3.44 to 3.46. 
+    - Bohlin (2014) says F(5556)=3.44×10−9 erg cm−2 s−1 A−1
+    - Values range from 3.39 to 3.46 with the majority in range 3.44 to 3.46.
       Bohlin recommends 3.44
     - This results in a photon flux of 962 ph cm-2 s-1 A-1 at 5556 Ang
     """
-    
+
     if type(spec_type) in (list, tuple, np.ndarray) \
         and not hasattr(mag, "__len__"):
         mag = [mag]*len(spec_type)
     else:
         mag = [mag]
-    
+
     Mv = get_stellar_Mv(spec_type)
     if not hasattr(Mv, "__len__"): Mv = [Mv]
     lam, ec = get_pickles_curve(spec_type)
     dlam = (lam[1:] - lam[:-1])
     dlam = np.append(dlam, dlam[-1])
-    
+
     lam *= 1E-4         # convert to um from Ang
-    
-    # Use Bohlin (2014) to determine the photon flux of a mag 0 A0V star 
+
+    # Use Bohlin (2014) to determine the photon flux of a mag 0 A0V star
     # at 5556 Ang
     F = 3.44E-9 * u.erg / (u.cm**2 * u.s * u.AA)
     E = c.c*c.h/(5556*u.AA)
     ph0 = (F/E).to(1/(u.s * u.cm**2 * u.AA)).value
-    
+
     # 5 Ang/bin * ~962 ph/s * (abs mag + apparent mag)
     ph_factor = []
-    for i in range(len(mag)): 
+    for i in range(len(mag)):
         tmp = dlam * ph0 * 10**(-0.4*(Mv[i] + mag[i]))
-        ph_factor += [tmp]    
+        ph_factor += [tmp]
 
     # take care of the conversion to ph/s/m2 by multiplying by 1E4
     if type(ec) == (list, tuple):
@@ -865,14 +883,14 @@ def scale_pickles_to_photons(spec_type, mag=0):
             ec[i] *= (lam/0.5556) * ph_factor[i] * 1E4
     else:
         ec *= (lam/0.5556) * ph_factor[0] * 1E4
-    
+
     return lam, ec
 
 
 def value_at_lambda(lam_i, lam, val):
     """
     Return the value at a certain wavelength - i.e. val[lam] = x
-    
+
     Parameters
     ----------
     lam_i : float
@@ -881,97 +899,97 @@ def value_at_lambda(lam_i, lam, val):
         an array of wavelengths
     val : np.ndarray
         an array of values
-       
+
     """
-    
+
     i0 = np.where((lam <= lam_i) == True)[0][-1]
     i1 = np.where((lam > lam_i) == True)[0][0]
-    
+
     lam_x = np.array([lam[i0],lam_i,lam[i1]])
     val_i = np.interp(lam_x, lam, val)
-    
+
     return val_i[1]
-        
+
 
 def zero_magnitude_photon_flux(filter_name):
     """
     Return the number of photons for a m=0 star for a certain filter
-    
+
     Parameters
     ----------
     filt : str
         the name of the broadband filter - UBVRIYzJHKKs
-        
+
     Notes
     -----
-    units in [ph/s/m2] 
+    units in [ph/s/m2]
     """
-    
-    if filter_name not in "UBVRIYzJHKKs": 
+
+    if filter_name not in "UBVRIYzJHKKs":
         raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
-    
+
     lam, vega = scale_pickles_to_photons("A0V", mag=-0.58)
-    
-    vraw = ascii.read(os.path.join(__pkg_dir__, "data", 
+
+    vraw = ascii.read(os.path.join(__pkg_dir__, "data",
                                    "TC_filter_"+filter_name+".dat"))
     vlam = vraw[vraw.colnames[0]]
     vval = vraw[vraw.colnames[1]]
     filt = np.interp(lam, vlam, vval)
-        
+
     n_ph = np.sum(vega*filt)
-    
+
     #print("units in [ph/s/m2]")
     return n_ph
-    
+
 
 def SED(spec_type, filter="V", magnitude=0.):
     """
     Return a scaled SED for a X type star at magnitude Y star in band Z
-    
+
     Parameters
     ----------
     spec_type : str
         The spectral type of the star
     filter_name : str, optional
-        [UBVRIYzJHKKs] Any braodband filter in the Vis+NIR regime. 
+        [UBVRIYzJHKKs] Any braodband filter in the Vis+NIR regime.
         Default is "V"
     magnitude : float, optional
         Apparent magnitude of the star. Default is 0.
-        
+
     Returns
     -------
     lam : np.ndarray
         [um] The centre of each 5 Ang bin along the spectral axis
     val : np.ndarray
         [ph/s/m2/bin] The photon flux of the star in each bin
-    
+
     Notes
     -----
-    Original flux units are in [ph/s/m2/AA], so we multiply the flux by 5 to 
-    get [ph/s/m2/bin]. Therefore divide by 5*1E4 if you need the flux in 
+    Original flux units are in [ph/s/m2/AA], so we multiply the flux by 5 to
+    get [ph/s/m2/bin]. Therefore divide by 5*1E4 if you need the flux in
     [ph/s/cm2/Angstrom]
-    
+
     """
-    
-    if filter not in "UBVRIYzJHKKs": 
+
+    if filter not in "UBVRIYzJHKKs":
         raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter)
-    
+
     if type(magnitude) in (list, tuple):
         magnitude = np.asarray(magnitude)
-    
+
     flux_0 = zero_magnitude_photon_flux(filter)
     flux = flux_0 * 10**(-0.4 * magnitude)
-        
+
     lam, star = scale_pickles_to_photons(spec_type)
 
-    vraw = ascii.read(os.path.join(__pkg_dir__, "data", 
+    vraw = ascii.read(os.path.join(__pkg_dir__, "data",
                                    "TC_filter_"+filter+".dat"))
     vlam = vraw[vraw.colnames[0]]
     vval = vraw[vraw.colnames[1]]
     filt = np.interp(lam, vlam, vval)
-        
+
     n_ph = np.sum(star*filt)
-    
+
     scale_factor = flux / n_ph
     #print("scale_factor, flux, n_ph, flux_0 [ph/s/m2/bin]")
     #print(scale_factor, flux, n_ph, flux_0, filter)
@@ -982,7 +1000,7 @@ def SED(spec_type, filter="V", magnitude=0.):
 def star_grid(n, mag_min, mag_max, filter="K", seperation=1, area=1, spec_type="A0V"):
     """
     Creates a square grid of A0V stars at equal magnitude intervals
-    
+
     Parameters
     ----------
     n : float
@@ -997,19 +1015,19 @@ def star_grid(n, mag_min, mag_max, filter="K", seperation=1, area=1, spec_type="
         [m2] collecting area of primary mirror
     spec_type : str, optional
         the spectral type of the star, e.g. "A0V", "G5III"
-        
+
     Returns
     -------
     source : `simcado.Source`
-        
+
     Notes
     -----
     The units of the A0V spectrum in `source` are [ph/s/bin] or [ph/s/m2/bin]
     depending on if area is given.
     The weight values are the scaling factors to bring a V=0 A0V spectrum down to the required magnitude for each star
-    
+
     """
-    
+
     if type(mag_min) in (list, tuple, np.ndarray):
         mags = np.asarray(mag_min)
     else:
@@ -1019,9 +1037,9 @@ def star_grid(n, mag_min, mag_max, filter="K", seperation=1, area=1, spec_type="
             mags = np.linspace(mag_max, mag_min, n)
         elif mag_min == mag_max:
             mags = np.ones(n) * mag_min
-    
+
     side_len = int(np.sqrt(n)) + (np.sqrt(n) % 1 > 0)
-    
+
     x = seperation * (np.arange(n) % side_len - (side_len - 1) / 2)
     y = seperation * (np.arange(n)// side_len - (side_len - 1) / 2)
 
@@ -1031,24 +1049,24 @@ def star_grid(n, mag_min, mag_max, filter="K", seperation=1, area=1, spec_type="
     else:
         ref = np.zeros((n))
     weight = 10**(-0.4*mags) * area
-    
+
     if area != 1:
         units = "ph/s/m2"
     else:
         units = "ph/s"
-        
-    src = Source(lam=lam, spectra=spec, 
-                 x=x, y=y, 
+
+    src = Source(lam=lam, spectra=spec,
+                 x=x, y=y,
                  ref=ref, weight=weight,
                  units=units)
-    
+
     return src
-    
-    
+
+
 def star(mag, filter="K", spec_type="A0V", position=(0,0)):
     """
     Creates a simcado.Source object for a star with a given magnitude
-    
+
     Parameters
     ----------
     mag : float
@@ -1057,7 +1075,7 @@ def star(mag, filter="K", spec_type="A0V", position=(0,0)):
         filter in which the magnitude is given
     spec_type : str, optional
         the spectral type of the star, e.g. "A0V", "G5III"
-    
+
     Returns
     -------
     source : `simcado.Source`
@@ -1072,13 +1090,11 @@ def stars(mags, x, y, filter="K", spec_types="A0V"):
     """
     if type(spec_types) in (tuple, list) and len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")
-    
+
     stars = star_grid(len(mags), mags, mags, filter, spec_type=spec_types)
     stars.x, stars.y = x, y
     return stars
-    
-    
-    
+
 
 
 
