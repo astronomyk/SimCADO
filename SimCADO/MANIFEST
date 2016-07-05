@@ -22,6 +22,7 @@ simcado\spectral.py
 simcado\spectralgrating.py
 simcado\utils.py
 simcado\version.py
+simcado\data\EC_ILLUSTRIS_283832.fits
 simcado\data\EC_all_stars.csv
 simcado\data\EC_pickles.fits
 simcado\data\EC_pickles_MS.dat
@@ -54,15 +55,5 @@ simcado\data\default.config
 simcado\data\default_data_files.txt
 simcado\data\frequent.config
 simcado\data\skytable.fits
-simcado\docs\Assumptions.md
-simcado\docs\Data_model.md
-simcado\docs\Docstrings.md
-simcado\docs\Future_ideas.md
-simcado\docs\Problems.md
-simcado\docs\SimCADO_quick_and_dirty.ipynb
-simcado\docs\Usage.md
-simcado\docs\docstrings.txt
-simcado\docs\output.fits
 simcado\tests\__init__.py
-simcado\tests\test_atmosphere.py
-simcado\tests\test_spectral_curve.py
+simcado\tests\test_trial.py

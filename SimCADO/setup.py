@@ -56,7 +56,7 @@ def setup_package():
           packages=['simcado', 'simcado.tests'],
           scripts = ['scripts/simcado.py'],
           include_package_data=True,
-          package_data = {'simcado': ['data/*', 'docs/*']},
+          package_data = {'simcado': ['data/*']},
           )
     
     
