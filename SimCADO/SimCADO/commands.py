@@ -399,6 +399,9 @@ class UserCommands(object):
         if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
+        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
+            self.cmds["FPA_CHIP_LAYOUT"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_chip_layout_small.dat")
                 
         if self.cmds["HXRG_PCA0_FILENAME"] in (None, "none", "default"):
             self.cmds["HXRG_PCA0_FILENAME"] = \
@@ -586,27 +589,28 @@ class UserCommands(object):
     ### the dicts are updated
 
 
-def dump_defaults(dir="./", type="freq"):
+def dump_defaults(filename="./", type="freq"):
     """ 
     Dump the frequent.config file to a path specified by the user
     
     Parameters
     ----------
-    dir : str, optional
-        path where the .config file is to be saved
+    filename : str, optional
+        path or filename where the .config file is to be saved
     type : str, optional
         ["freq", "all"] amount of keywords to save. "freq" only prints the most
         frequently used keywords. "all" prints all of them
     """
 
-    dir = os.path.dirname(dir)
+    dir, gname = os.path.split(filename)
+    if dir == "": dir = "."
     
-    if "freq" in type.lower():
-        fname = "frequent.config"
-    elif "all" in type.lower():
-        fname = "default.config"
+    if "freq" in type.lower(): fname = "frequent.config"
+    elif "all" in type.lower(): fname = "default.config"
         
-    shutil.copy(os.path.join(__pkg_dir__,"data",fname), dir)
+    if gname == "": gname = fname    
+    shutil.copy(os.path.join(__pkg_dir__,"data",fname), 
+                os.path.join(dir, gname))
 
 
 def dump_chip_layout(dir="./"):
