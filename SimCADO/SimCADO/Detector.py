@@ -287,6 +287,9 @@ class Detector(object):
         #removed kwargs
         #self.cmds.update(kwargs)
         
+        if filename is not None:
+            to_disk = True
+        
         if filename is None and to_disk is True: 
             if self.cmds["OBS_OUTPUT_DIR"] is None:
                 self.cmds["OBS_OUTPUT_DIR"] = "./output.fits"
@@ -337,6 +340,12 @@ class Detector(object):
             hdus[i].header["TRO"]   = (self.tro, 
                                     "[s] Time between non-destructive readouts")
 
+            c = self.cmds.cmds
+            for key, val in zip(c.keys(), c.values()):
+                if type(val) == str and len(val) > 35:
+                    val = "... " + val[-35:]
+                hdus[i].header["HIERARCH "+key] = val
+                                    
         hdulist = fits.HDUList(hdus)
         
         if to_disk is False:
@@ -953,6 +962,8 @@ class Chip(object):
             
         #### TODO #########
         # add read out noise for every readout 
+        # add a for loop to _read_noise where n random noise frames are added
+        # based on the size of the noise cube
         out_array += self._read_noise_frame(cmds) * ndit
 
         if cmds["OBS_REMOVE_CONST_BG"].lower() == "yes":
