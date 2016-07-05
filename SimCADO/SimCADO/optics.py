@@ -254,8 +254,10 @@ class OpticalTrain(object):
         if tc_keywords is None:
             if preset is not None:
                 base = ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
-                       ['INST_ADC_TC', 'INST_DICHROIC_TC', 'INST_ENTR_WINDOW_TC',
-                        'INST_FILTER_TC', 'FPA_QE']
+                       ['INST_ADC_TC'] * int(self.cmds['INST_ADC_NUM_SURFACES']) + \
+                       ['INST_DICHROIC_TC'] + \
+                       ['INST_ENTR_WINDOW_TC'] * int(self.cmds['INST_ENTR_NUM_SURFACES']) + \
+                       ['INST_FILTER_TC', 'FPA_QE']
                 if preset == "source":
                     tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
                 if preset == "atmosphere":
