@@ -1,3 +1,6 @@
+"""
+Helper functions for SimCADO
+"""
 ###############################################################################
 # utils.py
 #
@@ -31,10 +34,12 @@ def msg(cmds, message, level=3):
     Prints a message based on the level of verbosity given in cmds
 
     Parameters
-    ==========
-    - cmds : commands
-    - message : str
-    - level : int, optional
+    ----------
+    cmds : UserCommands
+        just for the SIM_VERBOSE and SIM_MESSAGE_LEVEL keywords
+    message : str
+        message to be printed
+    level : int, optional
         all messages with level <= SIM_MESSAGE_LEVEL are printed. I.e. level=5 
         messages are not important, level=1 are very important
     """
@@ -44,19 +49,27 @@ def msg(cmds, message, level=3):
     
 ## CHECK: Turn config into a class? (subclass of dict, if anything)
 def read_config(config_file):
-    '''Read SimCADO configuration file
+    """
+    Read in a SimCADO configuration file
 
-    Input:
-    -----
     A configuration file in the SExtractor format:
        'PARAMETER    Value    # Comment'
 
-    Returns:
+    Parameters
+    ----------
+    config_file : str
+        the filename of the .config file
+    
+    Returns
     -------
-    A dictionary with keys 'PARAMETER' and values 'Value'.
-    Note that the values of the dictionary are strings and will have
-    to be converted to the appropriate data type as they are needed.
-    '''
+    config_dict : dict
+        A dictionary with keys 'PARAMETER' and values 'Value'.
+        
+    Notes
+    -----
+    The values of the dictionary are strings and will have to be converted to 
+    the appropriate data type as they are needed.
+    """
 
     import re
 
@@ -91,26 +104,54 @@ def read_config(config_file):
 
 
 def update_config(config_file, config_dict):
-    '''Update SimCADO configuration
+    """
+    Update a SimCADO configuration dictionary
 
-    Input:
-    -----
-    - A configuration file in the SExtractor format:
+    A configuration file in the SExtractor format:
          'PARAMETER    Value    # Comment'
-    - an existing configuration dictionary.
+    an existing configuration dictionary.
 
+    Parameters
+    ----------
+    config_file : str
+        the filename of the .config file
+    
+    Returns
+    -------
+    config_dict : dict
+        A dictionary with keys 'PARAMETER' and values 'Value'.
+    
     Returns:
     -------
-    A dictionary with keys 'PARAMETER' and values 'Value'.
-    Note that the values of the dictionary are strings and will have
+    config_dict : dict
+        A dictionary with keys 'PARAMETER' and values 'Value'.
+    
+    Notes
+    -----
+    the values of the dictionary are strings and will have
     to be converted to the appropriate data type as they are needed.
-    '''
+    """
     config_dict.update(read_config(config_file))
 
     return config_dict
-
+    
 def unify(x, unit, length=1):
-    """Convert all types of input to an astropy array/unit pair"""
+    """
+    Convert all types of input to an astropy array/unit pair
+    
+    Parameters
+    ----------
+    x : int, float, np.ndarray, astropy.Quantity
+        The array to be turned into an astropy.Quantity
+    unit : astropy.Quantity
+        The units to attach to the array
+    length : int, optional
+        If `x` is a scalar, and the desired output is an array with `length`
+
+    Returns
+    -------
+    y : astropy.Quantity
+    """
 
     print(type(x))
 
@@ -134,13 +175,20 @@ def unify(x, unit, length=1):
 
 ### Just a sketch
 def parallactic_angle(ha, de, lat=-24.589167):
-    """Compute parallactic angle
+    """
+    Compute the parallactic angle
 
-    Parameters:
-    ==========
-
-    - ha, de: hour angle and declination of observation point
-    - lat: latitude of observatory
+    Parameters
+    ----------
+    ha, de : float
+        hour angle and declination of observation point
+    lat : float
+        latitude of observatory
+    
+    Returns
+    -------
+    parang : float
+        The parallactic angle
     """
 
     # Convert observation point, pole and zenith to cartesian coordinates
@@ -171,6 +219,26 @@ def parallactic_angle(ha, de, lat=-24.589167):
 
 # From Filippenko1982
 def parallactic_angle_2(ha, de, lat=-24.589167):
+    """
+    Compute the parallactic angle
+
+    Parameters
+    ----------
+    ha, de : float
+        hour angle and declination of observation point
+    lat : float
+        latitude of observatory
+    
+    Returns
+    -------
+    parang : float
+        The parallactic angle
+        
+    References
+    ----------
+    Filippenko (1982)
+    """
+
     hadeg = ha
     ha = ha/180. * np.pi
     de = de/180. * np.pi
@@ -187,7 +255,21 @@ def parallactic_angle_2(ha, de, lat=-24.589167):
         eta = - eta
     return eta
 
+    
 def moffat(r, alpha, beta):
+    """
+    !!Unfinished!! Return a Moffat function
+    
+    Parameters
+    ----------
+    r
+    alpha
+    beta
+    
+    Returns
+    -------
+    eta
+    """
     return (beta - 1)/(np.pi * alpha**2) * (1 + (r/alpha)**2)**(-beta)
 
 
@@ -195,8 +277,16 @@ def poissonify(arr):
     """
     Add a realisation of the poisson process to the array 'arr'.
 
-    Keywords:
-    - arr:
+    Parameters
+    ----------
+    arr : np.ndarray
+        The input array which needs a Poisson distribution applied to items
+        
+    Returns 
+    -------
+    arr : np.ndarray
+        The input array, but with every pixel altered according to a poisson 
+        distribution
     """
     return np.random.poisson(arr).astype(np.float32)
 
@@ -208,22 +298,30 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     The function computes the angular difference between the apparent position
     of a star seen from the ground and its true position.
 
-    Parameters:
-    ==========
-    - lam : wavelength [micron]
-    - z0 : zenith distance [degrees]
-    - temp : ground temperature [deg C]
-    - rel_hum : relative humidity [%]
-    - pres : air pressure [millibar]
-    - lat : latitude [degrees] - set for Cerro Armazones: 24.5 deg South
-    - h : height above sea level [meters] - 3064 m
+    Parameters
+    ----------
+    lam : float, np.ndarray
+        [um] wavelength bin centres
+    z0 : float, optional
+        [deg] zenith distance. Default is 60 deg from zenith
+    temp : float, optional
+        [deg C] ground temperature. Default is 0 deg C
+    rel_hum : float, optional
+        [%] relative humidity. Default is 60%
+    pres : float, optional
+        [millibar] air pressure. Default is 750 mbar
+    lat : float, optional
+        [deg] latitude. Default set for Cerro Armazones: 24.5 deg South
+    h : float, optional
+        [m] height above sea level. Default is 3064 m
 
-    Output:
-    ======
-    - ang : angle between real position and refracted position [arcsec]
+    Returns
+    -------
+    ang : float, np.ndarray
+        [arcsec] angle between real position and refracted position 
 
-    References:
-    ==========
+    References
+    ----------
     See Stone 1996 and the review by S. Pedraz -
     http://www.caha.es/newsletter/news03b/pedraz/newslet.html
     """
@@ -268,7 +366,21 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     
     
 def nearest(arr, val):
-    """ Return the index of the value from 'arr' which is closest to 'val' """
+    """ 
+    Return the index of the value from 'arr' which is closest to 'val' 
+    
+    Parameters
+    ----------
+    arr : np.ndarray, list, tuple
+        Array to be searched
+    val : float, int
+        Value to find in `arr`
+    
+    Returns
+    -------
+    i : int
+        index of array where the nearest value to `val` is
+    """
     if type(val) in (list, tuple, np.ndarray):
         arr = np.array(arr)
         return [nearest(arr, i) for i in val]
@@ -279,7 +391,19 @@ def nearest(arr, val):
 
 
 def add_keyword(filename, keyword, value, comment="", ext=0):
-    """Add a keyword, value pair to an extension header in a FITS file """
+    """
+    Add a keyword, value pair to an extension header in a FITS file 
+    
+    Parameters
+    ----------
+    filename : str
+        Name of the FITS file to add the keyword to
+    keyword : str
+    value : str, float, int
+    comment : str
+    ext : int, optional
+        The fits extension index where the keyword should be added. Default is 0
+    """
     f = fits.open(filename, mode="update")
     f[ext].header[keyword] = (value, comment)
     f.flush()
