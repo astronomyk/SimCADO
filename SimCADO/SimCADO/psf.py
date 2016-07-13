@@ -425,7 +425,11 @@ class GaussianPSF(PSF):
             size = round(kwargs["size"] / 2) * 2 + 1
         else:
             size = 1
-        size = int(np.max((round(5 * self.fwhm / pix_res) * 2 + 1, size)))
+            
+        if "undersized" in kwargs.keys() and kwargs["undersized"]:
+            pass
+        else:
+            size = int(np.max((round(5 * self.fwhm / pix_res) * 2 + 1, size)))
 
         # Check for 'mode' keyword argument
         if "mode" in kwargs.keys():
@@ -443,8 +447,9 @@ class GaussianPSF(PSF):
         self.info["fwhm"] = self.fwhm * 1E3
 
         n = (self.fwhm / 2.35) / self.pix_res
-        self.set_array(Gaussian2DKernel(n, x_size=self.size, y_size=self.size,
-                                        mode=mode).array)
+        k = Gaussian2DKernel(n, x_size=self.size, y_size=self.size, mode=mode).array
+        
+        self.set_array(k)
 
 
 
@@ -534,7 +539,6 @@ class CombinedPSF(PSF):
         shifts = np.asarray([(0, 0)] + [psf.position for psf in psf_list \
                                         if psf.info["Type"] == "Delta"])
         size += 2 * np.max(shifts)
-        print(size)
 
         arr_tmp = np.zeros((size, size))
         arr_tmp[size // 2, size // 2] = 1
@@ -565,11 +569,6 @@ class UserPSF(PSF):
 
     def __init__(self, filename, **kwargs):
 
-        if "pix_res" in kwargs.keys():
-            pix_res = kwargs["pix_res"]
-        else:
-            pix_res = 0.004
-
         if "fits_ext" in kwargs.keys():
             fits_ext = kwargs["fits_ext"]
         else:
@@ -581,6 +580,13 @@ class UserPSF(PSF):
         header = fits.getheader(self.filename, ext=self.fits_ext)
         data = fits.getdata(self.filename, ext=self.fits_ext)
         size = header["NAXIS1"]
+        
+        if "pix_res" in kwargs.keys():
+            pix_res = kwargs["pix_res"]
+        elif "CDELT1" in header.keys():
+            pix_res = header["CDELT1"]
+        else:
+            pix_res = 0.004
 
         super(UserPSF, self).__init__(size, pix_res)
         self.info["Type"] = "User"
@@ -664,7 +670,7 @@ class PSFCube(object):
         - new_pix_res: [arcsec] the pixel resolution of the returned array
         """
         ## TODO: Check whether this makes sense
-        return [psf.resample(new_pix_res) for psf in self.psf_slices]
+        self.psf_slices = [psf.resample(new_pix_res) for psf in self.psf_slices]
 
     def export_to_fits(self, filename, clobber=True, **header_info):
         """
@@ -705,8 +711,9 @@ class PSFCube(object):
                   "len(kernel_list):", len(kernel_list))
             raise ValueError("Number of kernels must equal number of PSFs")
 
-        for psf, kernel in zip(self.psf_slices, kernel_list):
-            psf.convolve(kernel)
+        for i in np.arange(len(self.psf_slices)):
+            tmp = self.psf_slices[i].convolve(kernel_list[i])
+            self.psf_slices[i].set_array(tmp.array)
         self.info["Type"] = "Complex"
         
     
@@ -730,6 +737,8 @@ class PSFCube(object):
         
     
     def __mul__(self, x):
+        newpsf = deepcopy(self)
+        
         if not hasattr(x, "__len__"):
             y = [x] * len(self.psf_slices)
         else:
@@ -739,10 +748,15 @@ class PSFCube(object):
             print(len(self.psf_slices), len(y))
             raise ValueError("len(arguments) must equal len(PSFs)")
 
-        for psf, y in zip(self.psf_slices, y):
-            psf = psf * y
+        for i in np.arange(len(self.psf_slices)):
+            newpsf[i].set_array(self.psf_slices[i] * y[i])
+        return newpsf
+        
+            
 
     def __add__(self, x):
+        newpsf = deepcopy(self)
+    
         if not hasattr(x, "__len__"):
             y = [x] * len(self.psf_slices)
         else:
@@ -752,10 +766,14 @@ class PSFCube(object):
             print(len(self.psf_slices), len(y))
             raise ValueError("len(arguments) must equal len(PSFs)")
 
-        for psf, y in zip(self.psf_slices, y):
-            psf = psf + y
+        for i in np.arange(len(self.psf_slices)):
+            newpsf[i].set_array(self.psf_slices[i] + y[i])
+        return newpsf
+            
 
     def __sub__(self, x):
+        newpsf = deepcopy(self)
+    
         if not hasattr(x, "__len__"):
             y = [x] * len(self.psf_slices)
         else:
@@ -765,8 +783,11 @@ class PSFCube(object):
             print(len(self.psf_slices), len(y))
             raise ValueError("len(arguments) must equal len(PSFs)")
 
-        for psf, y in zip(self.psf_slices, y):
-            psf = psf - y
+        for i in np.arange(len(self.psf_slices)):
+            newpsf[i].set_array(self.psf_slices[i] - y[i])
+        return newpsf
+            
+            
 
     def __rmul__(self, x):
         self.__mul__(x)
@@ -844,7 +865,8 @@ class AiryPSFCube(PSFCube):
             self.fwhm = fwhm
 
         self.psf_slices = [AiryPSF(fwhm=f, **kwargs) for f in self.fwhm]
-
+        self.size = [psf.size for psf in self.psf_slices]
+        
         self.info['description'] = "List of Airy function PSFs"
         self.info["Type"] = "AiryCube"
 
@@ -878,7 +900,8 @@ class GaussianPSFCube(PSFCube):
             self.fwhm = [fwhm] * len(self)
 
         self.psf_slices = [GaussianPSF(fwhm=f, **kwargs) for f in self.fwhm]
-
+        self.size = [psf.size for psf in self.psf_slices]
+        
         self.info['description'] = "List of Gaussian function PSFs"
         self.info["Type"] = "GaussianCube"
 
@@ -911,7 +934,8 @@ class MoffatPSFCube(PSFCube):
             self.fwhm = [fwhm] * len(self)
 
         self.psf_slices = [MoffatPSF(fwhm=f, **kwargs) for f in fwhm]
-
+        self.size = [psf.size for psf in self.psf_slices]
+        
         self.info['description'] = "List of Moffat function PSFs"
         self.info["Type"] = "MoffatCube"
 
@@ -949,7 +973,7 @@ class CombinedPSFCube(PSFCube):
         for i in range(len(self)):
             self.psf_slices[i] = CombinedPSFCube([psf[i] for psf in psf_list],
                                              **kwargs)
-
+        self.size = [psf.size for psf in self.psf_slices]
 
 
 class UserPSFCube(PSFCube):
@@ -1018,7 +1042,8 @@ class UserPSFCube(PSFCube):
 
         super(UserPSFCube, self).__init__(lam_bin_centers)
         self.psf_slices = psf_slices
-
+        self.size = [psf.size for psf in self.psf_slices]
+        
         self.info['description'] = "User PSF cube input from " + filename
         self.info["Type"] = psf_slices[0].info["Type"]+"Cube"
 
