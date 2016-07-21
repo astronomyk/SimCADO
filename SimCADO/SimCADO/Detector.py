@@ -3,25 +3,25 @@ A description of the Chip noise properties and their positions on the Detector
 
 Summary
 -------
-This module holds three classes: `Detector`, `Chip` and `HXRGNoise`. 
+This module holds three classes: `Detector`, `Chip` and `HXRGNoise`.
 
 `Chip`
-Everything to do with photons and electrons happens in the `Chip` class. Each 
-`Chip` is initialised with a position relative to the centre of the detector 
-array, a size [in pixels] and a resolution [in arcsec]. Photons fall onto the 
-`Chip`s and are read out together with the read noise characteristics of the 
+Everything to do with photons and electrons happens in the `Chip` class. Each
+`Chip` is initialised with a position relative to the centre of the detector
+array, a size [in pixels] and a resolution [in arcsec]. Photons fall onto the
+`Chip`s and are read out together with the read noise characteristics of the
 `Chip`.
 
 `Detector`
-The `Detector` holds the information on where the ´Chip`s are placed on the 
-focal plane. Focal plane coordinates are in [arcsec]. These coordinates are 
+The `Detector` holds the information on where the ´Chip`s are placed on the
+focal plane. Focal plane coordinates are in [arcsec]. These coordinates are
 either read in from a default file or determined by the user. The `Detector`
-object is an intermediary - it only passes photons information on the photons 
+object is an intermediary - it only passes photons information on the photons
 to the `Chip`s. It is mainly a convenience class so that the user can read out
 all `Chip`s at the same time.
 
 `HXRGNoise`
-This class is borrowed from Berhand Rauscher's script which generates realistic 
+This class is borrowed from Berhand Rauscher's script which generates realistic
 noise frames for the JWST NIRSpec instrument. NIRSpec uses Hawaii 2RG detectors
 but the noise properties scale well up to the H4RG chips that MICADO will use.
 
@@ -62,7 +62,7 @@ The `Detector` is more useful if we combine it with a `Source` object and an
 `OpticalTrain`. Here we create a `Source` object for an open cluster in the LMC
 and pass the photons arriving from it through the E-ELT and MICADO. The photons
 are then cast onto the detector array. Each `Chip` converts the photons to ADUs
-and adds the resulting image to an Astropy `HDUList`. The `HDUList` is then 
+and adds the resulting image to an Astropy `HDUList`. The `HDUList` is then
 written to disk.
 
 ```
@@ -90,40 +90,52 @@ written to disk.
 # - update open, write - remove references to self.params
 
 
-import os, warnings, datetime
+import sys, os, warnings, datetime
 
 import numpy as np
 from scipy.ndimage.interpolation import zoom
 
+import multiprocessing as mp
+
 from astropy.io import fits, ascii
+from astropy.stats.funcs import median_absolute_deviation as mad
 
 try:
     import simcado.spectral as sc
+    import simcado.commands as commands
 except:
     import spectral as sc
+    import commands
+
+__file__ = sc.__file__
+__pkg_dir__ = os.path.split(__file__)[0]
 
 __all__ = ["Detector", "Chip"]
 
 
-    
+
+################################################################################
+#                              Detector Objects                                #
+################################################################################
+
 class Detector(object):
     """
     Generate a series of `Chip` objects for a focal plane array
 
-    
+
     Summary
     -------
     The `Detector` is a holder for the series of `Chip` objects which make up
     the detector array. The main advantage of the `Detector` object is that the
-    user can read out all chips in the whole detector array at once. A 
+    user can read out all chips in the whole detector array at once. A
     `Detector` is a parameter in the `Source.apply_optical_train()` method.
-    
+
 
     Parameters
     ----------
     cmds : UserCommands
         Commands for how to model the Detector
-       
+
 
     Attributes
     ----------
@@ -143,21 +155,21 @@ class Detector(object):
         [s] time between a single non-destructive readout in up-the-ramp mode
     ndit : int
         number of exposures (DITs)
-    
-    
+
+
     Methods
     -------
     read_out(output, filename, chips, **kwargs)
         for reading out the detector array into a FITS file
     open(filename, **kwargs)
-        ** not yet implemented ** 
+        ** not yet implemented **
         Should be moved into a general function for detector.py which returns a
         Detector object after reading in a saved detector file
-        
+
     write(filename, **kwargs)
-        ** not yet implemented ** 
+        ** not yet implemented **
         Save the Detector object into a FITS file
-    
+
     Raises
     ------
 
@@ -165,13 +177,13 @@ class Detector(object):
     See Also
     --------
     Chip, Source, OpticalTrain, UserCommands
-    
+
     Notes
     -----
 
     References
     ----------
-    
+
     Examples
     --------
     Create a `Detector` object
@@ -180,12 +192,12 @@ class Detector(object):
     >>> my_cmds = simcado.UserCommands()
     >>> my_detector = simcado.Detector(my_cmds)
     ```
-    
+
     Read out only the first `Chip`
     ```
     >>> my_detector.readout(filename=image.fits, chips=[0])
     ```
-    
+
     """
 
 
@@ -195,45 +207,46 @@ class Detector(object):
         # 3. Check if a noise file has been given
             # if not, generate new noise files
             # else: read in the noise file
-            # if the noise file has many extensions, choose several random 
+            # if the noise file has many extensions, choose several random
             #    extensions
-        
+
         self.cmds = cmds
-        
+
         if small_fov:
             self.layout = ascii.read("""#  id    x_cen    y_cen   x_len   y_len
                                         #       arcsec   arcsec   pixel   pixel
                                          0        0        0    1024    1024""")
         else:
             self.layout = ascii.read(self.cmds["FPA_CHIP_LAYOUT"])
-        self.chips  = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i], 
-                            self.layout["x_len"][i], self.layout["y_len"][i], 
-                            self.cmds["SIM_DETECTOR_PIX_SCALE"], 
-                            self.layout["id"][i]) 
+        self.chips  = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
+                            self.layout["x_len"][i], self.layout["y_len"][i],
+                            self.cmds["SIM_DETECTOR_PIX_SCALE"],
+                            self.layout["id"][i])
                        for i in range(len(self.layout["x_cen"]))]
-        
+
         self.oversample = self.cmds["SIM_OVERSAMPLING"]
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.exptime = self.cmds["OBS_EXPTIME"]
         self.ndit    = self.cmds["OBS_NDIT"]
         self.tro     = self.cmds["OBS_NONDESTRUCT_TRO"]
-            
+        self._n_ph_atmo   = 0
+        self._n_ph_mirror = 0
+
 
     def read_out(self, filename=None, to_disk=False, chips=None):
         """
         Simulate the read out process of the detector array
-    
 
         Summary
         -------
         Based on the parameters set in the `UserCommands` object, the detector
         will read out the images stored on the `Chips` according to the
-        specified read out scheme, i.e. Fowler, up-the-ramp, single read, etc. 
-        
+        specified read out scheme, i.e. Fowler, up-the-ramp, single read, etc.
+
         Parameters
         ----------
         filename : str
-            where the file is to be saved. If `None` the current directory is 
+            where the file is to be saved. If `None` the current directory is
             used. Default is `None`
         to_disk : bool
             a flag for where the output should go. If `True` the  `Chip` images
@@ -244,30 +257,19 @@ class Detector(object):
         chips : int, array-like, optional
             The chip or chips to be read out, based on the detector_layout.dat
             file. Default is the first `Chip` specified in the list, i.e. [0]
-            
-
+        
         Returns
         -------
         `if output == True:`
             astropy.io.fits.HDUList
         `else:`
-            <filename>.fits file 
-        
-
+            <filename>.fits file
 
         Keyword Arguments (**kwargs)
         ----------------------------
-        **kwargs are used to update the `UserCommands` object which controls 
-        the `Detector`. Therefore any dictionay keywords can be passed in the 
+        **kwargs are used to update the `UserCommands` object which controls
+        the `Detector`. Therefore any dictionay keywords can be passed in the
         form of a dictionary, i.e. {"EXPTIME" : 60, "OBS_OUPUT_DIR" : "./"}
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-        
 
         Notes
         -----
@@ -286,15 +288,15 @@ class Detector(object):
 
         #removed kwargs
         #self.cmds.update(kwargs)
-        
+
         if filename is not None:
             to_disk = True
-        
-        if filename is None and to_disk is True: 
+
+        if filename is None and to_disk is True:
             if self.cmds["OBS_OUTPUT_DIR"] is None:
                 self.cmds["OBS_OUTPUT_DIR"] = "./output.fits"
             filename = self.cmds["OBS_OUTPUT_DIR"]
-        
+
         if chips is not None and not hasattr(chips, "__len__"):
             ro_chips = [chips]
         elif chips is not None and hasattr(chips, "__len__"):
@@ -303,70 +305,71 @@ class Detector(object):
             ro_chips = np.arange(len(self.chips))
         else:
             raise ValueError("Something wrong with `chips`")
-        
+
         pri_hdu_flag = False
         for i in ro_chips:
             ######
             # Put in a catch here so that only the chips specified in "chips"
             # are read out
             ######
-            
-            
+
+
             array = self.chips[i].read_out(self.cmds)
-                        
+
             if pri_hdu_flag == False:
                 hdus = [fits.PrimaryHDU(array)]
                 pri_hdu_flag = True
             else:
                 hdus += [fits.ImageHDU(array)]
-            
-            hdus[i].header["CDELT1"] = (self.chips[i].pix_res, 
+
+            hdus[i].header["CDELT1"] = (self.chips[i].pix_res,
                                                     "[arcsec] Pixel resolution")
             hdus[i].header["CDELT2"] = (self.chips[i].pix_res,
                                                     "[arcsec] Pixel resolution")
-            hdus[i].header["CRVAL1"] = (self.chips[i].x_cen, 
+            hdus[i].header["CRVAL1"] = (self.chips[i].x_cen,
                         "[arcsec] central pixel relative to detector centre")
-            hdus[i].header["CRVAL2"] = (self.chips[i].y_cen, 
+            hdus[i].header["CRVAL2"] = (self.chips[i].y_cen,
                         "[arcsec] central pixel relative to detector centre")
-            hdus[i].header["CRPIX1"] = (self.chips[i].naxis1 // 2, 
+            hdus[i].header["CRPIX1"] = (self.chips[i].naxis1 // 2,
                                                                 "central pixel")
-            hdus[i].header["CRPIX2"] = (self.chips[i].naxis2 // 2, 
+            hdus[i].header["CRPIX2"] = (self.chips[i].naxis2 // 2,
                                                                 "central pixel")
             hdus[i].header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
 
             hdus[i].header["BUNIT"] = ("ph/s", "")
             hdus[i].header["EXPTIME"] = (self.exptime, "[s] Exposure time")
             hdus[i].header["NDIT"]  = (self.ndit, "Number of exposures")
-            hdus[i].header["TRO"]   = (self.tro, 
+            hdus[i].header["TRO"]   = (self.tro,
                                     "[s] Time between non-destructive readouts")
 
             c = self.cmds.cmds
             for key, val in zip(c.keys(), c.values()):
                 if type(val) == str and len(val) > 35:
                     val = "... " + val[-35:]
-                hdus[i].header["HIERARCH "+key] = val
-                                    
+                try: hdus[i].header["HIERARCH "+key] = val
+                except: pass
+
         hdulist = fits.HDUList(hdus)
-        
+
         if to_disk is False:
             return hdulist
         else:
             hdulist.writeto(filename, clobber=True)
-        
-            
+
+
     def open(self, filename, **kwargs):
         """
-        Opens a saved `Detector` file. 
+        Opens a saved `Detector` file.
 
 
         Summary
         -------
-        ** Not yet implemented ** 
-        ** Should be moved outside of `Detector` and called with 
+        ** Not yet implemented **
+        ** Should be moved outside of `Detector` and called with
         `detector.open()` **
-        
+
         Detector objects can be saved to FITS file and read back in for later
-        simulations. 
+        simulations.
 
         Parameters
         ----------
@@ -377,31 +380,10 @@ class Detector(object):
         -------
         `simcado.Detector` object
 
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
-
         Examples
         --------
         """
-     
+
         if not os.path.exists(filename):
             raise ValueError(filename + " doesn't exist")
 
@@ -410,7 +392,7 @@ class Detector(object):
         self.array = f[0].data
         f.close()
 
-        
+
     def write(self, filename=None, **kwargs):
         """
         Write a `Detector` object out to a FITS file
@@ -418,37 +400,25 @@ class Detector(object):
 
         Summary
         -------
-        Writes the important information containeed in a `Detector` object into 
+        Writes the important information containeed in a `Detector` object into
         FITS file for later use. The main information written out include: the
-        layout of the detector chips, any pixel maps associated with the 
+        layout of the detector chips, any pixel maps associated with the
         detector chips, a linearity curve and a QE curve for the chips.
 
 
         Parameters
         ----------
         filename : str, optional
-            path to the FITS file where the `Detector` object is stored. If 
+            path to the FITS file where the `Detector` object is stored. If
             `filename=None` (by default), the file written is `./detector.fits`
-            
-            
+
+
         Returns
         -------
         None
 
         Keyword Arguments (**kwargs)
         ----------------------------
-
-        Raises
-        ------
-
-        See Also
-        --------
-
-        Notes
-        -----
-
-        References
-        ----------
 
         Examples
         --------
@@ -472,30 +442,67 @@ class Detector(object):
         except:
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
-    
+
 def plot_detector_layout(detector):
     """Plot the detector layout. NOT FINISHED """
     try:
         import matplotlib.pyplot as plt
     except:
         raise ValueError("matplotlib can't be found")
-    
+
     plt.figure(figsize=(10,10))
     clr = ["g"]
 
-    for i in range(9):
+    for i in range(len(detector.chips)):
         chip = detector.chips[i]
-        plt.plot((chip.x_min,chip.x_max), (chip.y_min,chip.y_min),c=clr[i%len(clr)])
-        plt.plot((chip.x_min,chip.x_max), (chip.y_max,chip.y_max),c=clr[i%len(clr)])
-        plt.plot((chip.x_min,chip.x_min), (chip.y_min,chip.y_max),c=clr[i%len(clr)])
-        plt.plot((chip.x_max,chip.x_max), (chip.y_min,chip.y_max),c=clr[i%len(clr)])
+        plt.plot((chip.x_min,chip.x_max), (chip.y_min,chip.y_min), c=clr[i%len(clr)])
+        plt.plot((chip.x_min,chip.x_max), (chip.y_max,chip.y_max), c=clr[i%len(clr)])
+        plt.plot((chip.x_min,chip.x_min), (chip.y_min,chip.y_max), c=clr[i%len(clr)])
+        plt.plot((chip.x_max,chip.x_max), (chip.y_min,chip.y_max), c=clr[i%len(clr)])
         plt.text(chip.x_cen,chip.y_cen,str(i),fontsize=14)
-        plt.xlabel("Distance [arcsec]", fontsize=14); plt.ylabel("Distance [arcsec]", fontsize=14)
+        plt.xlabel("Distance [arcsec]", fontsize=14)
+        plt.ylabel("Distance [arcsec]", fontsize=14)
 
     plt.show()
 
-        
     
+def plot_detector(detector):
+    """
+    Plot the contents of a detector array
+    
+    Parameters
+    ----------
+    detector : simcado.Detector
+        The detector object to be shown
+    """
+    
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+    
+    plt.figure(figsize=(15*2,13.75*2))
+
+    x0 = np.min([i.x_min for i in detector.chips])
+    x1 = np.max([i.x_max for i in detector.chips])
+    y0 = np.min([i.y_min for i in detector.chips])
+    y1 = np.max([i.y_max for i in detector.chips])
+    w = (detector.chips[0].x_max - detector.chips[0].x_min)/(x1-x0)
+    h = (detector.chips[0].y_max - detector.chips[0].y_min)/(y1-y0)
+
+    for chip in detector.chips:
+        s = plt.axes([(chip.x_min - x0)/(x1-x0), (chip.y_min - y0)/(y1-y0),w,h])
+        s.set_xticklabels("")
+        s.set_yticklabels("")
+        s.imshow(np.rot90(chip.array-np.min(chip.array)), norm=LogNorm(), 
+                 cmap="Greys", vmin=1)
+    
+    plt.show()    
+    
+    
+################################################################################
+#                              Chip Objects                                    #
+################################################################################
+
+
 class Chip(object):
     """
     Holds the "image" as seen my a single chip in the focal plane
@@ -504,14 +511,14 @@ class Chip(object):
     Summary
     -------
     The `Chip` object contains information on where it is located in the focal
-    plane array. The method `<Source>.apply_optical_train()` passes an image of 
+    plane array. The method `<Source>.apply_optical_train()` passes an image of
     the on-sky object to each `Chip`. THis image is resampled to the `Chip`
     pixel scale. Each `Chip` holds the "ideal" image as an array of expectraion
     values for the level of photons arriving during an EXPTIME. The `Chip` then
     adds detector noise and other characteristics to the image when
     <Detector>.readout() is called.
 
-    
+
     Parameters
     ----------
     x_cen, y_cen : float
@@ -522,9 +529,9 @@ class Chip(object):
     pix_res : float
         [arcsec] the field of view per pixel
     id : int
-        an indetification number for the chip (assuming they are not correctly 
+        an indetification number for the chip (assuming they are not correctly
         ordered)
-        
+
     Attributes
     ----------
     x_cen, y_cen : float
@@ -539,7 +546,7 @@ class Chip(object):
     dx, dy : float
         [arcsec] half of the field of view of each chip
     x_min, x_max, y_min, y_max : float
-        [arcsec] the borders of the chip realtive to the centre of the focal plane        
+        [arcsec] the borders of the chip realtive to the centre of the focal plane
     array : np.ndarray
         an array for holding the signal registered by the `Chip`
 
@@ -547,21 +554,21 @@ class Chip(object):
     Methods
     -------
     add_signal(signal)
-        adds signal to `.array`. The signal should be the same dimensions as 
+        adds signal to `.array`. The signal should be the same dimensions as
         `Chip.array`
     add_uniform_background(emission, lam_min, lam_max, output=False)
         adds a constant to the signal in `.array`. The background level is found
         by integrating the the `emission` curve between `lam_min` and `lam_max`.
-        It output is set to `True`, an image with the same dimensions as 
+        It output is set to `True`, an image with the same dimensions as
         `.array` scaled to the bacground flux is returned
     apply_pixel_map(pixel_map_path=None, dead_pix=None, max_well_depth=1E5)
-        applies a mask to `.array` representing the position of the current 
+        applies a mask to `.array` representing the position of the current
         "hot" and "dead" pixels / lines
-    reset_chip()
-        resets the signal on the `Chip` to zero. In future releases, an 
-        imlementation of the persistence characteristics of the detector will 
+    reset()
+        resets the signal on the `Chip` to zero. In future releases, an
+        imlementation of the persistence characteristics of the detector will
         go here.
-       
+
 
     Raises
     ------
@@ -570,47 +577,37 @@ class Chip(object):
     --------
     Detector, Source, UserCommands, OpticalTrain
 
-    Notes
-    -----
-
-
-    References
-    ----------
-
-
     Examples
     --------
     """
 
     def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, id=None):
-        
+
         self.x_cen  = x_cen
         self.y_cen  = y_cen
         self.naxis1 = x_len
         self.naxis2 = y_len
         self.pix_res = pix_res
         self.id     = id
-        
+
         dx = (x_len // 2) * pix_res
         dy = (y_len // 2) * pix_res
         self.x_min = x_cen - dx
         self.x_max = x_cen + dx
         self.y_min = y_cen - dy
         self.y_max = y_cen + dy
-           
+
         self.array = None
-   
-   
+
+
     def add_signal(self, signal):
         """
         Add a 2D array of photon signal to the Chip
-       
 
         Summary
         -------
         Add some signal photons to the detector array. Input units are expected
         to be [ph/s/pixel]
-
 
         Parameters
         ----------
@@ -625,18 +622,9 @@ class Chip(object):
         Raises
         ------
 
-        See Also
-        --------
-
-        Notes
-        -----
-
-        References
-        ----------
-
         Examples
         --------
-        
+
         """
         if type(signal) == np.ndarray:
             if signal.shape[0] == self.naxis1 and signal.shape[1] == self.naxis2:
@@ -668,26 +656,8 @@ class Chip(object):
         Returns
         -------
 
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
         Raises
         ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
 
         Examples
         --------
@@ -704,25 +674,25 @@ class Chip(object):
         Optional keywords:
         - output: [False, True] if output is True, the BG emission array is
                   returned
-                  
+
         Output is in [ph/s/pixel]
         """
-        
+
         if type(emission) == sc.EmissionCurve:
-            bg_photons = emission.photons_in_range(lam_min, lam_max)        
+            bg_photons = emission.photons_in_range(lam_min, lam_max)
         elif type(emission) in (float, int):
             bg_photons = emission
         else:
             bg_photons = 0
             warnings.warn("type(emission) invalid. No background added")
-        
+
         if output is True:
             return bg_photons * np.ones(self.array.shape, dtype=np.float32)
         else:
             self.array += bg_photons
-            
 
-    def apply_pixel_map(self, pixel_map_path=None, dead_pix=None, 
+
+    def apply_pixel_map(self, pixel_map_path=None, dead_pix=None,
                         max_well_depth=1E5):
         """
         adds "hot" and "dead" pixels to the array
@@ -730,9 +700,9 @@ class Chip(object):
 
         Summary
         -------
-        applies a mask to `.array` representing the positions of the current 
+        applies a mask to `.array` representing the positions of the current
         "hot" and "dead" pixels / lines. The method either reads in a FITS file
-        with locations of these pixels, or generates a series of random 
+        with locations of these pixels, or generates a series of random
         coordinates and random weights for the pixels.
 
         Parameters
@@ -743,8 +713,8 @@ class Chip(object):
             [%] the percentage of dead or hot pixels on the chip - only used if
             pixel_map_path = None. Default is `None`.
         max_well_depth : 1E5
-        
-        
+
+
         Returns
         -------
         None
@@ -753,18 +723,11 @@ class Chip(object):
         ------
 
         See Also
-        --------
-
-        Notes
-        -----
-
-        References
-        ----------
 
         Examples
         --------
         """
- 
+
         try:
             pixel_map = fits.getdata(pixel_map_path)
             if self.array.shape != pixel_map.shape:
@@ -786,9 +749,6 @@ class Chip(object):
         <One-line summary goes here>
 
 
-        Summary
-        -------
-
 
         Parameters
         ----------
@@ -797,27 +757,6 @@ class Chip(object):
 
         Returns
         -------
-
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
 
         Examples
         --------
@@ -831,16 +770,14 @@ class Chip(object):
         max_val = self.params["FPA_WELL_DEPTH"]
         arr[arr > max_val] = max_val
         return arr
-                                 
-                                 
-    def reset_chip(self):
+
+
+    def reset(self):
         """
         <One-line summary goes here>
 
-
         Summary
         -------
-
 
         Parameters
         ----------
@@ -849,187 +786,106 @@ class Chip(object):
 
         Returns
         -------
-
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
-
-        Examples
-        --------
         """
 
-        """
-        """
-        ### TODO - add in persistence 
+        ### TODO - add in persistence
         self.array = None
 
 
     def read_out(self, cmds):
         """
-        <One-line summary goes here>
-
+        Readout the detector array
 
         Summary
         -------
 
-
         Parameters
         ----------
-        x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
+        cmds : simcado.UserCommands
+            Commands for how to read out the chip
 
         Returns
         -------
-
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
+        out_array : np.ndarray
+            image of the chip read out
 
         Raises
         ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
 
         Examples
         --------
         """
 
-        """
-        Readout the detector array
-        """
-
         ###############################################
         #!!!!!!!!!!! TODO - add dark strom !!!!!!!!!!!#
-        
+
         dit     = cmds["OBS_EXPTIME"]
         ndit    = int(cmds["OBS_NDIT"])
         tro     = cmds["OBS_NONDESTRUCT_TRO"]
         max_byte = cmds["SIM_MAX_RAM_CHUNK_GB"] * 2**30
         dark    = cmds["FPA_DARK_MEDIAN"]
-        
+
         if self.array is None:
             self.array = np.zeros((self.naxis1, self.naxis2), dtype=np.float32)
-        
+
         # At this point, the only negatives come from the convolution.
         # Remove them for the Poisson process
         self.array[self.array < 0] = 0
-        
-        out_array = np.zeros(self.array.shape, dtype=np.float32)
-        
-        if cmds["SIM_SPEED"] <= 3:
-            for n in range(ndit):
-                out_array += self._read_out_uptheramp(self.array, dit, tro,
-                                                   max_byte)
-                out_array += dark * dit
 
-        elif cmds["SIM_SPEED"] > 3 and cmds["SIM_SPEED"] <= 7:
-            for n in range(ndit):
-                out_array += self._read_out_fast(self.array, dit)
-                out_array += dark * dit
-                
-        elif cmds["SIM_SPEED"] > 7:
-            out_array = self._read_out_superfast(self.array, dit, ndit)
-            out_array += dark * dit * ndit
+        out_array = np.zeros(self.array.shape, dtype=np.float32)
+
+        ############## TO DO add in the different read out modes ###############
+        # if cmds["SIM_SPEED"] <= 3:
+            # for n in range(ndit):
+                # out_array += self._read_out_uptheramp(self.array, dit, tro,
+                                                   # max_byte)
+                # out_array += dark * dit
+
+        # elif cmds["SIM_SPEED"] > 3 and cmds["SIM_SPEED"] <= 7:
+            # for n in range(ndit):
+                # out_array += self._read_out_fast(self.array, dit)
             
+            # out_array += dark * dit * ndit
+
+        #elif cmds["SIM_SPEED"] > 7:
+        #######################################################################
+        
+        out_array = self._read_out_superfast(self.array, dit, ndit)      
+        
         #### TODO #########
-        # add read out noise for every readout 
+        # add read out noise for every readout
         # add a for loop to _read_noise where n random noise frames are added
         # based on the size of the noise cube
-        out_array += self._read_noise_frame(cmds) * ndit
+        ro = np.array([self._read_noise_frame(cmds) for i in range(ndit)])
+        ro = np.sum(ro, axis=0) + dark * dit * ndit
+            
+        out_array += ro
 
         if cmds["OBS_REMOVE_CONST_BG"].lower() == "yes":
             min_val = np.min(out_array)
             out_array -= min_val
-        
+
         return out_array
 
     ## TODO: What to do if dit = min_dit (single read)?
     ## TODO: Make breaking up into memory chunks more flexible?
     def _read_out_uptheramp(self, image, dit, tro=1.3, max_byte=2**30):
         """
-        <One-line summary goes here>
-
-
-        Summary
-        -------
-
-
-        Parameters
-        ----------
-        x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
-
-        Returns
-        -------
-
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
-
-        Examples
-        --------
-        """
-        """Test readout onto a detector using cube model
+        Test readout onto a detector using cube model
 
         Parameters
         ==========
-        image : 
+        image :
             a 2D image to be mapped onto the detector. Units are [ph/s/pixel]
-        dit : 
+        dit :
             integration time [s]
-        tro : 
+        tro :
             time for a single non-destructive read (default: 1.3 seconds)
 
         Optional Parameters
         ===================
-        max_byte : 
-            the largest possible chunk of memory that can be used for computing 
+        max_byte :
+            the largest possible chunk of memory that can be used for computing
             the sampling slope
 
         This function builds an intermediate cube of dimensions (nx, ny, nro) with a
@@ -1098,11 +954,6 @@ class Chip(object):
         """
         <One-line summary goes here>
 
-
-        Summary
-        -------
-
-
         Parameters
         ----------
         x  :  type [, optional [, {set values} ]]
@@ -1110,27 +961,6 @@ class Chip(object):
 
         Returns
         -------
-
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
 
         Examples
         --------
@@ -1138,15 +968,13 @@ class Chip(object):
 
         return np.random.poisson(image * dit)
 
-        
+
     def _read_out_superfast(self, image, dit, ndit):
         """
         <One-line summary goes here>
 
-
         Summary
         -------
-
 
         Parameters
         ----------
@@ -1156,32 +984,10 @@ class Chip(object):
         Returns
         -------
 
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
-
         Examples
         --------
         """
-
-        # As noise increases with sqrt(t), we 
+        
         exptime = dit * ndit
         image2 = image * exptime
         image2[image2 > 2.14E9] = 2.14E9
@@ -1209,93 +1015,22 @@ class Chip(object):
 
         if cmds["FPA_USE_NOISE"].lower() == "no":
             return np.zeros((self.naxis1, self.naxis2))
-        
-        if cmds["FPA_NOISE_PATH"] is not None:
+
+        if "gen" in cmds["FPA_NOISE_PATH"].lower():
+            if cmds["HXRG_OUTPUT_PATH"] is not None:
+                _generate_hxrg_noise(self.naxis1, self.naxis2, cmds)
+                tmp = fits.getdata(cmds["HXRG_OUTPUT_PATH"])
+                return tmp[:self.naxis1, :self.naxis2]
+            else:
+                return _generate_hxrg_noise(self.naxis1, self.naxis2, cmds)
+                
+        elif cmds["FPA_NOISE_PATH"] is not None:
             n = len(fits.info(cmds["FPA_NOISE_PATH"], False))
             layer = np.random.randint(n)
             tmp = fits.getdata(cmds["FPA_NOISE_PATH"], layer)
             return tmp[:self.naxis1, :self.naxis2]
-        elif "gen" in cmds["FPA_NOISE_PATH"].lower():
-            if cmds["HXRG_OUTPUT_PATH"] is not None:
-                self._generate_hxrg_noise(cmds)
-                tmp = fits.getdata(cmds["HXRG_OUTPUT_PATH"])
-                return tmp[:self.naxis1, :self.naxis2]
-            else:
-                return self._generate_hxrg_noise(cmds)
         else:
             return np.zeros((self.naxis1, self.naxis2))
-        
-        
-    def _generate_hxrg_noise(self, cmds):
-        """
-        <One-line summary goes here>
-
-
-        Summary
-        -------
-
-
-        Parameters
-        ----------
-        x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
-
-        Returns
-        -------
-
-
-        Keyword Arguments (**kwargs)
-        ----------------------------
-
-
-        Raises
-        ------
-
-
-        See Also
-        --------
-
-
-        Notes
-        -----
-
-
-        References
-        ----------
-
-
-        Examples
-        --------
-        """
-
-
-        """
-        Create a detector noise array using Bernard Rauscher's NGHxRG tool
-
-        Optional Keywords:
-        - HXRG_OUTPUT_PATH:
-
-        """
-        if len(kwargs) > 0 and self.verbose: print("updating ",kwargs)
-        self.params.update(kwargs)
-
-        # HXRG needs a pca file to run. Work out what a PCA file means!!
-        ng_h4rg     = HXRGNoise(naxis1   = cmds["CHIP_NAXIS1"],
-                                naxis2   = cmds["CHIP_NAXIS2"],
-                                n_out    = cmds["HXRG_NUM_OUTPUTS"],
-                                nroh     = cmds["HXRG_NUM_ROW_OH"],
-                                pca0_file= cmds["HXRG_PCA0_FILENAME"],
-                                verbose  = cmds["SIM_VERBOSE"])
-
-        # Make a noise file
-        noise = ng_h4rg.mknoise(o_file   = cmds["HXRG_OUTPUT_PATH"],
-                                rd_noise = cmds["FPA_READOUT_MEDIAN"],
-                                pedestal = cmds["HXRG_PEDESTAL"],
-                                c_pink   = cmds["HXRG_CORR_PINK"],
-                                u_pink   = cmds["HXRG_UNCORR_PINK"],
-                                acn      = cmds["HXRG_ALT_COL_NOISE"])
-        
-        return noise
 
 
     def __array__(self):
@@ -1331,8 +1066,123 @@ class Chip(object):
 
     def __isub__(self, x):
         return self.__sub__(x)
+
+
+def _generate_hxrg_noise(naxis1, naxis2, cmds):
+    """
+    Generate a read noise frame using a UserCommands object
+
+    Create a detector noise array using Bernard Rauscher's NGHxRG tool
+
+    Parameters
+    ----------
+    cmds : simcado.UserCommands
+
+    Returns
+    -------
+
+    Examples
+    --------
+    """
+
+    #if len(kwargs) > 0 and self.verbose: print("updating ",kwargs)
+    #self.params.update(kwargs)
+    print("Generating a new chip noise array")
+    # HXRG needs a pca file to run. Work out what a PCA file means!!
+    ng_h4rg     = HXRGNoise(naxis1   = naxis1,
+                            naxis2   = naxis2,
+                            n_out    = cmds["HXRG_NUM_OUTPUTS"],
+                            nroh     = cmds["HXRG_NUM_ROW_OH"],
+                            pca0_file= cmds["HXRG_PCA0_FILENAME"],
+                            verbose  = cmds["SIM_VERBOSE"])
+
+    # Make a noise file
+    noise = ng_h4rg.mknoise(o_file   = cmds["HXRG_OUTPUT_PATH"],
+                            rd_noise = cmds["FPA_READOUT_MEDIAN"],
+                            pedestal = cmds["HXRG_PEDESTAL"],
+                            c_pink   = cmds["HXRG_CORR_PINK"],
+                            u_pink   = cmds["HXRG_UNCORR_PINK"],
+                            acn      = cmds["HXRG_ALT_COL_NOISE"])
+
+    return noise
+
+
+def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
+    """
+    Create a large noise cube with many separate readout frames. 
+    
+    Note:
+    Each frame take about 15 seconds to be generated. The default value of
+    25 frames will take around six minutes depending on your computer's 
+    architecture.
+    
+    Parameters
+    ----------
+    num_layers : int, optional
+        the number of separate readout frames to be generated. Default is 25
+    filename : str, optional
+        The filename for the FITS cube. Default is "FPA_noise.fits"
+    multicore : bool, optional
+        If you're not using windows, this allows the process to use all 
+        available cores on your machine to speed up the process. Default is True
+    
+    Notes
+    -----
+    multicore doesn't work - fix it
+
+    """
+
+    cmds = commands.UserCommands()
+    cmds["FPA_NOISE_PATH"] = "generate"
+    cmds["FPA_CHIP_LAYOUT"] = "default"
+
+    layout = ascii.read(cmds.cmds["FPA_CHIP_LAYOUT"])
+    naxis1, naxis2 = layout["x_len"][0], layout["y_len"][0]
+
+    #if "Windows" in os.environ.get('OS',''):
+    multicore = False
+
+    if __name__ == "__main__" and multicore:
+        pool = mp.Pool(processes=mp.cpu_count()-1)
+        frames = pool.map(_generate_hxrg_noise, (naxis1, naxis2, cmds))
+        hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
+                        [fits.ImageHDU(frames[i]) for i in range(1,num_layers)])
+    else:
+        frames = [_generate_hxrg_noise(naxis1, naxis2, cmds) \
+                                                    for i in range(num_layers)]
+        hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
+                        [fits.ImageHDU(frames[i]) for i in range(1,num_layers)])
+
+    if filename==None:
+        return hdu
+    else:
+        hdu.writeto(filename, clobber=True)
+
+
+def install_noise_cube(n=25):
+    """
+    Install a noise cube in the package directory
+    
+    Parameters
+    ----------
+    n : int, optional
+        number of layers. 
         
-        
+    Warning
+    -------
+    Each layer is ~64MB, default is 25 layers (1.6GB). If you have less than 
+    2 GB on the drive where your Python installation is. Be careful!
+    """
+    
+    print("WARNING - this process can take minutes. Fear not!")
+    hdu = make_noise_cube(n, filename=None)
+    filename = os.path.join(__pkg_dir__,"data","FPA_noise.fits")
+    hdu.writeto(filename, clobber=True)
+    print("Saved noise cube with", n, "layers to the package directory:")
+    print(filename)
+
+
+
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
@@ -1795,6 +1645,6 @@ class HXRGNoise:
         if o_file is not None:
             hdu.writeto(o_file, clobber='True')
         return result
-        
+
 class bloedsinn:
     pass
