@@ -1,10 +1,12 @@
 Metadata-Version: 1.0
 Name: SimCADO
-Version: 0.2.37dev
+Version: 0.2.66dev
 Summary: MICADO Instrument simulator
 Home-page: http://homepage.univie.ac.at/kieran.leschinski/
 Author: Kieran Leschinski, Oliver Czoske
-Author-email: karl.jansky@univie.ac.at,oliver.czoske@univie.ac.at
+Author-email: kieran.leschinski@unive.ac.at,
+                            oliver.czoske@univie.ac.at,
+                            karl.jansky@univie.ac.at
 License: UNKNOWN
 Description: UNKNOWN
 Platform: UNKNOWN

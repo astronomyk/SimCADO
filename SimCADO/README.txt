@@ -183,10 +183,11 @@ Currently ONLY imaging mode is offered. Once the Imaging mode is bug free, we
 will begin implementing the others.
 
 NOTE: 
-SimCADO v0.2 only works on Python 2.7. We apologise that we have not yet made 
-the leap into Python 3. This will come with the SimCADO v1.0 release.
+SimCADO v0.2 only works on Python >3. We apologise that we have not yet made 
+the leap to backwards compatibility for Python 2.7. This will come with the SimCADO v1.0 release.
+(** in the words of Tom Robitaille: "Python 3 is the future, deal with it")
 
-As SimCADO is still in its pre-alpha stage, there are several things it can't 
+As SimCADO is still in its alpha stage, there are several things it can't 
 do yet. All of these points are on our to-do list, so please be patient. 
 - read 2D images
 - use SCAO or MCAO PSF files
