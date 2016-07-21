@@ -43,18 +43,19 @@ version = '{}'
 from distutils.core import setup
 
 def setup_package():
-    # Rewrite the version file everytime
+    # Rewrite the version file every time
     write_version_py()
 
     setup(name = 'SimCADO',
           version = VERSION,
           description = "MICADO Instrument simulator",
           author = "Kieran Leschinski, Oliver Czoske",
-          author_email = "karl.jansky@univie.ac.at,oliver.czoske@univie.ac.at",
+          author_email = """kieran.leschinski@unive.ac.at,
+                            oliver.czoske@univie.ac.at,
+                            karl.jansky@univie.ac.at""",
           url = "http://homepage.univie.ac.at/kieran.leschinski/",
           package_dir={'simcado': 'simcado'}, 
           packages=['simcado', 'simcado.tests'],
-          scripts = ['scripts/simcado.py'],
           include_package_data=True,
           package_data = {'simcado': ['data/*']},
           )
