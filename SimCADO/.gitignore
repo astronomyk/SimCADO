@@ -12,4 +12,6 @@ __pycache__
 !EC_pickles.fits
 !LMC_Ha.fits
 !LMC_R.fits
+*.jpg
+!The_E-ELT_Primary_Mirror_edit.jpg
 
