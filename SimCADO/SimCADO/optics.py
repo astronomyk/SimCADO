@@ -12,12 +12,12 @@
 # - Implement saving and reloading of OpticalTrain objects
 #
 
-import sys, os
+import sys, os, glob
 import warnings
 
 import numpy as np
 
-from astropy.io import fits
+from astropy.io import fits, ascii
 import astropy.units as u
 try:
     import simcado.detector as fpa
@@ -57,7 +57,7 @@ class OpticalTrain(object):
         [um] wavelengths of the centre of the bins used for each PSF layer
     - pix_res : float
         [arcsec] infernal oversampled pixel resolution (NOT detector plate scale)
-    - psf_source :
+    - psf :
     - jitter_psf :
     - adc_shifts
         [pixel]
@@ -187,23 +187,45 @@ class OpticalTrain(object):
                 self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
                                                            self.lam_bin_edges[-1])
             else:
+                if len(self.cmds["INST_FILTER_TC"]) > 2:
+                    filt = self.cmds["INST_FILTER_TC"][-5:-3].replace(".","")
+                else:
+                    filt = self.cmds["INST_FILTER_TC"]
+                
+                if self.cmds["ATMO_BG_MAGNITUDE"] == "default":
+                    path = os.path.join(__pkg_dir__, "data", "EC_sky_magnitude.dat")
+                    self.cmds["ATMO_BG_MAGNITUDE"] = ascii.read(path)[filt][0] 
+                
+                if filt not in "BVRIzYJHKKs":
+                    raise ValueError("""Only broadband filters (BVRIzYJHKKs)
+                      can be used with keyword ATMO_BG_MAGNITUDE. Please provide 
+                      a filename for ATMO_EC, or write ATMO_EC  default""")
+                
+                from simcado import source
+                ph_zero = source.zero_magnitude_photon_flux(filt)
+                
                 self.ec_atmo = None
                 self.ph_atmo = None
-                self.n_ph_atmo = self.cmds["ATMO_BG_PHOTONS"]
+                
+                factor = 10**(-0.4*self.cmds["ATMO_BG_MAGNITUDE"]) * \
+                                        self.cmds.pix_res**2 * self.cmds.area
+                
+                self.n_ph_atmo = ph_zero * factor
+        
         
         else:
             self.ec_atmo = None
             self.ph_atmo = None
             self.n_ph_atmo = 0.
                 
-            
+        self.n_ph_bg = self.n_ph_atmo + self.n_ph_mirror
 
         ############## SOURCE PHOTON PATH #########################
         if self.cmds.verbose:
             print("Generating optical path for source photons")
         # Make the transmission curve and PSF for the source photons
         self.tc_source  = self._gen_master_tc(preset="source")
-        self.psf_source = self._gen_master_psf()
+        self.psf = self._gen_master_psf()
 
         # Detector has been outsourced - this is irrelevant now
           ############## detector #########################
@@ -321,7 +343,17 @@ class OpticalTrain(object):
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
             if psf_m1[0].pix_res != self.pix_res:
-                psf_m1 = psf_m1.resample(self.pix_res)
+                psf_m1.resample(self.pix_res)
+        
+            if self.cmds["SCOPE_STREHL_RATIO"] < 1. and \
+                                        "PSF_POPPY" in self.cmds["SCOPE_PSF_FILE"]:
+                strehl = self.cmds["SCOPE_STREHL_RATIO"]
+                gauss = psf.GaussianPSF(fwhm=0.8, 
+                                        size=psf_m1[0].size, 
+                                        pix_res=self.pix_res, 
+                                        undersized=True)
+                psf_m1 = psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
+            
         else:
             m1_diam = self.cmds["SCOPE_M1_DIAMETER_OUT"]
             ao_eff  = self.cmds["SCOPE_AO_EFFECTIVENESS"]
@@ -375,20 +407,161 @@ class OpticalTrain(object):
         return jitter_psf
 
 
-def get_filter_curve(filt):
+def get_filter_curve(filter):
     """
-    Return a transmission curve object for a broad band filter
+    Return a Vis/NIR broadband filter TransmissionCurve object
 
     Notes
     -----
     Acceptable filter names are B V R I Y z J H K Ks
     """
-    if filt not in "BVRIYzJHKKs":
-        raise ValueError("filter not recognised: "+filt)
-    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filt+".dat")
+    return filter_curve(filter)
+
+
+def filter_curve(filter):
+    """
+    Return a Vis/NIR broadband filter TransmissionCurve object
+
+    Notes
+    -----
+    Acceptable filter names are B V R I Y z J H K Ks
+    """
+    if filter not in "BVRIYzJHKKs":
+        raise ValueError("filter not recognised: "+filter)
+    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filter+".dat")
     return sc.TransmissionCurve(filename=fname)
         
-                
+
+def get_filter_set(dir=None):
+    """
+    Return a list of the filters installed in the package directory
+    """
+    if dir is None:
+        dir = os.path.join(__pkg_dir__,"data")
+    lst = [i.replace(".dat","").split("TC_filter_")[-1] for i in glob.glob(os.path.join(dir,"TC_filter*.dat"))]
+    return lst
+
+
+def package_dir():
+    """
+    Return the folder where all the data files are stored
+    """
+    return __pkg_dir__
+    
+        
+def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
+    """
+    Generate a FITS file with E-ELT PSFs for a range of wavelengths by using the
+    POPPY module - https://pythonhosted.org/poppy/
+
+    Parameters:
+    -----------
+    lam_bin_centers: [um] the centres of each wavelength bin in micron
+    filename: [None] path name to where the FITS file should be saved. If not
+              given, a HDUList is returned
+
+    Optional Parameters:
+    --------------------
+    pix_res: [arcsec] the angular resolution of the pixels. Default is 1 mas
+    diameter_out: [m]
+    diameter_in: [m]
+    flatotflat: [m]
+    gap: [m]
+    n_spiders: [m]
+    size: [int]
+    oversample: [int]
+    clobber: [True/False]
+    """
+
+    try:
+        import poppy
+    except:
+        raise ValueError("Please install poppy \n >>sudo pip3 install poppy")
+        return
+
+    params = {  "diameter_out"  :37,
+                "diameter_in"   :5.5,
+                "flattoflat"    :1.45,
+                "gap"           :0.004,
+                "n_spiders"     :6,
+                "pix_res"       :0.001,
+                "size"          :255,
+                "oversample"    :1,
+                "clobber"       :True,
+                "cpus"          :-1       }
+    params.update(kwargs)
+
+    # Create the Optical Train
+    rings = int(0.65 * params["diameter_out"] / params["flattoflat"])
+    
+    m1 = poppy.MultiHexagonAperture(rings=rings,
+                                    flattoflat=params["flattoflat"],
+                                    gap=params["gap"])
+    pri = poppy.CircularAperture(radius=params["diameter_out"]/2)
+    sec = poppy.SecondaryObscuration(secondary_radius=params["diameter_in"]/2,
+                                     n_supports=params["n_spiders"],
+                                     support_width=0.5)
+    eelt = poppy.CompoundAnalyticOptic( opticslist=[m1, pri, sec], name='E-ELT')
+
+    # Create a "detector"
+    osys = poppy.OpticalSystem()
+    osys.addPupil(eelt)
+    osys.adddetector(pixelscale=params["pix_res"],
+                     fov_arcsec=params["pix_res"] * params["size"],
+                     oversample=params["oversample"])
+
+                     
+    # list of wavelengths for which I should generate PSFs
+    lam_bin_centers = np.array(lam_bin_centers)
+    
+    # Generate the PSFs in multiple threads
+    try:
+        import multiprocessing as mp
+        if params["cpus"] < 0:
+            num_cpu = max(1, mp.cpu_count() - 1)
+        else:
+            num_cpu = min(params["cpus"], mp.cpu_count() - 1)
+        
+        pool = mp.Pool(processes = num_cpu)
+        pond = [pool.apply_async(_get_poppy_psf, (osys, lam)) \
+                                                    for lam in lam_bin_centers]
+        psfHDU = [duck.get() for duck in pond]
+                                                    
+    except:
+        print("Not possible to use multiple threads")
+        psfHDU = []
+        for lam in lam_bin_centers:
+            psfHDU += [_get_poppy_psf(osys, lam)]
+            print(lam)
+        
+    for psf in psfHDU:
+        psf.data = psf.data.astype(np.float32)
+        psf.header["CDELT1"] = (params["pix_res"], "[arcsec] - Pixel resolution")
+        psf.header["CDELT2"] = (params["pix_res"], "[arcsec] - Pixel resolution")
+        psf.header["PSF_TYPE"] = ("POPPY", "Generated by Poppy")
+        # Convert wavelength in header to [um] - originally in [m]
+        psf.header["WAVE0"] = (psf.header["WAVE0"]*1E6, "Wavelength of PSF [um]")
+
+    if len(psfHDU) > 1:
+        psfHDU = [psfHDU[0]] + \
+                 [fits.ImageHDU(i.data, i.header) for i in psfHDU[1:]]
+                 
+    hdulist = fits.HDUList(psfHDU)
+
+    if filename is None:
+        return hdulist
+    else:
+        hdulist.writeto(filename, clobber=params["clobber"])
+
+
+def _get_poppy_psf(osys, lam):
+    """
+    A self contained function for "reading out" the detector, so that we can
+    use multi-threading, if available (i.e. if it isn't a windows machine)
+    """
+    t = dt.now()
+    print(lam, str(t.hour)+":"+str(t.minute)+":"+str(t.second))
+    return osys.calcPSF(lam * 1E-6)[0]        
         
         
 class bloedsinn():
