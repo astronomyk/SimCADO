@@ -11,6 +11,7 @@ except:
     import detector as fpa
     import input as ig
     
+__file__ = fpa.__file__
 __pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["make_noise_cube", "make_poppy_cube"]
     
@@ -18,21 +19,24 @@ __all__ = ["make_noise_cube", "make_poppy_cube"]
 def _make_noise(i):
     pca_file = os.path.join(__pkg_dir__,"data","FPA_nirspec_pca0.fits")
 
-    ng_h4rg = fpa.HXRGNoise(naxis1 = 4096, naxis2 = 4096, n_out = 32, nroh = 8,
-                            pca0_file = pca_file)
+    ng_h4rg = fpa.HXRGNoise(naxis1 = 4096, naxis2 = 4096, naxis3 = i, 
+                            n_out = 32, nroh = 8, pca0_file = pca_file)
     return ng_h4rg.mknoise(o_file = None, rd_noise = 5, pedestal = 4,
                            c_pink = 3, u_pink = 1, acn = 0.5)
 
 
-def make_noise_cube():
+def make_noise_cube(num_layers=25, filename="noise.fits"):
     if __name__ == "__main__":
-        n=25
         pool = mp.Pool(processes=mp.cpu_count()-1)
-        frames = pool.map(_make_noise, range(n))
+        frames = pool.map(_make_noise, np.ones(num_layers))
         hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
-                           [fits.ImageHDU(frames[i]) for i in range(1,n)])
-        hdu.writeto("noise.fits", clobber=True)
-
+                           [fits.ImageHDU(frames[i]) for i in range(1,num_layers)])
+        hdu.writeto(filename, clobber=True)
+    else:
+        frames = _make_noise(num_layers)
+        hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
+                           [fits.ImageHDU(frames[i]) for i in range(1,num_layers)])
+        hdu.writeto(filename, clobber=True)
 
 
 def make_poppy_cube():
