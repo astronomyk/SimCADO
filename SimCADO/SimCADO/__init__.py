@@ -14,8 +14,9 @@ from . import optics
 from . import commands
 from . import source  
 
-from . import optics_utils
-from . import defaults
+#from . import optics_utils
+#from . import defaults
+from . import simulation
 
 from .version import version as __version__
 
@@ -28,5 +29,11 @@ from .commands  import UserCommands
 
 # don't import these ones just yet
 #from .SpectralGrating  import * 
-from . import simulation
+from .simulation import run
 
+# turn off warnings - interesting for development, but not for runtime
+import warnings
+from astropy.utils.exceptions import AstropyWarning
+warnings.simplefilter('ignore', UserWarning)
+warnings.simplefilter('ignore', FutureWarning)
+warnings.simplefilter('ignore', category=AstropyWarning)
