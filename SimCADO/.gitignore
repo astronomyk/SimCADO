@@ -1,8 +1,15 @@
-*.fits
 *.py[co]
 __pycache__
 *.FITS
 *.old
+*.zip
+*.bmp
+*.png
+!apply_optical_train.png
+*.fits
 !FPA_nirspec_pca0.fits
 !skytable.fits
-*.zip
+!EC_pickles.fits
+!LMC_Ha.fits
+!LMC_R.fits
+
