@@ -1,7 +1,6 @@
 """
 This module contains classes which control how a simulation is run
 
-
 Summary
 -------
 UserCommands is essentially a dictionary that holds all the variables that
@@ -14,15 +13,19 @@ from the main package - `simcado.UserCommands`
 If UserCommands is called without any arguments, the default values for MICADO
 are used.
 
+Classes
+-------
+`UserCommands(filename, default=<path_to_default>)`
 
 Routines
 --------
-`UserCommands(filename, default=<path_to_default>)`
+`dump_defaults(filename="./", type="freq")`
+`dump_chip_layout(dir="./")`
 
 
 See Also
 --------
-Class that require a `UserCommands` object directly include:
+Classes that require a `UserCommands` object directly include:
 - `Detector`
 - `OpticalTrain`
 
@@ -62,15 +65,16 @@ keywords - e.g. for the keywords for the instrument:
 
 import os, warnings, shutil, inspect
 import numpy as np
+import astropy.io.ascii as ascii
+
 try:
     import simcado.spectral as sc
     import simcado.utils as utils
-    __file__ = sc.__file__
 except:
     import spectral as sc
     import utils as utils
-    __file__ = "./spectral.py"
     
+__file__ = sc.__file__    
 __pkg_dir__ = os.path.split(__file__)[0]
     
 __all__ = ["UserCommands"]
@@ -79,7 +83,6 @@ __all__ = ["UserCommands"]
 class UserCommands(object):
     """
     An extended dictionary with the parameters needed for running a simulation
-
 
     Summary
     -------
@@ -101,11 +104,8 @@ class UserCommands(object):
 
     Parameters
     ----------
-    filename : str
+    filename : str, optional
         path to the user's .config file
-    default : str, optional
-        path to the default.config file.
-
 
     Attributes
     ----------
@@ -160,7 +160,8 @@ class UserCommands(object):
         [m] outer diamter of the primary aperture (i.e. M1)
     area : float
         [m^2] effective area of the primary aperture (i.e. M1)
-
+    filter : str
+        [BVRIzYJHKKs,user] filter used for the observation
 
     Methods
     -------
@@ -221,6 +222,14 @@ class UserCommands(object):
 
         """
         Create an extended dictionary of simulation parameters
+        
+        Parameters
+        ----------
+        filename : str, optional
+            path to the user's .config file
+
+        
+
         """
         self.pkg_dir = os.path.split(__file__)[0]
         default = os.path.join(self.pkg_dir, "data", "default.config")
@@ -247,16 +256,16 @@ class UserCommands(object):
             self.cmds["PSF_MODE"] = "linear_interp"
 
         # update the UserCommand "special" attributes
+        
         self._update_attributes()
-
+        
         if self.verbose and filename is not None:
             print("Read in parameters from "+filename)
                 
 
     def update(self, new_dict):
         """
-        Update nultiple entries of a `UserCommands` dictionary
-
+        Update multiple entries of a `UserCommands` dictionary
 
         Summary
         -------
@@ -310,6 +319,8 @@ class UserCommands(object):
             self.cmds.update(new_dict)
         else:
             raise ValueError("Cannot update with type: "+type(new_dict))
+        
+        self._default_data()
         self._update_attributes()
 
 
@@ -327,6 +338,29 @@ class UserCommands(object):
         return self.cmds.values()
 
 
+    def writeto(self, filename="commands.config"):
+        """
+        Write all the key-value commands to an ASCII file on disk
+        
+        Parameters
+        ----------
+        filename : str
+            file path for where the file should be saved
+        """
+        for group in (cmd.obs, cmd.sim, 
+                      cmd.atmo, cmd.scope, cmd.inst,
+                      cmd.fpa, cmd.hxrg):
+            for key in group:
+                val = cmd[key]
+                if key == "FPA_CHIP_LAYOUT" and "\n" in val:
+                    val = "small"
+                s += key.ljust(25)+"  "+str(val) + "\n"
+            s += "\n"
+        f = open(filename, "w")
+        f.write(s)
+        f.close()
+    
+    
     def _convert_none(self):
         """
         Turn all string "none" or "None" values into python `None` values
@@ -334,7 +368,7 @@ class UserCommands(object):
         for key,value in zip(self.cmds.keys(), self.cmds.values()):
             if type(value) == str and value.lower() == "none":
                 self.cmds[key] = None
-        
+
 
     def _default_data(self):
         """
@@ -357,7 +391,7 @@ class UserCommands(object):
         if self.cmds["ATMO_EC"] =="default":
             self.cmds["ATMO_EC"] = \
                 os.path.join(self.pkg_dir, "data", "skytable.fits")
-
+        
         if self.cmds["SCOPE_PSF_FILE"] == "default":
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
@@ -407,19 +441,18 @@ class UserCommands(object):
             self.cmds["HXRG_PCA0_FILENAME"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_nirspec_pca0.fits")
 
-
+    
     def _update_attributes(self):
         """
         Update the UserCommand convenience attributes
         """
 
         # Check for a filter curve file or a standard broadband name
-        if self.cmds["INST_FILTER_TC"] in ["I", "z", "Y", "J", "H", "Ks", "K"]:
+        if self.cmds["INST_FILTER_TC"] in "BVRIzYJHKKs":
             fname = "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat"
             self.cmds["INST_FILTER_TC"] = \
                 os.path.join(self.pkg_dir, "data", fname)
-                                             
-
+                
         self.fpa_res    = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.pix_res    = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
 
@@ -461,20 +494,17 @@ class UserCommands(object):
                 self.cmds[key] = None
 
         self.verbose = True   if self.cmds["SIM_VERBOSE"] == "yes"   else False
-
         self._split_categories()
 
 
     def _get_lam_bin_edges(self, lam_min, lam_max):
         """
         Generates an array with the bin edges of the layers in spectral space
-
         
         Parameters
         ----------
         lam_min, lam_max : float
             [um] the minimum and maximum wavelengths of the filter range
-
 
         Notes
         -------
@@ -582,6 +612,7 @@ class UserCommands(object):
             raise ValueError(key+" not in UserCommands.keys()")
         
         self.cmds[key] = val
+        self._default_data()
         self._update_attributes()
 
 
@@ -589,7 +620,7 @@ class UserCommands(object):
     ### the dicts are updated
 
 
-def dump_defaults(filename="./", type="freq"):
+def dump_defaults(filename=None, type="freq"):
     """ 
     Dump the frequent.config file to a path specified by the user
     
@@ -602,11 +633,15 @@ def dump_defaults(filename="./", type="freq"):
         frequently used keywords. "all" prints all of them
     """
 
-    dir, gname = os.path.split(filename)
-    if dir == "": dir = "."
-    
     if "freq" in type.lower(): fname = "frequent.config"
     elif "all" in type.lower(): fname = "default.config"
+    
+    if filename is None:
+        f = open(os.path.join(__pkg_dir__,"data",fname))
+        return f.readlines()
+    
+    dir, gname = os.path.split(filename)
+    if dir == "": dir = "."
         
     if gname == "": gname = fname    
     shutil.copy(os.path.join(__pkg_dir__,"data",fname), 
