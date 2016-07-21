@@ -96,6 +96,7 @@ class TransmissionCurve(object):
         self.info["Type"] = self.params["Type"]
 
         self.lam_orig, self.val_orig = self._get_data()
+
         self.lam = self.lam_orig
         self.val = self.val_orig
         self.lam_orig *= (1 * self.params["lam_unit"]).to(u.um).value
@@ -154,7 +155,7 @@ class TransmissionCurve(object):
                 val = data[data.colnames[1]]
         else:
             raise ValueError("Please pass either filename or lam/val keywords")
-
+        
         return lam, val
 
 
@@ -391,7 +392,7 @@ class EmissionCurve(TransmissionCurve):
 
     Return values are in [ph/s/voxel]
     """
-    def __init__(self, **kwargs):
+    def __init__(self, filename=None, **kwargs):
         default_params = {  "exptime" :1,
                             "pix_res" :0.004,
                             "area"    :978,
@@ -400,6 +401,9 @@ class EmissionCurve(TransmissionCurve):
             warnings.warn("""No 'units' specified in EmissionCurve.
                           Assuming ph/(s m2 micron arcsec2)""")
         default_params.update(kwargs)
+        
+        if filename is not None:
+            default_params["filename"] = filename
 
         super(EmissionCurve, self).__init__(Type = "Emission", **default_params)
         self.factor = 1
@@ -430,9 +434,9 @@ class EmissionCurve(TransmissionCurve):
         self.val *= factor.value
         self.factor = factor
 
-    def photons_in_range(self, lam_min, lam_max):
+    def photons_in_range(self, lam_min=None, lam_max=None):
         """
-        Sum up the photons in between the wavelength boundaries, lam_min lam_max
+        Sum up the photons in the wavelength range [lam_min, lam_max]
 
         Parameters
         ==========
@@ -440,6 +444,9 @@ class EmissionCurve(TransmissionCurve):
         
         Return values are in [ph/s/pixel]
         """
+        if lam_min is None: lam_min = self.lam[0]
+        if lam_max is None: lam_max = self.lam[-1]
+        
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
             warnings.warn("wavelength limits outside wavelength range")
             photons = 0
@@ -508,9 +515,3 @@ class UnityCurve(TransmissionCurve):
         val = np.asarray([val]*len(lam))
         super(UnityCurve, self).__init__(lam=lam, val=val, **kwargs)
 
-        
-class FilterSet(object):
-    """
-    http://svo2.cab.inta-csic.es/svo/theory/fps3/index.php?mode=browse&gname=Paranal
-    """
-    pass
