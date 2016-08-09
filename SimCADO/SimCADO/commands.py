@@ -7,7 +7,7 @@ UserCommands is essentially a dictionary that holds all the variables that
 the user may wish to change. It also has some set variables like `pix_res`
 that can be accessed directly, instead of from the dictionary.
 
-UserCommands is imported directly into the simcado package and is accessable
+UserCommands is imported directly into the simcado package and is accessible
 from the main package - `simcado.UserCommands`
 
 If UserCommands is called without any arguments, the default values for MICADO
@@ -63,20 +63,25 @@ keywords - e.g. for the keywords for the instrument:
 """
 
 
-import os, warnings, shutil, inspect
+import os
+import warnings
+import shutil
+import inspect
 import numpy as np
-import astropy.io.ascii as ascii
+
+#import astropy.io.ascii as ascii    # ascii redefines builtin ascii().
+                                     # Apparently not used
 
 try:
     import simcado.spectral as sc
     import simcado.utils as utils
-except:
+except ImportError:
     import spectral as sc
     import utils as utils
-    
-__file__ = sc.__file__    
+
+__file__ = sc.__file__
 __pkg_dir__ = os.path.split(__file__)[0]
-    
+
 __all__ = ["UserCommands"]
 
 
@@ -222,13 +227,13 @@ class UserCommands(object):
 
         """
         Create an extended dictionary of simulation parameters
-        
+
         Parameters
         ----------
         filename : str, optional
             path to the user's .config file
 
-        
+
 
         """
         self.pkg_dir = os.path.split(__file__)[0]
@@ -236,18 +241,18 @@ class UserCommands(object):
 
         # read in the default keywords
         self.cmds = utils.read_config(default)
-        
+
         # turn any "none" strings into python None values
         self._convert_none()
-        
+
         # read in the users wishes
         if filename is not None:
             self.cmds.update(utils.read_config(filename))
-        
-        # set the default paths and file names 
-        self._default_data()            
-        
-        self.cmds["CONFIG_USER"]   = filename
+
+        # set the default paths and file names
+        self._default_data()
+
+        self.cmds["CONFIG_USER"] = filename
         self.cmds["CONFIG_DEFAULT"] = default
 
         if self.cmds["SIM_PSF_OVERSAMPLE"] == "yes":
@@ -256,12 +261,12 @@ class UserCommands(object):
             self.cmds["PSF_MODE"] = "linear_interp"
 
         # update the UserCommand "special" attributes
-        
+
         self._update_attributes()
-        
+
         if self.verbose and filename is not None:
             print("Read in parameters from "+filename)
-                
+
 
     def update(self, new_dict):
         """
@@ -300,12 +305,12 @@ class UserCommands(object):
         >>> my_cmds = simcado.UserCommands()
         >>> print(my_cmds.cmds)
         ```
-        
+
         Change a single command
         ```
         >>> my_cmds["OBS_EXPTIME"] = 60
         ```
-        
+
         Change a series of commands at once
         ```
         >>> new_cmds = {"OBS_EXPTIME" : 60 , "OBS_NDIT" : 10}
@@ -319,7 +324,7 @@ class UserCommands(object):
             self.cmds.update(new_dict)
         else:
             raise ValueError("Cannot update with type: "+type(new_dict))
-        
+
         self._default_data()
         self._update_attributes()
 
@@ -330,7 +335,7 @@ class UserCommands(object):
         """
         return self.cmds.keys()
 
-        
+
     def values(self):
         """
         Return the values in the `UserCommands.cmds` dictionary
@@ -341,44 +346,44 @@ class UserCommands(object):
     def writeto(self, filename="commands.config"):
         """
         Write all the key-value commands to an ASCII file on disk
-        
+
         Parameters
         ----------
         filename : str
             file path for where the file should be saved
         """
-        for group in (cmd.obs, cmd.sim, 
-                      cmd.atmo, cmd.scope, cmd.inst,
-                      cmd.fpa, cmd.hxrg):
+        outstr = ""
+        for group in (self.obs, self.sim,
+                      self.atmo, self.scope, self.inst,
+                      self.fpa, self.hxrg):
             for key in group:
-                val = cmd[key]
+                val = self[key]
                 if key == "FPA_CHIP_LAYOUT" and "\n" in val:
                     val = "small"
-                s += key.ljust(25)+"  "+str(val) + "\n"
-            s += "\n"
-        f = open(filename, "w")
-        f.write(s)
-        f.close()
-    
-    
+                outstr += key.ljust(25)+"  "+str(val) + "\n"
+            outstr += "\n"
+        with open(filename, "w") as f:
+            f.write(outstr)
+
+
     def _convert_none(self):
         """
         Turn all string "none" or "None" values into python `None` values
         """
-        for key,value in zip(self.cmds.keys(), self.cmds.values()):
+        for key, value in zip(self.cmds.keys(), self.cmds.values()):
             if type(value) == str and value.lower() == "none":
                 self.cmds[key] = None
 
 
     def _default_data(self):
         """
-        Input system-specific path names for the default package data files 
+        Input system-specific path names for the default package data files
         """
-   
+
         if self.cmds["OBS_OUTPUT_DIR"] in (None, "none", "default"):
             self.cmds["OBS_OUTPUT_DIR"] = "./output.fits"
 
-        if self.cmds["SIM_OPT_TRAIN_OUT_PATH"] in (None, "none", "default"):            
+        if self.cmds["SIM_OPT_TRAIN_OUT_PATH"] in (None, "none", "default"):
             self.cmds["SIM_OPT_TRAIN_OUT_PATH"] = "./"
 
         if self.cmds["SIM_DETECTOR_OUT_PATH"] in (None, "none", "default"):
@@ -388,10 +393,10 @@ class UserCommands(object):
             self.cmds["ATMO_TC"] = \
                 os.path.join(self.pkg_dir, "data", "skytable.fits")
 
-        if self.cmds["ATMO_EC"] =="default":
+        if self.cmds["ATMO_EC"] == "default":
             self.cmds["ATMO_EC"] = \
                 os.path.join(self.pkg_dir, "data", "skytable.fits")
-        
+
         if self.cmds["SCOPE_PSF_FILE"] == "default":
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
@@ -414,11 +419,11 @@ class UserCommands(object):
 
         if self.cmds["INST_DISTORTION_MAP"] == "default":
             self.cmds["INST_DISTORTION_MAP"] = None
-                
+
         if self.cmds["FPA_QE"] == "default":
             self.cmds["FPA_QE"] = \
                 os.path.join(self.pkg_dir, "data", "TC_detector_H4RG.dat")
-                
+
         if self.cmds["FPA_NOISE_PATH"] == "default":
             self.cmds["FPA_NOISE_PATH"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_noise.fits")
@@ -436,12 +441,12 @@ class UserCommands(object):
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_small.dat")
-                
+
         if self.cmds["HXRG_PCA0_FILENAME"] in (None, "none", "default"):
             self.cmds["HXRG_PCA0_FILENAME"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_nirspec_pca0.fits")
 
-    
+
     def _update_attributes(self):
         """
         Update the UserCommand convenience attributes
@@ -452,9 +457,9 @@ class UserCommands(object):
             fname = "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat"
             self.cmds["INST_FILTER_TC"] = \
                 os.path.join(self.pkg_dir, "data", fname)
-                
-        self.fpa_res    = self.cmds["SIM_DETECTOR_PIX_SCALE"]
-        self.pix_res    = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
+
+        self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
+        self.pix_res = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
 
         # if SIM_USE_FILTER_LAM is true, then use the filter curve to set the
         # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
@@ -463,8 +468,8 @@ class UserCommands(object):
             tc_filt = sc.TransmissionCurve(filename=self.cmds['INST_FILTER_TC'])
             mask = np.where(tc_filt.val > self.cmds["SIM_FILTER_THRESHOLD"])[0]
             i0 = np.max((mask[0] - 1, 0))
-            i1 = np.min((mask[-1] + 1 , len(tc_filt.lam) - 1))
-            lam_min, lam_max   = tc_filt.lam[i0], tc_filt.lam[i1]
+            i1 = np.min((mask[-1] + 1, len(tc_filt.lam) - 1))
+            lam_min, lam_max = tc_filt.lam[i0], tc_filt.lam[i1]
         else:
             lam_min, lam_max = self.cmds["SIM_LAM_MIN"], self.cmds["SIM_LAM_MAX"]
 
@@ -480,16 +485,16 @@ class UserCommands(object):
         self.lam_bin_centers = 0.5 * (self.lam_bin_edges[1:] + \
                                       self.lam_bin_edges[:-1])
 
-        self.exptime    = self.cmds["OBS_EXPTIME"]
-        self.diameter   = self.cmds["SCOPE_M1_DIAMETER_OUT"]
-        self.area       = np.pi / 4 * (self.diameter**2 - \
-                                        self.cmds["SCOPE_M1_DIAMETER_IN"]**2)
+        self.exptime = self.cmds["OBS_EXPTIME"]
+        self.diameter = self.cmds["SCOPE_M1_DIAMETER_OUT"]
+        self.area = np.pi / 4 * (self.diameter**2 - \
+                                 self.cmds["SCOPE_M1_DIAMETER_IN"]**2)
 
         self.cmds["SIM_N_MIRRORS"] = self.cmds["SCOPE_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_EXT_MIRRORS"]
 
-        for key,value in zip(self.cmds.keys(), self.cmds.values()):
+        for key, value in zip(self.cmds.keys(), self.cmds.values()):
             if type(value) == str and value.lower() == "none":
                 self.cmds[key] = None
 
@@ -500,7 +505,7 @@ class UserCommands(object):
     def _get_lam_bin_edges(self, lam_min, lam_max):
         """
         Generates an array with the bin edges of the layers in spectral space
-        
+
         Parameters
         ----------
         lam_min, lam_max : float
@@ -514,15 +519,15 @@ class UserCommands(object):
         image center. The threshold for defining a new layer based on the how
         far a certain bin will move is given by `SIM_ADC_SHIFT_THRESHOLD`. The
         default value is 1 pixel.
-        
+
         The PSF also causes blurring as it spreads out over a bandpass. This
         also needed to be taken into account
         """
         if self.cmds["SIM_VERBOSE"] == "yes":
             print("Determining lam_bin_edges")
-        
+
         effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
-        
+
         # This is redundant because also need to look at the PSF width
         #if effectiveness == 1.:
         #    lam_bin_edges = np.array([lam_min, lam_max])
@@ -532,13 +537,13 @@ class UserCommands(object):
 
         ## get the angle shift for each slice
         lam = np.arange(lam_min, lam_max + 1E-7, 0.001)
-        angle_shift = utils.atmospheric_refraction( lam,
-                                                    self.cmds["OBS_ZENITH_DIST"],
-                                                    self.cmds["ATMO_TEMPERATURE"],
-                                                    self.cmds["ATMO_REL_HUMIDITY"],
-                                                    self.cmds["ATMO_PRESSURE"],
-                                                    self.cmds["SCOPE_LATITUDE"],
-                                                    self.cmds["SCOPE_ALTITUDE"])
+        angle_shift = utils.atmospheric_refraction(lam,
+                                                   self.cmds["OBS_ZENITH_DIST"],
+                                                   self.cmds["ATMO_TEMPERATURE"],
+                                                   self.cmds["ATMO_REL_HUMIDITY"],
+                                                   self.cmds["ATMO_PRESSURE"],
+                                                   self.cmds["SCOPE_LATITUDE"],
+                                                   self.cmds["SCOPE_ALTITUDE"])
 
         ## convert angle shift into number of pixels
         ## pixel shifts are defined with respect to last slice
@@ -555,29 +560,29 @@ class UserCommands(object):
 
         # Now check to see if the PSF blurring is the controlling factor. If so,
         # take the lam_bin_edges for the PSF blurring
-        
+
         diam = self.cmds["SCOPE_M1_DIAMETER_OUT"]
         d_ang = self.pix_res * shift_threshold
 
         lam_bin_edges_psf = [lam_min]
         ang0 = (lam_min*1E-6) / diam * 1.22*53*3600
 
-        i=1
+        i = 1
         while lam_bin_edges_psf[-1] < lam_max:
             lam_bin_edges_psf += [(ang0 + d_ang*i) * diam / (1.22*53*3600) * 1E6]
-            i+=1
+            i += 1
             if i > 1000: raise ValueError("lam_bin_edges needs >1000 values")
         lam_bin_edges_psf[-1] = lam_max
-        
+
         lam_bin_edges = np.unique(np.concatenate(
-                                    (np.round(lam_bin_edges_psf, 3), 
-                                     np.round(lam_bin_edges_adc, 3))))
-        
+            (np.round(lam_bin_edges_psf, 3),
+             np.round(lam_bin_edges_adc, 3))))
+
         if self.cmds["SIM_VERBOSE"] == "yes":
-            print("PSF edges were", np.round(lam_bin_edges_psf,3))
-            print("ADC edges were", np.round(lam_bin_edges_adc,3))
-            print("All edges were", np.round(lam_bin_edges,3))
-            
+            print("PSF edges were", np.round(lam_bin_edges_psf, 3))
+            print("ADC edges were", np.round(lam_bin_edges_adc, 3))
+            print("All edges were", np.round(lam_bin_edges, 3))
+
         return lam_bin_edges
 
 
@@ -585,13 +590,13 @@ class UserCommands(object):
         """
         Generate smaller category-specific dictionaries
         """
-        self.obs    = {i:self.cmds[i] for i in self.cmds.keys() if "OBS" in i}
-        self.sim    = {i:self.cmds[i] for i in self.cmds.keys() if "SIM" in i}
-        self.atmo   = {i:self.cmds[i] for i in self.cmds.keys() if "ATMO" in i}
-        self.scope  = {i:self.cmds[i] for i in self.cmds.keys() if "SCOPE" in i}
-        self.inst   = {i:self.cmds[i] for i in self.cmds.keys() if "INST" in i}
-        self.fpa    = {i:self.cmds[i] for i in self.cmds.keys() if "FPA" in i}
-        self.hxrg   = {i:self.cmds[i] for i in self.cmds.keys() if "HXRG" in i}
+        self.obs   = {i:self.cmds[i] for i in self.cmds.keys() if "OBS" in i}
+        self.sim   = {i:self.cmds[i] for i in self.cmds.keys() if "SIM" in i}
+        self.atmo  = {i:self.cmds[i] for i in self.cmds.keys() if "ATMO" in i}
+        self.scope = {i:self.cmds[i] for i in self.cmds.keys() if "SCOPE" in i}
+        self.inst  = {i:self.cmds[i] for i in self.cmds.keys() if "INST" in i}
+        self.fpa   = {i:self.cmds[i] for i in self.cmds.keys() if "FPA" in i}
+        self.hxrg  = {i:self.cmds[i] for i in self.cmds.keys() if "HXRG" in i}
 
 
     def __str__(self):
@@ -610,7 +615,7 @@ class UserCommands(object):
     def __setitem__(self, key, val):
         if key not in self.cmds.keys():
             raise ValueError(key+" not in UserCommands.keys()")
-        
+
         self.cmds[key] = val
         self._default_data()
         self._update_attributes()
@@ -621,9 +626,9 @@ class UserCommands(object):
 
 
 def dump_defaults(filename=None, type="freq"):
-    """ 
+    """
     Dump the frequent.config file to a path specified by the user
-    
+
     Parameters
     ----------
     filename : str, optional
@@ -635,30 +640,30 @@ def dump_defaults(filename=None, type="freq"):
 
     if "freq" in type.lower(): fname = "frequent.config"
     elif "all" in type.lower(): fname = "default.config"
-    
+
     if filename is None:
-        f = open(os.path.join(__pkg_dir__,"data",fname))
+        f = open(os.path.join(__pkg_dir__, "data", fname))
         return f.readlines()
-    
+
     dir, gname = os.path.split(filename)
     if dir == "": dir = "."
-        
-    if gname == "": gname = fname    
-    shutil.copy(os.path.join(__pkg_dir__,"data",fname), 
+
+    if gname == "": gname = fname
+    shutil.copy(os.path.join(__pkg_dir__, "data", fname),
                 os.path.join(dir, gname))
 
 
 def dump_chip_layout(dir="./"):
-    """ 
+    """
     Dump the FPA_chip_layout.dat file to a path specified by the user
-    
+
     Parameters
     ----------
     dir : str, optional
         path where the chip layout file is to be saved
     """
     dir = os.path.dirname(dir)
-    shutil.copy(os.path.join(__pkg_dir__,"data","FPA_chip_layout.dat"), dir)
+    shutil.copy(os.path.join(__pkg_dir__, "data", "FPA_chip_layout.dat"), dir)
 
 
 class __bloedsinn():
