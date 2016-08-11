@@ -1,3 +1,0 @@
-
-# THIS FILE GENERATED FROM SIMCADO SETUP.PY
-version = '0.2.66dev'
