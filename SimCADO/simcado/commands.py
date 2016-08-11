@@ -64,9 +64,9 @@ keywords - e.g. for the keywords for the instrument:
 
 
 import os
-import warnings
+# import warnings   ## not used
 import shutil
-import inspect
+# import inspect    ## not used
 import numpy as np
 
 #import astropy.io.ascii as ascii    # ascii redefines builtin ascii().
@@ -267,6 +267,14 @@ class UserCommands(object):
         if self.verbose and filename is not None:
             print("Read in parameters from "+filename)
 
+        # Subcategories of parameters, filled later by _split_categories
+        self.obs = None
+        self.sim = None
+        self.atmo = None
+        self.scope = None
+        self.inst = None
+        self.fpa = None
+        self.hxrg = None
 
     def update(self, new_dict):
         """
@@ -362,16 +370,17 @@ class UserCommands(object):
                     val = "small"
                 outstr += key.ljust(25)+"  "+str(val) + "\n"
             outstr += "\n"
-        with open(filename, "w") as f:
-            f.write(outstr)
+        with open(filename, "w") as fd1:
+            fd1.write(outstr)
 
 
     def _convert_none(self):
         """
         Turn all string "none" or "None" values into python `None` values
         """
-        for key, value in zip(self.cmds.keys(), self.cmds.values()):
-            if type(value) == str and value.lower() == "none":
+        for key in self.cmds:
+            value = self.cmds[key]
+            if isinstance(value, str) and value.lower() == "none":
                 self.cmds[key] = None
 
 
@@ -467,9 +476,9 @@ class UserCommands(object):
         if self.cmds["SIM_USE_FILTER_LAM"].lower() == "yes":
             tc_filt = sc.TransmissionCurve(filename=self.cmds['INST_FILTER_TC'])
             mask = np.where(tc_filt.val > self.cmds["SIM_FILTER_THRESHOLD"])[0]
-            i0 = np.max((mask[0] - 1, 0))
-            i1 = np.min((mask[-1] + 1, len(tc_filt.lam) - 1))
-            lam_min, lam_max = tc_filt.lam[i0], tc_filt.lam[i1]
+            imin = np.max((mask[0] - 1, 0))
+            imax = np.min((mask[-1] + 1, len(tc_filt.lam) - 1))
+            lam_min, lam_max = tc_filt.lam[imin], tc_filt.lam[imax]
         else:
             lam_min, lam_max = self.cmds["SIM_LAM_MIN"], self.cmds["SIM_LAM_MAX"]
 
@@ -494,11 +503,11 @@ class UserCommands(object):
                                      self.cmds["INST_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_EXT_MIRRORS"]
 
-        for key, value in zip(self.cmds.keys(), self.cmds.values()):
-            if type(value) == str and value.lower() == "none":
-                self.cmds[key] = None
+        # replace 'none', 'None' with None
+        self._convert_none()
 
-        self.verbose = True   if self.cmds["SIM_VERBOSE"] == "yes"   else False
+        self.verbose = (self.cmds["SIM_VERBOSE"] == "yes")
+
         self._split_categories()
 
 
@@ -571,7 +580,8 @@ class UserCommands(object):
         while lam_bin_edges_psf[-1] < lam_max:
             lam_bin_edges_psf += [(ang0 + d_ang*i) * diam / (1.22*53*3600) * 1E6]
             i += 1
-            if i > 1000: raise ValueError("lam_bin_edges needs >1000 values")
+            if i > 1000:
+                raise ValueError("lam_bin_edges needs >1000 values")
         lam_bin_edges_psf[-1] = lam_max
 
         lam_bin_edges = np.unique(np.concatenate(
@@ -625,7 +635,9 @@ class UserCommands(object):
     ### the dicts are updated
 
 
-def dump_defaults(filename=None, type="freq"):
+def dump_defaults(filename=None, selection="freq"):
+    ## OC, 2016-08-11: changed parameter from 'type' to 'selection' as
+    ##    'type' redefines built-in
     """
     Dump the frequent.config file to a path specified by the user
 
@@ -633,38 +645,43 @@ def dump_defaults(filename=None, type="freq"):
     ----------
     filename : str, optional
         path or filename where the .config file is to be saved
-    type : str, optional
+    selection : str, optional
         ["freq", "all"] amount of keywords to save. "freq" only prints the most
         frequently used keywords. "all" prints all of them
     """
 
-    if "freq" in type.lower(): fname = "frequent.config"
-    elif "all" in type.lower(): fname = "default.config"
+    if "freq" in selection.lower():
+        fname = "frequent.config"
+    elif "all" in selection.lower():
+        fname = "default.config"
 
     if filename is None:
-        f = open(os.path.join(__pkg_dir__, "data", fname))
-        return f.readlines()
+        with open(os.path.join(__pkg_dir__, "data", fname)) as fd1:
+            return fd1.readlines()
 
-    dir, gname = os.path.split(filename)
-    if dir == "": dir = "."
+    path, gname = os.path.split(filename)
+    if path == "":
+        path = "."
 
-    if gname == "": gname = fname
+    if gname == "":
+        gname = fname
     shutil.copy(os.path.join(__pkg_dir__, "data", fname),
-                os.path.join(dir, gname))
+                os.path.join(path, gname))
 
 
-def dump_chip_layout(dir="./"):
+def dump_chip_layout(path="./"):
+    ## OC, 2016-08-11: changed parameter from 'dir' (redefines built-in)
     """
     Dump the FPA_chip_layout.dat file to a path specified by the user
 
     Parameters
     ----------
-    dir : str, optional
+    path : str, optional
         path where the chip layout file is to be saved
     """
-    dir = os.path.dirname(dir)
-    shutil.copy(os.path.join(__pkg_dir__, "data", "FPA_chip_layout.dat"), dir)
+    path = os.path.dirname(path)
+    shutil.copy(os.path.join(__pkg_dir__, "data", "FPA_chip_layout.dat"), path)
 
 
-class __bloedsinn():
+class _bloedsinn():
     pass
