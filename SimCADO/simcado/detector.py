@@ -90,22 +90,27 @@ written to disk.
 # - update open, write - remove references to self.params
 
 
-import sys, os, warnings, datetime
-
-import numpy as np
-from scipy.ndimage.interpolation import zoom
+import os
+import warnings
+from copy import deepcopy
 
 import multiprocessing as mp
 
-from astropy.io import fits, ascii
-from astropy.stats.funcs import median_absolute_deviation as mad
+import numpy as np
+#from scipy.ndimage.interpolation import zoom
+
+from astropy.io import fits
+from astropy.io import ascii as ioascii  # ascii redefines builtin
+#from astropy.stats.funcs import median_absolute_deviation as mad
 
 try:
     import simcado.spectral as sc
     import simcado.commands as commands
-except:
+    from simcado.nghxrg import HXRGNoise
+except ImportError:
     import spectral as sc
     import commands
+    from nghxrg import HXRGNoise
 
 __file__ = sc.__file__
 __pkg_dir__ = os.path.split(__file__)[0]
@@ -213,16 +218,17 @@ class Detector(object):
         self.cmds = cmds
 
         if small_fov:
-            self.layout = ascii.read("""#  id    x_cen    y_cen   x_len   y_len
-                                        #       arcsec   arcsec   pixel   pixel
-                                         0        0        0    1024    1024""")
+            self.layout = ioascii.read(
+                """#  id    x_cen    y_cen   x_len   y_len
+                   #       arcsec   arcsec   pixel   pixel
+                   0        0        0    1024    1024""")
         else:
-            self.layout = ascii.read(self.cmds["FPA_CHIP_LAYOUT"])
-        self.chips  = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
-                            self.layout["x_len"][i], self.layout["y_len"][i],
-                            self.cmds["SIM_DETECTOR_PIX_SCALE"],
-                            self.layout["id"][i])
-                       for i in range(len(self.layout["x_cen"]))]
+            self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
+        self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
+                           self.layout["x_len"][i], self.layout["y_len"][i],
+                           self.cmds["SIM_DETECTOR_PIX_SCALE"],
+                           self.layout["id"][i])
+                      for i in range(len(self.layout["x_cen"]))]
 
         self.oversample = self.cmds["SIM_OVERSAMPLING"]
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
@@ -231,7 +237,7 @@ class Detector(object):
         self.tro     = self.cmds["OBS_NONDESTRUCT_TRO"]
         self._n_ph_atmo   = 0
         self._n_ph_mirror = 0
-
+        self.array = None        # defined in method
 
     def read_out(self, filename=None, to_disk=False, chips=None):
         """
@@ -257,7 +263,7 @@ class Detector(object):
         chips : int, array-like, optional
             The chip or chips to be read out, based on the detector_layout.dat
             file. Default is the first `Chip` specified in the list, i.e. [0]
-        
+
         Returns
         -------
         `if output == True:`
@@ -297,10 +303,11 @@ class Detector(object):
                 self.cmds["OBS_OUTPUT_DIR"] = "./output.fits"
             filename = self.cmds["OBS_OUTPUT_DIR"]
 
-        if chips is not None and not hasattr(chips, "__len__"):
-            ro_chips = [chips]
-        elif chips is not None and hasattr(chips, "__len__"):
-            ro_chips = chips
+        if chips is not None:
+            if not hasattr(chips, "__len__"):
+                ro_chips = [chips]
+            else:
+                ro_chips = chips
         elif chips is None:
             ro_chips = np.arange(len(self.chips))
         else:
@@ -312,52 +319,51 @@ class Detector(object):
             # Put in a catch here so that only the chips specified in "chips"
             # are read out
             ######
-
-
             array = self.chips[i].read_out(self.cmds)
 
-            if pri_hdu_flag == False:
+            if pri_hdu_flag is False:
                 hdus = [fits.PrimaryHDU(array)]
                 pri_hdu_flag = True
             else:
                 hdus += [fits.ImageHDU(array)]
 
             hdus[i].header["CDELT1"] = (self.chips[i].pix_res,
-                                                    "[arcsec] Pixel resolution")
+                                        "[arcsec] Pixel resolution")
             hdus[i].header["CDELT2"] = (self.chips[i].pix_res,
-                                                    "[arcsec] Pixel resolution")
+                                        "[arcsec] Pixel resolution")
             hdus[i].header["CRVAL1"] = (self.chips[i].x_cen,
-                        "[arcsec] central pixel relative to detector centre")
+                                        "[arcsec] central pixel relative to detector centre")
             hdus[i].header["CRVAL2"] = (self.chips[i].y_cen,
-                        "[arcsec] central pixel relative to detector centre")
+                                        "[arcsec] central pixel relative to detector centre")
             hdus[i].header["CRPIX1"] = (self.chips[i].naxis1 // 2,
-                                                                "central pixel")
+                                        "central pixel")
             hdus[i].header["CRPIX2"] = (self.chips[i].naxis2 // 2,
-                                                                "central pixel")
+                                        "central pixel")
             hdus[i].header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
-
             hdus[i].header["BUNIT"] = ("ph/s", "")
             hdus[i].header["EXPTIME"] = (self.exptime, "[s] Exposure time")
-            hdus[i].header["NDIT"]  = (self.ndit, "Number of exposures")
-            hdus[i].header["TRO"]   = (self.tro,
-                                    "[s] Time between non-destructive readouts")
+            hdus[i].header["NDIT"] = (self.ndit, "Number of exposures")
+            hdus[i].header["TRO"] = (self.tro,
+                                     "[s] Time between non-destructive readouts")
 
-            c = self.cmds.cmds
-            for key, val in zip(c.keys(), c.values()):
-                if type(val) == str and len(val) > 35:
+            for key in self.cmds.cmds:
+                val = self.cmds.cmds[key]
+                if isinstance(val, str) and len(val) > 35:
                     val = "... " + val[-35:]
-                try: hdus[i].header["HIERARCH "+key] = val
-                except: pass
+                try:
+                    hdus[i].header["HIERARCH "+key] = val
+                except NameError:   # any other exceptions possible?
+                    pass
 
         hdulist = fits.HDUList(hdus)
 
-        if to_disk is False:
+        if not to_disk:
             return hdulist
         else:
             hdulist.writeto(filename, clobber=True)
 
 
-    def open(self, filename, **kwargs):
+    def open(self, filename):
         """
         Opens a saved `Detector` file.
 
@@ -385,12 +391,12 @@ class Detector(object):
         """
 
         if not os.path.exists(filename):
-            raise ValueError(filename + " doesn't exist")
+            raise FileNotFoundError(filename + " doesn't exist")
 
-        f = fits.open(filename)
-        self.params.update(f[0].header)
-        self.array = f[0].data
-        f.close()
+        with fits.open(filename) as fp1:
+            self.params.update(fp1[0].header)
+            self.array = fp1[0].data
+
 
 
     def write(self, filename=None, **kwargs):
@@ -435,11 +441,11 @@ class Detector(object):
         hdu.header["PIX_RES"] = self.pix_res
         hdu.header["EXPTIME"] = self.exptime
         hdu.header["GAIN"]    = self.params["FPA_GAIN"]
-        hdu.header["SIMCADO"]= "FPA_NOISE"
+        hdu.header["SIMCADO"] = "FPA_NOISE"
 
         try:
             hdu.writeto(filename, clobber=True)
-        except:
+        except OSError:
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
 
@@ -447,57 +453,62 @@ def plot_detector_layout(detector):
     """Plot the detector layout. NOT FINISHED """
     try:
         import matplotlib.pyplot as plt
-    except:
+    except ImportError:
         raise ValueError("matplotlib can't be found")
 
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(10, 10))
     clr = ["g"]
 
     for i in range(len(detector.chips)):
         chip = detector.chips[i]
-        plt.plot((chip.x_min,chip.x_max), (chip.y_min,chip.y_min), c=clr[i%len(clr)])
-        plt.plot((chip.x_min,chip.x_max), (chip.y_max,chip.y_max), c=clr[i%len(clr)])
-        plt.plot((chip.x_min,chip.x_min), (chip.y_min,chip.y_max), c=clr[i%len(clr)])
-        plt.plot((chip.x_max,chip.x_max), (chip.y_min,chip.y_max), c=clr[i%len(clr)])
-        plt.text(chip.x_cen,chip.y_cen,str(i),fontsize=14)
+        plt.plot((chip.x_min, chip.x_max), (chip.y_min, chip.y_min),
+                 c=clr[i%len(clr)])
+        plt.plot((chip.x_min, chip.x_max), (chip.y_max, chip.y_max),
+                 c=clr[i%len(clr)])
+        plt.plot((chip.x_min, chip.x_min), (chip.y_min, chip.y_max),
+                 c=clr[i%len(clr)])
+        plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max),
+                 c=clr[i%len(clr)])
+        plt.text(chip.x_cen, chip.y_cen, str(i), fontsize=14)
         plt.xlabel("Distance [arcsec]", fontsize=14)
         plt.ylabel("Distance [arcsec]", fontsize=14)
 
     plt.show()
 
-    
+
 def plot_detector(detector):
     """
     Plot the contents of a detector array
-    
+
     Parameters
     ----------
     detector : simcado.Detector
         The detector object to be shown
     """
-    
+
     import matplotlib.pyplot as plt
     from matplotlib.colors import LogNorm
-    
-    plt.figure(figsize=(15*2,13.75*2))
+
+    plt.figure(figsize=(15*2, 13.75*2))
 
     x0 = np.min([i.x_min for i in detector.chips])
     x1 = np.max([i.x_max for i in detector.chips])
     y0 = np.min([i.y_min for i in detector.chips])
     y1 = np.max([i.y_max for i in detector.chips])
-    w = (detector.chips[0].x_max - detector.chips[0].x_min)/(x1-x0)
-    h = (detector.chips[0].y_max - detector.chips[0].y_min)/(y1-y0)
+    w = (detector.chips[0].x_max - detector.chips[0].x_min)/(x1 - x0)
+    h = (detector.chips[0].y_max - detector.chips[0].y_min)/(y1 - y0)
 
     for chip in detector.chips:
-        s = plt.axes([(chip.x_min - x0)/(x1-x0), (chip.y_min - y0)/(y1-y0),w,h])
+        s = plt.axes([(chip.x_min - x0)/(x1 - x0), (chip.y_min - y0)/(y1 - y0),
+                      w, h])
         s.set_xticklabels("")
         s.set_yticklabels("")
-        s.imshow(np.rot90(chip.array-np.min(chip.array)), norm=LogNorm(), 
+        s.imshow(np.rot90(chip.array - np.min(chip.array)), norm=LogNorm(),
                  cmap="Greys", vmin=1)
-    
-    plt.show()    
-    
-    
+
+    plt.show()
+
+
 ################################################################################
 #                              Chip Objects                                    #
 ################################################################################
@@ -541,7 +552,7 @@ class Chip(object):
         the number of pixels per dimension
     pix_res : float
         [arcsec] the field of view per pixel
-    id : int, optional
+    chipid : int, optional
         the id of the chip relative to the others on the detector array. Default is `None`
     dx, dy : float
         [arcsec] half of the field of view of each chip
@@ -581,14 +592,14 @@ class Chip(object):
     --------
     """
 
-    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, id=None):
+    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, chipid=None):
 
         self.x_cen  = x_cen
         self.y_cen  = y_cen
         self.naxis1 = x_len
         self.naxis2 = y_len
         self.pix_res = pix_res
-        self.id     = id
+        self.id     = chipid      # id is built-in, should not be redefined
 
         dx = (x_len // 2) * pix_res
         dy = (y_len // 2) * pix_res
@@ -626,8 +637,9 @@ class Chip(object):
         --------
 
         """
-        if type(signal) == np.ndarray:
-            if signal.shape[0] == self.naxis1 and signal.shape[1] == self.naxis2:
+        if isinstance(signal, np.ndarray):
+            if signal.shape[0] == self.naxis1 and \
+               signal.shape[1] == self.naxis2:
                 if self.array is None:
                     self.array = signal
                 else:
@@ -663,6 +675,7 @@ class Chip(object):
         --------
         """
 
+        # What's with this?     (OC)
         """
         Take an EmissionCurve and some wavelength boundaries, lam_min lam_max,
         and sum up the photons in between. Add those to the source array.
@@ -678,9 +691,9 @@ class Chip(object):
         Output is in [ph/s/pixel]
         """
 
-        if type(emission) == sc.EmissionCurve:
+        if isinstance(emission, sc.EmissionCurve):
             bg_photons = emission.photons_in_range(lam_min, lam_max)
-        elif type(emission) in (float, int):
+        elif isinstance(emission, (float, int)):
             bg_photons = emission
         else:
             bg_photons = 0
@@ -733,22 +746,20 @@ class Chip(object):
             if self.array.shape != pixel_map.shape:
                 raise ValueError("pixel_map.shape != detector_array.shape")
             self.array += pixel_map * max_well_depth
-        except:
+        except ValueError:
             if dead_pix is not None:
                 n = int(self.naxis1 * self.naxis2 * dead_pix / 100)
                 x = np.random.randint(self.naxis1, size=n)
                 y = np.random.randint(self.naxis2, size=n)
                 z = np.random.random(n)
-                self.array[x,y] += z * max_well_depth
+                self.array[x, y] += z * max_well_depth
             else:
                 raise ValueError("Couldn't apply pixel_map")
 
 
     def _apply_saturation(self, arr):
         """
-        <One-line summary goes here>
-
-
+        Cap all pixels that are above the well depth.
 
         Parameters
         ----------
@@ -761,12 +772,9 @@ class Chip(object):
         Examples
         --------
         """
-
-        """
-        Cap all pixels that are above the well depth.
-        !! TODO: apply a linearity curve and shift excess light into !!
-        !! neighbouring pixels !!
-        """
+        # TODO: apply a linearity curve and shift excess light into !!
+        # neighbouring pixels !!
+        
         max_val = self.params["FPA_WELL_DEPTH"]
         arr[arr > max_val] = max_val
         return arr
@@ -819,11 +827,11 @@ class Chip(object):
         ###############################################
         #!!!!!!!!!!! TODO - add dark strom !!!!!!!!!!!#
 
-        dit     = cmds["OBS_EXPTIME"]
-        ndit    = int(cmds["OBS_NDIT"])
-        tro     = cmds["OBS_NONDESTRUCT_TRO"]
-        max_byte = cmds["SIM_MAX_RAM_CHUNK_GB"] * 2**30
-        dark    = cmds["FPA_DARK_MEDIAN"]
+        dit      = cmds["OBS_EXPTIME"]
+        ndit     = int(cmds["OBS_NDIT"])
+        #tro      = cmds["OBS_NONDESTRUCT_TRO"]
+        #max_byte = cmds["SIM_MAX_RAM_CHUNK_GB"] * 2**30
+        dark     = cmds["FPA_DARK_MEDIAN"]
 
         if self.array is None:
             self.array = np.zeros((self.naxis1, self.naxis2), dtype=np.float32)
@@ -844,21 +852,21 @@ class Chip(object):
         # elif cmds["SIM_SPEED"] > 3 and cmds["SIM_SPEED"] <= 7:
             # for n in range(ndit):
                 # out_array += self._read_out_fast(self.array, dit)
-            
+
             # out_array += dark * dit * ndit
 
         #elif cmds["SIM_SPEED"] > 7:
         #######################################################################
-        
-        out_array = self._read_out_superfast(self.array, dit, ndit)      
-        
+
+        out_array = self._read_out_superfast(self.array, dit, ndit)
+
         #### TODO #########
         # add read out noise for every readout
         # add a for loop to _read_noise where n random noise frames are added
         # based on the size of the noise cube
         ro = np.array([self._read_noise_frame(cmds) for i in range(ndit)])
         ro = np.sum(ro, axis=0) + dark * dit * ndit
-            
+
         out_array += ro
 
         if cmds["OBS_REMOVE_CONST_BG"].lower() == "yes":
@@ -897,7 +905,7 @@ class Chip(object):
         nx, ny = image.shape
 
         nro = np.int(dit / tro)
-        tpts =  (1 + np.arange(nro)) * tro
+        tpts = (1 + np.arange(nro)) * tro
 
         img_byte = image.nbytes
         pix_byte = img_byte / (nx * ny)
@@ -905,7 +913,7 @@ class Chip(object):
         #max_byte =            ## TODO: arbitrary, function parameter?
         max_pix = max_byte / pix_byte
 
-        cube_megabyte = img_byte * nro / 2**20
+        #cube_megabyte = img_byte * nro / 2**20
         #print("Full cube  has {0:.1f} Megabytes".format(cube_megabyte))
 
         ny_cut = np.int(max_pix / (nx * nro))
@@ -924,14 +932,14 @@ class Chip(object):
                 y2 = ny
                 ny_cut = ny - y1
                 try:
-                    del(cube)
+                    del cube
                     cube = np.zeros((nx, ny_cut, nro))
-                except:
+                except NameError:
                     pass
 
             ## Fill the cube with Poisson realization, individual reads
             for i in range(nro):
-                cube[:,:,i] = np.random.poisson(image[:,y1:y2] * tro)
+                cube[:, :, i] = np.random.poisson(image[:, y1:y2] * tro)
 
             ## Build the ramp
             sumcube = cube.cumsum(axis=2)
@@ -942,7 +950,7 @@ class Chip(object):
             Sy = np.sum(sumcube, axis=2)
             Sxy = np.sum(sumcube * tpts, axis=2)
 
-            slope[:,y1:y2] = (nro * Sxy - Sx * Sy) / (nro * Sxx - Sx * Sx)
+            slope[:, y1:y2] = (nro * Sxy - Sx * Sy) / (nro * Sxx - Sx * Sx)
 
             ## Move to next slice
             y1 = y2
@@ -987,7 +995,7 @@ class Chip(object):
         Examples
         --------
         """
-        
+
         exptime = dit * ndit
         image2 = image * exptime
         image2[image2 > 2.14E9] = 2.14E9
@@ -1023,7 +1031,7 @@ class Chip(object):
                 return tmp[:self.naxis1, :self.naxis2]
             else:
                 return _generate_hxrg_noise(self.naxis1, self.naxis2, cmds)
-                
+
         elif cmds["FPA_NOISE_PATH"] is not None:
             n = len(fits.info(cmds["FPA_NOISE_PATH"], False))
             layer = np.random.randint(n)
@@ -1089,33 +1097,33 @@ def _generate_hxrg_noise(naxis1, naxis2, cmds):
     #self.params.update(kwargs)
     print("Generating a new chip noise array")
     # HXRG needs a pca file to run. Work out what a PCA file means!!
-    ng_h4rg     = HXRGNoise(naxis1   = naxis1,
-                            naxis2   = naxis2,
-                            n_out    = cmds["HXRG_NUM_OUTPUTS"],
-                            nroh     = cmds["HXRG_NUM_ROW_OH"],
-                            pca0_file= cmds["HXRG_PCA0_FILENAME"],
-                            verbose  = cmds["SIM_VERBOSE"])
+    ng_h4rg = HXRGNoise(naxis1=naxis1,
+                        naxis2=naxis2,
+                        n_out=cmds["HXRG_NUM_OUTPUTS"],
+                        nroh=cmds["HXRG_NUM_ROW_OH"],
+                        pca0_file=cmds["HXRG_PCA0_FILENAME"],
+                        verbose=cmds["SIM_VERBOSE"])
 
     # Make a noise file
-    noise = ng_h4rg.mknoise(o_file   = cmds["HXRG_OUTPUT_PATH"],
-                            rd_noise = cmds["FPA_READOUT_MEDIAN"],
-                            pedestal = cmds["HXRG_PEDESTAL"],
-                            c_pink   = cmds["HXRG_CORR_PINK"],
-                            u_pink   = cmds["HXRG_UNCORR_PINK"],
-                            acn      = cmds["HXRG_ALT_COL_NOISE"])
+    noise = ng_h4rg.mknoise(o_file=cmds["HXRG_OUTPUT_PATH"],
+                            rd_noise=cmds["FPA_READOUT_MEDIAN"],
+                            pedestal=cmds["HXRG_PEDESTAL"],
+                            c_pink=cmds["HXRG_CORR_PINK"],
+                            u_pink=cmds["HXRG_UNCORR_PINK"],
+                            acn=cmds["HXRG_ALT_COL_NOISE"])
 
     return noise
 
 
 def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     """
-    Create a large noise cube with many separate readout frames. 
-    
+    Create a large noise cube with many separate readout frames.
+
     Note:
     Each frame take about 15 seconds to be generated. The default value of
-    25 frames will take around six minutes depending on your computer's 
+    25 frames will take around six minutes depending on your computer's
     architecture.
-    
+
     Parameters
     ----------
     num_layers : int, optional
@@ -1123,9 +1131,9 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     filename : str, optional
         The filename for the FITS cube. Default is "FPA_noise.fits"
     multicore : bool, optional
-        If you're not using windows, this allows the process to use all 
+        If you're not using windows, this allows the process to use all
         available cores on your machine to speed up the process. Default is True
-    
+
     Notes
     -----
     multicore doesn't work - fix it
@@ -1136,7 +1144,7 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     cmds["FPA_NOISE_PATH"] = "generate"
     cmds["FPA_CHIP_LAYOUT"] = "default"
 
-    layout = ascii.read(cmds.cmds["FPA_CHIP_LAYOUT"])
+    layout = ioascii.read(cmds.cmds["FPA_CHIP_LAYOUT"])
     naxis1, naxis2 = layout["x_len"][0], layout["y_len"][0]
 
     #if "Windows" in os.environ.get('OS',''):
@@ -1146,14 +1154,16 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
         pool = mp.Pool(processes=mp.cpu_count()-1)
         frames = pool.map(_generate_hxrg_noise, (naxis1, naxis2, cmds))
         hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
-                        [fits.ImageHDU(frames[i]) for i in range(1,num_layers)])
+                           [fits.ImageHDU(frames[i]) \
+                            for i in range(1, num_layers)])
     else:
         frames = [_generate_hxrg_noise(naxis1, naxis2, cmds) \
-                                                    for i in range(num_layers)]
+                  for i in range(num_layers)]
         hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
-                        [fits.ImageHDU(frames[i]) for i in range(1,num_layers)])
+                           [fits.ImageHDU(frames[i]) \
+                            for i in range(1, num_layers)])
 
-    if filename==None:
+    if filename is None:
         return hdu
     else:
         hdu.writeto(filename, clobber=True)
@@ -1162,489 +1172,24 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
 def install_noise_cube(n=25):
     """
     Install a noise cube in the package directory
-    
+
     Parameters
     ----------
     n : int, optional
-        number of layers. 
-        
+        number of layers.
+
     Warning
     -------
-    Each layer is ~64MB, default is 25 layers (1.6GB). If you have less than 
+    Each layer is ~64MB, default is 25 layers (1.6GB). If you have less than
     2 GB on the drive where your Python installation is. Be careful!
     """
-    
+
     print("WARNING - this process can take minutes. Fear not!")
     hdu = make_noise_cube(n, filename=None)
-    filename = os.path.join(__pkg_dir__,"data","FPA_noise.fits")
+    filename = os.path.join(__pkg_dir__, "data", "FPA_noise.fits")
     hdu.writeto(filename, clobber=True)
     print("Saved noise cube with", n, "layers to the package directory:")
     print(filename)
-
-
-
-###############################################################################
-#                       NGHXRG by Bernard Rauscher                            #
-#             see the paper: http://arxiv.org/abs/1509.06264                  #
-#           downloaded from: http://jwst.nasa.gov/publications.html           #
-###############################################################################
-
-# dependencies include: astropy, numpy, scipy [, datetime, warnings, os]
-# import os
-# import warnings
-# from astropy.io import fits
-# import numpy as np
-# from scipy.ndimage.interpolation import zoom
-# import datetime
-# import matplotlib.pyplot as plt # Handy for debugging
-
-#warnings.filterwarnings('ignore')
-
-class HXRGNoise:
-    """
-    HXRGNoise is a class for making realistic Teledyne HxRG system
-    noise. The noise model includes correlated, uncorrelated,
-    stationary, and non-stationary components. The default parameters
-    make noise that resembles Channel 1 of JWST NIRSpec. NIRSpec uses
-    H2RG detectors. They are read out using four video outputs at
-    1.e+5 pix/s/output.
-    """
-
-    # These class variables are common to all HxRG detectors
-    nghxrg_version = 2.3 # Software version
-
-    def __init__(self, naxis1=None, naxis2=None, naxis3=None, n_out=None,
-                 dt=None, nroh=None, nfoh=None, pca0_file=None, verbose=False,
-                 reverse_scan_direction=False,
-                 reference_pixel_border_width=None):
-        """
-        Simulate Teledyne HxRG+SIDECAR ASIC system noise.
-
-        Parameters:
-            naxis1      - X-dimension of the FITS cube
-            naxis2      - Y-dimension of the FITS cube
-            naxis3      - Z-dimension of the FITS cube
-                          (number of up-the-ramp samples)
-            n_out       - Number of detector outputs
-            nfoh        - New frame overhead in rows. This allows for a short
-                          wait at the end of a frame before starting the next
-                          one.
-            nroh        - New row overhead in pixels. This allows for a short
-                          wait at the end of a row before starting the next one.
-            dt          - Pixel dwell time in seconds
-            pca0_file   - Name of a FITS file that contains PCA-zero
-            verbose     - Enable this to provide status reporting
-            reference_pixel_border_width - Width of reference pixel border
-                                           around image area
-            reverse_scan_direction - Enable this to reverse the fast scanner
-                                     readout directions. This
-                                     capability was added to support
-                                     Teledyne's programmable fast scan
-                                     readout directions. The default
-                                     setting =False corresponds to
-                                     what HxRG detectors default to
-                                     upon power up.
-        """
-
-        # ======================================================================
-        #
-        # DEFAULT CLOCKING PARAMETERS
-        #
-        # The following parameters define the default HxRG clocking pattern. The
-        # parameters that define the default noise model are defined in the
-        # mknoise() method.
-        #
-        # ======================================================================
-
-        # Default clocking pattern is JWST NIRSpec
-        self.naxis1    = 2048  if naxis1   is None else int(naxis1)
-        self.naxis2    = 2048  if naxis2   is None else int(naxis2)
-        self.naxis3    = 1     if naxis3   is None else int(naxis3)
-        self.n_out     = 4     if n_out    is None else int(n_out)
-        self.dt        = 1.e-5 if dt       is None else dt
-        self.nroh      = 12    if nroh     is None else int(nroh)
-        self.nfoh      = 1     if nfoh     is None else int(nfoh)
-        self.reference_pixel_border_width = 4 \
-                                            if reference_pixel_border_width is \
-                                            None else reference_pixel_border_width
-
-        # Initialize PCA-zero file and make sure that it exists and is a file
-        self.pca0_file = os.getenv('NGHXRG_HOME')+'/nirspec_pca0.fits' if \
-                         pca0_file is None else pca0_file
-        if os.path.isfile(self.pca0_file) is False:
-            print('There was an error finding pca0_file! Check to be')
-            print('sure that the NGHXRG_HOME shell environment')
-            print('variable is set correctly and that the')
-            print('$NGHXRG_HOME/ directory contains the desired PCA0')
-            print('file. The default is nirspec_pca0.fits.')
-            os.sys.exit()
-
-
-        # ======================================================================
-
-        # Configure status reporting
-        self.verbose = verbose
-
-        # Configure readout direction
-        self.reverse_scan_direction = reverse_scan_direction
-
-        # Compute the number of pixels in the fast-scan direction per
-        # output
-        self.xsize = self.naxis1 // self.n_out
-
-        # Compute the number of time steps per integration, per
-        # output
-        self.nstep = (self.xsize+self.nroh) * (self.naxis2+self.nfoh)\
-                     * self.naxis3
-
-        # For adding in ACN, it is handy to have masks of the even
-        # and odd pixels on one output neglecting any gaps
-        self.m_even = np.zeros((self.naxis3,self.naxis2,self.xsize))
-        self.m_odd = np.zeros_like(self.m_even)
-        for x in np.arange(0,self.xsize,2):
-            self.m_even[:,:self.naxis2,x] = 1
-            self.m_odd[:,:self.naxis2,x+1] = 1
-        self.m_even = np.reshape(self.m_even, np.size(self.m_even))
-        self.m_odd = np.reshape(self.m_odd, np.size(self.m_odd))
-
-        # Also for adding in ACN, we need a mask that point to just
-        # the real pixels in ordered vectors of just the even or odd
-        # pixels
-        self.m_short = np.zeros((self.naxis3, self.naxis2+self.nfoh, \
-                                      (self.xsize+self.nroh)//2))
-        self.m_short[:,:self.naxis2,:self.xsize//2] = 1
-        self.m_short = np.reshape(self.m_short, np.size(self.m_short))
-
-        # Define frequency arrays
-        self.f1 = np.fft.rfftfreq(self.nstep) # Frequencies for nstep elements
-        self.f2 = np.fft.rfftfreq(2*self.nstep) # ... for 2*nstep elements
-
-        # Define pinkening filters. F1 and p_filter1 are used to
-        # generate ACN. F2 and p_filter2 are used to generate 1/f noise.
-        self.alpha = -1 # Hard code for 1/f noise until proven otherwise
-        self.p_filter1 = np.sqrt(self.f1**self.alpha)
-        self.p_filter2 = np.sqrt(self.f2**self.alpha)
-        self.p_filter1[0] = 0.
-        self.p_filter2[0] = 0.
-
-
-        # Initialize pca0. This includes scaling to the correct size,
-        # zero offsetting, and renormalization. We use robust statistics
-        # because pca0 is real data
-        hdu = fits.open(self.pca0_file)
-        naxis1 = hdu[0].header['naxis1']
-        naxis2 = hdu[0].header['naxis2']
-        if (naxis1 != self.naxis1 or naxis2 != self.naxis2):
-            zoom_factor = self.naxis1 / naxis1
-            self.pca0 = zoom(hdu[0].data, zoom_factor, order=1, mode='wrap')
-        else:
-            self.pca0 = hdu[0].data
-        self.pca0 -= np.median(self.pca0) # Zero offset
-        self.pca0 /= (1.4826*mad(self.pca0)) # Renormalize
-
-
-    def message(self, message_text):
-        """
-        Used for status reporting
-        """
-        if self.verbose is True:
-            print('NG: ' + message_text + ' at DATETIME = ', \
-                  datetime.datetime.now().time())
-
-    def white_noise(self, nstep=None):
-        """
-        Generate white noise for an HxRG including all time steps
-        (actual pixels and overheads).
-
-        Parameters:
-            nstep - Length of vector returned
-        """
-        return(np.random.standard_normal(nstep))
-
-    def pink_noise(self, mode):
-        """
-        Generate a vector of non-periodic pink noise.
-
-        Parameters:
-            mode - Selected from {'pink', 'acn'}
-        """
-
-        # Configure depending on mode setting
-        if mode is 'pink':
-            nstep = 2*self.nstep
-            f = self.f2
-            p_filter = self.p_filter2
-        else:
-            nstep = self.nstep
-            f = self.f1
-            p_filter = self.p_filter1
-
-        # Generate seed noise
-        mynoise = self.white_noise(nstep)
-
-        # Save the mean and standard deviation of the first
-        # half. These are restored later. We do not subtract the mean
-        # here. This happens when we multiply the FFT by the pinkening
-        # filter which has no power at f=0.
-        the_mean = np.mean(mynoise[:nstep//2])
-        the_std = np.std(mynoise[:nstep//2])
-
-        # Apply the pinkening filter.
-        thefft = np.fft.rfft(mynoise)
-        thefft = np.multiply(thefft, p_filter)
-        result = np.fft.irfft(thefft)
-        result = result[:nstep//2] # Keep 1st half
-
-        # Restore the mean and standard deviation
-        result *= the_std / np.std(result)
-        result = result - np.mean(result) + the_mean
-
-        # Done
-        return(result)
-
-
-
-    def mknoise(self, o_file, rd_noise=None, pedestal=None, c_pink=None,
-                u_pink=None, acn=None, pca0_amp=None,
-                reference_pixel_noise_ratio=None, ktc_noise=None,
-                bias_offset=None, bias_amp=None):
-        """
-        Generate a FITS cube containing only noise.
-
-        Parameters:
-            o_file   - Output filename
-            pedestal - Magnitude of pedestal drift in electrons
-            rd_noise - Standard deviation of read noise in electrons
-            c_pink   - Standard deviation of correlated pink noise in electrons
-            u_pink   - Standard deviation of uncorrelated pink noise in
-                       electrons
-            acn      - Standard deviation of alterating column noise in
-                       electrons
-            pca0     - Standard deviation of pca0 in electrons
-            reference_pixel_noise_ratio - Ratio of the standard deviation of
-                                          the reference pixels to the regular
-                                          pixels. Reference pixels are usually
-                                          a little lower noise.
-            ktc_noise   - kTC noise in electrons. Set this equal to
-                          sqrt(k*T*C_pixel)/q_e, where k is Boltzmann's
-                          constant, T is detector temperature, and C_pixel is
-                          pixel capacitance. For an H2RG, the pixel capacitance
-                          is typically about 40 fF.
-            bias_offset - On average, integrations stare here in electrons. Set
-                          this so that all pixels are in range.
-            bias_amp    - A multiplicative factor that we multiply PCA-zero by
-                          to simulate a bias pattern. This is completely
-                          independent from adding in "picture frame" noise.
-
-        Note1:
-        Because of the noise correlations, there is no simple way to
-        predict the noise of the simulated images. However, to a
-        crude first approximation, these components add in
-        quadrature.
-
-        Note2:
-        The units in the above are mostly "electrons". This follows convention
-        in the astronomical community. From a physics perspective, holes are
-        actually the physical entity that is collected in Teledyne's p-on-n
-        (p-type implants in n-type bulk) HgCdTe architecture.
-        """
-
-        self.message('Starting mknoise()')
-
-        # ======================================================================
-        #
-        # DEFAULT NOISE PARAMETERS
-        #
-        # These defaults create noise similar to that seen in the JWST NIRSpec.
-        #
-        # ======================================================================
-
-        self.rd_noise  = 5.2      if rd_noise     is None else rd_noise
-        self.pedestal  = 4        if pedestal     is None else pedestal
-        self.c_pink    = 3        if c_pink       is None else c_pink
-        self.u_pink    = 1        if u_pink       is None else u_pink
-        self.acn       = .5       if acn          is None else acn
-        self.pca0_amp  = .2       if pca0_amp     is None else pca0_amp
-
-        # Change this only if you know that your detector is different from a
-        # typical H2RG.
-        self.reference_pixel_noise_ratio = 0.8 if \
-            reference_pixel_noise_ratio is None else reference_pixel_noise_ratio
-
-        # These are used only when generating cubes. They are
-        # completely removed when the data are calibrated to
-        # correlated double sampling or slope images. We include
-        # them in here to make more realistic looking raw cubes.
-        self.ktc_noise   = 29.   if ktc_noise   is None else ktc_noise
-        self.bias_offset = 5000. if bias_offset is None else bias_offset
-        self.bias_amp    = 500.  if bias_amp    is None else bias_amp
-
-        # ======================================================================
-
-        # Initialize the result cube. For up-the-ramp integrations,
-        # we also add a bias pattern. Otherwise, we assume
-        # that the aim was to simulate a two dimensional correlated
-        # double sampling image or slope image.
-        self.message('Initializing results cube')
-        result = np.zeros((self.naxis3, self.naxis2, self.naxis1), \
-                          dtype=np.float32)
-        if self.naxis3 > 1:
-            # Inject a bias pattern and kTC noise. If there are no reference pixels,
-            # we know that we are dealing with a subarray. In this case, we do not
-            # inject any bias pattern for now.
-            if self.reference_pixel_border_width > 0:
-                bias_pattern = self.pca0*self.bias_amp + self.bias_offset
-            else:
-                bias_pattern = self.bias_offset
-
-            # Add in some kTC noise. Since this should always come out
-            # in calibration, we do not attempt to model it in detail.
-            bias_pattern += \
-                         self.ktc_noise * \
-                         np.random.standard_normal((self.naxis2, self.naxis1))
-
-            # Ensure that there are no negative pixel values. Data cubes
-            # are converted to unsigned integer before writing.
-            bias_pattern = np.where(bias_pattern < 0, 0, bias_pattern)
-
-            # Add in the bias pattern
-            for z in np.arange(self.naxis3):
-                result[z,:,:] += bias_pattern
-
-
-        # Make white read noise. This is the same for all pixels.
-        self.message('Generating rd_noise')
-        w = self.reference_pixel_border_width # Easier to work with
-        r = self.reference_pixel_noise_ratio  # Easier to work with
-        for z in np.arange(self.naxis3):
-            here = np.zeros((self.naxis2, self.naxis1))
-            if w > 0: # Ref. pixel border exists
-                # Add both reference and regular pixels
-                here[:w,:] = r * self.rd_noise * \
-                             np.random.standard_normal((w,self.naxis1))
-                here[-w:,:] = r * self.rd_noise * \
-                              np.random.standard_normal((w,self.naxis1))
-                here[:,:w] = r * self.rd_noise * \
-                             np.random.standard_normal((self.naxis1,w))
-                here[:,-w:] = r * self.rd_noise * \
-                              np.random.standard_normal((self.naxis1,w))
-                # Make noisy regular pixels
-                here[w:-w,w:-w] = self.rd_noise * \
-                                  np.random.standard_normal( \
-                                  (self.naxis2-2*w,self.naxis1-2*w))
-            else: # Ref. pixel border does not exist
-                # Add only regular pixels
-                here = self.rd_noise * np.random.standard_normal((self.naxis2,\
-                                                                  self.naxis1))
-            # Add the noise in to the result
-            result[z,:,:] += here
-
-
-        # Add correlated pink noise.
-        self.message('Adding c_pink noise')
-        tt = self.c_pink * self.pink_noise('pink') # tt is a temp. variable
-        tt = np.reshape(tt, (self.naxis3, self.naxis2+self.nfoh, \
-                             self.xsize+self.nroh))[:,:self.naxis2,:self.xsize]
-        for op in np.arange(self.n_out):
-            x0 = op * self.xsize
-            x1 = x0 + self.xsize
-            if self.reverse_scan_direction is False:
-                # Teledyne's default fast-scan directions
-                if np.mod(op,2)==0:
-                    result[:,:,x0:x1] += tt
-                else:
-                    result[:,:,x0:x1] += tt[:,:,::-1]
-            else:
-                # Reverse the fast-scan directions.
-                if np.mod(op,2)==1:
-                    result[:,:,x0:x1] += tt
-                else:
-                    result[:,:,x0:x1] += tt[:,:,::-1]
-
-
-
-        # Add uncorrelated pink noise. Because this pink noise is stationary and
-        # different for each output, we don't need to flip it.
-        self.message('Adding u_pink noise')
-        for op in np.arange(self.n_out):
-            x0 = op * self.xsize
-            x1 = x0 + self.xsize
-            tt = self.u_pink * self.pink_noise('pink')
-            tt = np.reshape(tt, (self.naxis3, self.naxis2+self.nfoh, \
-                             self.xsize+self.nroh))[:,:self.naxis2,:self.xsize]
-            result[:,:,x0:x1] += tt
-
-        # Add ACN
-        self.message('Adding acn noise')
-        for op in np.arange(self.n_out):
-
-            # Generate new pink noise for each even and odd vector.
-            # We give these the abstract names 'a' and 'b' so that we
-            # can use a previously worked out formula to turn them
-            # back into an image section.
-            a = self.acn * self.pink_noise('acn')
-            b = self.acn * self.pink_noise('acn')
-
-            # Pick out just the real pixels (i.e. ignore the gaps)
-            a = a[np.where(self.m_short == 1)]
-            b = b[np.where(self.m_short == 1)]
-
-            # Reformat into an image section. This uses the formula
-            # mentioned above.
-            acn_cube = np.reshape(np.transpose(np.vstack((a,b))),
-                                  (self.naxis3,self.naxis2,self.xsize))
-
-            # Add in the ACN. Because pink noise is stationary, we can
-            # ignore the readout directions. There is no need to flip
-            # acn_cube before adding it in.
-            x0 = op * self.xsize
-            x1 = x0 + self.xsize
-            result[:,:,x0:x1] += acn_cube
-
-
-        # Add PCA-zero. The PCA-zero template is modulated by 1/f.
-        if self.pca0_amp > 0:
-            self.message('Adding PCA-zero "picture frame" noise')
-            gamma = self.pink_noise(mode='pink')
-            zoom_factor = self.naxis2 * self.naxis3 / np.size(gamma)
-            gamma = zoom(gamma, zoom_factor, order=1, mode='mirror')
-            gamma = np.reshape(gamma, (self.naxis3,self.naxis2))
-            for z in np.arange(self.naxis3):
-                for y in np.arange(self.naxis2):
-                    result[z,y,:] += self.pca0_amp*self.pca0[y,:]*gamma[z,y]
-
-
-        # If the data cube has only 1 frame, reformat into a 2-dimensional
-        # image.
-        if self.naxis3 == 1:
-            self.message('Reformatting cube into image')
-            result = result[0,:,:]
-
-        # If the data cube has more than one frame, convert to unsigned
-        # integer
-        if self.naxis3 > 1:
-            self.message('Converting to 16-bit unsigned integer')
-            result = result.astype('uint16')
-
-        # Write the result to a FITS file
-        self.message('Writing FITS file')
-        hdu = fits.PrimaryHDU(result)
-        hdu.header.append()
-        hdu.header.append(('RD_NOISE', self.rd_noise, 'Read noise'))
-        hdu.header.append(('PEDESTAL', self.pedestal, 'Pedestal drifts'))
-        hdu.header.append(('C_PINK', self.c_pink, 'Correlated pink'))
-        hdu.header.append(('U_PINK', self.u_pink, 'Uncorrelated pink'))
-        hdu.header.append(('ACN', self.acn, 'Alternating column noise'))
-        hdu.header.append(('PCA0', self.pca0_amp, \
-                           'PCA zero, AKA picture frame'))
-        #hdu.header['HISTORY'] = 'Created_by_NGHXRG_version_' \
-        #                        + str(self.nghxrg_version)
-
-        self.message('Exiting mknoise()')
-
-        if o_file is not None:
-            hdu.writeto(o_file, clobber='True')
-        return result
 
 class bloedsinn:
     pass
