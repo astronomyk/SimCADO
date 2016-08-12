@@ -132,9 +132,9 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     # Create a "detector"
     osys = poppy.OpticalSystem()
     osys.addPupil(eelt)
-    osys.adddetector(pixelscale=params["pix_res"],
-                     fov_arcsec=params["pix_res"] * params["size"],
-                     oversample=params["oversample"])
+    osys.add_detector(pixelscale=params["pix_res"],
+                      fov_arcsec=params["pix_res"] * params["size"],
+                      oversample=params["oversample"])
 
                      
     # list of wavelengths for which I should generate PSFs
