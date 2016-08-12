@@ -12,32 +12,27 @@
 # - Dead pixel image
 #
 
-import os
-import warnings
 from datetime import datetime as dt
 import numpy as np
-from astropy.io import fits, ascii
+from astropy.io import fits
+from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
 import astropy.units as u
 
 try:
-    import simcado.utils as utils
     import simcado.source as lo
     import simcado.spectral as sc
     import simcado.psf as psf
-    import simcado.detector as fpa
-except:
-    import utils
+except ImportError:
     import source as lo
     import spectral as sc
     import psf as psf
-    import detector as fpa
 
-    
-__all__ = ["diff_limited_eelt_psf_cube", "poppy_eelt_psf_cube", 
+
+__all__ = ["diff_limited_eelt_psf_cube", "poppy_eelt_psf_cube",
            "grid_of_stars", "stellar_emission_curve", "source_1E4_Msun_cluster",
            "source_from_stars"]
 
-    
+
 ################################################################################
 #                       Generate Instrument optics Data                         #
 ################################################################################
@@ -45,7 +40,7 @@ __all__ = ["diff_limited_eelt_psf_cube", "poppy_eelt_psf_cube",
 def diff_limited_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     """
     Generate a FITS file with a diffraction limited E-ELT PSFs for a range of
-    wavelengths by using psf.Airypsf()
+    wavelengths by using psf.AiryPSFCube()
 
     Parameters:
     -----------
@@ -61,18 +56,18 @@ def diff_limited_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     clobber: [True/False]
     """
 
-    params = {  "diameter"      :37,
-                "pix_res"       :0.001,
-                "size"          :255,
-                "clobber"       :True   }
+    params = {"diameter"      :37,
+              "pix_res"       :0.001,
+              "size"          :255,
+              "clobber"       :True}
     params.update(kwargs)
 
-    myPsf = psf.Airypsf(lam_bin_centers, **params)
+    my_psf = psf.AiryPSFCube(lam_bin_centers, **params)
 
     if filename is None:
-        return myPsf
+        return my_psf
     else:
-        myPsf.export_to_fits(filename, clobber=params["clobber"])
+        my_psf.export_to_fits(filename, clobber=params["clobber"])
 
 
 def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
@@ -101,25 +96,25 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
 
     try:
         import poppy
-    except:
-        raise ValueError("Please install poppy \n >>sudo pip3 install poppy")
+    except ImportError:
+        print("Please install poppy \n >>sudo pip3 install poppy")
         return
 
-    params = {  "diameter_out"  :37,
-                "diameter_in"   :5.5,
-                "flattoflat"    :1.45,
-                "gap"           :0.004,
-                "n_spiders"     :6,
-                "pix_res"       :0.001,
-                "size"          :255,
-                "oversample"    :1,
-                "clobber"       :True,
-                "cpus"          :-1       }
+    params = {"diameter_out"  :37,
+              "diameter_in"   :5.5,
+              "flattoflat"    :1.45,
+              "gap"           :0.004,
+              "n_spiders"     :6,
+              "pix_res"       :0.001,
+              "size"          :255,
+              "oversample"    :1,
+              "clobber"       :True,
+              "cpus"          :-1}
     params.update(kwargs)
 
     # Create the Optical Train
     rings = int(0.65 * params["diameter_out"] / params["flattoflat"])
-    
+
     m1 = poppy.MultiHexagonAperture(rings=rings,
                                     flattoflat=params["flattoflat"],
                                     gap=params["gap"])
@@ -127,7 +122,7 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     sec = poppy.SecondaryObscuration(secondary_radius=params["diameter_in"]/2,
                                      n_supports=params["n_spiders"],
                                      support_width=0.5)
-    eelt = poppy.CompoundAnalyticOptic( opticslist=[m1, pri, sec], name='E-ELT')
+    eelt = poppy.CompoundAnalyticOptic(opticslist=[m1, pri, sec], name='E-ELT')
 
     # Create a "detector"
     osys = poppy.OpticalSystem()
@@ -136,10 +131,10 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
                       fov_arcsec=params["pix_res"] * params["size"],
                       oversample=params["oversample"])
 
-                     
+
     # list of wavelengths for which I should generate PSFs
     lam_bin_centers = np.array(lam_bin_centers)
-    
+
     # Generate the PSFs in multiple threads
     try:
         import multiprocessing as mp
@@ -147,32 +142,35 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
             num_cpu = max(1, mp.cpu_count() - 1)
         else:
             num_cpu = min(params["cpus"], mp.cpu_count() - 1)
-        
-        pool = mp.Pool(processes = num_cpu)
+
+        pool = mp.Pool(processes=num_cpu)
         pond = [pool.apply_async(_get_poppy_psf, (osys, lam)) \
                                                     for lam in lam_bin_centers]
-        psfHDU = [duck.get() for duck in pond]
-                                                    
-    except:
-        print("Not possible to use multiple threads")
-        psfHDU = []
-        for lam in lam_bin_centers:
-            psfHDU += [_get_poppy_psf(osys, lam)]
-            print(lam)
-        
-    for psf in psfHDU:
-        psf.data = psf.data.astype(np.float32)
-        psf.header["CDELT1"] = (params["pix_res"], "[arcsec] - Pixel resolution")
-        psf.header["CDELT2"] = (params["pix_res"], "[arcsec] - Pixel resolution")
-        psf.header["PSF_TYPE"] = ("POPPY", "Generated by Poppy")
-        # Convert wavelength in header to [um] - originally in [m]
-        psf.header["WAVE0"] = (psf.header["WAVE0"]*1E6, "Wavelength of PSF [um]")
+        psf_hdu = [duck.get() for duck in pond]
 
-    if len(psfHDU) > 1:
-        psfHDU = [psfHDU[0]] + \
-                 [fits.ImageHDU(i.data, i.header) for i in psfHDU[1:]]
-                 
-    hdulist = fits.HDUList(psfHDU)
+    except (ImportError, mp.ProcessError): # any other exception to catch? (OC)
+        print("Not possible to use multiple threads")
+        psf_hdu = []
+        for lam in lam_bin_centers:
+            psf_hdu += [_get_poppy_psf(osys, lam)]
+            print(lam)
+
+    for psfi in psf_hdu:  # was psf, redefined module! (OC)
+        psfi.data = psfi.data.astype(np.float32)
+        psfi.header["CDELT1"] = (params["pix_res"],
+                                 "[arcsec] - Pixel resolution")
+        psfi.header["CDELT2"] = (params["pix_res"],
+                                 "[arcsec] - Pixel resolution")
+        psfi.header["PSF_TYPE"] = ("POPPY", "Generated by Poppy")
+        # Convert wavelength in header to [um] - originally in [m]
+        psfi.header["WAVE0"] = (psfi.header["WAVE0"]*1E6,
+                                "Wavelength of PSF [um]")
+
+    if len(psf_hdu) > 1:
+        psf_hdu = [psf_hdu[0]] + \
+                 [fits.ImageHDU(i.data, i.header) for i in psf_hdu[1:]]
+
+    hdulist = fits.HDUList(psf_hdu)
 
     if filename is None:
         return hdulist
@@ -188,7 +186,7 @@ def _get_poppy_psf(osys, lam):
     t = dt.now()
     print(lam, str(t.hour)+":"+str(t.minute)+":"+str(t.second))
     return osys.calcPSF(lam * 1E-6)[0]
-        
+
 
 
 
@@ -198,25 +196,25 @@ def _get_poppy_psf(osys, lam):
 
 def grid_of_stars(mag_range, spacing=0.5, spec_type="a0v", filename=None):
     """
-    
+
     spacing : float, optional
         [arcsec] distance between each star. Default = 0.5 arcsec
     """
-    
-    
+
+
     n = len(mag_range)
     side_len = int(np.sqrt(n)) + (np.sqrt(n) % 1 > 0)
     print(side_len)
     x = spacing * (np.arange(n) % side_len - (side_len - 1) / 2)
     y = spacing * (np.arange(n)// side_len - (side_len - 1) / 2)
 
-    return source_from_stars(spec_type.lower()*len(mag_range), 
-                             x, y, 
+    return source_from_stars(spec_type.lower()*len(mag_range),
+                             x, y,
                              dist_mod=mag_range,
                              filename=filename)
 
 
-def stellar_emission_curve(spec_type, distance=None, dist_mod=None, 
+def stellar_emission_curve(spec_type, distance=None, dist_mod=None,
                            in_photons=True, **kwargs):
     """
     Get an emission curve for a certain type of star
@@ -227,8 +225,8 @@ def stellar_emission_curve(spec_type, distance=None, dist_mod=None,
             distance = 10*u.pc
         else:
             distance = 10**(1. + 0.2 * dist_mod)
-    
-    lam, spec = get_MS_spectra(spec_type, distance=distance, 
+
+    lam, spec = get_MS_spectra(spec_type, distance=distance,
                                in_photons=in_photons)
     lam_res = np.median(lam[1:]-lam[:-1])
 
@@ -238,12 +236,12 @@ def stellar_emission_curve(spec_type, distance=None, dist_mod=None,
     #a0v_rel_flux = {"u":0.36, "b":0.44, "v":0.55, "r":0.64, "i":0.79,
     #                "j":1.26, "h":1.60, "k":2.22, "ks":2.16}
 
-    return sc.EmissionCurve(lam=lam, val=spec, lam_res=lam_res, 
+    return sc.EmissionCurve(lam=lam, val=spec, lam_res=lam_res,
                             units="ph/(s m2)", **kwargs)
 
-    
+
 def source_1E4_Msun_cluster(distance=40000, half_light_radius=1, filename=None,
-                                                                    **kwargs):
+                            **kwargs):
     """
     Generate a source object for a 10^4 solar mass cluster
 
@@ -264,7 +262,7 @@ def source_1E4_Msun_cluster(distance=40000, half_light_radius=1, filename=None,
     """
     params = {"pix_res" :0.004}
     params.update(kwargs)
-    
+
     masses = np.loadtxt("../data/IMF_1E4.dat")
     spec_type = [mass_to_spec_type(mass) for mass in masses]
 
@@ -277,7 +275,7 @@ def source_1E4_Msun_cluster(distance=40000, half_light_radius=1, filename=None,
     y = np.random.normal(0, sig, len(masses))
 
     return source_from_stars(spec_type, x, y, distance, filename=filename,
-                                                                    **kwargs)
+                             **kwargs)
 
 
 
@@ -325,12 +323,12 @@ def source_from_stars(spec_type, x, y, distance=None, dist_mod=None,
     # so the area and exptime kwargs are set to None.
     # We are looking at point sources here so pix_res plays no role. It is only
     # needed for the Source object
-    params = {  "units"  :"ph/(s m2)",
-                "pix_res":0.004,
-                "exptime":None,
-                "area"   :None   }
+    params = {"units"  : "ph/(s m2)",
+              "pix_res": 0.004,
+              "exptime": None,
+              "area"   : None}
     params.update(kwargs)
-    is_list = True if type(spec_type) in (list, tuple, np.ndarray) else False
+    is_list = isinstance(spec_type, (list, tuple, np.ndarray))
 
     # Work out which spectral types are unique
     spec_type = [spec_type] if not is_list else spec_type
@@ -346,18 +344,18 @@ def source_from_stars(spec_type, x, y, distance=None, dist_mod=None,
         if dist_mod is None:
             distance = 10.
         else:
-            if type(dist_mod is list):
+            if isinstance(dist_mod, list):
                 dist_mod = np.array(dist_mod)
             distance = 10**(1. + 0.2 * dist_mod)
-    elif type(distance) == u.Quantity:
-            distance = distance.to(u.pc).value
-    elif type(distance) is list:
-        distance = np.array(distance)
+    elif isinstance(distance, u.Quantity):
+        distance = distance.to(u.pc).value
+    elif isinstance(distance, list):
+        distance = np.asarray(distance)
 
     # Weight the spectra according to distance
     weight = (10. / distance)**2
-    if type(weight) != np.ndarray:
-        weight = np.array([weight]*len(spec_type))
+    if not isinstance(weight, np.ndarray):
+        weight = np.asarray([weight]*len(spec_type))
 
     # Create a source.Source object and write it to a file
     obj = lo.Source(lam=lam, spectra=spectra, x=x, y=y, ref=ref, weight=weight,
@@ -399,30 +397,30 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None, raw=False,
         Units of the returned spectra are [ph/s/m2]
     """
     if pickles_table is None:
-        pickles_table = ascii.read("../data/EC_pickles_MS.dat")
+        pickles_table = ioascii.read("../data/EC_pickles_MS.dat")
     cat = pickles_table
 
-    if type(spec_type) in (list, tuple):
+    if isinstance(spec_type, (list, tuple)):
         pick_type = [nearest_pickle_type(SpT) for SpT in spec_type]
     else:
         pick_type = nearest_pickle_type(spec_type)
-    
+
     lam = np.round(cat[cat.colnames[0]].data, 7)
     dlam = np.append(lam[1:] - lam[:-1], lam[-1] - lam[-2])
-    
+
     # flux is in units of [ph/s/m2/um]. dlam is in units of [um]
     # flux is adjusted for distance
     mass = spec_type_to_mass(pick_type)
     flux = mass_to_flux5556A(mass, distance, in_photons=in_photons)
-   
-    if type(spec_type) in (list, tuple):
+
+    if isinstance(spec_type, (list, tuple)):
         spectra = []
-        for i in range(len(pick_type)):
-            tmp = cat[pick_type[i][:2].lower()+"v"].data
+        for i, thispick in enumerate(pick_type):
+            tmp = cat[thispick[:2].lower()+"v"].data
             if not raw:
                 spectra += [tmp * dlam * flux[i]]
             else:
-                sprectra += [tmp]
+                spectra += [tmp]
     else:
         spectra = cat[pick_type[:2].lower()+"v"].data
         if not raw:
@@ -430,7 +428,7 @@ def get_MS_spectra(spec_type, distance=10*u.pc, pickles_table=None, raw=False,
 
     if in_photons:
         spectra /= 0.5556*u.um / lam
-            
+
     # units of the spectra being returned are [ph/s/m2] for each wavelength bin,
     # adjusted for distance
     return np.asarray(lam), np.asarray(spectra)
@@ -450,8 +448,9 @@ def mass_to_Mv(mass):
     """
     Calculate the V-band absolute magnitude of a star based on mass
     """
-    mass = mass.value if type(mass) == u.quantity.Quantity else mass
-    
+    ## provide reference for this
+    mass = mass.value if isinstance(mass, u.quantity.Quantity) else mass
+
     f = np.array([ -0.40960919,   1.28000053,  -0.43203104,  -1.48032921,
                     2.74563706,  -4.61182633,  -0.38868252,   8.58781463,
                   -12.21570688,   4.90158585])
@@ -465,7 +464,8 @@ def mass_to_temp(mass):
     """
     Calculate an approximate surface temperature based on mass
     """
-    mass = mass.value if type(mass) == u.quantity.Quantity else mass
+    ## provide reference for this
+    mass = mass.value if isinstance(mass, u.quantity.Quantity) else mass
 
     f = np.array([ 0.02651303, -0.05307791, -0.10533279,  0.1843677 ,
                    0.5460582 , 3.74004826])
@@ -500,30 +500,33 @@ def mass_to_flux5556A(mass, distance=10*u.pc, in_photons=True):
     F_5556A = f(mass)
     """
 
-    mass = mass.value          if type(mass) == u.quantity.Quantity     else mass
-    distance = distance * u.pc if type(distance) != u.quantity.Quantity else distance
-    
-    # Interestingly the round about way, i.e. fitting mass --> temp --> Mv 
+    if isinstance(mass, u.quantity.Quantity):
+        mass = mass.value
+    if not isinstance(distance, u.quantity.Quantity):
+        distance = distance * u.pc
+
+
+    # Interestingly the round about way, i.e. fitting mass --> temp --> Mv
     # is more accurate than the direct fit - mass --> Mv
     temp = mass_to_temp(mass)
 
-    f = np.array([-10.57984516,  139.88537641, -624.14454692,  935.92676894])
+    f = np.array([-10.57984516, 139.88537641, -624.14454692, 935.92676894])
     logT = np.log10(temp.value)
 
-    Mv = np.polyval(f, logT)
+    #Mv = np.polyval(f, logT)  # What does that do? (OC)
     Mv = mass_to_Mv(mass) - 1.1
-    
+
     # janskys = (3580 * u.Jy * 10**(-0.4*Mv) * (10*u.pc / distance)**2).to(u.Jy)
     if in_photons:
         photons = (996 * u.Unit("ph/(s cm2 Angstrom)") * 10**(-0.4*Mv) * \
                                                         (10*u.pc / distance)**2)
         return photons.to(u.ph/u.s/u.m**2/u.um).value
-    
+
     else:
         ergs = (363.1E-11 * u.Unit("erg/(s cm2 Angstrom)") * 10**(-0.4*Mv) * \
                                                         (10*u.pc / distance)**2)
         return ergs.to(u.erg/u.s/u.m**2/u.um).value
-    
+
 
 
 
@@ -534,9 +537,9 @@ def mass_to_lifetime(mass):
 
     t = f(mass)
     """
-    mass = mass.value   if type(mass) == u.quantity.Quantity    else mass
-
-    f = np.array([ 0.24897294, -0.09842223, -2.47114954,  9.89215499])
+    if isinstance(mass, u.quantity.Quantity):
+        mass = mass.value
+    f = np.array([0.24897294, -0.09842223, -2.47114954, 9.89215499])
 
     logM = np.log10(mass)
     logt = np.polyval(f, logM)
@@ -553,6 +556,7 @@ def mass_to_spec_type(mass):
 
     where n is the spectral type in numerical form: O5 = 5, A0 = 20, G2 = 42,etc
     """
+    ## Needs a reference (OC)
     d = {0:"o", 1:"b", 2:"a", 3:"f", 4:"g", 5:"k", 6:"m", 7:"l", 8:"t"}
     #f = np.polyfit(logM, logN, 6)
     f = np.array([ 0.02339193, -0.15822858,  0.0989074 ,  0.38510294,
@@ -560,7 +564,8 @@ def mass_to_spec_type(mass):
 
     logM = np.log10(mass)
     n = np.array(10**np.polyval(f, logM), dtype=int)
-    if n > 89: n = 89
+    if n > 89:           # Err, what? n is supposed to be an array (OC)
+        n = 89
     spec_type = d[n//10] + str(n%10)
     return spec_type
 
@@ -573,7 +578,8 @@ def mass_to_n_class(mass):
 
     n(spec_type) = f(mass)
     """
-    mass = mass.value if type(mass) == u.quantity.Quantity else mass
+    if isinstance(mass, u.quantity.Quantity):
+        mass = mass.value
 
     f = np.array([-0.14376899,  0.13219846,  0.37555566, -0.31116164,
                   -0.59572498, 1.62977733])
@@ -599,7 +605,7 @@ def spec_type_to_mass(spec_type):
                   -503.67053477,  253.88948443,  -65.56109921,    6.66706868,
                      1.98858127])
 
-    if type(spec_type) == list:
+    if isinstance(spec_type, list):
         n = [float(d[SpT[0].lower()])*10 + float(SpT[1]) for SpT in spec_type]
     else:
         n = float(d[spec_type[0].lower()])*10 + float(spec_type[1])
@@ -614,7 +620,8 @@ def spec_type_to_n(spec_type):
     Convert a spectral type to numerical type: O5 = 5, A0V = 20, G2 = 42, etc
     O:0, B:1, A:2, F:3, G:4, K:5, M:6, L:7, T:8
     """
-    spec_type = [spec_type] if type(spec_type) != list else spec_type
+    if not isinstance(spec_type, list):
+        spec_type = [spec_type]
     d = {"o":0, "b":1, "a":2, "f":3, "g":4, "k":5, "m":6, "l":7, "t":8}
     n = [int(float(d[SpT[0].lower()])*10 + float(SpT[1])) for SpT in spec_type]
     return n
@@ -625,7 +632,7 @@ def n_to_spec_type(n):
     Convert a numerical type to spectral type : O5 = 5, A0V = 20, G2 = 42, etc
     O:0, B:1, A:2, F:3, G:4, K:5, M:6, L:7, T:8
     """
-    n = [n] if not hasattr(n,"__iter__") else n
+    n = [n] if not hasattr(n, "__iter__") else n
     d = {0:"o", 1:"b", 2:"a", 3:"f", 4:"g", 5:"k", 6:"m", 7:"l", 8:"t"}
     spec_type = [d[i//10] + str(i%10) + "v" for i in n]
     return spec_type
@@ -646,8 +653,8 @@ def nearest_pickle_type(spec_type):
 
     # n are the numerical spectral types, m is the numerical type of "spec_type"
     # find when n is closest to n, then convert that n to a string spectral type
-    if type(spec_type) not in (list, tuple, np.array) :
-        if type(spec_type) in (str, np.str_):
+    if not isinstance(spec_type, (list, tuple, np.array)):
+        if isinstance(spec_type, (str, np.str_)):
             if spec_type[1].isdigit():
                 m = spec_type_to_n(spec_type)
             else:
@@ -663,9 +670,9 @@ def nearest_pickle_type(spec_type):
 
 def make_h4rg_pixel_map(dead_pix=1, dead_line=1, filename=None):
     """
-    Generate a 4096 x 4096 pixel map with a certain percentage of dead pixels 
+    Generate a 4096 x 4096 pixel map with a certain percentage of dead pixels
     and lines
-    
+
     Parameters
     ==========
     dead_pix : int, optional
@@ -673,29 +680,30 @@ def make_h4rg_pixel_map(dead_pix=1, dead_line=1, filename=None):
     dead_line : int, optional
         The percentage [%] of dead lines in the frame
     filename : str, optional
-        Default = None. If None, the array is returned. If not None, a FITS file 
+        Default = None. If None, the array is returned. If not None, a FITS file
         with the pixel map is saved to this path
     """
-        
+
     chip = np.ones((4096, 4096), dtype=np.float32)
     l = 4096
     w = 4096 // 32
-    
-    for i in range(0,4096,l):
-        for j in range(0,4096,w):
-            seg = np.ones((l,w))
+
+    for i in range(0, 4096, l):
+        for j in range(0, 4096, w):
+            seg = np.ones((l, w))
             # Add the dead pixels
             x = np.random.randint(l, size=int(w*l*dead_pix/100))
             y = np.random.randint(w, size=int(w*l*dead_pix/100))
-            seg[x,y] = 0
+            seg[x, y] = 0
             # Add the dead lines
             y = np.random.randint(w, size=int(w*dead_line/100))
-            seg[:,y] = 0
-            chip[i:i+l,j:j+w] = seg
-            
+            seg[:, y] = 0
+            chip[i:i+l, j:j+w] = seg
+
     if filename is not None:
         hdu = fits.PrimaryHDU(chip)
-        hdu.header["SIMCADO"] = ("PIXEL_MAP","A map of dead pixels on the detector")
+        hdu.header["SIMCADO"] = ("PIXEL_MAP",
+                                 "A map of dead pixels on the detector")
         hdu.writeto(filename, clobber=True)
     else:
         return chip
