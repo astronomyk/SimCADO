@@ -12,25 +12,28 @@
 # - Implement saving and reloading of OpticalTrain objects
 #
 
-import sys, os, glob
+import os
+import glob
 import warnings
 
 import numpy as np
 
-from astropy.io import fits, ascii
+from astropy.io import fits
+from astropy.io import ascii as ioascii    # 'ascii' redefines built-in
 import astropy.units as u
+
 try:
-    import simcado.detector as fpa
+    #import simcado.detector as fpa
     import simcado.psf as psf
     import simcado.spectral as sc
     import simcado.spatial as pe
-    import simcado.utils as utils
-except:
-    import detector as fpa
+    #import simcado.utils as utils
+except ImportError:
+    #import detector as fpa
     import psf as psf
     import spectral as sc
     import spatial as pe
-    import utils
+    #import utils
 
 __file__ = sc.__file__
 __pkg_dir__ = os.path.split(__file__)[0]
@@ -98,6 +101,9 @@ class OpticalTrain(object):
 
         self.cmds = cmds
 
+        self.tc_master = None   # set in separate method
+        self.psf_size = None   # set in separate method
+
         fname = self.cmds["SIM_OPT_TRAIN_IN_PATH"]
         if fname is not None:
             if not os.path.exists(fname):
@@ -105,13 +111,12 @@ class OpticalTrain(object):
 
             self.read(fname)
         else:
-
-            self.lam_bin_edges   = cmds.lam_bin_edges
+            self.lam_bin_edges = cmds.lam_bin_edges
             self.lam_bin_centers = cmds.lam_bin_centers
-            self.pix_res         = cmds.pix_res
+            self.pix_res = cmds.pix_res
 
-            self.lam             = cmds.lam
-            self.lam_res         = cmds.lam_res
+            self.lam = cmds.lam
+            self.lam_res = cmds.lam_res
 
             self._make()
 
@@ -154,18 +159,17 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating mirror emission photons")
         # Make the transmission curve for the blackbody photons from the mirror
-        self.tc_mirror  = self._gen_master_tc(preset="mirror")
-        self.ec_mirror  = sc.BlackbodyCurve(lam     =self.tc_mirror.lam,
-                                            temp    =self.cmds["SCOPE_M1_TEMP"],
-                                            pix_res =self.cmds.pix_res,
-                                            area    =self.cmds.area)
+        self.tc_mirror = self._gen_master_tc(preset="mirror")
+        self.ec_mirror = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
+                                           temp=self.cmds["SCOPE_M1_TEMP"],
+                                           pix_res=self.cmds.pix_res,
+                                           area=self.cmds.area)
 
 
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
-            self.ph_mirror  = self.ec_mirror * self.tc_mirror
-            self.n_ph_mirror = \
-                         self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
-                                                         self.lam_bin_edges[-1])
+            self.ph_mirror = self.ec_mirror * self.tc_mirror
+            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+                                                               self.lam_bin_edges[-1])
         else:
             self.ph_mirror = None
             self.n_ph_mirror = 0.
@@ -178,53 +182,53 @@ class OpticalTrain(object):
         self.tc_atmo = self._gen_master_tc(preset="atmosphere")
 
         if self.cmds["ATMO_USE_ATMO_BG"].lower() == "yes":
-        
+
             if self.cmds["ATMO_EC"] is not None:
                 self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
-                                                pix_res =self.cmds.pix_res,
-                                                area    =self.cmds.area)
+                                                pix_res=self.cmds.pix_res,
+                                                area=self.cmds.area)
                 self.ph_atmo = self.tc_atmo * self.ec_atmo
                 self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
-                                                           self.lam_bin_edges[-1])
+                                                               self.lam_bin_edges[-1])
             else:
                 if len(self.cmds["INST_FILTER_TC"]) > 2:
-                    filt = self.cmds["INST_FILTER_TC"][-5:-3].replace(".","")
+                    filt = self.cmds["INST_FILTER_TC"][-5:-3].replace(".", "")
                 else:
                     filt = self.cmds["INST_FILTER_TC"]
-                
+
                 if self.cmds["ATMO_BG_MAGNITUDE"] == "default":
                     path = os.path.join(__pkg_dir__, "data", "EC_sky_magnitude.dat")
-                    self.cmds["ATMO_BG_MAGNITUDE"] = ascii.read(path)[filt][0] 
-                
+                    self.cmds["ATMO_BG_MAGNITUDE"] = ioascii.read(path)[filt][0]
+
                 if filt not in "BVRIzYJHKKs":
                     raise ValueError("""Only broadband filters (BVRIzYJHKKs)
-                      can be used with keyword ATMO_BG_MAGNITUDE. Please provide 
+                      can be used with keyword ATMO_BG_MAGNITUDE. Please provide
                       a filename for ATMO_EC, or write ATMO_EC  default""")
-                
+
                 from simcado import source
                 ph_zero = source.zero_magnitude_photon_flux(filt)
-                
+
                 self.ec_atmo = None
                 self.ph_atmo = None
-                
+
                 factor = 10**(-0.4*self.cmds["ATMO_BG_MAGNITUDE"]) * \
                                         self.cmds.pix_res**2 * self.cmds.area
-                
+
                 self.n_ph_atmo = ph_zero * factor
-        
-        
+
+
         else:
             self.ec_atmo = None
             self.ph_atmo = None
             self.n_ph_atmo = 0.
-                
+
         self.n_ph_bg = self.n_ph_atmo + self.n_ph_mirror
 
         ############## SOURCE PHOTON PATH #########################
         if self.cmds.verbose:
             print("Generating optical path for source photons")
         # Make the transmission curve and PSF for the source photons
-        self.tc_source  = self._gen_master_tc(preset="source")
+        self.tc_source = self._gen_master_tc(preset="source")
         self.psf = self._gen_master_psf()
 
         # Detector has been outsourced - this is irrelevant now
@@ -305,8 +309,8 @@ class OpticalTrain(object):
             else:
                 tc_dict[key] = sc.UnityCurve()
 
-        tc_master = sc.UnityCurve( lam=self.lam, lam_res=self.lam_res,
-                                   min_step=self.cmds["SIM_SPEC_MIN_STEP"])
+        tc_master = sc.UnityCurve(lam=self.lam, lam_res=self.lam_res,
+                                  min_step=self.cmds["SIM_SPEC_MIN_STEP"])
         for key in tc_keywords:
             tc_master *= tc_dict[key]
 
@@ -344,19 +348,19 @@ class OpticalTrain(object):
                                      self.lam_bin_centers)
             if psf_m1[0].pix_res != self.pix_res:
                 psf_m1.resample(self.pix_res)
-        
+
             if self.cmds["SCOPE_STREHL_RATIO"] < 1. and \
                                         "PSF_POPPY" in self.cmds["SCOPE_PSF_FILE"]:
                 strehl = self.cmds["SCOPE_STREHL_RATIO"]
-                gauss = psf.GaussianPSF(fwhm=0.8, 
-                                        size=psf_m1[0].size, 
-                                        pix_res=self.pix_res, 
+                gauss = psf.GaussianPSF(fwhm=0.8,
+                                        size=psf_m1[0].size,
+                                        pix_res=self.pix_res,
                                         undersized=True)
                 psf_m1 = psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
-            
+
         else:
             m1_diam = self.cmds["SCOPE_M1_DIAMETER_OUT"]
-            ao_eff  = self.cmds["SCOPE_AO_EFFECTIVENESS"]
+            ao_eff = self.cmds["SCOPE_AO_EFFECTIVENESS"]
 
             # Get a Diffraction limited PSF
             fwhm = (1.22*u.rad * self.lam_bin_centers * u.um / \
@@ -376,8 +380,8 @@ class OpticalTrain(object):
                 if ao_eff < 100.:
                     fwhm = (1. - ao_eff/100.) * self.cmds["OBS_SEEING"]
                     psf_seeing = psf.GaussianPSF(self.lam_bin_centers,
-                                                    fwhm=fwhm,
-                                                    pix_res=self.pix_res)
+                                                 fwhm=fwhm,
+                                                 pix_res=self.pix_res)
 
                     psf_m1 = psf_diff.convolve(psf_seeing)
                 else:
@@ -407,7 +411,8 @@ class OpticalTrain(object):
         return jitter_psf
 
 
-def get_filter_curve(filter):
+## note: 'filter' redefines a built-in and should not be used
+def get_filter_curve(filtername):
     """
     Return a Vis/NIR broadband filter TransmissionCurve object
 
@@ -415,10 +420,10 @@ def get_filter_curve(filter):
     -----
     Acceptable filter names are B V R I Y z J H K Ks
     """
-    return filter_curve(filter)
+    return filter_curve(filtername)
 
 
-def filter_curve(filter):
+def filter_curve(filtername):
     """
     Return a Vis/NIR broadband filter TransmissionCurve object
 
@@ -426,19 +431,20 @@ def filter_curve(filter):
     -----
     Acceptable filter names are B V R I Y z J H K Ks
     """
-    if filter not in "BVRIYzJHKKs":
+    if filtername not in "BVRIYzJHKKs":
         raise ValueError("filter not recognised: "+filter)
-    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filter+".dat")
+    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filtername+".dat")
     return sc.TransmissionCurve(filename=fname)
-        
 
-def get_filter_set(dir=None):
+
+def get_filter_set(path=None):
     """
     Return a list of the filters installed in the package directory
     """
-    if dir is None:
-        dir = os.path.join(__pkg_dir__,"data")
-    lst = [i.replace(".dat","").split("TC_filter_")[-1] for i in glob.glob(os.path.join(dir,"TC_filter*.dat"))]
+    if path is None:
+        path = os.path.join(__pkg_dir__, "data")
+    lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
+           for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst
 
 
@@ -447,8 +453,8 @@ def package_dir():
     Return the folder where all the data files are stored
     """
     return __pkg_dir__
-    
-        
+
+
 def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     """
     Generate a FITS file with E-ELT PSFs for a range of wavelengths by using the
@@ -475,25 +481,25 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
 
     try:
         import poppy
-    except:
-        raise ValueError("Please install poppy \n >>sudo pip3 install poppy")
+    except ImportError:
+        print("Please install poppy \n >>sudo pip3 install poppy")
         return
 
-    params = {  "diameter_out"  :37,
-                "diameter_in"   :5.5,
-                "flattoflat"    :1.45,
-                "gap"           :0.004,
-                "n_spiders"     :6,
-                "pix_res"       :0.001,
-                "size"          :255,
-                "oversample"    :1,
-                "clobber"       :True,
-                "cpus"          :-1       }
+    params = {"diameter_out"  :37,
+              "diameter_in"   :5.5,
+              "flattoflat"    :1.45,
+              "gap"           :0.004,
+              "n_spiders"     :6,
+              "pix_res"       :0.001,
+              "size"          :255,
+              "oversample"    :1,
+              "clobber"       :True,
+              "cpus"          :-1}
     params.update(kwargs)
 
     # Create the Optical Train
     rings = int(0.65 * params["diameter_out"] / params["flattoflat"])
-    
+
     m1 = poppy.MultiHexagonAperture(rings=rings,
                                     flattoflat=params["flattoflat"],
                                     gap=params["gap"])
@@ -501,7 +507,7 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     sec = poppy.SecondaryObscuration(secondary_radius=params["diameter_in"]/2,
                                      n_supports=params["n_spiders"],
                                      support_width=0.5)
-    eelt = poppy.CompoundAnalyticOptic( opticslist=[m1, pri, sec], name='E-ELT')
+    eelt = poppy.CompoundAnalyticOptic(opticslist=[m1, pri, sec], name='E-ELT')
 
     # Create a "detector"
     osys = poppy.OpticalSystem()
@@ -510,10 +516,10 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
                       fov_arcsec=params["pix_res"] * params["size"],
                       oversample=params["oversample"])
 
-                     
+
     # list of wavelengths for which I should generate PSFs
     lam_bin_centers = np.array(lam_bin_centers)
-    
+
     # Generate the PSFs in multiple threads
     try:
         import multiprocessing as mp
@@ -521,32 +527,35 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
             num_cpu = max(1, mp.cpu_count() - 1)
         else:
             num_cpu = min(params["cpus"], mp.cpu_count() - 1)
-        
-        pool = mp.Pool(processes = num_cpu)
-        pond = [pool.apply_async(_get_poppy_psf, (osys, lam)) \
-                                                    for lam in lam_bin_centers]
-        psfHDU = [duck.get() for duck in pond]
-                                                    
-    except:
-        print("Not possible to use multiple threads")
-        psfHDU = []
-        for lam in lam_bin_centers:
-            psfHDU += [_get_poppy_psf(osys, lam)]
-            print(lam)
-        
-    for psf in psfHDU:
-        psf.data = psf.data.astype(np.float32)
-        psf.header["CDELT1"] = (params["pix_res"], "[arcsec] - Pixel resolution")
-        psf.header["CDELT2"] = (params["pix_res"], "[arcsec] - Pixel resolution")
-        psf.header["PSF_TYPE"] = ("POPPY", "Generated by Poppy")
-        # Convert wavelength in header to [um] - originally in [m]
-        psf.header["WAVE0"] = (psf.header["WAVE0"]*1E6, "Wavelength of PSF [um]")
 
-    if len(psfHDU) > 1:
-        psfHDU = [psfHDU[0]] + \
-                 [fits.ImageHDU(i.data, i.header) for i in psfHDU[1:]]
-                 
-    hdulist = fits.HDUList(psfHDU)
+        pool = mp.Pool(processes=num_cpu)
+        pond = [pool.apply_async(_get_poppy_psf, (osys, lam)) \
+                for lam in lam_bin_centers]
+        psf_hdu = [duck.get() for duck in pond]
+
+    except (ImportError, mp.ProcessError):  # anything else to catch? (OC)
+        print("Not possible to use multiple threads")
+        psf_hdu = []
+        for lam in lam_bin_centers:
+            psf_hdu += [_get_poppy_psf(osys, lam)]
+            print(lam)
+
+    for psfi in psf_hdu:   # was 'psf', conflict with module
+        psfi.data = psfi.data.astype(np.float32)
+        psfi.header["CDELT1"] = (params["pix_res"],
+                                 "[arcsec] - Pixel resolution")
+        psfi.header["CDELT2"] = (params["pix_res"],
+                                 "[arcsec] - Pixel resolution")
+        psfi.header["PSF_TYPE"] = ("POPPY", "Generated by Poppy")
+        # Convert wavelength in header to [um] - originally in [m]
+        psfi.header["WAVE0"] = (psfi.header["WAVE0"]*1E6,
+                                "Wavelength of PSF [um]")
+
+    if len(psf_hdu) > 1:
+        psf_hdu = [psf_hdu[0]] + \
+                 [fits.ImageHDU(i.data, i.header) for i in psf_hdu[1:]]
+
+    hdulist = fits.HDUList(psf_hdu)
 
     if filename is None:
         return hdulist
@@ -561,8 +570,8 @@ def _get_poppy_psf(osys, lam):
     """
     t = dt.now()
     print(lam, str(t.hour)+":"+str(t.minute)+":"+str(t.second))
-    return osys.calcPSF(lam * 1E-6)[0]        
-        
-        
+    return osys.calcPSF(lam * 1E-6)[0]
+
+
 class bloedsinn():
     pass
