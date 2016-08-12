@@ -25,10 +25,10 @@ from astropy import units as u
 from astropy.io import fits
 
 ## These functions are exported to the package
-__all__ = [ "read_config", "update_config", "unify", "parallactic_angle", 
-            "poissonify", "atmospheric_refraction", "nearest", "add_keyword"]
+__all__ = ["read_config", "update_config", "unify", "parallactic_angle",
+           "poissonify", "atmospheric_refraction", "nearest", "add_keyword"]
 
-      
+
 def msg(cmds, message, level=3):
     """
     Prints a message based on the level of verbosity given in cmds
@@ -40,13 +40,13 @@ def msg(cmds, message, level=3):
     message : str
         message to be printed
     level : int, optional
-        all messages with level <= SIM_MESSAGE_LEVEL are printed. I.e. level=5 
+        all messages with level <= SIM_MESSAGE_LEVEL are printed. I.e. level=5
         messages are not important, level=1 are very important
     """
     if cmds["SIM_VERBOSE"] == "yes" and level <= cmds["SIM_MESSAGE_LEVEL"]:
         print(message)
 
-    
+
 ## CHECK: Turn config into a class? (subclass of dict, if anything)
 def read_config(config_file):
     """
@@ -59,15 +59,15 @@ def read_config(config_file):
     ----------
     config_file : str
         the filename of the .config file
-    
+
     Returns
     -------
     config_dict : dict
         A dictionary with keys 'PARAMETER' and values 'Value'.
-        
+
     Notes
     -----
-    The values of the dictionary are strings and will have to be converted to 
+    The values of the dictionary are strings and will have to be converted to
     the appropriate data type as they are needed.
     """
 
@@ -78,28 +78,30 @@ def read_config(config_file):
 
     # remove lines that are all spaces or spaces + '#'
     # these are the regular expressions
-    isempty = re.compile('^\s*$')
-    iscomment = re.compile('^\s*#')
+    isempty = re.compile(r'^\s*$')
+    iscomment = re.compile(r'^\s*#')
 
-    with open(config_file, 'r') as fp:
-        for line in fp:
-            if isempty.match(line): continue
-            if iscomment.match(line): continue
-            line = line.rstrip()   # remove trailing \n
-            try:
-                (content, comment) = line.split('#', 1)
-            except:
-                content = line
-                comment = ""
+    with open(config_file, 'r') as fp1:
+        for line in fp1:
+            if isempty.match(line):
+                continue
+            if iscomment.match(line):
+                continue
+
+            line = line.rstrip()             # remove trailing \n
+            content = line.split('#', 1)[0]  # remove comment
             param, value = content.split(None, 1)
-            try: config_dict[param] = float(value.strip())
-            except: 
+
+            # Convert to number if possible
+            try:
+                config_dict[param] = float(value.strip())
+            except ValueError:
                 config_dict[param] = value.strip()
-            
-            # Run through the cmds and convert any "none" to None values
-            if type(value) == str and value.lower() == "none":
+
+            # Convert string "none" to python None
+            if isinstance(value, str) and value.lower() == "none":
                 config_dict[param] = None
-                    
+
     return config_dict
 
 
@@ -115,17 +117,17 @@ def update_config(config_file, config_dict):
     ----------
     config_file : str
         the filename of the .config file
-    
+
     Returns
     -------
     config_dict : dict
         A dictionary with keys 'PARAMETER' and values 'Value'.
-    
+
     Returns:
     -------
     config_dict : dict
         A dictionary with keys 'PARAMETER' and values 'Value'.
-    
+
     Notes
     -----
     the values of the dictionary are strings and will have
@@ -134,11 +136,11 @@ def update_config(config_file, config_dict):
     config_dict.update(read_config(config_file))
 
     return config_dict
-    
+
 def unify(x, unit, length=1):
     """
     Convert all types of input to an astropy array/unit pair
-    
+
     Parameters
     ----------
     x : int, float, np.ndarray, astropy.Quantity
@@ -155,8 +157,8 @@ def unify(x, unit, length=1):
 
     print(type(x))
 
-    if type(x) == u.quantity.Quantity:
-        if type(x.value) == np.ndarray:
+    if isinstance(x, u.quantity.Quantity):
+        if isinstance(x.value, np.ndarray):
             y = x.to(unit)
         elif length == 1:
             y = x.to(unit)
@@ -184,7 +186,7 @@ def parallactic_angle(ha, de, lat=-24.589167):
         hour angle and declination of observation point
     lat : float
         latitude of observatory
-    
+
     Returns
     -------
     parang : float
@@ -206,14 +208,14 @@ def parallactic_angle(ha, de, lat=-24.589167):
     print(x_obs)
 
     # normals to the great circles
-    N_pole = np.cross(x_obs, x_pole)
-    N_pole = N_pole/np.sqrt((N_pole**2).sum())
-    N_zenith = np.cross(x_obs, x_zenith)
-    N_zenith = N_zenith/np.sqrt((N_zenith**2).sum())
+    n_pole = np.cross(x_obs, x_pole)
+    n_pole = n_pole/np.sqrt((n_pole**2).sum())
+    n_zenith = np.cross(x_obs, x_zenith)
+    n_zenith = n_zenith/np.sqrt((n_zenith**2).sum())
 
     # Angle between the great circles
     ## CHECK: exact definition, modulo 180 deg?
-    parang = np.arccos((N_pole * N_zenith).sum()) * 180. / np.pi
+    parang = np.arccos((n_pole * n_zenith).sum()) * 180. / np.pi
 
     return parang
 
@@ -228,12 +230,12 @@ def parallactic_angle_2(ha, de, lat=-24.589167):
         hour angle and declination of observation point
     lat : float
         latitude of observatory
-    
+
     Returns
     -------
     parang : float
         The parallactic angle
-        
+
     References
     ----------
     Filippenko (1982)
@@ -244,28 +246,30 @@ def parallactic_angle_2(ha, de, lat=-24.589167):
     de = de/180. * np.pi
     lat = lat/180. * np.pi
 
-    sineta = np.sin(ha)*np.cos(lat)/np.sqrt(1. - (np.sin(lat) * np.sin(de) + np.cos(lat) * np.cos(de) * np.cos(ha))**2)
+    sineta = np.sin(ha) * np.cos(lat) / \
+             np.sqrt(1. - (np.sin(lat) * np.sin(de) +
+                           np.cos(lat) * np.cos(de) * np.cos(ha))**2)
 
-    eta =  np.arcsin(sineta) * 180./np.pi
-    if hadeg >=0 and hadeg <=45:
+    eta = np.arcsin(sineta) * 180./np.pi
+    if hadeg >= 0 and hadeg <= 45:
         eta = 180. - eta
-    elif hadeg < 0 and hadeg >=-45:
+    elif hadeg < 0 and hadeg >= -45:
         eta = 180. + eta
     elif hadeg < -45:
         eta = - eta
     return eta
 
-    
+
 def moffat(r, alpha, beta):
     """
     !!Unfinished!! Return a Moffat function
-    
+
     Parameters
     ----------
     r
     alpha
     beta
-    
+
     Returns
     -------
     eta
@@ -281,11 +285,11 @@ def poissonify(arr):
     ----------
     arr : np.ndarray
         The input array which needs a Poisson distribution applied to items
-        
-    Returns 
+
+    Returns
     -------
     arr : np.ndarray
-        The input array, but with every pixel altered according to a poisson 
+        The input array, but with every pixel altered according to a poisson
         distribution
     """
     return np.random.poisson(arr).astype(np.float32)
@@ -318,7 +322,7 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     Returns
     -------
     ang : float, np.ndarray
-        [arcsec] angle between real position and refracted position 
+        [arcsec] angle between real position and refracted position
 
     References
     ----------
@@ -363,28 +367,28 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     ang = np.rad2deg(R * 3600)
 
     return ang
-    
-    
+
+
 def nearest(arr, val):
-    """ 
-    Return the index of the value from 'arr' which is closest to 'val' 
-    
+    """
+    Return the index of the value from 'arr' which is closest to 'val'
+
     Parameters
     ----------
     arr : np.ndarray, list, tuple
         Array to be searched
     val : float, int
         Value to find in `arr`
-    
+
     Returns
     -------
     i : int
         index of array where the nearest value to `val` is
     """
-    if type(val) in (list, tuple, np.ndarray):
+    if isinstance(val, (list, tuple, np.ndarray)):
         arr = np.array(arr)
         return [nearest(arr, i) for i in val]
-    
+
     d = arr - val
     i = np.where(abs(d) == np.min(abs(d)))[0][0]
     return i
@@ -392,8 +396,8 @@ def nearest(arr, val):
 
 def add_keyword(filename, keyword, value, comment="", ext=0):
     """
-    Add a keyword, value pair to an extension header in a FITS file 
-    
+    Add a keyword, value pair to an extension header in a FITS file
+
     Parameters
     ----------
     filename : str
