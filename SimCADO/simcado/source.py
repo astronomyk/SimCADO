@@ -116,7 +116,7 @@ except ImportError:
     import spectral as sc
     import psf as sim_psf
     import utils
-    __file__ = "./spatial.py"
+    __file__ = "./source.py"
 
 __pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["Source"]
