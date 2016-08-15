@@ -52,13 +52,13 @@
 #
 #
 
-import sys
 from copy import deepcopy
 import warnings
 import numpy as np
 from astropy import units as u
 from astropy import constants as c
-from astropy.io import fits, ascii
+from astropy.io import fits
+from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
 
 __all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve"]
 
@@ -86,10 +86,10 @@ class TransmissionCurve(object):
                        "Type"      :"Transmission",
                        "min_step"  :1E-4,
                        "lam_unit"  :u.um}
-        
-        if filename is not None and type(filename) == str:
+
+        if isinstance(filename, str):
             self.params["filename"] = filename
-                       
+
         self.params.update(kwargs)
 
         self.info = dict([])
@@ -119,7 +119,7 @@ class TransmissionCurve(object):
         return "Spectral curve:\n" + str(self.info)
 
     def __repr__(self):
-        mask = [0,1,2],[-3,-2,-1]
+        mask = [0, 1, 2], [-3, -2, -1]
         return self.info["Type"]+"Curve \n"+str(self.val[mask[0]])[:-1] \
                                     +" ..."+str(self.val[mask[1]])[1:]
 
@@ -138,7 +138,7 @@ class TransmissionCurve(object):
             if ".fits" in filename:
                 hdr = fits.getheader(filename)
                 if any(["SKYCALC" in hdr[i] for i in range(len(hdr)) \
-                        if type(hdr[i]) == str]):
+                        if isinstance(hdr[i], str)]):
                     if self.params["Type"] == "Emission":
                         lam = fits.getdata(filename)["lam"]
                         val = fits.getdata(filename)["flux"]
@@ -150,12 +150,12 @@ class TransmissionCurve(object):
                     lam = data[data.columns[0].name]
                     val = data[data.columns[1].name]
             else:
-                data = ascii.read(self.params["filename"])
+                data = ioascii.read(self.params["filename"])
                 lam = data[data.colnames[0]]
                 val = data[data.colnames[1]]
         else:
             raise ValueError("Please pass either filename or lam/val keywords")
-        
+
         return lam, val
 
 
@@ -236,7 +236,8 @@ class TransmissionCurve(object):
         # resampling down to 1E-5um. I account for this summing up all the
         # photons in the original data set and normalising the new 1E-5 bin
         # data set to have the same amount.
-        if action == "sum": val_tmp *= (np.sum(self.val_orig) / np.sum(val_tmp))
+        if action == "sum":
+            val_tmp *= (np.sum(self.val_orig) / np.sum(val_tmp))
 
         self.lam = lam_tmp
         self.val = val_tmp
@@ -300,7 +301,7 @@ class TransmissionCurve(object):
         # tcnew.lam_orig = tcnew.lam
         # tcnew.val_orig = tcnew.val
 
-        # return tcnew        
+        # return tcnew
 
     def __mul__(self, tc):
         """
@@ -310,11 +311,11 @@ class TransmissionCurve(object):
         """
 
         tcnew = deepcopy(self)
-        
+
         # EmissionCUrve takes precedence over TransmissionCurve
         if not isinstance(self, EmissionCurve) and isinstance(tc, EmissionCurve):
             return tc * tcnew
-        
+
         if not hasattr(tc, "val"):
             tcnew.val *= tc
         else:
@@ -393,23 +394,24 @@ class EmissionCurve(TransmissionCurve):
     Return values are in [ph/s/voxel]
     """
     def __init__(self, filename=None, **kwargs):
-        default_params = {  "exptime" :1,
-                            "pix_res" :0.004,
-                            "area"    :978,
-                            "units"   :"ph/(s m2 micron arcsec2)"}
+        default_params = {"exptime" :1,
+                          "pix_res" :0.004,
+                          "area"    :978,
+                          "units"   :"ph/(s m2 micron arcsec2)"}
         if "units" not in kwargs.keys():
             warnings.warn("""No 'units' specified in EmissionCurve.
                           Assuming ph/(s m2 micron arcsec2)""")
         default_params.update(kwargs)
-        
+
         if filename is not None:
             default_params["filename"] = filename
 
-        super(EmissionCurve, self).__init__(Type = "Emission", **default_params)
+        super(EmissionCurve, self).__init__(Type="Emission", **default_params)
         self.factor = 1
         self.convert_to_photons()
 
     def resample(self, bins, action="sum", use_edges=False):
+        # TODO: What about argument min_step from Transmission.resample? (OC)
         """Rebin an emission curve"""
         super(EmissionCurve, self).resample(bins=bins, action=action,
                                             use_edges=use_edges)
@@ -419,15 +421,19 @@ class EmissionCurve(TransmissionCurve):
         and exptime keywords. If not given, make some assumptions.
         """
         self.params["units"] = u.Unit(self.params["units"])
-        bases  = self.params["units"].bases
+        bases = self.params["units"].bases
 
         factor = 1.*self.params["units"]
 
         # The delivered EmissionCurve should be in ph/s/voxel
-        if u.s  not in bases: factor /= self.params["exptime"]*u.s
-        if u.m      in bases: factor *= self.params["area"]*u.m**2
-        if u.arcsec in bases: factor *= (self.params["pix_res"]*u.arcsec)**2
-        if u.micron in bases: factor *= self.params["lam_res"]*u.um
+        if u.s  not in bases:
+            factor /= self.params["exptime"]*u.s
+        if u.m      in bases:
+            factor *= self.params["area"]*u.m**2
+        if u.arcsec in bases:
+            factor *= (self.params["pix_res"]*u.arcsec)**2
+        if u.micron in bases:
+            factor *= self.params["lam_res"]*u.um
 
         self.params["units"] = factor.unit
 
@@ -441,12 +447,14 @@ class EmissionCurve(TransmissionCurve):
         Parameters
         ==========
         - lam_min, lam_max: the wavelength limits
-        
+
         Return values are in [ph/s/pixel]
         """
-        if lam_min is None: lam_min = self.lam[0]
-        if lam_max is None: lam_max = self.lam[-1]
-        
+        if lam_min is None:
+            lam_min = self.lam[0]
+        if lam_max is None:
+            lam_max = self.lam[-1]
+
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
             warnings.warn("wavelength limits outside wavelength range")
             photons = 0
@@ -473,7 +481,7 @@ class BlackbodyCurve(EmissionCurve):
     - temp: [deg C] float for the average temperature of the blackbody
     - pix_res: [arcsec] float or int for the field of view for each pixel
     - area: [m2] float or int for the emitting surface
-    
+
     Return values are in units of [ph/s/voxel]
     """
 
@@ -511,7 +519,6 @@ class UnityCurve(TransmissionCurve):
     - val: constant value of transmission (default: 1)
     """
 
-    def __init__(self, lam=np.asarray([0.5,2.5]), val=1, **kwargs):
+    def __init__(self, lam=np.asarray([0.5, 2.5]), val=1, **kwargs):
         val = np.asarray([val]*len(lam))
         super(UnityCurve, self).__init__(lam=lam, val=val, **kwargs)
-
