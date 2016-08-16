@@ -88,14 +88,14 @@
 # Both PSF and psf can be created from a single model or through
 # convolution of a list of PSF components
 
-import numpy as np
-import scipy.ndimage.interpolation as spi
-
 import warnings
 from copy import deepcopy
 
+import numpy as np
+import scipy.ndimage.interpolation as spi
+
 from astropy.io import fits
-from astropy import units as u
+#from astropy import units as u   ## unused (OC)
 from astropy.convolution import (Gaussian2DKernel,
                                  Moffat2DKernel)
 from astropy.convolution import convolve_fft
@@ -105,25 +105,25 @@ from astropy.modeling.parameters import Parameter
 
 try:
     import simcado.utils as utils
-except:
+except ImportError:
     import utils
 
 
 
-## TODO 
+## TODO
 # - Add a ellipticity to the GaussianPSF
 # - Make sure MoffatPSF works
 
 
 
 ## These classes and functions are exported to the package
-__all__ = [ "PSF", "PSFCube", 
-            "MoffatPSF", "MoffatPSFCube", 
-            "AiryPSF", "AiryPSFCube",
-            "GaussianPSF", "GaussianPSFCube",
-            "DeltaPSF", "DeltaPSFCube"
-            "CombinedPSF", "CombinedPSFCube",
-            "UserPSF", "UserPSFCube"  ]
+__all__ = ["PSF", "PSFCube",
+           "MoffatPSF", "MoffatPSFCube",
+           "AiryPSF", "AiryPSFCube",
+           "GaussianPSF", "GaussianPSFCube",
+           "DeltaPSF", "DeltaPSFCube",
+           "CombinedPSF", "CombinedPSFCube",
+           "UserPSF", "UserPSFCube"]
 
 
 ###############################################################################
@@ -144,7 +144,7 @@ __all__ = [ "PSF", "PSFCube",
 class PSF(object):
     """Point spread function (single layer) base class
 
-    
+
     Parameters
     ==========
     - size : int
@@ -213,7 +213,7 @@ class PSF(object):
             tmp_arr = np.zeros((new_arr.shape[0]+1, new_arr.shape[1]+1))
             tmp_arr[:new_arr.shape[0], :new_arr.shape[1]] = new_arr
             new_arr = spi.shift(tmp_arr, 0.5, order=5)
-            
+
         ############################################################
         # Not happy with the way the returned type is not the same #
         # as the original type. The new object is a plain PSF      #
@@ -425,7 +425,7 @@ class GaussianPSF(PSF):
             size = round(kwargs["size"] / 2) * 2 + 1
         else:
             size = 1
-            
+
         if "undersized" in kwargs.keys() and kwargs["undersized"]:
             pass
         else:
@@ -448,7 +448,7 @@ class GaussianPSF(PSF):
 
         n = (self.fwhm / 2.35) / self.pix_res
         k = Gaussian2DKernel(n, x_size=self.size, y_size=self.size, mode=mode).array
-        
+
         self.set_array(k)
 
 
@@ -518,7 +518,6 @@ class CombinedPSF(PSF):
 
     def __init__(self, psf_list, **kwargs):
         """Generate a master psf through convolution of a list of psfs"""
-        import copy
 
         if not hasattr(psf_list, "__len__") or len(psf_list) < 2:
             raise ValueError("psf_list requires more than 1 PSF object")
@@ -580,7 +579,7 @@ class UserPSF(PSF):
         header = fits.getheader(self.filename, ext=self.fits_ext)
         data = fits.getdata(self.filename, ext=self.fits_ext)
         size = header["NAXIS1"]
-        
+
         if "pix_res" in kwargs.keys():
             pix_res = kwargs["pix_res"]
         elif "CDELT1" in header.keys():
@@ -680,28 +679,30 @@ class PSFCube(object):
         - filename
         - **header_info: A dict with extra header keys and values
         """
-        ## TODO: Check pylint recommendations
-        ext_list = []
+        ## TODO: use header_info or drop it (OC)
 
-        for i in range(len(self)):
-            psf = self.psf_slices[i]
-            if i == 0:
-                hdu = fits.PrimaryHDU(psf.array)
-            else:
-                hdu = fits.ImageHDU(psf.array)
+        ext_list = fits.HDUList()
+
+        #for i in range(len(self)):
+        #    psf = self.psf_slices[i]
+        for i, psf in enumerate(self.psf_slices):
+            #if i == 0:
+            #    hdu = fits.PrimaryHDU(psf.array)
+            #else:
+            ## PrimaryHDUs are typically empty. Not necessary (OC)
+            hdu = fits.ImageHDU(psf.array)
             hdu.header["CDELT1"] = (psf.pix_res, "[arcsec] - Pixel resolution")
             hdu.header["CDELT2"] = (psf.pix_res, "[arcsec] - Pixel resolution")
-            hdu.header["WAVE0"]  = (self.lam_bin_centers[i],
-                                      "[micron] - Wavelength of slice")
+            hdu.header["WAVE0"] = (self.lam_bin_centers[i],
+                                   "[micron] - Wavelength of slice")
             hdu.header["NSLICES"] = (len(self), "Number of wavelength slices")
 
-            for k in self.psf_slices[i].info.keys():
+            for k in psf.info.keys():
                 hdu.header[k[:8].upper()] = (self[i].info[k], k)
 
-            ext_list += [hdu]
+            ext_list.append(hdu)
 
-        hdu_list = fits.HDUList(ext_list)
-        hdu_list.writeto(filename, clobber=clobber)
+        ext_list.writeto(filename, clobber=clobber)
 
 
     def convolve(self, kernel_list):
@@ -715,14 +716,14 @@ class PSFCube(object):
             tmp = self.psf_slices[i].convolve(kernel_list[i])
             self.psf_slices[i].set_array(tmp.array)
         self.info["Type"] = "Complex"
-        
-    
+
+
     def nearest(self, lam):
         """Returns the PSF closest to the desired wavelength, lam [um] """
         i = utils.nearest(self.lam_bin_centers, lam)
         return self.psf_slices[i]
-        
-    
+
+
     def __str__(self):
         return self.info['description']
 
@@ -733,12 +734,12 @@ class PSFCube(object):
             return self.psf_slices[0]
 
     def __len__(self):
-        return len(self.psf_slices)        
-        
-    
+        return len(self.psf_slices)
+
+
     def __mul__(self, x):
         newpsf = deepcopy(self)
-        
+
         if not hasattr(x, "__len__"):
             y = [x] * len(self.psf_slices)
         else:
@@ -751,12 +752,12 @@ class PSFCube(object):
         for i in np.arange(len(self.psf_slices)):
             newpsf[i].set_array(self.psf_slices[i] * y[i])
         return newpsf
-        
-            
+
+
 
     def __add__(self, x):
         newpsf = deepcopy(self)
-    
+
         if not hasattr(x, "__len__"):
             y = [x] * len(self.psf_slices)
         else:
@@ -769,11 +770,11 @@ class PSFCube(object):
         for i in np.arange(len(self.psf_slices)):
             newpsf[i].set_array(self.psf_slices[i] + y[i])
         return newpsf
-            
+
 
     def __sub__(self, x):
         newpsf = deepcopy(self)
-    
+
         if not hasattr(x, "__len__"):
             y = [x] * len(self.psf_slices)
         else:
@@ -786,8 +787,8 @@ class PSFCube(object):
         for i in np.arange(len(self.psf_slices)):
             newpsf[i].set_array(self.psf_slices[i] - y[i])
         return newpsf
-            
-            
+
+
 
     def __rmul__(self, x):
         self.__mul__(x)
@@ -866,7 +867,7 @@ class AiryPSFCube(PSFCube):
 
         self.psf_slices = [AiryPSF(fwhm=f, **kwargs) for f in self.fwhm]
         self.size = [psf.size for psf in self.psf_slices]
-        
+
         self.info['description'] = "List of Airy function PSFs"
         self.info["Type"] = "AiryCube"
 
@@ -901,7 +902,7 @@ class GaussianPSFCube(PSFCube):
 
         self.psf_slices = [GaussianPSF(fwhm=f, **kwargs) for f in self.fwhm]
         self.size = [psf.size for psf in self.psf_slices]
-        
+
         self.info['description'] = "List of Gaussian function PSFs"
         self.info["Type"] = "GaussianCube"
 
@@ -935,7 +936,7 @@ class MoffatPSFCube(PSFCube):
 
         self.psf_slices = [MoffatPSF(fwhm=f, **kwargs) for f in fwhm]
         self.size = [psf.size for psf in self.psf_slices]
-        
+
         self.info['description'] = "List of Moffat function PSFs"
         self.info["Type"] = "MoffatCube"
 
@@ -967,12 +968,12 @@ class CombinedPSFCube(PSFCube):
         self.info['description'] = "Master psf cube from list"
         self.info["Type"] = "CombinedCube"
 
-        for i in range(len(psf_list)):
-            self.info['PSF%02d' % (i+1)] = psf_list[i].info['description']
+        for i, psfi in enumerate(psf_list):
+            self.info['PSF%02d' % (i+1)] = psfi.info['description']
 
         for i in range(len(self)):
             self.psf_slices[i] = CombinedPSFCube([psf[i] for psf in psf_list],
-                                             **kwargs)
+                                                 **kwargs)
         self.size = [psf.size for psf in self.psf_slices]
 
 
@@ -990,52 +991,58 @@ class UserPSFCube(PSFCube):
     """
 
     def __init__(self, filename, lam_bin_centers):
-        if not hasattr(lam_bin_centers, "__len__"): 
+        if not hasattr(lam_bin_centers, "__len__"):
             lam_bin_centers = [lam_bin_centers]
-        
+
         n_slices = len(fits.open(filename).info(output=False))
         psf_slices = []
-        
+
         # pull out the wavelengths in the PSF FITS files
         psf_lam_cen = []
-        f = fits.open(filename)
+        hdulist = fits.open(filename)
         for i in range(n_slices):
-            try: psf_lam_cen += [f[i].header["WAVE0"]]
-            except: 
-                try: psf_lam_cen += [f[i].header["WAVELENG"]]
-                except: 
-                    raise ValueError("""Could not determine wavelength of PSF in
-                                     extension """ + str(i) + """. FITS file 
-                                     needs either WAVE0 or WAVELENG header 
-                                     keywords. \n Use SimCADO.utils.add_keyword()
-                                     to add WAVELENG to the FITS header""")
+            if "WAVE0" in hdulist[i].header.keys():
+                psf_lam_cen += [hdulist[i].header["WAVE0"]]
+            elif "WAVELENG" in hdulist[i].header.keys():
+                psf_lam_cen += [hdulist[i].header["WAVELENG"]]
+            else:
+                raise ValueError("""Could not determine wavelength of PSF in
+                                 extension """ + str(i) + """. FITS file
+                                 needs either WAVE0 or WAVELENG header
+                                 keywords. \n Use SimCADO.utils.add_keyword()
+                                 to add WAVELENG to the FITS header""")
             # If the wavelength is not in the 0.1-2.5 range, it must be in [m]
-            if psf_lam_cen[i] < 0.1: 
+            if psf_lam_cen[i] < 0.1:
                 psf_lam_cen[i] *= 1E6
-        f.close()
-        
+        hdulist.close()
+
         # find the closest PSFs in the file to what is needed for the psf
         i_slices = utils.nearest(psf_lam_cen, lam_bin_centers)
-       
+
         # import only the relevant PSFs
         for i in i_slices:
-        
+
             hdr = fits.getheader(filename, ext=i)
             self.header = hdr
-            
-            pix_res = pix_res=hdr["CDELT1"]
+
+            pix_res = hdr["CDELT1"]
             if pix_res > 1:
                 warnings.warn("CDELT > 1. Assuming the scale to be [mas]")
                 pix_res *= 1E-3
-            
+
             psf = PSF(size=hdr["NAXIS1"], pix_res=pix_res)
-            psf.set_array(fits.getdata(filename, ext=i))            
-            
-            try: psf.info["Type"] = hdr["PSF_TYPE"]
-            except: psf.info["Type"] = "Unknown"
-            try: psf.info["description"] = hdr["DESCRIPT"]
-            except: psf.info["description"] = "Unknown"
-            
+            psf.set_array(fits.getdata(filename, ext=i))
+
+            if "PSF_TYPE" in hdr.keys():
+                psf.info["Type"] = hdr["PSF_TYPE"]
+            else:
+                psf.info["Type"] = "Unknown"
+
+            if "DESCRIPT" in hdr.keys():
+                psf.info["description"] = hdr["DESCRIPT"]
+            else:
+                psf.info["description"] = "Unknown"
+
             psf_slices += [psf]
 
         lam_bin_centers = np.array(lam_bin_centers)
@@ -1043,7 +1050,7 @@ class UserPSFCube(PSFCube):
         super(UserPSFCube, self).__init__(lam_bin_centers)
         self.psf_slices = psf_slices
         self.size = [psf.size for psf in self.psf_slices]
-        
+
         self.info['description'] = "User PSF cube input from " + filename
         self.info["Type"] = psf_slices[0].info["Type"]+"Cube"
 
@@ -1251,13 +1258,13 @@ class AiryDiskDiff2D(Fittable2DModel):
                 self.__class__._j1 = j1
                 self.__class__._rz = jn_zeros(1, 1)[0] / np.pi
             #add a ValueError here for python3 + scipy < 0.12
-            except ValueError:
+            except ImportError:
                 raise ImportError("AiryDiskDiff2D model requires scipy > 0.11.")
 
-        super(AiryDiskDiff2D, self).__init__(amplitude=amplitude, 
-                                             x_0=x_0, 
-                                             y_0=y_0, 
-                                             radius=radius, 
+        super(AiryDiskDiff2D, self).__init__(amplitude=amplitude,
+                                             x_0=x_0,
+                                             y_0=y_0,
+                                             radius=radius,
                                              eps=eps,
                                              **kwargs)
 
