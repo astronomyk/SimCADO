@@ -1,9 +1,12 @@
+'''TODO: Insert docstring'''
+
 ###############################################################################
 # PlaneEffect
 #
 # DESCRIPTION
-# The PlaneEffect functions are used to simulate effects that occur on all spectral
-# layers equally, for example, sky rotation, telescope jitter, distortion, etc.
+# The PlaneEffect functions are used to simulate effects that occur on all
+# spectral layers equally, for example, sky rotation, telescope jitter,
+# distortion, etc.
 # To do this in the most general way possible, a PlaneEffect function contains
 # 3 planes representing the deviation in position from an ideal optical train.
 # The values in each of the 3 planes represent the distance the pixel should
@@ -37,7 +40,8 @@
 #
 #
 #
-from copy import deepcopy
+
+#from copy import deepcopy   ## Not used (OC)
 
 import numpy as np
 import scipy.ndimage as spi
@@ -46,7 +50,7 @@ from astropy.convolution import convolve_fft, Gaussian2DKernel
 
 try:
     import simcado.utils as utils
-except:
+except ImportError:
     import utils
 
 
@@ -92,7 +96,7 @@ def _line_blur(arr, shift, kernel="gaussian", angle=0):
     dy = np.sin(np.deg2rad(angle)) * dr
 
     tmp_arr = np.zeros(arr.shape)
-    for x,y,w in zip(dx,dy,weight):
+    for x, y, w in zip(dx, dy, weight):  # TODO: x, y unused? (OC)
         tmp_arr += spi.shift(arr, (dx, dy), order=1) * w
 
     return tmp_arr
@@ -140,7 +144,7 @@ def tracking(arr, cmds):
     if cmds["SCOPE_DRIFT_DISTANCE"] > 0.:
         pix_res = cmds["SIM_detector_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]
         kernel = cmds["SCOPE_DRIFT_PROFILE"]
-        shift  = cmds["SCOPE_DRIFT_DISTANCE"] / pix_res
+        shift = cmds["SCOPE_DRIFT_DISTANCE"] / pix_res
 
         return _line_blur(arr, shift, kernel=kernel, angle=0)
     else:
@@ -154,9 +158,9 @@ def derotator(arr, cmds):
     !! TODO, work out the rotation during the DIT for the object RA, DEC etc !!
     """
     if cmds["INST_DEROT_PERFORMANCE"] < 100.:
-        eff    = 1. - (cmds["INST_DEROT_PERFORMANCE"] / 100.)
+        eff = 1. - (cmds["INST_DEROT_PERFORMANCE"] / 100.)
         kernel = cmds["INST_DEROT_PROFILE"]
-        angle  = eff * cmds["OBS_EXPTIME"] * 15 / 3600.
+        angle = eff * cmds["OBS_EXPTIME"] * 15 / 3600.
 
         return _rotate_blur(arr, angle, kernel=kernel)
     else:
@@ -204,6 +208,4 @@ def adc_shift(cmds):
     x = -rel_shift * np.sin(np.deg2rad(para_angle)) * (1. - effectiveness)
     y = -rel_shift * np.cos(np.deg2rad(para_angle)) * (1. - effectiveness)
 
-    return x, y 
-
-
+    return x, y
