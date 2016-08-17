@@ -79,7 +79,6 @@ except ImportError:
     import spectral as sc
     import utils as utils
 
-__file__ = sc.__file__
 __pkg_dir__ = os.path.split(__file__)[0]
 
 __all__ = ["UserCommands"]

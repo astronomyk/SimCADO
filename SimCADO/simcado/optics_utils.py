@@ -23,12 +23,10 @@ try:
     import simcado.source as lo
     import simcado.spectral as sc
     import simcado.psf as psf
-    __file__ = sc.__file__
 except ImportError:
     import source as lo
     import spectral as sc
     import psf as psf
-    __file__ = "./spectral.py"
 
 __pkg_dir__ = os.path.split(__file__)[0]
 

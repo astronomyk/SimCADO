@@ -112,7 +112,6 @@ except ImportError:
     import commands
     from nghxrg import HXRGNoise
 
-__file__ = sc.__file__
 __pkg_dir__ = os.path.split(__file__)[0]
 
 __all__ = ["Detector", "Chip"]

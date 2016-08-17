@@ -110,13 +110,11 @@ try:
     import simcado.spectral as sc
     import simcado.psf as sim_psf
     import simcado.utils as utils
-    __file__ = pe.__file__
 except ImportError:
     import spatial as pe
     import spectral as sc
     import psf as sim_psf
     import utils
-    __file__ = "./source.py"
 
 __pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["Source"]
