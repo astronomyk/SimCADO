@@ -19,7 +19,7 @@ Helper functions for SimCADO
 #  moffat(r, alpha, beta)
 #
 
-
+from collections import OrderedDict
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
@@ -74,7 +74,7 @@ def read_config(config_file):
     import re
 
     # Read the file into a list of strings
-    config_dict = dict()
+    config_dict = OrderedDict()
 
     # remove lines that are all spaces or spaces + '#'
     # these are the regular expressions

@@ -66,7 +66,9 @@ keywords - e.g. for the keywords for the instrument:
 import os
 # import warnings   ## not used
 import shutil
+
 # import inspect    ## not used
+
 import numpy as np
 
 #import astropy.io.ascii as ascii    # ascii redefines builtin ascii().
@@ -114,22 +116,22 @@ class UserCommands(object):
     Attributes
     ----------
     Internal dictionaries
-    cmds : dict
+    cmds : dict (collections.OrderedDict)
         the dictionary which holds all the keyword-value pairs needed for
         running a simualtion
-    obs : dict
+    obs : dict (collections.OrderedDict)
         parameters about the observation
-    sim : dict
+    sim : dict (collections.OrderedDict)
         parameters about the simualtion
-    atmo : dict
+    atmo : dict (collections.OrderedDict)
         parameters about the atmosphere
-    scope : dict
+    scope : dict (collections.OrderedDict)
         parameters about the telescope
-    inst : dict
+    inst : dic (collections.OrderedDict)
         parameters about the instrument
-    fpa : dict
+    fpa : dict (collections.OrderedDict)
         parameters about the detector array (FPA - Focal Plane Array)
-    hxrg : dict
+    hxrg : dict (collections.OrderedDict)
         parameters about the chip noise (HxRG - HAWAII 4RG chip series)
 
     Attributes pertaining to the purely spectral data sets (e.g. transmission
@@ -479,7 +481,8 @@ class UserCommands(object):
             imax = np.min((mask[-1] + 1, len(tc_filt.lam) - 1))
             lam_min, lam_max = tc_filt.lam[imin], tc_filt.lam[imax]
         else:
-            lam_min, lam_max = self.cmds["SIM_LAM_MIN"], self.cmds["SIM_LAM_MAX"]
+            lam_min = self.cmds["SIM_LAM_MIN"]
+            lam_max = self.cmds["SIM_LAM_MAX"]
 
         self.lam_res = self.cmds["SIM_LAM_TC_BIN_WIDTH"]
         self.lam = np.arange(lam_min, lam_max + 1E-7, self.lam_res)
