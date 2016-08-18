@@ -312,7 +312,19 @@ class Detector(object):
         else:
             raise ValueError("Something wrong with `chips`")
 
-        pri_hdu_flag = False
+        hdulist = fits.HDUList()
+        if len(ro_chips) > 1:
+            primary_hdu = fits.PrimaryHDU())  # TODO: fill with configs
+            for key in self.cmds.cmds:
+                val = self.cmds.cmds[key]
+                if isinstance(val, str) and len(val) > 35:
+                    val = "... " + val[-35:]
+                try:
+                    primary_hdu.header["HIERARCH "+key] = val
+                except NameError:   # any other exceptions possible?
+                    pass
+
+            
         for i in ro_chips:
             ######
             # Put in a catch here so that only the chips specified in "chips"
@@ -320,29 +332,41 @@ class Detector(object):
             ######
             array = self.chips[i].read_out(self.cmds)
 
-            if pri_hdu_flag is False:
-                hdus = [fits.PrimaryHDU(array)]
-                pri_hdu_flag = True
-            else:
-                hdus += [fits.ImageHDU(array)]
+            ## TODO: transpose is just a hack - need to make sure
+            ##       x and y are handled correctly throughout SimCADO
+            thishdu = fits.ImageHDU(array.T)
 
-            hdus[i].header["CDELT1"] = (self.chips[i].pix_res,
+            thishdu.header["EXTNAME"] = ("CHIP_{:02d}".format(self.chips[i].id),
+                                         "Chip ID")
+            
+            thishdu.header["CTYPE1"] = "LINEAR"
+            thishdu.header["CUNIT1"] = "arcsec"
+            thishdu.header["CRVAL1"] = 0.
+            thishdu.header["CRPIX1"] = (self.chips[i].naxis1 //2 -
+                                        self.chips[i].x_cen / self.chips[i].pix_res)
+            thishdu.header["CDELT1"] = (self.chips[i].pix_res,
+                                        "[arcsec] Pixel scale")
+
+            # axis 2
+            thishdu.header["CTYPE2"] = "LINEAR"
+            thishdu.header["CUNIT2"] = "arcsec"
+            thishdu.header["CRVAL2"] = 0.
+            thishdu.header["CRPIX2"] = (self.chips[i].naxis2 //2 -
+                                        self.chips[i].y_cen / self.chips[i].pix_res)
+            thishdu.header["CDELT2"] = (self.chips[i].pix_res,
                                         "[arcsec] Pixel resolution")
-            hdus[i].header["CDELT2"] = (self.chips[i].pix_res,
-                                        "[arcsec] Pixel resolution")
-            hdus[i].header["CRVAL1"] = (self.chips[i].x_cen,
-                                        "[arcsec] central pixel relative to detector centre")
-            hdus[i].header["CRVAL2"] = (self.chips[i].y_cen,
-                                        "[arcsec] central pixel relative to detector centre")
-            hdus[i].header["CRPIX1"] = (self.chips[i].naxis1 // 2,
-                                        "central pixel")
-            hdus[i].header["CRPIX2"] = (self.chips[i].naxis2 // 2,
-                                        "central pixel")
-            hdus[i].header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
-            hdus[i].header["BUNIT"] = ("ph/s", "")
-            hdus[i].header["EXPTIME"] = (self.exptime, "[s] Exposure time")
-            hdus[i].header["NDIT"] = (self.ndit, "Number of exposures")
-            hdus[i].header["TRO"] = (self.tro,
+
+            # possible rotation
+            thishdu.header["PC1_1"] = 1.
+            thishdu.header["PC1_2"] = 0.
+            thishdu.header["PC2_1"] = 0.
+            thishdu.header["PC2_2"] = 1.
+
+            thishdu.header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
+            thishdu.header["BUNIT"] = ("ph/s", "")
+            thishdu.header["EXPTIME"] = (self.exptime, "[s] Exposure time")
+            thishdu.header["NDIT"] = (self.ndit, "Number of exposures")
+            thishdu.header["TRO"] = (self.tro,
                                      "[s] Time between non-destructive readouts")
 
             for key in self.cmds.cmds:
@@ -350,11 +374,11 @@ class Detector(object):
                 if isinstance(val, str) and len(val) > 35:
                     val = "... " + val[-35:]
                 try:
-                    hdus[i].header["HIERARCH "+key] = val
+                    thishdu.header["HIERARCH "+key] = val
                 except NameError:   # any other exceptions possible?
                     pass
-
-        hdulist = fits.HDUList(hdus)
+            hdulist.append(thishdu)
+#        hdulist = fits.HDUList(hdus)
 
         if not to_disk:
             return hdulist
