@@ -314,7 +314,7 @@ class Detector(object):
 
         hdulist = fits.HDUList()
         if len(ro_chips) > 1:
-            primary_hdu = fits.PrimaryHDU())  # TODO: fill with configs
+            primary_hdu = fits.PrimaryHDU()  # TODO: fill with configs
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
                 if isinstance(val, str) and len(val) > 35:
