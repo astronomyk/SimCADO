@@ -1297,25 +1297,30 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
     src : simcado.Source
 
     """
-
+    # IMF is a realisation of stellar masses drawn from an initial mass
+    # function (TODO: which one?) summing to 1e4 M_sol. 
     fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
     imf = np.loadtxt(fname)
-    stel_type = [i + str(j) + "V" for i in "OBAFGKM" for j in range(10)]
 
+    # Assign stellar types to the masses in imf using list of average
+    # main-sequence star masses: 
+    stel_type = [i + str(j) + "V" for i in "OBAFGKM" for j in range(10)]
     mass = _get_stellar_mass(stel_type)
     ref = utils.nearest(mass, imf)
     thestars = [stel_type[i] for i in ref] # was stars, redefined function name
 
+    # assign absolute magnitudes to stellar types in cluster
     unique_ref = np.unique(ref)
     unique_type = [stel_type[i] for i in unique_ref]
     unique_Mv = _get_stellar_Mv(unique_type)
 
-    #Mv_dict = {i : float(str(j)[:6]) for i, j in zip(unique_type, unique_Mv)}
+    # Mv_dict = {i : float(str(j)[:6]) for i, j in zip(unique_type, unique_Mv)}
     ref_dict = {i : j for i, j in zip(unique_type, np.arange(len(unique_type)))}
 
+    # find spectra for the stellar types in cluster
     lam, spectra = _scale_pickles_to_photons(unique_type)
 
-    # this one connects the stars to ane of the unique spectra
+    # this one connects the stars to one of the unique spectra
     stars_spec_ref = [ref_dict[i] for i in thestars]
 
     # absolute mag + distance modulus
@@ -1325,10 +1330,11 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
     # set the weighting
     weight = 10**(-0.4*m)
 
+    # draw positions of stars: cluster has Gaussian profile
     distance *= u.pc
     half_light_radius *= u.pc
     hwhm = (half_light_radius/distance*u.rad).to(u.arcsec).value
-    sig = hwhm / 1.175
+    sig = hwhm / np.sqrt(2 * np.log(2))
 
     x = np.random.normal(0, sig, len(imf))
     y = np.random.normal(0, sig, len(imf))
