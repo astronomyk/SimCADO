@@ -821,7 +821,7 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
 
     Returns
     -------
-    props : astropy.Table or list of astropy.Tables with the paramters to the
+    props : astropy.Table or list of astropy.Tables with stellar paramters
 
     """
 
@@ -832,24 +832,27 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
     if isinstance(spec_type, (list, tuple)):
         return [_get_stellar_properties(i, cat) for i in spec_type]
     else:
+        # Check if stellar type is in cat; if not look for the next
+        # type in the sequence that is and assign its values
         spt, cls, lum = spec_type[0], int(spec_type[1]), spec_type[2:]
-        for i in range(10):   # TODO: What does this loop do? (OC)
+        for i in range(10):   
             if cls > 9:
                 cls = 0
                 spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
 
-            startype = spt+str(cls)+lum # was 'star' redefined function star()
+            startype = spt+str(cls)+lum # was 'star', redefined function star()
             cls += 1
 
             if startype in cat["Stellar_Type"]:
                 break
 
-        try:
-            n = np.where(cat["Stellar_Type"] == startype.upper())[0][0]
-            if verbose:
-                print("Returning properties for", startype)
-        except ValueError:     # TODO: is this correct? (OC)
+        else:   # for loop did not find anything
             raise ValueError(spec_type+" doesn't exist in the database")
+            
+        n = np.where(cat["Stellar_Type"] == startype.upper())[0][0]
+        if verbose:
+            print("Returning properties for", startype)
+
         return cat[n]
 
 
