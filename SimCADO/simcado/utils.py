@@ -389,9 +389,7 @@ def nearest(arr, val):
         arr = np.array(arr)
         return [nearest(arr, i) for i in val]
 
-    d = arr - val
-    i = np.where(abs(d) == np.min(abs(d)))[0][0]
-    return i
+    return np.argmin(abs(arr - val))
 
 
 def add_keyword(filename, keyword, value, comment="", ext=0):
