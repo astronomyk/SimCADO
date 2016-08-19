@@ -314,7 +314,7 @@ class Detector(object):
 
         hdulist = fits.HDUList()
         if len(ro_chips) > 1:
-            primary_hdu = fits.PrimaryHDU()  # TODO: fill with configs
+            primary_hdu = fits.PrimaryHDU()
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
                 if isinstance(val, str) and len(val) > 35:
@@ -323,7 +323,7 @@ class Detector(object):
                     primary_hdu.header["HIERARCH "+key] = val
                 except NameError:   # any other exceptions possible?
                     pass
-
+            hdulist.append(primary_hdu)
             
         for i in ro_chips:
             ######
