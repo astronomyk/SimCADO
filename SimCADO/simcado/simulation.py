@@ -44,8 +44,9 @@ def snr(mags, filter_name="K", exptime=18000, ndit=1, cmds=None):
     """
     Return the signal-to-noise for a list of magnitudes in a specific filter
 
-    Uses the standard setup for MICADO and calculated the signal to noise
-    for a list of magnitudes in `mags` in a certain broadband `filter_name`.
+    Uses the standard setup for MICADO and calculates the signal-to-noise 
+    ratio or a list of magnitudes in `mags` in a certain broadband 
+    `filter_name`.
     A custom UserCommands object can also be used. Note that this runs a basic
     SimCADO simulation len(mags) times, so execution time can be many minutes.
 
@@ -94,7 +95,7 @@ def snr(mags, filter_name="K", exptime=18000, ndit=1, cmds=None):
 
         n_pix = (2*n+1)**2
         only_sig = sig - av*n_pix
-        only_noise = av# * np.sqrt(n_pix)
+        only_noise = av# * np.sqrt(n_pix)  ## TODO: incorrect (OC)
 
         sn += [only_sig/only_noise]
 
