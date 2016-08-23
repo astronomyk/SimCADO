@@ -10,7 +10,7 @@ Helper functions for SimCADO
 # Classes:
 #
 #
-# Methods:
+# Functions:
 #  read_config(config_file)
 #  update_config(config_file, config_dict)
 #  unify(x, unit, length=1)
@@ -47,12 +47,11 @@ def msg(cmds, message, level=3):
         print(message)
 
 
-## CHECK: Turn config into a class? (subclass of dict, if anything)
 def read_config(config_file):
     """
     Read in a SimCADO configuration file
 
-    A configuration file in the SExtractor format:
+    The configuration file is in SExtractor format:
        'PARAMETER    Value    # Comment'
 
     Parameters
@@ -62,7 +61,7 @@ def read_config(config_file):
 
     Returns
     -------
-    config_dict : dict
+    config_dict : dict (collections.OrderedDict)
         A dictionary with keys 'PARAMETER' and values 'Value'.
 
     Notes
@@ -137,6 +136,7 @@ def update_config(config_file, config_dict):
 
     return config_dict
 
+
 def unify(x, unit, length=1):
     """
     Convert all types of input to an astropy array/unit pair
@@ -154,8 +154,6 @@ def unify(x, unit, length=1):
     -------
     y : astropy.Quantity
     """
-
-    print(type(x))
 
     if isinstance(x, u.quantity.Quantity):
         if isinstance(x.value, np.ndarray):
@@ -195,17 +193,14 @@ def parallactic_angle(ha, de, lat=-24.589167):
 
     # Convert observation point, pole and zenith to cartesian coordinates
     x_pole = [0, 0, -1]
-    print(x_pole)
 
     poledist = (90. - lat)/180 * np.pi  # from north pole
     x_zenith = [0, np.sin(poledist), np.cos(poledist)]
-    print(x_zenith)
 
     obsdist = (90. - de)/180 * np.pi
     ha = ha/180. * np.pi
     x_obs = [np.sin(obsdist) * np.sin(ha), np.sin(obsdist) * np.cos(ha),
              np.cos(obsdist)]
-    print(x_obs)
 
     # normals to the great circles
     n_pole = np.cross(x_obs, x_pole)
