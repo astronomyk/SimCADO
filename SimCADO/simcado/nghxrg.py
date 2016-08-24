@@ -5,12 +5,15 @@
 ###############################################################################
 
 # dependencies include: astropy, numpy, scipy [, datetime, warnings, os]
-# import os
+import os
+import datetime
 # import warnings
-# from astropy.io import fits
-# import numpy as np
-# from scipy.ndimage.interpolation import zoom
-# import datetime
+
+import numpy as np
+from scipy.ndimage.interpolation import zoom
+from astropy.io import fits
+from astropy.stats.funcs import median_absolute_deviation as mad
+
 # import matplotlib.pyplot as plt # Handy for debugging
 
 #warnings.filterwarnings('ignore')
