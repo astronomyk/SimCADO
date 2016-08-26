@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """
 The module which contains the functionality to create Source objects
 
@@ -651,7 +652,7 @@ class Source(object):
         dat1 = ipt[1].data
         hdr1 = ipt[1].header
         ipt.close()
-        
+
         self.x = dat0[0, :]
         self.y = dat0[1, :]
         self.ref = dat0[2, :]
@@ -835,7 +836,7 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
         # Check if stellar type is in cat; if not look for the next
         # type in the sequence that is and assign its values
         spt, cls, lum = spec_type[0], int(spec_type[1]), spec_type[2:]
-        for i in range(10):   
+        for i in range(10):
             if cls > 9:
                 cls = 0
                 spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
@@ -848,7 +849,7 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
 
         else:   # for loop did not find anything
             raise ValueError(spec_type+" doesn't exist in the database")
-            
+
         n = np.where(cat["Stellar_Type"] == startype.upper())[0][0]
         if verbose:
             print("Returning properties for", startype)
@@ -1298,12 +1299,12 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
 
     """
     # IMF is a realisation of stellar masses drawn from an initial mass
-    # function (TODO: which one?) summing to 1e4 M_sol. 
+    # function (TODO: which one?) summing to 1e4 M_sol.
     fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
     imf = np.loadtxt(fname)
 
     # Assign stellar types to the masses in imf using list of average
-    # main-sequence star masses: 
+    # main-sequence star masses:
     stel_type = [i + str(j) + "V" for i in "OBAFGKM" for j in range(10)]
     mass = _get_stellar_mass(stel_type)
     ref = utils.nearest(mass, imf)
