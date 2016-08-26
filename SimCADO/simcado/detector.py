@@ -75,7 +75,7 @@ written to disk.
 
 # Pass photons from a 10^4 Msun open cluster in the LMC through to the detector
 
->>> src = sim.optics_utils.source_1E4_Msun_cluster()
+>>> src = sim.source.source_1E4_Msun_cluster()
 >>> src.apply_optical_train(opt_train, fpa)
 
 # Read out the detector array to a FITS file
@@ -324,7 +324,7 @@ class Detector(object):
                 except NameError:   # any other exceptions possible?
                     pass
             hdulist.append(primary_hdu)
-            
+
         for i in ro_chips:
             ######
             # Put in a catch here so that only the chips specified in "chips"
@@ -338,7 +338,7 @@ class Detector(object):
 
             thishdu.header["EXTNAME"] = ("CHIP_{:02d}".format(self.chips[i].id),
                                          "Chip ID")
-            
+
             thishdu.header["CTYPE1"] = "LINEAR"
             thishdu.header["CUNIT1"] = "arcsec"
             thishdu.header["CRVAL1"] = 0.
@@ -524,10 +524,11 @@ def plot_detector(detector):
     for chip in detector.chips:
         s = plt.axes([(chip.x_min - x0)/(x1 - x0), (chip.y_min - y0)/(y1 - y0),
                       w, h])
-        s.set_xticklabels("")
-        s.set_yticklabels("")
-        s.imshow(np.rot90(chip.array - np.min(chip.array)), norm=LogNorm(),
-                 cmap="Greys", vmin=1)
+        s.set_xticks([])
+        s.set_yticks([])
+        if chip.array is not None:
+            s.imshow(np.rot90(chip.array - np.min(chip.array)), norm=LogNorm(),
+                     cmap="Greys", vmin=1)
 
     plt.show()
 
@@ -676,34 +677,15 @@ class Chip(object):
 
     def add_uniform_background(self, emission, lam_min, lam_max, output=False):
         """
-        <One-line summary goes here>
-
+        Add a uniform background
 
         Summary
         -------
-
-
-        Parameters
-        ----------
-        x : type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
-
-        Returns
-        -------
-
-        Raises
-        ------
-
-        Examples
-        --------
-        """
-
-        # What's with this?     (OC)
-        """
         Take an EmissionCurve and some wavelength boundaries, lam_min lam_max,
         and sum up the photons in between. Add those to the source array.
 
-        Keywords:
+        Parameters
+        ----------
         - emission_curve: EmissionCurve object with background emission photons
         - lam_min, lam_max: the wavelength limits
 
@@ -797,7 +779,7 @@ class Chip(object):
         """
         # TODO: apply a linearity curve and shift excess light into !!
         # neighbouring pixels !!
-        
+
         max_val = self.params["FPA_WELL_DEPTH"]
         arr[arr > max_val] = max_val
         return arr
