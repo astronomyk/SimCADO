@@ -2,8 +2,10 @@
 def func(x):
     return x + 1
 
+
 def test_right_answer():
     assert func(3) == 4
+
 
 def run_simcado():
     import simcado as sim
@@ -13,7 +15,7 @@ def run_simcado():
     cmd["OBS_NDIT"] = 1
     cmd["INST_FILTER_TC"] = "J"
 
-    src = sim.optics_utils.source_1E4_Msun_cluster()
+    src = sim.source.source_1E4_Msun_cluster()
     opt = sim.OpticalTrain(cmd)
     fpa = sim.Detector(cmd)
 
@@ -25,5 +27,16 @@ def run_simcado():
     
     return is_there
 
+
 def test_run_simcado():
     assert run_simcado() == True
+
+
+def get_module_dir():
+    import os
+    import inspect
+    __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    return __pkg_dir__
+
+
+

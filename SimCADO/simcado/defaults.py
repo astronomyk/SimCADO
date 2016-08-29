@@ -1,6 +1,8 @@
 '''Create default noise and PSF cubes'''
 import sys
 import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
 import multiprocessing as mp
 
@@ -14,7 +16,6 @@ except ImportError:
     import detector as fpa
     import input as ig
 
-__pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["make_noise_cube", "make_poppy_cube"]
 
 

@@ -64,11 +64,11 @@ keywords - e.g. for the keywords for the instrument:
 
 
 import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
 # import warnings   ## not used
 import shutil
-
-# import inspect    ## not used
-
 import numpy as np
 
 #import astropy.io.ascii as ascii    # ascii redefines builtin ascii().
@@ -80,8 +80,6 @@ try:
 except ImportError:
     import spectral as sc
     import utils as utils
-
-__pkg_dir__ = os.path.split(__file__)[0]
 
 __all__ = ["UserCommands"]
 
@@ -237,7 +235,7 @@ class UserCommands(object):
 
 
         """
-        self.pkg_dir = os.path.split(__file__)[0]
+        self.pkg_dir = __pkg_dir__
         default = os.path.join(self.pkg_dir, "data", "default.config")
 
         # read in the default keywords

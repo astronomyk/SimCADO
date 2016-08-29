@@ -19,6 +19,10 @@ Helper functions for SimCADO
 #  moffat(r, alpha, beta)
 #
 
+import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
 from collections import OrderedDict
 import numpy as np
 from astropy import units as u

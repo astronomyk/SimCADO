@@ -43,6 +43,10 @@
 
 #from copy import deepcopy   ## Not used (OC)
 
+import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
 import numpy as np
 import scipy.ndimage as spi
 

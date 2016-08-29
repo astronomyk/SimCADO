@@ -88,6 +88,10 @@
 # Both PSF and psf can be created from a single model or through
 # convolution of a list of PSF components
 
+import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
 import warnings
 from copy import deepcopy
 

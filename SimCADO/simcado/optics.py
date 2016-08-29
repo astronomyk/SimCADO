@@ -13,6 +13,9 @@
 #
 
 import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
 import glob
 import warnings
 from datetime import datetime as dt
@@ -36,7 +39,6 @@ except ImportError:
     import spatial as pe
     #import utils
 
-__pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["OpticalTrain"]
 
 class OpticalTrain(object):
@@ -516,7 +518,6 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
                       fov_arcsec=params["pix_res"] * params["size"],
                       oversample=params["oversample"])
 
-
     # list of wavelengths for which I should generate PSFs
     lam_bin_centers = np.array(lam_bin_centers)
 
@@ -568,6 +569,7 @@ def _get_poppy_psf(osys, lam):
     A self contained function for "reading out" the detector, so that we can
     use multi-threading, if available (i.e. if it isn't a windows machine)
     """
+    import datetime.datetime as dt
     t = dt.now()
     print(lam, str(t.hour)+":"+str(t.minute)+":"+str(t.second))
     return osys.calcPSF(lam * 1E-6)[0]

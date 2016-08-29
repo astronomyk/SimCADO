@@ -94,6 +94,9 @@ Examples
 
 
 import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
 from copy import deepcopy
 
 import numpy as np

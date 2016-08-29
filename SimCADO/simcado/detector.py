@@ -91,6 +91,9 @@ written to disk.
 
 
 import os
+import inspect
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
 import warnings
 from copy import deepcopy
 
@@ -111,8 +114,6 @@ except ImportError:
     import spectral as sc
     import commands
     from nghxrg import HXRGNoise
-
-__pkg_dir__ = os.path.split(__file__)[0]
 
 __all__ = ["Detector", "Chip"]
 
