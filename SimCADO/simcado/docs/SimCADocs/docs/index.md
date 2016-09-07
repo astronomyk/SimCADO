@@ -19,7 +19,7 @@ To begin, we will import the simcado module (assuming it is already installed).
 >>> import simcado as sim
 ```
 
-At the very least, we need to create a `Source` object which contains both spatial and spectral information on our object of interest. Here we use the built-in command `.source.source_1E4_Msun_cluster()` to create a `Source`-object for a 10000-Msun stellar cluster. (See [Creating Sources](examples\Source.md) for more information). 
+At the very least, we need to create a `Source` object which contains both spatial and spectral information on our object of interest. Here we use the built-in command `.source.source_1E4_Msun_cluster()` to create a `Source`-object for a 10000-Msun stellar cluster. (See [Creating Sources](examples/Source.md) for more information).
 
 ```
 >>> src = sim.source.source_1E4_Msun_cluster()
