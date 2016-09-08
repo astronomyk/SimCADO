@@ -11,5 +11,7 @@ pages:
 - SimCADO in depth: 
     - 'How SimCADO works': deep_stuff/SimCADO.md
     - 'Testing SimCADO': deep_stuff/Testing.md
+    - 'FAQs': deep_stuff/FAQs.md
+- List of Control Keywords: Keywords.md
 - API Documentation: API.md
 theme: readthedocs

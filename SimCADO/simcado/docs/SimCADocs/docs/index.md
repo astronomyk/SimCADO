@@ -7,7 +7,7 @@ SimCADO is a python package designed to simulate the effects of the Atmosphere, 
 ### Reference Material
 * The inner workings of SimCADO are described in detail in [Leschinski et al. (2016)]()
 
-* The current status of MICADO is described in [Davies et al (2016)](https://arxiv.org/pdf/1607.01954.pdf)
+* The current status of MICADO is described in [Davies et al. (2016)](https://arxiv.org/pdf/1607.01954.pdf)
 
 ## Running a simulation in 3 lines
 
@@ -34,7 +34,7 @@ We now pass the `source` object through SimCADO. This is as easy as calling `.ru
 That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the [API](API.md) documentation
 
 ## SimCADO building blocks
-For a brief explanation of how SimCADO works and which classes are relevant, please see either the [Getting Started](GettingStarted.md) or [FAQs](SimCADO.md) section.
+For a brief explanation of how SimCADO works and which classes are relevant, please see either the [Getting Started](GettingStarted.md) or [SimCADO in depth](deep_stuff/SimCADO.md) section.
 
 ## Contact
 
@@ -42,3 +42,9 @@ For questions and complaints alike, please contact the authors:
 
 * [kieran.leschinski@univie.ac.at]()
 * [oliver.czoske@univie.ac.at]()
+
+**Developers (Vienna):** Kieran Leschinski, Oliver Czoske
+
+**Data Flow Team Leader (Gronigen):** Gijs Verdoes Kleijn
+
+**MICADO home office (MPE):** http://www.mpe.mpg.de/ir/micado
