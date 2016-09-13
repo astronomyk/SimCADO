@@ -37,13 +37,13 @@ def make_noise_cube(num_layers=25, filename="noise.fits"):
         hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
                            [fits.ImageHDU(frames[i])
                             for i in range(1, num_layers)])
-        hdu.writeto(filename, clobber=True)
+        hdu.writeto(filename, clobber=True, checksum=True)
     else:
         frames = _make_noise(num_layers)
         hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
                            [fits.ImageHDU(frames[i])
                             for i in range(1, num_layers)])
-        hdu.writeto(filename, clobber=True)
+        hdu.writeto(filename, clobber=True, checksum=True)
 
 
 def make_poppy_cube():

@@ -384,7 +384,7 @@ class Detector(object):
         if not to_disk:
             return hdulist
         else:
-            hdulist.writeto(filename, clobber=True)
+            hdulist.writeto(filename, clobber=True, checksum=True)
 
 
     def open(self, filename):
@@ -468,7 +468,7 @@ class Detector(object):
         hdu.header["SIMCADO"] = "FPA_NOISE"
 
         try:
-            hdu.writeto(filename, clobber=True)
+            hdu.writeto(filename, clobber=True, checksum=True)
         except OSError:
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
@@ -1172,7 +1172,7 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     if filename is None:
         return hdu
     else:
-        hdu.writeto(filename, clobber=True)
+        hdu.writeto(filename, clobber=True, checksum=True)
 
 
 def install_noise_cube(n=25):
@@ -1193,7 +1193,7 @@ def install_noise_cube(n=25):
     print("WARNING - this process can take minutes. Fear not!")
     hdu = make_noise_cube(n, filename=None)
     filename = os.path.join(__pkg_dir__, "data", "FPA_noise.fits")
-    hdu.writeto(filename, clobber=True)
+    hdu.writeto(filename, clobber=True, checksum=True)
     print("Saved noise cube with", n, "layers to the package directory:")
     print(filename)
 

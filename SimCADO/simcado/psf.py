@@ -706,7 +706,7 @@ class PSFCube(object):
 
             ext_list.append(hdu)
 
-        ext_list.writeto(filename, clobber=clobber)
+        ext_list.writeto(filename, clobber=clobber, checksum=True)
 
 
     def convolve(self, kernel_list):

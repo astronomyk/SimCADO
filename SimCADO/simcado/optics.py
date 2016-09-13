@@ -561,7 +561,7 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
     if filename is None:
         return hdulist
     else:
-        hdulist.writeto(filename, clobber=params["clobber"])
+        hdulist.writeto(filename, clobber=params["clobber"], checksum=True)
 
 
 def _get_poppy_psf(osys, lam):

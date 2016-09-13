@@ -476,7 +476,6 @@ class Source(object):
             # has been oversampled, use this section.
             #  - ax, ay are the pixel coordinates of the image centre
 
-            #x_int, y_int = np.round(x_pix).astype(int), np.round(y_pix).astype(int)
             x_int, y_int = x_pix.astype(int), y_pix.astype(int)
             i, j = ax + x_int[mask], ay + y_int[mask]
             for ii, jj, ph in zip(i, j, slice_photons[mask]):
@@ -520,9 +519,11 @@ class Source(object):
 
 
         # find the closest indices i0, i1 which match the limits
-        x0, x1 = np.abs(self.lam - lam_min), np.abs(self.lam - lam_max)
-        i0 = np.where(x0 == np.min(x0))[0][0]
-        i1 = np.where(x1 == np.min(x1))[0][0]
+        #x0, x1 = np.abs(self.lam - lam_min), np.abs(self.lam - lam_max)
+        #i0 = np.where(x0 == np.min(x0))[0][0]
+        #i1 = np.where(x1 == np.min(x1))[0][0]
+        i0 = np.argmin(np.abs(self.lam - lam_min))
+        i1 = np.argmin(np.abs(self.lam - lam_max))
         if self.lam[i0] > lam_min and i0 > 0:
             i0 -= 1
         if self.lam[i1] < lam_max and i1 < len(self.lam):
@@ -733,7 +734,7 @@ class Source(object):
         specHDU.header["LAM_RES"] = (self.lam_res, "[um] Spectral resolution")
 
         hdu = fits.HDUList([xyHDU, specHDU])
-        hdu.writeto(filename, clobber=True)
+        hdu.writeto(filename, clobber=True, checksum=True)
 
 
     def __str__(self):
