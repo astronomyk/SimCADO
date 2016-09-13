@@ -8,6 +8,10 @@ pages:
     - 'Manipulating the Optical Train': 'examples/OpticalTrain.md'
     - 'Reading out the Detector': 'examples/Detector.md'
 - Download: Download.md
-- SimCADO FAQs: SimCADO.md
+- SimCADO in depth: 
+    - 'How SimCADO works': deep_stuff/SimCADO.md
+    - 'Testing SimCADO': deep_stuff/Testing.md
+    - 'FAQs': deep_stuff/FAQs.md
+- List of Control Keywords: Keywords.md
 - API Documentation: API.md
 theme: readthedocs

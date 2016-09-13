@@ -1,17 +1,3 @@
-# Welcome to MkDocs
+The `Source` class is probably the most important class for testing science cases. Therefore spending time on creating accurate `Source` representations of the object of interest is key to getting good results with SimCADO.
 
-For full documentation visit [mkdocs.org](http://mkdocs.org).
-
-## Commands
-
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs help` - Print this help message.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+Basically a `Source` object represents photon sources using lists of positions (`.x, .y`), a list of unique spectra (`.spectra`) and a list of references which match each photon source to a spectrum in the list of spectra (`.ref`). All sources (extended and point source) can be decomposed into these lists. The advantage of using this approach is that objects with highly similar spectra can both reference the same position in `.spectra`, thereby reducing the number of spectra that need to be manipulated during a simulation. 
