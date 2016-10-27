@@ -1205,7 +1205,7 @@ def star_grid(n, mag_min, mag_max, filter_name="K", separation=1, area=1,
     else:
         if mag_min < mag_max:
             mags = np.linspace(mag_min, mag_max, n)
-        elif mag_min < mag_max:
+        elif mag_min > mag_max:
             mags = np.linspace(mag_max, mag_min, n)
         elif mag_min == mag_max:
             mags = np.ones(n) * mag_min
@@ -1248,7 +1248,8 @@ def star(mag, filter_name="K", spec_type="A0V", position=(0, 0)):
         filter in which the magnitude is given
     spec_type : str, optional
         the spectral type of the star, e.g. "A0V", "G5III"
-
+    position : tuple, optional
+        [arcsec] the x,y position of the star on the focal plane 
     Returns
     -------
     source : `simcado.Source`
@@ -1265,11 +1266,11 @@ def stars(mags, x, y, filter_name="K", spec_types="A0V"):
     Parameters
     ----------
     mags : array
-         magnitudes of the stars
+        [mag] magnitudes of the stars
     x, y : arrays
-         x and y coordinates of the stars
+        [arcsec] x and y coordinates of the stars on the focal plane
     filter_name : str
-         filter in which the magnitudes are given
+        BVRIzYJHKKs - filter in which the magnitudes are given
     spec_type : str or array of strings (optional)
         the spectral type(s) of the stars, e.g. "A0V", "G5III"
 
