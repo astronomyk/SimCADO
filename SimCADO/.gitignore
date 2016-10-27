@@ -15,3 +15,7 @@ __pycache__
 *.jpg
 !The_E-ELT_Primary_Mirror_edit.jpg
 simcado/docs/SimCADocs/site
+
+MANIFEST
+/.idea
+simcado/version.py
