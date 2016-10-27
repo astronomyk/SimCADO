@@ -1,11 +1,13 @@
 simcado/docs/site
 simcado/docs/source/API
-/.idea
+.idea
+build
 __pycache__
 
 MANIFEST
 
 *.py[co]
+version.py
 
 *.FITS
 *.old
