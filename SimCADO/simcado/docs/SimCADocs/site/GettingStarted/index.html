@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <title>Getting Started - SimCADocs - Documentation for SimCADO</title>
+  
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Getting Started";
+    var mkdocs_page_input_path = "GettingStarted.md";
+    var mkdocs_page_url = "/GettingStarted/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script>
+  <script src="../js/theme.js"></script> 
+
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> SimCADocs - Documentation for SimCADO</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        <ul class="current">
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="..">Home</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <li class="toctree-l1 current">
+        <a class="current" href="./">Getting Started</a>
+        
+            <ul>
+            
+                <li class="toctree-l3"><a href="#getting-started-with-simcado">Getting Started with SimCADO</a></li>
+                
+                    <li><a class="toctree-l4" href="#behind-the-scenes-of-simcado">Behind the scenes of SimCADO</a></li>
+                
+                    <li><a class="toctree-l4" href="#source">Source</a></li>
+                
+                    <li><a class="toctree-l4" href="#opticaltrain">OpticalTrain</a></li>
+                
+                    <li><a class="toctree-l4" href="#detector">Detector</a></li>
+                
+                    <li><a class="toctree-l4" href="#usercommands">UserCommands</a></li>
+                
+                    <li><a class="toctree-l4" href="#simulating-with-simcado">Simulating with SimCADO</a></li>
+                
+                    <li><a class="toctree-l4" href="#the-quick-the-dirty-and-the-ugly">The quick, the dirty and the ugly</a></li>
+                
+                    <li><a class="toctree-l4" href="#building-your-own-simulation-run">Building your own simulation run</a></li>
+                
+                    <li><a class="toctree-l4" href="#things-to-watch-out-for">Things to watch out for</a></li>
+                
+            
+            </ul>
+        
+    </li>
+<li>
+          
+            <li>
+    <ul class="subnav">
+    <li><span>Examples</span></li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../examples/UserCommands/">Controlling SimCADO</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../examples/Source/">Creating Sources</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../examples/OpticalTrain/">Manipulating the Optical Train</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../examples/Detector/">Reading out the Detector</a>
+        
+    </li>
+
+        
+    </ul>
+<li>
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../Download/">Download</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <ul class="subnav">
+    <li><span>SimCADO in depth</span></li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../deep_stuff/SimCADO/">How SimCADO works</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../deep_stuff/Testing/">Testing SimCADO</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../deep_stuff/FAQs/">FAQs</a>
+        
+    </li>
+
+        
+    </ul>
+<li>
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../Keywords/">List of Control Keywords</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../API/">API Documentation</a>
+        
+    </li>
+<li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">SimCADocs - Documentation for SimCADO</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Getting Started</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="getting-started-with-simcado">Getting Started with SimCADO</h1>
+<p>SimCADO can be super easy to use, or super complicated. The level of complexity is completely up to the user. Regardless of your intended use for SimCADO, it's probably a good idea to at least have a vague understanding of what is going on during a simulation.</p>
+<h2 id="behind-the-scenes-of-simcado">Behind the scenes of SimCADO</h2>
+<p>SimCADO uses 4 main classes during a simulation: </p>
+<ul>
+<li><code>Source</code> holds spatial and spectral information about the astronomical source of photons, e.g. galaxy, star cluster, etc.</li>
+<li><code>OpticalTrain</code> contains information on the various elements along the optical path, e.g. mirrors reflectivity curves, PSFs, instrumental distortion, etc.</li>
+<li><code>Detector</code> represents the focal plane detector array and contains information on the electronic characteristics of the detector chips and their physical positions.</li>
+<li><code>UserCommands</code> is a dictionary of all the important keywords needed by SimCADO to run the simultationm, e.g. <code>OBS_EXPTIME</code> (exposure time) or <code>INST_FILTER_TC</code> (filter curve)</li>
+</ul>
+<h2 id="source">Source</h2>
+<p>For full details, please see the <a href="../API">API</a> and examples of <a href="../examples/Source">Source Objects</a></p>
+<p>The <code>Source</code> class is probably the most important class for testing science cases. Therefore spending time on creating accurate <code>Source</code> representations of the object of interest is key to getting good results with SimCADO. <code>Source</code> objects can be created from scratch, with functions provided by SimCADO, or by loading in a pre-existing <code>Source</code>-FITS file.</p>
+<p><strong>Note: SimCADO is CaSe SensITIVe!</strong> SimCADO has the class <code>simcado.Source()</code> and the module <code>simcado.source</code>. These should not be confused. <code>simcado.source</code> is the module which contains the class <code>Source</code> and all the helper functions for creating various types of <code>Source</code> objects. In fact the source code for the  class <code>Source</code> is actually at <code>simcado.source.Source</code>, however to make things easy, <code>Source</code> is available directly as<code>simcado.Source()</code>. Be careful and remember <code>simcado.Source != simcado.source</code>.</p>
+<p>For a description of the <code>Source</code> object, and the <code>source</code> module, see <a href="../deep_stuff/SimCADO/#source">How SimCADO works</a>.</p>
+<h3 id="loading-a-pre-existing-source-object">Loading a pre-existing <code>Source</code> object</h3>
+<p>To load in a pre-existing <code>Source</code>, specify the keyword <code>filename=</code> when initialising the <code>Source</code> object.</p>
+<pre><code>&gt;&gt;&gt; import simcado as sim
+&gt;&gt;&gt; my_src = sim.Source(filename=&quot;star_grid.fits&quot;)
+</code></pre>
+
+<p><code>Source</code>-FITS files have a very specific file format, so it's best to only import files that were generated directly from other <code>Source</code> objects. It's a chicken/egg scenario, which is why the next section deals with creating <code>Source</code> objects in memory. For a description of the file format for saved <code>Source</code> objects, see <a href="../deep_stuff/SimCADO/#source">"File Format of saved Source objects"</a>.</p>
+<h3 id="making-a-source-with-simcados-in-built-functions">Making a <code>Source</code> with SimCADO's in-built functions</h3>
+<p>The <code>simcado.source</code> module provides an ever-increasing series of functions to create <code>Source</code> objects in memory. These include, (from <code>simcado.source</code>)</p>
+<ul>
+<li><code>.empty_sky()</code></li>
+<li><code>.star(mag, filter_name="K", ...)</code></li>
+<li><code>.stars(mags, x, y, ...)</code></li>
+<li><code>.star_grid(n, mag_min, mag_max, ...)</code></li>
+<li><code>.source_1E4_Msun_cluster(distance=50000, ...)</code></li>
+<li><code>.source_from_image(images, lam, spectra, pix_res, ...)</code></li>
+</ul>
+<p>Two useful functions here are <code>.stars()</code> and <code>.source_from_image()</code></p>
+<ul>
+<li><code>stars()</code> takes a list of magnitudes (and optionally spectral types) and positions for a common broad-band filter (default is "K") and generates a <code>Source</code> object with those stars in the field.</li>
+</ul>
+<pre><code>&gt;&gt;&gt; x, y = [-2.5, 0.7, 16.3], [3.3, -0.2, 25.1]
+&gt;&gt;&gt; mags, spec_types = [25,21,28], [&quot;K0V&quot;, &quot;A0III&quot;, &quot;G2V&quot;]
+&gt;&gt;&gt; filt = &quot;H&quot;
+&gt;&gt;&gt;
+&gt;&gt;&gt; my_src = sim.source.stars(mags=mags, x=x, y=y, filter_name=filt, spec_types=spec_types)
+</code></pre>
+
+<ul>
+<li><code>source_from_image()</code> creates a <code>Source</code> based on a 2D numpy array provided by the user. The 2D array can come from anywhere, e.g. the data from a FITS image, a BITMAP image, from memory, etc. Alongside the image, the user must provide a spectrum (plus a vector with the bin centres) and the pixel field of view (e.g. 0.004 arcsec for MICADO). SimCADO then extracts all pixels from the image which have values above <code>flux_threshold</code> (defualt is 0) and saves these pixel coordinates. The spectrum provided is then connected to these pixel, and scaled by the pixel value.</li>
+</ul>
+<pre><code>&gt;&gt;&gt; # ... Create an image - a circle with a radius of 20 pixels on a grid 200 pixel wide
+&gt;&gt;&gt; XX = np.array([np.arange(-100,101)]*201) 
+&gt;&gt;&gt; im = np.sqrt(XX**2 + XX.transpose()**2)
+&gt;&gt;&gt; im[im&gt;20] = 0; im[im&gt;0] = 1
+&gt;&gt;&gt;
+&gt;&gt;&gt; # ... Pull in the spectrum for a G2V star with K=20
+&gt;&gt;&gt; lam, spec = simcado.source.SED(&quot;G2V&quot;, filter_name=&quot;K&quot;, magnitude=20)
+&gt;&gt;&gt;
+&gt;&gt;&gt; # ... Make the source object
+&gt;&gt;&gt; my_src = sim.source.source_from_image(images=im, lam=lam, spectra=spec, pix_res=0.004)
+</code></pre>
+
+<p><code>source_from_image()</code> can also take a list of images if different spectra are to be assigned to each image. An example of this maybe for galaxies. The older population might be represented by image with an ellipse on it, while the positions of the star forming regions are shown on a different image with random scattered blobs. In this case, both images can be passed in a list to <code>images</code> and the array passed to <code>spectra</code> must have dimensions (2,n) where n is the length of the spectra. <strong>Note</strong> the spectra must be on the same grid and be the same length.</p>
+<h3 id="creating-a-source-object-from-scratch">Creating a <code>Source</code> object from scratch</h3>
+<p>To create a <code>Source</code> object from scratch, we initialise the object by passing 5 (or 6) arrays. All the parameter names must be specified.</p>
+<p><code>sim.Source(lam=, spectra=, x=, y=, ref=, [weight=])</code></p>
+<p>where: 
++ <code>x, y</code> - [each a <code>numpy.ndarray</code>]. Coordinates for each point source in the image in units of [arcsec] from the focal plane centre</p>
+<ul>
+<li>
+<p><code>lam</code> - [<code>numpy.ndarray</code>]. An array with the centre of the wavelength bins in [um] for each unique spectrum</p>
+</li>
+<li>
+<p><code>spectra</code> - [<code>numpy.ndarray</code>]. An (n, m) array holding n spectra, each with m values. Default units are [ph/s]
+Note - <code>lam</code> and <code>spectra</code> should use a constant bin width. Variable bin widths leads to unpredictable results.</p>
+</li>
+<li>
+<p><code>ref</code> - [<code>numpy.ndarray</code>]. An array to connect the point source at <code>x[i]</code>, <code>y[i]</code> to a unique spectrum at <code>spectra[j]</code>, i.e. <code>ref[i] = j</code></p>
+</li>
+</ul>
+<p>Optional keywords can be specified:</p>
+<ul>
+<li><code>weight</code> - [<code>numpy.ndarray</code>], optional. If two sources share the same spectrum, but are at different distances or have different luminosities a scaling factor can be specified to the spectrum when applied to each specific point source.</li>
+<li><code>units</code> [default <code>"ph/s"</code>] is the units for the spectra, i.e. n phontons per second per spectral bin. The size of the spectral bins is resolution of the <code>.lam</code> array.</li>
+</ul>
+<h3 id="combining-two-or-more-source-objects">Combining two (or more) <code>Source</code> objects</h3>
+<p><code>Source</code> objects can be created in different ways, but the underlying table-structure is the same. Therefore adding <code>Source</code> objects together means simply combining tables. The mathematical operator <code>+</code> can be used to do this:</p>
+<pre><code>&gt;&gt;&gt; # ... create a A0V star at (0,0) and a G2V star at (5,-5)
+&gt;&gt;&gt; star_A0V = sim.source.star(20, position=(0,0), spec_type=&quot;A0V&quot;)
+&gt;&gt;&gt; star_G2V = sim.source.star(20, position=(5,-5), spec_type=&quot;G2V&quot;)
+&gt;&gt;&gt; 
+&gt;&gt;&gt; src_combi = star_A0V + star_G2V
+&gt;&gt;&gt; 
+&gt;&gt;&gt; print(src_combi.x, src_combi.y)
+[0 5] [ 0 -5]
+</code></pre>
+
+<p>By adding different <code>Source</code> objects together, it is possible to build up complex objects that will be representative of the observed sky, e.g. old + new galaxy stellar population + gas emission + foreground stars</p>
+<p>See <a href="../examples/Source">examples</a> for how to use the <code>*</code> and <code>-</code> operators with a <code>Source</code> object</p>
+<h3 id="saving-a-source-object-to-disk">Saving a <code>Source</code> object to disk</h3>
+<p>The <code>Source</code> object is saved as a FITS file with two extensions. See <a href="../in_depth/SimCADO">How SimCADO works</a> for more on the file structure.</p>
+<pre><code>&gt;&gt;&gt; src_combi.write(&quot;my_src.fits&quot;)
+</code></pre>
+
+<p>The file can be read in at a later time by specifying <code>filename=</code> when initialising a <code>Source</code> object - as stated above</p>
+<pre><code>&gt;&gt;&gt; my_src = sim.Source(filename=&quot;my_src.fits&quot;)
+</code></pre>
+
+<h3 id="in-built-source-object-for-a-104-mo-cluster">In-built <code>Source</code> object for a 10<sup>4</sup> M<sub>O</sub> cluster</h3>
+<p>As a test object, SimCADO provides the function, with all distances in parsecs:</p>
+<p><code>sim.source.source_1E4_Msun_cluster(distance=50000, half_light_radius=1)</code></p>
+<h2 id="opticaltrain">OpticalTrain</h2>
+<h2 id="detector">Detector</h2>
+<h2 id="usercommands">UserCommands</h2>
+<h2 id="simulating-with-simcado">Simulating with SimCADO</h2>
+<h2 id="the-quick-the-dirty-and-the-ugly">The quick, the dirty and the ugly</h2>
+<h3 id="creating-source-objects">Creating <code>Source</code> objects</h3>
+<h2 id="building-your-own-simulation-run">Building your own simulation run</h2>
+<h3 id="creating-usercommand-objects">Creating <code>UserCommand</code> objects</h3>
+<h3 id="creating-opticaltrain-objects">Creating <code>OpticalTrain</code> objects</h3>
+<h3 id="creating-detector-array-objects">Creating <code>Detector</code> array objects</h3>
+<h3 id="running-the-simulation">Running the simulation</h3>
+<h2 id="things-to-watch-out-for">Things to watch out for</h2>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../examples/UserCommands/" class="btn btn-neutral float-right" title="Controlling SimCADO">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href=".." class="btn btn-neutral" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+	  
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+<div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../examples/UserCommands/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+
+</body>
+</html>

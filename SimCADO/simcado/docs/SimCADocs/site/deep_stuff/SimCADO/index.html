@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <title>How SimCADO works - SimCADocs - Documentation for SimCADO</title>
+  
+
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/highlight.css">
+
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "How SimCADO works";
+    var mkdocs_page_input_path = "deep_stuff\SimCADO.md";
+    var mkdocs_page_url = "/deep_stuff/SimCADO/";
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js"></script>
+  <script src="../../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../../js/highlight.pack.js"></script>
+  <script src="../../js/theme.js"></script> 
+
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> SimCADocs - Documentation for SimCADO</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        <ul class="current">
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../..">Home</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../../GettingStarted/">Getting Started</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <ul class="subnav">
+    <li><span>Examples</span></li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../../examples/UserCommands/">Controlling SimCADO</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../../examples/Source/">Creating Sources</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../../examples/OpticalTrain/">Manipulating the Optical Train</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../../examples/Detector/">Reading out the Detector</a>
+        
+    </li>
+
+        
+    </ul>
+<li>
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../../Download/">Download</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <ul class="subnav">
+    <li><span>SimCADO in depth</span></li>
+
+        
+            
+    <li class="toctree-l1 current">
+        <a class="current" href="./">How SimCADO works</a>
+        
+            <ul>
+            
+                <li class="toctree-l3"><a href="#simcado-objects">SimCADO objects</a></li>
+                
+                    <li><a class="toctree-l4" href="#source">Source</a></li>
+                
+                    <li><a class="toctree-l4" href="#opticaltrain">OpticalTrain</a></li>
+                
+                    <li><a class="toctree-l4" href="#detector">Detector</a></li>
+                
+                    <li><a class="toctree-l4" href="#usercommands">UserCommands</a></li>
+                
+            
+                <li class="toctree-l3"><a href="#simcado-methods">SimCADO methods</a></li>
+                
+                    <li><a class="toctree-l4" href="#method-behind-applying-an-opticaltrain-to-a-source-object">Method behind applying an OpticalTrain to a Source object</a></li>
+                
+                    <li><a class="toctree-l4" href="#method-behind-reading-out-a-detector-object">Method behind reading out a Detector object</a></li>
+                
+            
+            </ul>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../Testing/">Testing SimCADO</a>
+        
+    </li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../FAQs/">FAQs</a>
+        
+    </li>
+
+        
+    </ul>
+<li>
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../../Keywords/">List of Control Keywords</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../../API/">API Documentation</a>
+        
+    </li>
+<li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">SimCADocs - Documentation for SimCADO</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+        
+          <li>SimCADO in depth &raquo;</li>
+        
+      
+    
+    <li>How SimCADO works</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="simcado-objects">SimCADO objects</h1>
+<h2 id="source">Source</h2>
+<p>The <code>Source</code> class is probably the most important class for testing science cases. Therefore spending time on creating accurate <code>Source</code> representations of the object of interest is key to getting good results with SimCADO.</p>
+<p>Basically a <code>Source</code> object represents photon sources using lists of positions (<code>.x, .y</code>), a list of unique spectra (<code>.spectra</code>) and a list of references which match each photon source to a spectrum in the list of spectra (<code>.ref</code>). All sources (extended and point source) can be decomposed into these lists. The advantage of using this approach is that objects with highly similar spectra can both reference the same position in <code>.spectra</code>, thereby reducing the number of spectra that need to be manipulated during a simulation. </p>
+<h3 id="file-format-of-saved-source-objects">File Format of saved <code>Source</code> objects</h3>
+<p><code>Source</code> objects are stored as FITS files with 2 extensions. The first (ext=0) contains an image with dimensions (n, 4) where n is the number of positions for which there exists a spectrum - i.e. non-empty space. The 4 rows of the image correspond to the <code>.x, .y, .ref, .weight</code> arrays. The second extension (ext=1) contains another image with dimensions (m+1, len(lam)), where m is the number of unique spectra and len(lam) is the length of the <code>.lam</code> array containing the centres of all wavelength bins. The first row in the second extension is the <code>.lam</code> array.</p>
+<h2 id="opticaltrain">OpticalTrain</h2>
+<h2 id="detector">Detector</h2>
+<h2 id="usercommands">UserCommands</h2>
+<h1 id="simcado-methods">SimCADO methods</h1>
+<h2 id="method-behind-applying-an-opticaltrain-to-a-source-object">Method behind applying an <code>OpticalTrain</code> to a <code>Source</code> object</h2>
+<p>(Taken from Leschinski et al. 2016)</p>
+<p>In an ideal world, SimCADO would apply all spectral and spatial changes at the resolution of the input data. However, the memory requirements to do this are well outside the limits of a personal computer. The solution to this problem is to split the effects based on dimensionality. For certain elements in the optical train, the spectral and spatial effects can be decoupled (e.g. purely transmissive elements like the filters versus purely spatial effects like telescope vibration). For other elements, most notably the PSF and ADC, all three dimensions must be considered simultaneously. When applying an  <code>OpticalTrain</code>, SimCADO follows the procedure described graphically in Figure 1. The example used in Figure 1 is for a simplified stellar cluster with only two different stellar types - A0V and K5V type stars. </p>
+<p><img alt="" src="https://static.wixstatic.com/media/bf004e_a7aaf497e2c54abd9ecb8a329b44586c~mv2_d_1323_1285_s_2.png/v1/fill/w_600,h_582,al_c,usm_0.66_1.00_0.01/bf004e_a7aaf497e2c54abd9ecb8a329b44586c~mv2_d_1323_1285_s_2.png" /></p>
+<p>Figure 1 - The steps involved in applying an <code>OpticalTrain</code> object to a <code>Source</code> object. The example used here is for a simplified stellar cluster with only two different stellar types - A0V and K5V type stars.</p>
+<ul>
+<li>
+<p><strong>A.</strong> The original <code>Source</code> object includes an array of spectra for each <strong>unique</strong> photon source (in the case of Figure 1, there are only two unique spectra) and four vectors: <code>x</code>, <code>y</code>, <code>ref</code>, <code>weight</code>. <code>x</code> and <code>y</code> hold the spatial information for each photon source, <code>ref</code> connects each source to a spectrum in the array of spectra and <code>weight</code> allows the spectrum to be scaled. </p>
+</li>
+<li>
+<p><strong>Spectral-effects</strong>. The first step in <code>apply_optical_train()</code> is to combine all optical elements which only act in the wavelength domain (e.g. filters, mirrors, etc.) into a single effect, then apply that effect to the array of spectra in the <code>Source</code> object. </p>
+</li>
+<li>
+<p><strong>B.</strong> The spectra in the <code>Source</code> object are now representative of the photo-electron count at the detector, assuming a perfect optical train and at the internal spatial resolution of the simulation, i.e. <em>not at the pixel scale of the detector</em>. The position vectors are converted into a two-dimensional "image" of the <code>Source</code>.</p>
+</li>
+<li>
+<p><strong>Spectrospatial-effects.</strong> The second step includes creating "slices" through the data. The spectra are binned according to several criteria (ADC shift, PSF FWHM difference, etc) with a spectral resolution anywhere from R=1 to R&gt;100, and the number of photons per source in each wavelength bin is calculated. The sources in each "slice" are scaled according to the number of photons in each bin. The relevant spatial effects (atmospheric dispersion, convolution with PSF kernel, etc.) are then applied to each slice in turn.</p>
+</li>
+<li>
+<p><strong>C.</strong> At this stage, the <code>Source</code> object contains many spectral slices. Each is essentially the equivalent of a (<em>very</em>) narrow-band filter image.</p>
+</li>
+<li>
+<p><strong>D.</strong> All spectral effects have been taken into account, and so the binning in the spectral domain is no longer needed. The third step in <code>apply_optical_train()</code> is to add all the slices together to create a single monochrome image.</p>
+</li>
+<li>
+<p><strong>Spatial-effects.</strong> Fourth in the series of operations is to apply the purely spatial effects (e.g. telescope jitter, field rotation, etc) to the monochrome image. </p>
+</li>
+<li>
+<p><strong>E.</strong> The resulting image represents how the incoming photons from the source would be distributed on the focal plane after travelling through the entire optical train. At this point the background photons are also added to the image. Because SimCADO doesn't take into account the changing sky background, the sky emission is approximated as a constant background photon count determined from an atmospheric emission curve (either provided by the user or generated by <code>SkyCalc</code> [Noll et al. 2012, Jones et al. 2013]). The mirror blackbody emission is also approximated as spatially constant. For all filters, with the exception of K, the amount of additional photons due to the mirror is close to negligible.</p>
+</li>
+<li>
+<p><strong>Detector-effects.</strong> The image is resampled down from the internally oversampled grid down to the pixel scale of the detector chips - in the case of MICADO either 4 mas or 1.5 mas, depending on mode. The final step is to add noise in all its forms to the image. Various aspects of the detector noise (correlated and uncorrelated white and pink noise read-out (see Rauscher 2015), dead pixels, etc.), as well as photon shot noise for both the atmospheric and object photons are taken into account. Further effects (e.g. detector persistence, cross-talk, etc) are also added to the image at this point.</p>
+</li>
+<li>
+<p><strong>F.</strong> The final image represents the spatial distribution of all photo-electrons (from the source object + atmosphere + primary mirror) plus the electronic noise generated by reading out the detector chips. The images from all the chips considered in a simulation are packed into a FITS extension and the FITS file is either written out to disk, or returned to the user if generated during an interactive Python session.</p>
+</li>
+</ul>
+<h2 id="method-behind-reading-out-a-detector-object">Method behind reading out a <code>Detector</code> object</h2>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../Testing/" class="btn btn-neutral float-right" title="Testing SimCADO">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../../Download/" class="btn btn-neutral" title="Download"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+	  
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+<div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../../Download/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../Testing/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+
+</body>
+</html>
