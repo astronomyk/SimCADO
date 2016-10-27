@@ -1,5 +1,15 @@
-sphinx-apidoc --full --force -o simcado/docs/source/API simcado
 cd simcado/docs/
-sphinx-build -b html source/API site/API/_build
 mkdocs build --clean
-cd ../..
+
+cd site/API/
+mkdir _source
+mkdir _build
+
+cd _source
+sphinx-apidoc -f -F -o .\ simcado
+copy ..\..\..\conf.py conf.py
+
+sphinx-build -b html .\ ..\_build
+
+cd ..\..\..\..\..
+pause
