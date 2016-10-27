@@ -1,6 +1,17 @@
 # SimCADO objects
 
 ## Source
+The `Source` class is probably the most important class for testing science cases. Therefore spending time on creating accurate `Source` representations of the object of interest is key to getting good results with SimCADO.
+
+Basically a `Source` object represents photon sources using lists of positions (`.x, .y`), a list of unique spectra (`.spectra`) and a list of references which match each photon source to a spectrum in the list of spectra (`.ref`). All sources (extended and point source) can be decomposed into these lists. The advantage of using this approach is that objects with highly similar spectra can both reference the same position in `.spectra`, thereby reducing the number of spectra that need to be manipulated during a simulation. 
+
+### File Format of saved `Source` objects
+`Source` objects are stored as FITS files with 2 extensions. The first (ext=0) contains an image with dimensions (n, 4) where n is the number of positions for which there exists a spectrum - i.e. non-empty space. The 4 rows of the image correspond to the `.x, .y, .ref, .weight` arrays. The second extension (ext=1) contains another image with dimensions (m+1, len(lam)), where m is the number of unique spectra and len(lam) is the length of the `.lam` array containing the centres of all wavelength bins. The first row in the second extension is the `.lam` array.
+
+
+
+
+
 ## OpticalTrain
 ## Detector
 ## UserCommands
