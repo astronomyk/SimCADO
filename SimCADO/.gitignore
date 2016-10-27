@@ -6,7 +6,6 @@ __pycache__
 MANIFEST
 
 *.py[co]
-simcado/version.py
 
 *.FITS
 *.old
