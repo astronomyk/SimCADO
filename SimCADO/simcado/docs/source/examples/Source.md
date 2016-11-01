@@ -1,10 +1,10 @@
-# Examples with the `Source` object
+# Examples with the Source object
 
 The `Source` class is probably the most important class for testing science cases. Therefore spending time on creating accurate `Source` representations of the object of interest is key to getting good results with SimCADO.
 
 Basically a `Source` object represents photon sources using lists of positions (`.x, .y`), a list of unique spectra (`.spectra`) and a list of references which match each photon source to a spectrum in the list of spectra (`.ref`). All sources (extended and point source) can be decomposed into these lists. The advantage of using this approach is that objects with highly similar spectra can both reference the same position in `.spectra`, thereby reducing the number of spectra that need to be manipulated during a simulation. 
 
-## My first `Source`
+## My first Source object
 To begin with it is probably easiest to let SimCADO generate a `Source` object. The convenience function `simcado.source.star()` will generate a `Source` object containing a single star. In this case, we'll choose an G2V star with a K-band magnitude of 20, placed 5 arcsec above the centre of the focal plane:
 
     >>> star_1 = simcado.source.star(mag=20, filter_name="K", spec_type="G2V", position=(5,0))
@@ -80,7 +80,7 @@ In our (very) crude model the aged stellar population can be approxiated by an e
     >>> old_pop = Gaussian2DKernel(128).array[::3,:]
 	>>> m0v_spec = SED()
 
-For the star forming regions we can create a random distribution of elliptical Gaussians
+To illustrate (very crudely) the star forming regions we can create a random distribution of elliptical Gaussians using the `astropy` function `Gasussian2DKernel`:
 
 
 

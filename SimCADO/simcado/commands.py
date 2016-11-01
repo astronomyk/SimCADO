@@ -413,6 +413,16 @@ class UserCommands(object):
             self.cmds["SCOPE_M1_TC"] = \
                 os.path.join(self.pkg_dir, "data", "TC_mirror_mgf2agal.dat")
 
+        if self.cmds["INST_MIRROR_TC"] == "default":
+            self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
+
+        if self.cmds["INST_MIRROR_AO_TC"] == "default":
+            self.cmds["INST_MIRROR_AO_TC"] = self.cmds["SCOPE_M1_TC"]
+
+        if self.cmds["INST_PUPIL_TC"] == "default":
+            self.cmds["INST_PUPIL_TC"] = \
+                os.path.join(self.pkg_dir, "data", "TC_pupil.dat")
+            
         if self.cmds["INST_ENTR_WINDOW_TC"] == "default":
             self.cmds["INST_ENTR_WINDOW_TC"] = \
                 os.path.join(self.pkg_dir, "data", "TC_window.dat")
@@ -443,9 +453,12 @@ class UserCommands(object):
         if self.cmds["FPA_PIXEL_MAP"] == "default":
             self.cmds["FPA_PIXEL_MAP"] = None
 
-        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default"):
+        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
+        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "zoom":
+            self.cmds["FPA_CHIP_LAYOUT"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_chip_layout_zoom.dat")
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_small.dat")
