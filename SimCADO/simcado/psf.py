@@ -1024,7 +1024,7 @@ class UserPSFCube(PSFCube):
         i_slices = utils.nearest(psf_lam_cen, lam_bin_centers)
 
         # import only the relevant PSFs
-        for i in i_slices:
+        for i in np.unique(i_slices):
 
             hdr = fits.getheader(filename, ext=i)
             self.header = hdr
