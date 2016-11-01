@@ -1,3 +1,6 @@
+D:
+cd D:\Dropbox\Uni\PhD\SimCADO\SimCADO
+
 cd simcado/docs/
 mkdocs build --clean
 
