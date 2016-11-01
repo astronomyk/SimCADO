@@ -168,7 +168,7 @@ FPA_CHIP_LAYOUT         small       # [small/default/filename] description of th
 ```
 
 
-## NXRG Noise Generator package parameters
+## HxRG Noise Generator package parameters
 SimCADO uses the python code developed by Bernhard Rauscher for the HAWAII 2RG detectors aboard the JWST. See Rauscher (2015) for a summary of what keqwords they mean ([http://arxiv.org/pdf/1509.06264.pdf]())
 ```
 Keyword				Default Value	  [units] Explanation
