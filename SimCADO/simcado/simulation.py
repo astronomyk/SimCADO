@@ -6,13 +6,45 @@ simulation.py
 import numpy as np
 import simcado as sim
 
-def run(src, cmds=None, opt_train=None, fpa=None,
+def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         micado_fpa=False, filename=None, return_internals=False,
         **kwargs):
     """
     Run a MICADO simulation with default parameters
+    
+    Parameters
+    ----------
+    src : simcado.Source
+        The object of interest
+    
+    mode : str, optional
+        ["wide", "zoom"] Default is "wide", for a 4mas FoV. "Zoom" -> 1.5mas
+    
+    cmds : simcado.UserCommands, optional
+        A custom set of commands for the simulation. Default is None
+    
+    opt_train : simcado.OpticalTrain, optional
+        A custom optical train for the simulation. Default is None
+    
+    fpa : simcado.Detector, optional
+        A custom detector layout for the simulation. Default is None
+    
+    micado_fpa : bool
+        [False, True] Default is False. If True, the full MICADO 9x 4k chip FPA
+        is used. The default use "fpa_small", a single 1k detector at the centre
+        of the focal plane
+        
+    filename : str, optional
+        The filepath for where the FITS images should be saved.
+        Default is None. If None, the output images are returned to the user as
+        FITS format astropy.io.HDUList objects.
+    
+    return_internals : bool
+        [False, True] Default is False. If True, the `UserCommands`, 
+        `OpticalTrain` and `Detector` objects used in the simulation are 
+        returned in a tuple: `return hdu, (cmds, opt_train, fpa)`
+    
     """
-
 
     if cmds is None:
         cmds = sim.UserCommands()
@@ -20,7 +52,17 @@ def run(src, cmds=None, opt_train=None, fpa=None,
     cmds.update(kwargs)
 
     if micado_fpa:
-        cmds["FPA_CHIP_LAYOUT"] = "default"
+        cmds["FPA_CHIP_LAYOUT"] = mode
+    
+    if mode == "wide":
+        cmds["SIM_DETECTOR_PIX_SCALE"] = 0.004
+        cmds["INST_NUM_MIRRORS"] = 11
+    elif mode == "zoom"
+        cmds["SIM_DETECTOR_PIX_SCALE"] = 0.0015
+        cmds["INST_NUM_MIRRORS"] = 13
+    else:
+        raise ValueError("'mode' must be either 'wide' or ' zoom', not " + mode)
+        
 
     if opt_train is None:
         opt_train = sim.OpticalTrain(cmds)
