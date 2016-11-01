@@ -481,7 +481,7 @@ class UserCommands(object):
 
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.pix_res = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
-
+       
         # if SIM_USE_FILTER_LAM is true, then use the filter curve to set the
         # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
 
