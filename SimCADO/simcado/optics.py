@@ -281,11 +281,15 @@ class OpticalTrain(object):
 
         if tc_keywords is None:
             if preset is not None:
-                base = ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
-                       ['INST_ADC_TC'] * int(self.cmds['INST_ADC_NUM_SURFACES']) + \
-                       ['INST_DICHROIC_TC'] + \
+                base = ['SCOPE_M1_TC']       * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
+                       ['INST_MIRROR_AO_TC'] * (int(self.cmds['INST_NUM_AO_MIRRORS'])) + \
+                       ['INST_MIRROR_TC']    * (int(self.cmds['INST_NUM_MIRRORS'])) + \
+                       ['INST_ADC_TC']       * int(self.cmds['INST_ADC_NUM_SURFACES']) + \
+                       ['INST_DICHROIC_TC']  * int(self.cmds['INST_DICHROIC_NUM_SURFACES']) + \
                        ['INST_ENTR_WINDOW_TC'] * int(self.cmds['INST_ENTR_NUM_SURFACES']) + \
-                       ['INST_FILTER_TC', 'FPA_QE']
+                       ['INST_PUPIL_TC']     * int(self.cmds['INST_PUPIL_NUM_SURFACES']) + \
+                       ['INST_FILTER_TC'] + \
+                       ['FPA_QE']
                 if preset == "source":
                     tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
                 if preset == "atmosphere":
@@ -344,8 +348,14 @@ class OpticalTrain(object):
         # Make a PSF for the main mirror. If there is one on file, read it in
         # otherwise generate an Airy+Gaussian (or Moffat, Oliver?)
 
+        if self.cmds["SCOPE_PSF_FILE"] is not None and not \
+                                    os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
+            warnings.warn("There is no PSF file under " \ 
+                            + self.cmds["SCOPE_PSF_FILE"])
+        
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
+                                
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
             if psf_m1[0].pix_res != self.pix_res:
@@ -573,7 +583,3 @@ def _get_poppy_psf(osys, lam):
     t = dt.now()
     print(lam, str(t.hour)+":"+str(t.minute)+":"+str(t.second))
     return osys.calcPSF(lam * 1E-6)[0]
-
-
-class bloedsinn():
-    pass
