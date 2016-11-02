@@ -453,15 +453,20 @@ class UserCommands(object):
         if self.cmds["FPA_PIXEL_MAP"] == "default":
             self.cmds["FPA_PIXEL_MAP"] = None
 
+        # which detector chip to use    
         if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "zoom":
+        elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("zoom", "narrow"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_zoom.dat")
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_small.dat")
+        elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("centre", "central", "middle"):
+            self.cmds["FPA_CHIP_LAYOUT"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_chip_layout_centre.dat")
+                
 
         if self.cmds["HXRG_PCA0_FILENAME"] in (None, "none", "default"):
             self.cmds["HXRG_PCA0_FILENAME"] = \
@@ -514,7 +519,7 @@ class UserCommands(object):
 
         self.cmds["SIM_N_MIRRORS"] = self.cmds["SCOPE_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_MIRRORS"] + \
-                                     self.cmds["INST_NUM_EXT_MIRRORS"]
+                                     self.cmds["INST_NUM_AO_MIRRORS"]
 
         # replace 'none', 'None' with None
         self._convert_none()
