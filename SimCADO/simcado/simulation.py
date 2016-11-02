@@ -7,7 +7,7 @@ import numpy as np
 import simcado as sim
 
 def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
-        micado_fpa=False, filename=None, return_internals=False,
+        detector_layout="small", filename=None, return_internals=False,
         **kwargs):
     """
     Run a MICADO simulation with default parameters
@@ -29,10 +29,13 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     fpa : simcado.Detector, optional
         A custom detector layout for the simulation. Default is None
     
-    micado_fpa : bool
-        [False, True] Default is False. If True, the full MICADO 9x 4k chip FPA
-        is used. The default use "fpa_small", a single 1k detector at the centre
-        of the focal plane
+    detector_layout : str, optional
+        ["small", "wide", "zoom", "centre", "default"] Default is "small".
+        "small"   - 1x 1k-detector centred in the FoV
+        "centre"  - 1x 4k detector centred in the FoV
+        "wide"    - 9x 4k-detector as per MICADO wide field mode (4mas)
+        "zoom"    - 9x 4k-detector as per MICADO zoom mode (1.5mas)
+        "default" - depends on "mode" keyword. Full MICADO detector array.
         
     filename : str, optional
         The filepath for where the FITS images should be saved.
@@ -49,20 +52,23 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     if cmds is None:
         cmds = sim.UserCommands()
         cmds["INST_FILTER_TC"] = "K"
-    cmds.update(kwargs)
-
-    if micado_fpa:
-        cmds["FPA_CHIP_LAYOUT"] = mode
-    
+    cmds["FPA_CHIP_LAYOUT"] = detector_layout
+   
     if mode == "wide":
         cmds["SIM_DETECTOR_PIX_SCALE"] = 0.004
         cmds["INST_NUM_MIRRORS"] = 11
-    elif mode == "zoom"
+        if detector_layout.lower() == "default":
+            cmds["FPA_CHIP_LAYOUT"] = "wide"
+    elif mode == "zoom":
         cmds["SIM_DETECTOR_PIX_SCALE"] = 0.0015
         cmds["INST_NUM_MIRRORS"] = 13
+        if detector_layout.lower() == "default":
+            cmds["FPA_CHIP_LAYOUT"] = "zoom"
     else:
         raise ValueError("'mode' must be either 'wide' or ' zoom', not " + mode)
-        
+
+    # update any remaining keywords
+    cmds.update(kwargs)        
 
     if opt_train is None:
         opt_train = sim.OpticalTrain(cmds)
