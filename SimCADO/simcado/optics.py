@@ -350,8 +350,8 @@ class OpticalTrain(object):
 
         if self.cmds["SCOPE_PSF_FILE"] is not None and not \
                                     os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-            warnings.warn("There is no PSF file under " \ 
-                            + self.cmds["SCOPE_PSF_FILE"])
+            warnings.warn("There is no PSF file under " + self.cmds["SCOPE_PSF_FILE"])
+                            
         
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
