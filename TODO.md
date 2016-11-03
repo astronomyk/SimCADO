@@ -1,5 +1,13 @@
 # Things to do before the consortium meeting
 
+
+## URGENT THINGS
+1. **!!! DONE - Implement the INST_NUM_MIRRORS and add an INST_MIRROR_TC !!!**
+1. **!!! Implement MAORY thermal background**
+1. **Check the I/O for all objects.**
+
+
+
 ## SimCADO
 1. Review/Work on all the SimCADO I/O stuff
     1. Saving/reading detector output
