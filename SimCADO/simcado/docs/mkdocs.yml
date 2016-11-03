@@ -14,5 +14,6 @@ pages:
     - 'Testing SimCADO': deep_stuff/Testing.md
     - 'FAQs': deep_stuff/FAQs.md
 - List of Control Keywords: Keywords.md
-- API Documentation: API/_build/index.html
+- MICADO with SimCADO: SIMCADO_defaults.md
+- API Documentation: API.md
 theme: readthedocs
