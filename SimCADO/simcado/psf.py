@@ -1299,3 +1299,52 @@ class AiryDiskDiff2D(Fittable2DModel):
                     2.0 * eps * cls._j1(eps * rt) / rt)**2
         z *= amplitude
         return z
+        
+        
+################################################################################
+# Convenience functions
+
+
+def make_foreign_PSF_cube(fnames, filename=None, window=None):
+    """
+    Combine several PSF FITS images into a single PSF FITS file
+    
+    Parameters
+    ----------
+    fnames : list
+        List of path names to the FITS files
+    filename : str, optional
+        If filename is not `None`, the resulting FITS file is saved under the name `filename`
+    window : list, tuple, optional
+        If window is not `None`, a windowed section of the PSFs are extracted
+        window = (left, right, top, bottom)
+        
+    Examples
+    --------
+        >>> fnames = ["../data_ext/I_LTAO.fits", 
+                      "../data_ext/J_LTAO.fits", 
+                      "../data_ext/H_LTAO.fits", 
+                      "../data_ext/K_LTAO.fits"]
+        >>> dw, dh = 512, 512
+        >>> window=[2048-dw, 2048+dw, 2048-dh, 2048+dh]
+        >>> make_foreign_PSF_cube(fnames, filename="PSF_LTAO.fits", window=window)
+    
+    """
+    hdu_list = fits.HDUList()
+    for fname in fnames:
+        dat = fits.getdata(fname)
+        hdr = fits.getheader(fname)
+                
+        if window is not None:
+            w = window
+            dat = dat[w[0]:w[1],w[2]:w[3]]
+            
+            scale_factor = 1./np.sum(dat)
+            dat *= scale_factor
+            
+        hdu_list.append(fits.ImageHDU(dat, hdr))
+
+    if filename is None:
+        return hdu_list
+    else:
+        hdu_list.writeto(filename, clobber=True)
