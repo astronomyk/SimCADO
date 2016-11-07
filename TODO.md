@@ -1,11 +1,25 @@
 # Things to do before the consortium meeting
 
 
+1. DONE LTAO PSF cube
+1. DONE - Implement the INST_NUM_MIRRORS and add an INST_MIRROR_TC
+1. Add downloading extras to simcado main
+
 ## URGENT THINGS
-1. **!!! DONE - Implement the INST_NUM_MIRRORS and add an INST_MIRROR_TC !!!**
-1. **!!! Add downloading extras to simcado main**
+
+1. **!!! Read mode with poisson distribution**
+1. **!!! Strehl ratio/path errors reduction in transmission**
 1. **!!! Implement MAORY thermal background**
 1. **Check the I/O for all objects.**
+
+
+**Documentation**
+1. Add "download extras"
+
+
+**Data**
+1. Update the TC filter curves
+
 
 
 
