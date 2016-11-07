@@ -43,8 +43,8 @@ optical train:
 ```
 >>> import simcado
 >>> my_cmds = simcado.UserCommands()
->>> my_cmds["SCOPE_M1_DIAMETER_OUT"]
-37.3
+>>> my_cmds["SCOPE_NUM_MIRRORS"]
+5
 ```
 
 To list the keywords that are available:
@@ -71,8 +71,7 @@ __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 import shutil
 import numpy as np
 
-#import astropy.io.ascii as ascii    # ascii redefines builtin ascii().
-                                     # Apparently not used
+import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
 
 try:
     import simcado.spectral as sc
@@ -196,15 +195,15 @@ class UserCommands(object):
     ```
     >>> import simcado
     >>> my_cmds = simcado.UserCommands()
-    >>> my_cmds["SCOPE_M1_DIAMETER_OUT"]
-    37.3
+    >>> my_cmds["SCOPE_NUM_MIRRORS"]
+    5
     ```
 
     `UserCommands` supports indexing like a dictionary object.
     ```
-    >>> my_cmds["SCOPE_M1_DIAMETER_OUT"] = 8.2
-    >>> my_cmds["SCOPE_M1_DIAMETER_OUT"]
-    8.2
+    >>> my_cmds["SCOPE_NUM_MIRRORS"] = 8
+    >>> my_cmds["SCOPE_NUM_MIRRORS"]
+    8
     ```
 
     To list the keywords that are available:
@@ -264,7 +263,7 @@ class UserCommands(object):
         self._update_attributes()
 
         if self.verbose and filename is not None:
-            print("Read in parameters from "+filename)
+            print("Read in parameters from " + filename)
 
         # Subcategories of parameters, filled later by _split_categories
         self.obs = None
@@ -413,6 +412,14 @@ class UserCommands(object):
             self.cmds["SCOPE_M1_TC"] = \
                 os.path.join(self.pkg_dir, "data", "TC_mirror_mgf2agal.dat")
 
+        if self.cmds["SCOPE_MIRROR_LIST"] == "default":
+            self.cmds["SCOPE_MIRROR_LIST"] = \
+                os.path.join(self.pkg_dir, "data", "EC_mirrors_scope.tbl")
+        
+        if self.cmds["INST_MIRROR_AO_LIST"] == "default":
+            self.cmds["INST_MIRROR_AO_LIST"] = \
+                os.path.join(self.pkg_dir, "data", "EC_mirrors_ao.tbl")
+                
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
@@ -438,6 +445,10 @@ class UserCommands(object):
         if self.cmds["INST_DISTORTION_MAP"] == "default":
             self.cmds["INST_DISTORTION_MAP"] = None
 
+        if self.cmds["INST_SURFACE_FACTOR"] == "default":
+            self.cmds["INST_DISTORTION_MAP"] = \
+                os.path.join(self.pkg_dir, "data", "TC_surface.dat")
+            
         if self.cmds["FPA_QE"] == "default":
             self.cmds["FPA_QE"] = \
                 os.path.join(self.pkg_dir, "data", "TC_detector_H4RG.dat")
@@ -478,6 +489,15 @@ class UserCommands(object):
         Update the UserCommand convenience attributes
         """
 
+        self.mirrors_telescope = ioascii.read(self.cmds["SCOPE_MIRROR_LIST"])
+        self.mirrors_ao = ioascii.read(self.cmds["INST_MIRROR_AO_LIST"])
+        
+        i = np.where(self.mirrors_telescope["Mirror"] == "M1")[0][0]
+        self.diameter = self.mirrors_telescope["Outer"][i]
+        self.area = np.pi / 4 * (self.diameter**2 - \
+                                 self.mirrors_telescope["Inner"][i]**2)
+        
+        
         # Check for a filter curve file or a standard broadband name
         if self.cmds["INST_FILTER_TC"] in "BVRIzYJHKKs":
             fname = "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat"
@@ -513,10 +533,7 @@ class UserCommands(object):
                                       self.lam_bin_edges[:-1])
 
         self.exptime = self.cmds["OBS_EXPTIME"]
-        self.diameter = self.cmds["SCOPE_M1_DIAMETER_OUT"]
-        self.area = np.pi / 4 * (self.diameter**2 - \
-                                 self.cmds["SCOPE_M1_DIAMETER_IN"]**2)
-
+        
         self.cmds["SIM_N_MIRRORS"] = self.cmds["SCOPE_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_AO_MIRRORS"]
@@ -588,7 +605,7 @@ class UserCommands(object):
         # Now check to see if the PSF blurring is the controlling factor. If so,
         # take the lam_bin_edges for the PSF blurring
 
-        diam = self.cmds["SCOPE_M1_DIAMETER_OUT"]
+        diam = self.diameter
         d_ang = self.pix_res * shift_threshold
 
         lam_bin_edges_psf = [lam_min]
