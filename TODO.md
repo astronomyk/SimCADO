@@ -3,6 +3,7 @@
 
 ## URGENT THINGS
 1. **!!! DONE - Implement the INST_NUM_MIRRORS and add an INST_MIRROR_TC !!!**
+1. **!!! Add downloading extras to simcado main**
 1. **!!! Implement MAORY thermal background**
 1. **Check the I/O for all objects.**
 
