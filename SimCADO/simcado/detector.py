@@ -237,6 +237,7 @@ class Detector(object):
         self.tro     = self.cmds["OBS_NONDESTRUCT_TRO"]
         self._n_ph_atmo   = 0
         self._n_ph_mirror = 0
+        self._n_ph_ao = 0
         self.array = None        # defined in method
 
     def read_out(self, filename=None, to_disk=False, chips=None):
