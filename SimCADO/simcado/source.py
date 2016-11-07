@@ -309,10 +309,11 @@ class Source(object):
             image *= opt_train.cmds.area
 
             # 4.
-            image += (opt_train.n_ph_atmo + opt_train.n_ph_mirror)
+            image += (opt_train.n_ph_atmo + opt_train.n_ph_mirror + opt_train.n_ph_ao)
             ## TODO: protected members should not be set by another class (OC)
             detector._n_ph_atmo = opt_train.n_ph_atmo
             detector._n_ph_mirror = opt_train.n_ph_mirror
+            detector._n_ph_ao = opt_train.n_ph_ao
             # 5.
             self.project_onto_chip(image, detector.chips[chip_i])
 
