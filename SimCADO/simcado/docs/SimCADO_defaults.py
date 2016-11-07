@@ -1,3 +1,7 @@
+"""
+A code snippet to generate the Data Listings document
+"""
+
 import os
 import matplotlib.pyplot as plt
 import openpyxl
