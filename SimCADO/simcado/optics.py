@@ -77,20 +77,28 @@ class OpticalTrain(object):
         [um] resolution between
     - psf_size : int
         [pixels] The width of a PSF
+    - tc_ao : TransmissionCurve
+        [0..1]
     - tc_mirror : TransmissionCurve
         [0..1]
     - tc_atmo : TransmissionCurve
         [0..1]
     - tc_source : TransmissionCurve
         [0..1]
+    - ec_ao : EmissionCurve
+        [ph/s/voxel]
     - ec_mirror : EmissionCurve
         [ph/s/voxel]
     - ec_atmo : EmissionCurve
+        [ph/s/voxel]
+    - ph_ao : EmissionCurve
         [ph/s/voxel]
     - ph_mirror : EmissionCurve
         [ph/s/voxel]
     - ph_atmo : EmissionCurve
         [ph/s/voxel]
+    - n_ph_ao : float
+        [ph/s]
     - n_ph_mirror : float
         [ph/s]
     - n_ph_atmo : float
@@ -157,27 +165,63 @@ class OpticalTrain(object):
         if cmds is not None:
             self.cmds.update(cmds)
 
-        ############## MIRROR PHOTON PATH #########################
+
+        ############## AO INSTRUMENT PHOTONS #########################    
         if self.cmds.verbose:
-            print("Generating mirror emission photons")
+            print("Generating AO module mirror emission photons")
+
+        # get the total area of mirrors in the telescope
+        # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
+        mirr_list = self.cmds.mirrors_ao
+        scope_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
+                                        mirr_list["Inner"]**2)
+
+        # Make the transmission curve for the blackbody photons from the mirror
+        self.tc_ao = self._gen_master_tc(preset="ao")
+        self.ec_ao = sc.BlackbodyCurve(lam     = self.tc_ao.lam,
+                                       temp    = self.cmds["INST_AO_TEMPERATURE"],
+                                       pix_res = self.cmds.pix_res,
+                                       area    = scope_area)
+
+        if self.cmds["INST_USE_AO_MIRROR_BG"].lower() == "yes":
+            self.ph_ao = self.ec_ao * self.tc_ao
+            self.n_ph_ao = self.ph_ao.photons_in_range(self.lam_bin_edges[0],
+                                                       self.lam_bin_edges[-1])
+        else:
+            self.ec_ao = None
+            self.ph_ao = None
+            self.n_ph_ao = 0.
+
+
+            
+        ############## TELESCOPE PHOTONS #########################
+        if self.cmds.verbose:
+            print("Generating telescope mirror emission photons")
+
+        # get the total area of mirrors in the telescope
+        # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
+        mirr_list = self.cmds.mirrors_telescope
+        scope_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
+                                        mirr_list["Inner"]**2)
+
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
-        self.ec_mirror = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
-                                           temp=self.cmds["SCOPE_M1_TEMP"],
-                                           pix_res=self.cmds.pix_res,
-                                           area=self.cmds.area)
-
+        self.ec_mirror = sc.BlackbodyCurve(lam     = self.tc_mirror.lam,
+                                           temp    = self.cmds["SCOPE_TEMP"],
+                                           pix_res = self.cmds.pix_res,
+                                           area    = scope_area)
 
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
             self.ph_mirror = self.ec_mirror * self.tc_mirror
             self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
                                                                self.lam_bin_edges[-1])
         else:
+            self.ec_mirror = None
             self.ph_mirror = None
             self.n_ph_mirror = 0.
 
 
-        ############## ATMOSPHERE PHOTON PATH #########################
+        ############## ATMOSPHERIC PHOTONS #########################
         if self.cmds.verbose:
             print("Generating atmospheric emission photons")
         # Make the spectral curves for the atmospheric background photons
@@ -198,14 +242,15 @@ class OpticalTrain(object):
                 else:
                     filt = self.cmds["INST_FILTER_TC"]
 
-                if self.cmds["ATMO_BG_MAGNITUDE"] == "default":
-                    path = os.path.join(__pkg_dir__, "data", "EC_sky_magnitude.dat")
-                    self.cmds["ATMO_BG_MAGNITUDE"] = ioascii.read(path)[filt][0]
-
                 if filt not in "BVRIzYJHKKs":
                     raise ValueError("""Only broadband filters (BVRIzYJHKKs)
                       can be used with keyword ATMO_BG_MAGNITUDE. Please provide
                       a filename for ATMO_EC, or write ATMO_EC  default""")
+
+                if self.cmds["ATMO_BG_MAGNITUDE"] == "default":
+                    path = os.path.join(__pkg_dir__, "data", "EC_sky_magnitude.dat")
+                    self.cmds["ATMO_BG_MAGNITUDE"] = ioascii.read(path)[filt][0]
+
 
                 from simcado import source
                 ph_zero = source.zero_magnitude_photon_flux(filt)
@@ -218,15 +263,14 @@ class OpticalTrain(object):
 
                 self.n_ph_atmo = ph_zero * factor
 
-
         else:
             self.ec_atmo = None
             self.ph_atmo = None
             self.n_ph_atmo = 0.
 
-        self.n_ph_bg = self.n_ph_atmo + self.n_ph_mirror
+        self.n_ph_bg = self.n_ph_atmo + self.n_ph_mirror +  self.n_ph_ao
 
-        ############## SOURCE PHOTON PATH #########################
+        ############## SOURCE PHOTONS #########################
         if self.cmds.verbose:
             print("Generating optical path for source photons")
         # Make the transmission curve and PSF for the source photons
@@ -277,27 +321,35 @@ class OpticalTrain(object):
                 - 'source' includes all the elements seen by source photons
                 - 'atmosphere' includes surfaces seen by the atmospheric BG
                 - 'mirror' includes surfaces seen by the M1 blackbody photons
+                - 'ao' inludes surfaces seen by the AO module blackbody photons
         """
 
         if tc_keywords is None:
             if preset is not None:
-                base = ['SCOPE_M1_TC']       * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1) + \
-                       ['INST_MIRROR_AO_TC'] * (int(self.cmds['INST_NUM_AO_MIRRORS'])) + \
+                base = ['INST_MIRROR_AO_TC'] * (int(self.cmds['INST_NUM_AO_MIRRORS']) - 1) + \
+                       ['INST_ENTR_WINDOW_TC'] * int(self.cmds['INST_ENTR_NUM_SURFACES']) + \
+                       ['INST_DICHROIC_TC']  * int(self.cmds['INST_DICHROIC_NUM_SURFACES']) + \
                        ['INST_MIRROR_TC']    * (int(self.cmds['INST_NUM_MIRRORS'])) + \
                        ['INST_ADC_TC']       * int(self.cmds['INST_ADC_NUM_SURFACES']) + \
-                       ['INST_DICHROIC_TC']  * int(self.cmds['INST_DICHROIC_NUM_SURFACES']) + \
-                       ['INST_ENTR_WINDOW_TC'] * int(self.cmds['INST_ENTR_NUM_SURFACES']) + \
                        ['INST_PUPIL_TC']     * int(self.cmds['INST_PUPIL_NUM_SURFACES']) + \
                        ['INST_FILTER_TC'] + \
+                       ['INST_SURFACE_FACTOR'] + \
                        ['FPA_QE']
-                if preset == "source":
-                    tc_keywords = ['ATMO_TC'] + ['SCOPE_M1_TC'] + base
-                if preset == "atmosphere":
-                    tc_keywords = ['SCOPE_M1_TC'] + base
-                if preset == "mirror":
+                
+                ao =   ['INST_MIRROR_AO_TC'] + ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1)
+                
+                
+                if preset == "ao":
                     tc_keywords = base
+                if preset == "mirror":
+                    tc_keywords = base + ao
+                if preset == "atmosphere":
+                    tc_keywords = base + ao + ['SCOPE_M1_TC']
+                if preset == "source":
+                    tc_keywords = base + ao + ['SCOPE_M1_TC', 'ATMO_TC']
+                
             else:
-                warnings.warn("""
+                raise ValueError("""
                 No presets or keywords passed to gen_master_tc().
                 Setting self.tc_master = sc.UnityCurve()""")
                 self.tc_master = sc.UnityCurve()
@@ -351,11 +403,11 @@ class OpticalTrain(object):
         if self.cmds["SCOPE_PSF_FILE"] is not None and not \
                                     os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
             warnings.warn("There is no PSF file under " + self.cmds["SCOPE_PSF_FILE"])
-                            
-        
+
+
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-                                
+
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
             if psf_m1[0].pix_res != self.pix_res:
@@ -371,12 +423,11 @@ class OpticalTrain(object):
                 psf_m1 = psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
 
         else:
-            m1_diam = self.cmds["SCOPE_M1_DIAMETER_OUT"]
             ao_eff = self.cmds["SCOPE_AO_EFFECTIVENESS"]
 
             # Get a Diffraction limited PSF
             fwhm = (1.22*u.rad * self.lam_bin_centers * u.um / \
-                                            (m1_diam * u.m)).to(u.arcsec).value
+                                (self.cmds.diameter * u.m)).to(u.arcsec).value
             if psf_type == "Moffat":
                 psf_m1 = psf.MoffatPSFCube(self.lam_bin_centers,
                                            fwhm=fwhm,
