@@ -29,7 +29,7 @@ Other options include using the POPPY PSF simulator from the JWST to make PSFs o
 
 `INST_ADC_TC  = data/TC_ADC.dat`          Source: Best guess, updated on 02.11.2016, **REAL DATA NEEDED**
 
-![../img/TC_ADC.dat.png](../img/TC_ADC.dat.png) 
+![./images/TC_ADC.dat.png](./images/TC_ADC.dat.png) 
 
 **Description:** The number of surfaces in the ADC is set to 8. A constant transmission curve of 0.98 is assumed for each of these surfaces, thus the total throughput of a perfectly functioning ADC is `0.98^8 = 0.85` over the wavelength range 0.5-3.0um
 
@@ -57,7 +57,7 @@ Similar to the ADC, SimCADO assumes the derotator is perfect. If the performance
 
 `INST_MIRROR_TC = data/TC_mirror_mgf2agal.dat`          Source: ESO E-ELT technical database, updated on 02.11.2016, **REAL DATA NEEDED**
 
-![../img/TC_mirror_mgf2agal.dat.png](../img/TC_mirror_mgf2agal.dat.png) 
+![./images/TC_mirror_mgf2agal.dat.png](./images/TC_mirror_mgf2agal.dat.png) 
 
 **Description:** For Wide-field (4mas) mode, 11 mirrors are in the optical train. For Zoom (1.5mas) mode, 13 mirrors are used. 
 
@@ -69,7 +69,7 @@ The default mirror coating is currently the same as the E-ELTs MgF2 coating with
 
 `INST_FILTER_TC = data/TC_filter_K.dat`          Source: ESO E-ELT technical database, updated on 02.11.2016
 
-![../img/TC_filter_K.dat.png](../img/TC_filter_K.dat.png) 
+![./images/TC_filter_K.dat.png](./images/TC_filter_K.dat.png) 
 
 **Description:** The transmission curves for filters are for the filter as a whole unit. Individual surface transmission curves (i.e. 2 per filter) are not taken into account.
 
@@ -94,7 +94,7 @@ More filters can be added upon request
 
 `INST_ENTR_WINDOW_TC = data/TC_window.dat`          Source: Best guess, updated on 02.11.2016
 
-![../img/TC_window.dat.png](../img/TC_window.dat.png) 
+![./images/TC_window.dat.png](./images/TC_window.dat.png) 
 
 ------ 
 
@@ -110,7 +110,7 @@ More filters can be added upon request
 
 `INST_DICHROIC_TC = data/TC_dichroic.dat`          Source: Best guess, updated on 02.11.2016
 
-![../img/TC_dichroic.dat.png](../img/TC_dichroic.dat.png) 
+![./images/TC_dichroic.dat.png](./images/TC_dichroic.dat.png) 
 
 **Description:** The question is if these are really necessary in the simulations, seeing as they only affect a small area of the pupil
 
@@ -132,7 +132,7 @@ More filters can be added upon request
 
 `FPA_QE = data/TC_detector_H4RG.dat`          
 
-![../img/TC_detector_H4RG.dat.png](../img/TC_detector_H4RG.dat.png) 
+![./images/TC_detector_H4RG.dat.png](./images/TC_detector_H4RG.dat.png) 
 
 ------ 
 
@@ -265,7 +265,7 @@ Here we also assume 8x 1m class mirrors, held at ambient temperature emitting as
 
 `SCOPE_M1_TC = data/TC_mirror_mgf2agal.dat`          Source: ESO E-ELT optics webpage, updated on 02.11.2016
 
-![../img/TC_mirror_mgf2agal.dat.png](../img/TC_mirror_mgf2agal.dat.png) 
+![./images/TC_mirror_mgf2agal.dat.png](./images/TC_mirror_mgf2agal.dat.png) 
 
 `SCOPE_M1_TEMP = 0 deg Celcius`          
 
