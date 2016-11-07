@@ -4,7 +4,8 @@ import openpyxl
 from astropy.io import ascii
 
 home_dir = "./"
-plot_dir = "./img/"
+plot_dir = "./source/images/"
+site_plot_dir = "./images/"
 data_dir = "../data/"
 
 data = openpyxl.load_workbook(home_dir + "SimCADO_defaults.xlsx").worksheets[0]
@@ -53,10 +54,11 @@ while data.rows[j][0].value != "EOF":
             plt.title(fname + "\n" + str(data.rows[j][6].value))
             plt.tight_layout()
             
-            gname = os.path.join(plot_dir, fname+".png")
-            plt.savefig(format="png", filename=gname)
+            hname = os.path.join(plot_dir, fname+".png")
+            plt.savefig(format="png", filename=hname)
 
-            text += "![." + gname + "](." + gname + ") \n\n"
+            gname = os.path.join(site_plot_dir, fname+".png")
+            text += "![" + gname + "](" + gname + ") \n\n"
     
     # Description of source
     if data.rows[j][7].value is not None:
