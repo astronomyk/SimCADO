@@ -140,7 +140,8 @@ class Detector(object):
     ----------
     cmds : UserCommands
         Commands for how to model the Detector
-
+    small_fov : bool, optional
+        Default is True. Uses a single 1024x1024 window at the centre of the FoV
 
     Attributes
     ----------
@@ -206,7 +207,7 @@ class Detector(object):
     """
 
 
-    def __init__(self, cmds, small_fov=False):
+    def __init__(self, cmds, small_fov=True):
         # 1. Read in the chip layout
         # 2. Generate chip objects
         # 3. Check if a noise file has been given
@@ -267,7 +268,7 @@ class Detector(object):
 
         Returns
         -------
-        `if output == True:`
+        `if to_disk == False:`
             astropy.io.fits.HDUList
         `else:`
             <filename>.fits file
@@ -386,7 +387,6 @@ class Detector(object):
             return hdulist
         else:
             hdulist.writeto(filename, clobber=True, checksum=True)
-
 
     def open(self, filename):
         """
@@ -965,6 +965,29 @@ class Chip(object):
         # return values are [ph/pixel]
         return slope * dit
 
+    
+    def _read_out_poisson(self, image, dit, ndit):
+        """
+        <One-line summary goes here>
+
+        Parameters
+        ----------
+        x  :  type [, optional [, {set values} ]]
+            Description of `x`. [(Default value)]
+
+        Returns
+        -------
+
+        Examples
+        --------
+        """
+        image2 = image * dit
+        image2[image2 > 2.14E9] = 2.14E9
+        cube = np.random.poisson(lam=image2 * dit, size=(ndit, 
+                                                         image2.shape[0], 
+                                                         image2.shape[1]))     
+        return image.astype(np.float32)
+        
     def _read_out_fast(self, image, dit):
         """
         <One-line summary goes here>
