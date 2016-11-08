@@ -406,7 +406,7 @@ class UserCommands(object):
 
         if self.cmds["SCOPE_PSF_FILE"] == "default":
             self.cmds["SCOPE_PSF_FILE"] = \
-                os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
+                os.path.join(self.pkg_dir, "data", "PSF_LTAO.fits")
 
         if self.cmds["SCOPE_M1_TC"] == "default":
             self.cmds["SCOPE_M1_TC"] = \
