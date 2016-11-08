@@ -965,14 +965,14 @@ class Chip(object):
         # return values are [ph/pixel]
         return slope * dit
 
-    
+
     def _read_out_poisson(self, image, dit, ndit):
         """
         <One-line summary goes here>
 
         Parameters
         ----------
-        x  :  type [, optional [, {set values} ]]
+        x : type [, optional [, {set values} ]]
             Description of `x`. [(Default value)]
 
         Returns
@@ -983,11 +983,11 @@ class Chip(object):
         """
         image2 = image * dit
         image2[image2 > 2.14E9] = 2.14E9
-        cube = np.random.poisson(lam=image2 * dit, size=(ndit, 
-                                                         image2.shape[0], 
-                                                         image2.shape[1]))     
+        cube = np.random.poisson(lam=image2 * dit, size=(ndit,
+                                                         image2.shape[0],
+                                                         image2.shape[1]))
         return image.astype(np.float32)
-        
+
     def _read_out_fast(self, image, dit):
         """
         <One-line summary goes here>
@@ -1178,9 +1178,9 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     naxis1, naxis2 = layout["x_len"][0], layout["y_len"][0]
 
     #if "Windows" in os.environ.get('OS',''):
-    multicore = False
+    #multicore = False
 
-    if __name__ == "__main__" and multicore:
+    if __name__ == "__main__":# and multicore:
         pool = mp.Pool(processes=mp.cpu_count()-1)
         frames = pool.map(_generate_hxrg_noise, (naxis1, naxis2, cmds))
         hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
@@ -1199,7 +1199,7 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
         hdu.writeto(filename, clobber=True, checksum=True)
 
 
-def install_noise_cube(n=25):
+def install_noise_cube(n=16):
     """
     Install a noise cube in the package directory
 
@@ -1210,7 +1210,7 @@ def install_noise_cube(n=25):
 
     Warning
     -------
-    Each layer is ~64MB, default is 25 layers (1.6GB). If you have less than
+    Each layer is ~64MB, default is 16 layers (~1GB). If you have less than
     2 GB on the drive where your Python installation is. Be careful!
     """
 
@@ -1220,6 +1220,3 @@ def install_noise_cube(n=25):
     hdu.writeto(filename, clobber=True, checksum=True)
     print("Saved noise cube with", n, "layers to the package directory:")
     print(filename)
-
-class bloedsinn:
-    pass
