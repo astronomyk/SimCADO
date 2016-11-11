@@ -6,11 +6,17 @@ SimCADO is a python package designed to simulate the effects of the Atmosphere, 
 
 
 ### Downloading and Installing
+For more information, see the [Downloads](Download.md) section
+
 The quick way:
 
-    $ pip install http://homepage.univie.ac.at/kieran.leschinski/SimCADO/SimCADO-0.2dev.zip
+    $ pip install --user http://homepage.univie.ac.at/kieran.leschinski/SimCADO/SimCADO-0.2dev.zip
 
-For slightly more options, see the [Downloads](Download.md) section
+The **first time** in python 
+
+	>>> import simcado
+	>>> simcado.get_extras()
+	>>> simcado.install_noise_cube()
 
 
 ### Reference Material
@@ -24,20 +30,30 @@ The easiest way to run a simulation is to create, or load, a Source object and t
 
 To begin, we will import the simcado module (assuming it is already installed).
 
-    >>> import simcado as sim
+    >>> import simcado
 
 At the very least, we need to create a `Source` object which contains both spatial and spectral information on our object of interest. Here we use the built-in command `.source.source_1E4_Msun_cluster()` to create a `Source`-object for a 10000-Msun stellar cluster. (See [Creating Sources](examples/Source.md) for more information).
 
-    >>> src = sim.source.source_1E4_Msun_cluster()
+    >>> src = simcado.source.source_1E4_Msun_cluster()
 
 We now pass the `source` object through SimCADO. This is as easy as calling `.run()`. If we specify a `filename`, SimCADO will write the output to disk in the form of a FITS file. If no `filename` is given, then SimCADO returns an `astropy.io.fits` object to the console/notebook.
 
-    >>> sim.run(src, filename="my_first_sim.fits")
+    >>> simcado.run(src, filename="my_first_sim.fits")
 
+The `sim.run()` also takes any [configuration keywords](Keywords.md) as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
+
+    >>> simcado.run(src, filename="my_first_sim.fits", OBS_EXPTIME=600, OBS_NDIT=6)
+    
 That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the [API](API/_build/index.html) documentation
 
 ## SimCADO building blocks
 For a brief explanation of how SimCADO works and which classes are relevant, please see either the [Getting Started](GettingStarted.md) or [SimCADO in depth](deep_stuff/SimCADO.md) section.
+
+## Bugs and Issues
+
+We freely admit that there may still be several bugs that we have not found. If you come across an buggy part of SimCADO, *please please* tell us. We can't make SimCADO better if we don't know about things.
+
+The preferable option is to open an issue on our Github page: [gastronomyk/SimCADO/issues](https://github.com/gastronomyk/SimCADO/issues), or you can contact either one of us directly.
 
 ## Contact
 

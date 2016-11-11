@@ -1,10 +1,11 @@
-# List of Keywords for Controlling SimCADO
 
+# List of Keywords for Controlling SimCADO
 ## Parameters regarding the simulated "observation"
 
 ```
-Keyword				Default Value	  [units] Explanation
+Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
+
 OBS_DATE                0           # [dd/mm/yyyy] Date of the observation [not yet implemented]
 OBS_TIME                0           # [hh:mm:ss] Time of the observation [not yet implemented]
 OBS_RA                  0           # [deg] RA of the object [not yet implemented]
@@ -19,11 +20,13 @@ OBS_EXPTIME             60          # [sec] simulated exposure time
 OBS_NDIT                1           # [#] number of exposures taken
 OBS_NONDESTRUCT_TRO     2.6         # [sec] time between non-destructive readouts in the detector
 OBS_REMOVE_CONST_BG     yes         # remove the minimum background value
+OBS_READ_MODE           single      # [single, fowler, ramp] Only single is implemented at the moment
+OBS_SAVE_ALL_FRAMES     no          # yes/no to saving all DITs in an NDIT sequence
 
 OBS_INPUT_SOURCE_PATH   none        # Path to input Source FITS file
 OBS_FITS_EXT            0           # the extension number where the useful data cube is
 
-OBS_OUTPUT_DIR          default     # Path to save output in
+OBS_OUTPUT_DIR          default     # ["default"] Path to save output in. Default is "./"
 
 OBS_OUT_SIGNAL          yes         # yes/no to saving the signal component of the observation
 OBS_OUT_NOISE           yes         # yes/no to saving the noise component of the observation
@@ -31,11 +34,12 @@ OBS_OUT_READOUT         yes         # yes/no to saving the readout component of 
 OBS_OUT_REDUCED         yes         # yes/no to saving a background subtracted readout image
 ```
 
-
 ## Parameters relating to the simulation
+
 ```
-Keyword				Default Value	  [units] Explanation
+Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
+
 SIM_DETECTOR_PIX_SCALE  0.004       # [arcsec] plate scale of the detector
 SIM_OVERSAMPLING        1           # The factor of oversampling inside the simulation
 SIM_PIXEL_THRESHOLD     1           # photons per pixel summed over the wavelength range. Values less than this are assumed to be zero
@@ -58,24 +62,24 @@ SIM_SIM_MESSAGE_LEVEL   3           # the amount of information printed [5-every
 
 SIM_OPT_TRAIN_IN_PATH   none        # Options for saving and reusing optical trains. If "none": "./"
 SIM_OPT_TRAIN_OUT_PATH  none        # Options for saving and reusing optical trains. If "none": "./"
-SIM_DETECTOR_IN_PATH   none        # Options for saving and reusing detector objects. If "none": "./"
-SIM_DETECTOR_OUT_PATH  none        # Options for saving and reusing detector objects. If "none": "./"
+SIM_DETECTOR_IN_PATH    none        # Options for saving and reusing detector objects. If "none": "./"
+SIM_DETECTOR_OUT_PATH   none        # Options for saving and reusing detector objects. If "none": "./"
 
 SIM_MAX_RAM_CHUNK_GB   2            # Maximum amount of RAM to be taken up by one a single object
 SIM_SPEED              10           # 10 = Fast, but skips on details, 1 = Slow, but does everything as accurately as possible
-SIM_NUM_CPUS           -1           # Number of CPUs to use for multicore computations. -1 = all idyl cores
+SIM_NUM_CPUS           -1           # Number of CPUs to use for multicore computations. -1 = all idle cores
 ```
-
 
 ## General atmospheric parameters
 
 ```
-Keyword				Default Value	  [units] Explanation
+Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
-ATMO_USE_ATMO_BG       yes          # [yes/no] 
 
-ATMO_TC                 default     # [filename/default] for atmospheric transmission curve. If "default": <pkg_dir>/data/skytable.fits
-ATMO_EC                 default     # [filename/default/none] for atmospheric emission curve. If "default": <pkg_dir>/data/skytable.fits
+ATMO_USE_ATMO_BG        yes         # [yes/no] 
+
+ATMO_TC                 default     # [<filename>, "default"] for atmospheric transmission curve. If "default": <pkg_dir>/data/skytable.fits
+ATMO_EC                 default     # [<filename>, "default", "none"] for atmospheric emission curve. If "default": <pkg_dir>/data/skytable.fits
 # If ATMO_EC is "none": set ATMO_BG_MAGNITUDE for the simulation filter. 
 ATMO_BG_MAGNITUDE       default     # [ph/s] background photons for the bandpass if ATMO_EC = None
 
@@ -84,17 +88,18 @@ ATMO_PRESSURE           750         # millibar
 ATMO_REL_HUMIDITY       60          # %
 ```
 
+## Parameters regarding the telescope
 
-## General Telescope parameters
 ```
-Keyword				Default Value	  [units] Explanation
+Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
+
 SCOPE_ALTITUDE          3060        # meters above sea level
 SCOPE_LATITUDE          -24.589167  # decimal degrees
 SCOPE_LONGITUDE         -70.192222  # decimal degrees
 
-SCOPE_PSF_FILE          default      # [filename/default] import a PSF from a file, if none "default" is <pkg_dir>/data/PSF_POPPY.fits
-SCOPE_STREHL_RATIO      1         # [0..1] defines the strength of the seeing halo if SCOPE_PSF_FILE is "default"
+SCOPE_PSF_FILE          default     # ["ltao" (default), <filename>, "scao", "mcao", "poppy"] import a PSF from a file. Default is <pkg_dir>/data/PSF_LTAO.fits
+SCOPE_STREHL_RATIO      1           # [0..1] defines the strength of the seeing halo if SCOPE_PSF_FILE is "default"
 SCOPE_AO_EFFECTIVENESS  100         # [%] percentage of seeing PSF corrected by AO - 100% = diff limited, 0% = 0.8" seeing
 SCOPE_JITTER_FWHM       0.001       # [arcsec] gaussian telescope jitter (wind, tracking)
 SCOPE_DRIFT_DISTANCE    0           # [arcsec/sec] the drift in tracking by the telescope
@@ -102,50 +107,58 @@ SCOPE_DRIFT_PROFILE     linear      # [linear, gaussian] the drift profile. If l
 
 SCOPE_USE_MIRROR_BG     yes         # [yes/no]
 
-# Similar details can be specified for each individual mirror by copying these
-# keywords and replacing M1 with Mx. Properties not explicitly specified are
-# inherited from M1.
-SCOPE_NUM_MIRRORS       6           # number of reflecting surfaces
-SCOPE_M1_DIAMETER_OUT   37.3        # meters
-SCOPE_M1_DIAMETER_IN    11.1        # meters
-SCOPE_M1_TC             default        # Mirror reflectance curve. Default is <pkg_dir>/data/TC_mirror_mgf2agal.dat
-SCOPE_M1_TEMP           0           # deg Celsius - temperature of mirror
-SCOPE_M2_DIAMETER_OUT   4.2         # meters
-SCOPE_M2_DIAMETER_IN    0.          # meters
-SCOPE_M3_DIAMETER_OUT   3.8         # meters
-SCOPE_M3_DIAMETER_IN    0.          # meters
+SCOPE_NUM_MIRRORS       5           # number of reflecting surfaces
+SCOPE_TEMP              0           # deg Celsius - temperature of mirror
+SCOPE_M1_TC             default     # [<filename>, "default"] Mirror reflectance curve. Default is <pkg_dir>/data/TC_mirror_mgf2agal.dat
+SCOPE_MIRROR_LIST       default     # [<filename>, "default"] List of mirror sizes. Default is <pkg_dir>/data/EC_mirrors_scope.tbl
 ```
-
 
 ## Parameters regarding the instrument
+
 ```
-Keyword				Default Value	  [units] Explanation
+Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
+
 INST_TEMPERATURE        -190        # deg Celsius - inside temp of instrument
 
-INST_ENTR_NUM_SURFACES  2           # number of surfaces on the entrance window
-INST_ENTR_WINDOW_TC     default     # If "default": <pkg_dir>/data/TC_window.dat
-INST_DICHROIC_TC        default
-INST_FILTER_TC          K          # specify a standard broadband filter of a file path to a transmission curve. Accepted broadband filters: I z Y J H Ks K
+INST_ENTR_NUM_SURFACES  4           # number of surfaces on the entrance window
+INST_ENTR_WINDOW_TC     default     # [<filename>, "default"] If "default": <pkg_dir>/data/TC_window.dat --> transmission = 0.95
 
-INST_NUM_MIRRORS        8           # number of reflecting surfaces in MICADO
-INST_NUM_EXT_MIRRORS    8           # number of reflecting surfaces between telescope and instrument (i.e. MAORY)
+INST_DICHROIC_NUM_SURFACES  2       # number of surfaces on the entrance window
+INST_DICHROIC_TC        default     # [<filename>, "default"]If "default": <pkg_dir>/data/TC_dichroic.dat --> transmission = 1
+
+INST_FILTER_TC          Ks          # [<filename>, string(filter name)] List acceptable filters with >>> simcado.optics.get_filter_set()
+
+INST_PUPIL_NUM_SURFACES 2           # number of surfaces on the pupil window
+INST_PUPIL_TC           default     # [<filename>, "default"] If "default": <pkg_dir>/data/TC_pupil.dat --> transmission = 1
+
+# MICADO, collimator 5x, wide-field 2x (zoom 4x), camera 4x
+INST_NUM_MIRRORS        11           # number of reflecting surfaces in MICADO
+INST_MIRROR_TC          default     # If "default", INST_MIRROR_TC = SCOPE_M1_TC
+
+INST_USE_AO_MIRROR_BG   yes         # [yes/no]
+INST_AO_TEMPERATURE     0           # deg Celsius - inside temp of AO module
+INST_NUM_AO_MIRRORS     7           # number of reflecting surfaces between telescope and instrument (i.e. MAORY)
+INST_MIRROR_AO_TC       default     # If "default", INST_MIRROR_AO_TC = SCOPE_M1_TC
+INST_MIRROR_AO_LIST     default     # If "default", INST_MIRROR_AO_LIST = <pkg_dir>/data/EC_mirrors_ao.tbl
 
 INST_ADC_PERFORMANCE    100         # [%] how well the ADC does its job
-INST_ADC_NUM_SURFACES   4           # number of surfaces in the ADC
-INST_ADC_TC             default     # transmission curve of the ADC. If "default": <pkg_dir>/data/
+INST_ADC_NUM_SURFACES   8           # number of surfaces in the ADC
+INST_ADC_TC             default     # transmission curve of the ADC. If "default": <pkg_dir>/data/TC_ADC.dat --> transmission = 0.98
 
 INST_DEROT_PERFORMANCE  100         # [%] how well the derotator derotates
 INST_DEROT_PROFILE      linear      # [linear, gaussian] the profile with which it does it's job
 
 INST_DISTORTION_MAP     none        # path to distortion map
+INST_SURFACE_FACTOR     default     # Effect of transmission due to surface roughness. If "default": <pkg_dir>/data/TC_surface.dat
 ```
-
 
 ## General detector parameters
+
 ```
-Keyword				Default Value	  [units] Explanation
+Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
+
 FPA_USE_NOISE           yes         # [yes/no]
 
 FPA_READOUT_MEDIAN      4           # e-/px
@@ -157,22 +170,23 @@ FPA_QE                  default     # if "default": <package_path>/data/TC_detec
 FPA_NOISE_PATH          default     # [default/generate/filename] if "generate": use NGHxRG to create a noise frame. If "default": <package_path>/data/FPA_noise.fits
 FPA_GAIN                1           # e- to ADU conversion
 FPA_WELL_DEPTH          1E5         # number of photons collectable before pixel is full
-FPA_LINEARITY_CURVE     none        #
+FPA_LINEARITY_CURVE     default     # ["none", "default"] If "default": <package_path>/data/FPA_linearity.dat
 
 FPA_PIXEL_MAP           none        # path to a FITS file with the pixel sensitivity map
-# if none
+# if FPA_PIXEL_MAP == none
 FPA_DEAD_PIXELS         1           # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
 FPA_DEAD_LINES          1           # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
 
-FPA_CHIP_LAYOUT         small       # [small/default/filename] description of the chip layout on the detector array. if "default": <pkg_dir>/data/FPA_chip_layout.dat
+FPA_CHIP_LAYOUT         small       # ["small", "centre", "wide", "zoom", "full", <filename>] description of the chip layout on the detector array. if "default": <pkg_dir>/data/FPA_chip_layout.dat
 ```
 
+## NXRG Noise Generator package parameters
 
-## HxRG Noise Generator package parameters
-SimCADO uses the python code developed by Bernhard Rauscher for the HAWAII 2RG detectors aboard the JWST. See Rauscher (2015) for a summary of what keqwords they mean ([http://arxiv.org/pdf/1509.06264.pdf]())
 ```
-Keyword				Default Value	  [units] Explanation
+Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
+# See Rauscher (2015) for details
+# http://arxiv.org/pdf/1509.06264.pdf
 
 HXRG_NUM_OUTPUTS        32          # Number of
 HXRG_NUM_ROW_OH         8           # Number of row overheads
@@ -181,5 +195,3 @@ HXRG_OUTPUT_PATH        none        # Path to save the detector noise
 HXRG_PEDESTAL           4           # Pedestal noise
 HXRG_CORR_PINK          3           # Correlated Pink noise
 HXRG_UNCORR_PINK        1           # Uncorrelated Pink noise
-HXRG_ALT_COL_NOISE      0.5         # Alternating Column noise
-```

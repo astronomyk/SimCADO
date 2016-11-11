@@ -1,3 +1,3 @@
 # The SimCADO API
 
-Coming soon
+Currently the API is found [here](API/_build/index)

@@ -21,13 +21,13 @@ For a description of the `Source` object, and the `source` module, see [How SimC
 
 ### Loading a pre-existing `Source` object
 
-To load in a pre-existing `Source`, specify the keyword `filename=` when initialising the `Source` object.
+To load in a pre-existing `Source` (i.e. one that you saved earlier), specify the keyword `filename=` when initialising the `Source` object.
 
-```
->>> import simcado as sim
->>> my_src = sim.Source(filename="star_grid.fits")
-```
 
+    >>> import simcado as sim
+    >>> my_src = sim.Source(filename="star_grid.fits")
+
+    
 `Source`-FITS files have a very specific file format, so it's best to only import files that were generated directly from other `Source` objects. It's a chicken/egg scenario, which is why the next section deals with creating `Source` objects in memory. For a description of the file format for saved `Source` objects, see ["File Format of saved Source objects"](deep_stuff/SimCADO/#source).
 
 ### Making a `Source` with SimCADO's in-built functions
@@ -37,7 +37,6 @@ The `simcado.source` module provides an ever-increasing series of functions to c
 * `.empty_sky()`
 * `.star(mag, filter_name="K", ...)`
 * `.stars(mags, x, y, ...)`
-* `.star_grid(n, mag_min, mag_max, ...)`
 * `.source_1E4_Msun_cluster(distance=50000, ...)`
 * `.source_from_image(images, lam, spectra, pix_res, ...)`
 
@@ -45,101 +44,121 @@ Two useful functions here are `.stars()` and `.source_from_image()`
 
 * `stars()` takes a list of magnitudes (and optionally spectral types) and positions for a common broad-band filter (default is "K") and generates a `Source` object with those stars in the field.
 
-```
->>> x, y = [-2.5, 0.7, 16.3], [3.3, -0.2, 25.1]
->>> mags, spec_types = [25,21,28], ["K0V", "A0III", "G2V"]
->>> filt = "H"
->>>
->>> my_src = sim.source.stars(mags=mags, x=x, y=y, filter_name=filt, spec_types=spec_types)
-```
 
+    >>> x, y = [-2.5, 0.7, 16.3], [3.3, -0.2, 25.1]
+    >>> mags, spec_types = [25,21,28], ["K0V", "A0III", "G2V"]
+    >>> filt = "H"
+    >>>
+    >>> my_src = sim.source.stars(mags=mags, x=x, y=y, filter_name=filt, spec_types=spec_types)
+
+    
 * `source_from_image()` creates a `Source` based on a 2D numpy array provided by the user. The 2D array can come from anywhere, e.g. the data from a FITS image, a BITMAP image, from memory, etc. Alongside the image, the user must provide a spectrum (plus a vector with the bin centres) and the pixel field of view (e.g. 0.004 arcsec for MICADO). SimCADO then extracts all pixels from the image which have values above `flux_threshold` (defualt is 0) and saves these pixel coordinates. The spectrum provided is then connected to these pixel, and scaled by the pixel value.
 
-```
->>> # ... Create an image - a circle with a radius of 20 pixels on a grid 200 pixel wide
->>> XX = np.array([np.arange(-100,101)]*201) 
->>> im = np.sqrt(XX**2 + XX.transpose()**2)
->>> im[im>20] = 0; im[im>0] = 1
->>>
->>> # ... Pull in the spectrum for a G2V star with K=20
->>> lam, spec = simcado.source.SED("G2V", filter_name="K", magnitude=20)
->>>
->>> # ... Make the source object
->>> my_src = sim.source.source_from_image(images=im, lam=lam, spectra=spec, pix_res=0.004)
-```
 
-`source_from_image()` can also take a list of images if different spectra are to be assigned to each image. An example of this maybe for galaxies. The older population might be represented by image with an ellipse on it, while the positions of the star forming regions are shown on a different image with random scattered blobs. In this case, both images can be passed in a list to `images` and the array passed to `spectra` must have dimensions (2,n) where n is the length of the spectra. **Note** the spectra must be on the same grid and be the same length.
+    >>> # ... Create an image - a circle with a radius of 20 pixels on a grid 200 pixel wide
+    >>> XX = np.array([np.arange(-100,101)]*201) 
+    >>> im = np.sqrt(XX**2 + XX.transpose()**2)
+    >>> im[im>20] = 0; im[im>0] = 1
+    >>>
+    >>> # ... Pull in the spectrum for a G2V star with K=20
+    >>> lam, spec = simcado.source.SED("G2V", filter_name="K", magnitude=20)
+    >>>
+    >>> # ... Make the source object
+    >>> my_src = sim.source.source_from_image(images=im, lam=lam, spectra=spec, pix_res=0.004)
 
 
-### Creating a `Source` object from scratch
-To create a `Source` object from scratch, we initialise the object by passing 5 (or 6) arrays. All the parameter names must be specified.
+SimCADO also provides a series of spectra for stars and galaxies, however these are meant as a guide to those who are just starting out. For serious work, the user is encouraged to provide their own spectra. More information on the in-built spectra can be found in the [Source Objects example](examples/Source) section.
 
-`
-sim.Source(lam=, spectra=, x=, y=, ref=, [weight=])
-`
-
-where: 
-+ `x, y` - [each a `numpy.ndarray`]. Coordinates for each point source in the image in units of [arcsec] from the focal plane centre
-
-+ `lam` - [`numpy.ndarray`]. An array with the centre of the wavelength bins in [um] for each unique spectrum
-
-+ `spectra` - [`numpy.ndarray`]. An (n, m) array holding n spectra, each with m values. Default units are [ph/s]
-Note - `lam` and `spectra` should use a constant bin width. Variable bin widths leads to unpredictable results.
-
-+ `ref` - [`numpy.ndarray`]. An array to connect the point source at `x[i]`, `y[i]` to a unique spectrum at `spectra[j]`, i.e. `ref[i] = j`
-
-Optional keywords can be specified:
-
-+ `weight` - [`numpy.ndarray`], optional. If two sources share the same spectrum, but are at different distances or have different luminosities a scaling factor can be specified to the spectrum when applied to each specific point source.
-+ `units` [default `"ph/s"`] is the units for the spectra, i.e. n phontons per second per spectral bin. The size of the spectral bins is resolution of the `.lam` array.
-
-
-### Combining two (or more) `Source` objects
-`Source` objects can be created in different ways, but the underlying table-structure is the same. Therefore adding `Source` objects together means simply combining tables. The mathematical operator `+` can be used to do this:
-
-```
->>> # ... create a A0V star at (0,0) and a G2V star at (5,-5)
->>> star_A0V = sim.source.star(20, position=(0,0), spec_type="A0V")
->>> star_G2V = sim.source.star(20, position=(5,-5), spec_type="G2V")
->>> 
->>> src_combi = star_A0V + star_G2V
->>> 
->>> print(src_combi.x, src_combi.y)
-[0 5] [ 0 -5]
-```
-
-By adding different `Source` objects together, it is possible to build up complex objects that will be representative of the observed sky, e.g. old + new galaxy stellar population + gas emission + foreground stars
-
-See [examples](examples/Source) for how to use the `*` and `-` operators with a `Source` object
-
-
-### Saving a `Source` object to disk
-The `Source` object is saved as a FITS file with two extensions. See [How SimCADO works](in_depth/SimCADO) for more on the file structure.
-
-```
->>> src_combi.write("my_src.fits")
-```
-The file can be read in at a later time by specifying `filename=` when initialising a `Source` object - as stated above
-
-```
->>> my_src = sim.Source(filename="my_src.fits")
-```
-
-
-### In-built `Source` object for a 10<sup>4</sup> M<sub>O</sub> cluster
-As a test object, SimCADO provides the function, with all distances in parsecs:
-
-`sim.source.source_1E4_Msun_cluster(distance=50000, half_light_radius=1)`
-
-
-## OpticalTrain
-## Detector
-## UserCommands
 
 ## Simulating with SimCADO
-## The quick, the dirty and the ugly
-### Creating `Source` objects
+### The quick, the dirty and the ugly
 
+As seen on the [home](Home) page, a simulation can be run using 3 lines of code:
+
+    
+    >>> import simcado
+    >>> src = simcado.Source(filename="my_source.fits")
+    >>> simcado.run(src, filename="my_image.fits")
+    
+    
+The `.run()` function is quite powerful. Many users may find that they don't need anything else to run the simulations they need. The full function call looks like this:
+
+
+    simcado.run(src, filename=None, 
+                mode="wide", detector_layout="small",  
+                cmds=None, opt_train=None, fpa=None, 
+                return_internals=False,
+                **kwargs)
+
+                
+Lets pull this function call apart in order of importance to the simulation:
+
+1. `src`: Obviously the more important aspect is the `Source` object. Without a `Source` these is nothing to observe
+1. `filename`: Where to save the output FITS file. If `None` is provided (or the parameter is ignored), the output is returned to the user. This comes in handy if you are working in a `Jupyter Notebook` and wand to play with the output data immediately. Or if you are scripting with SimCADO and don't want to be slowed down by writing all images to disk
+1. `mode` and `detector_layout`:  These two define the MICADO observing modes. Currently `mode` can be either `="wide"` (4mas/pixel) or `="zoom"` (1.5mas/pixel). The `detector_layout` can also be changed to speed up simulations of single objects. For example if the galaxy you're interested in is at z=5, you don't need to read out all 9 MICADO chips for each observation. In fact, a 1024x1024 window at the centre of the middle chip will probably be enough. Therefore SimCADO offers the following "layouts" for the detector - `"small", "wide", "zoom", "centre", "default"`. The default is `"small"`.
+
+    * `"small"`   - 1x 1k-detector centred in the FoV
+    * `"centre"`  - 1x 4k-detector centred in the FoV
+    * `"wide"`    - 9x 4k-detector as per MICADO wide field mode (4mas)
+    * `"zoom"`    - 9x 4k-detector as per MICADO zoom mode (1.5mas)
+    * `"default"` - depends on "mode" keyword. Full MICADO 9 chip detector array for either 4mas or 1.5mas modes
+
+1. `cmds, opt_train, fpa` are all parameters that allow you to provide custom built parts of the machinary. Say you have a set of commands saved from a previous simulation run which differ from the default values, then you can use these by passing a `UserCommands` object via the `cmd` parameter. The same goes for passing an custom `OpticalTrain` object to `opt_train` and a custom `Detector` object to `fpa`. For more information see the relevant examples sections - [`UserCommands` examples](examples/UserCommands), [`OpticalTrain` examples](examples/OpticalTrain), [`Detector` examples](examples/Detector).
+
+1. `return_internals` allows you to do the opposite of the previous three parameters. If you would like to save the `UserCommands`, `Detector` and/or `OpticalTrain` from your simulation run, the by setting `return_internals=True`, SimCADO will return these along with the simulated imagery. **Note** that this only works if `filename=None`.    
+
+1. `**kwargs`: Although `kwargs` is the last parameter, it actually allows you to control every aspect of the simulation. `kwargs` takes any keyword-value pair that exist in the SimCADO configuration file, and so you can control single aspects of the simulation by passing these keyword-value pairs to `.run()`. For example, you can increase the exposure time of the image by passing 
+
+
+    >>> simcado.run(src, ... , OBS_EXPTIME=600, INST_FILTER_TC="J", ...)
+
+
+A list of all the available keyword-value pairs can be found in the [Keywords section](Keywords) and a description of the default values can be found in the ["MICADO with SimCADO section"](SimCADO_defaults). 
+
+Alternatively you can dump a copy of the default parameters by calling `simcado.commands.dump_defaults()`.
+
+
+### Changing Filters
+The keyword `INST_FILTER_TC` allows you to supply either the name of a filter (i.e. "Ks", "PaBeta") or a path to an ASCII file containing a filter curve. `INST_FILTER_TC` can be passed to `.run()` just like any other SimCADO configuration keyword.
+
+
+    >>> simcado.run(src, INST_FILTER_TC="J")
+    >>> simcado.run(src, INST_FILTER_TC="path/to/my_filter_curve.txt")
+
+    
+SimCADO has some generic filters built in. These include all the regular NIR broadband filters (I, z, Y, J, H, K, Ks). There are also some narrow band filter. As the MICADO filter set is expected to change, we will not list the SimCADO filter set here. Instead the user can find out which filters are available by calling the  function (as of Nov 2016):
+
+
+    >>> print(sim.optics.get_filter_set())
+    ['B', 'BrGamma', 'CH4_169', 'CH4_227', 'FeII_166', 'H', 'H2O_204', 'H2_212', 'Hcont_158', 
+     'I', 'J', 'K', 'Ks', 'NH3_153', 'PaBeta', 'R', 'U', 'V', 'Y', 'z']
+
+
+If you'd like to use your own filter curve, note that the ASCII file should contain two columns - the first holds the wavelength values and the second hold the transmission values between 0 and 1.
+
+### Setting the observation sequence
+The important keywords here are: `OBS_EXPTIME`, `OBS_NDIT`
+
+* `OBS_EXPTIME` [in seconds] sets the length of a single exposure. The default setting is for a 60s exposure
+* `OBS_NDIT` sets how many exposures are taken. The default is 1.
+
+Depending on what your intended use for SimCADO is, the keyword `OBS_SAVE_ALL_FRAMES=["no", "yes"]` could also be useful. The default is to **not** save all the individual exposzures, but stack them and return a single HDU object (or save to a single FITS file). If `OBS_SAVE_ALL_FRAMES="yes"`, then a `filename` must also be given so that each and every DIT can be saved to disk.
+
+
+### Reading out the detector
+**Warning**: running a full simulation could take ~10 minutes, depending on how much RAM you have available
+
+	>>> simcado.run("detector_layout="small"")
+
+detector_layout : str, optional
+["small", "wide", "zoom", "centre", "full"] Default is "small".
+* "small"   - 1x 1k-detector centred in the FoV
+* "centre"  - 1x 4k-detector centred in the FoV
+* "wide"    - 9x 4k-detector as per MICADO wide field mode (4mas)
+* "zoom"    - 9x 4k-detector as per MICADO zoom mode (1.5mas)
+* "full"    - "wide" or "zoom" depending on "mode" keyword.
+
+                
 ## Building your own simulation run
 ### Creating `UserCommand` objects
 ### Creating `OpticalTrain` objects
