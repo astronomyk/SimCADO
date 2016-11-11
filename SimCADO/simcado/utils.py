@@ -363,7 +363,8 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     # we can get the angle of refraction
 
     ang = np.rad2deg(R * 3600)
-
+    
+    # return value is in arcsec
     return ang
 
 
@@ -427,7 +428,7 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     return local_filename
 
     
-def get_data_extras():
+def get_extras():
     """
     Downloads large files that SimCADO needs to simulate MICADO
     """
@@ -443,7 +444,7 @@ def get_data_extras():
     url = "http://www.univie.ac.at/simcado/data_ext/"
     new_extras = ascii.read(download_file(url + "extras.dat"))
     
-    for name, vers, size in new_extras:
+    for name, vers, size, group in new_extras:
         check_download = 1
         
         # does the file exist on the users disk?
@@ -466,5 +467,3 @@ def get_data_extras():
             print(name + " is already the latest version: " + vers)
     
     print("Finished downloading data for SimCADO")
-    
-        
