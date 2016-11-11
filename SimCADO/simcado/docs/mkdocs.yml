@@ -4,16 +4,17 @@ pages:
 - Home: index.md
 - Getting Started: GettingStarted.md
 - Examples:
-    - 'Creating Sources': 'examples/Source.md'
-    - 'Controlling SimCADO': 'examples/UserCommands.md'
-    - 'Manipulating the Optical Train': 'examples/OpticalTrain.md'
-    - 'Reading out the Detector': 'examples/Detector.md'
+    - Creating Sources: examples/Source.md
+    - Controlling SimCADO: examples/UserCommands.md
+    - Manipulating the Optical Train: examples/OpticalTrain.md
+    - Reading out the Detector: examples/Detector.md
 - Download: Download.md
+- Features: Features.md
 - SimCADO in depth: 
-    - 'How SimCADO works': deep_stuff/SimCADO.md
-    - 'Testing SimCADO': deep_stuff/Testing.md
-    - 'FAQs': deep_stuff/FAQs.md
-- List of Control Keywords: Keywords.md
-- MICADO with SimCADO: SIMCADO_defaults.md
+    - How SimCADO works: deep_stuff/SimCADO.md
+    - MICADO with SimCADO: SIMCADO_defaults.md
+    - List of Control Keywords: Keywords.md
+    - Testing SimCADO: deep_stuff/Testing.md
+    - FAQs: deep_stuff/FAQs.md    
 - API Documentation: API.md
 theme: readthedocs
