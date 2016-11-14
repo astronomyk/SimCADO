@@ -4,25 +4,31 @@ The (slowly expanding) documentation base for SimCADO
 ## SimCADO in a nutshell
 SimCADO is a python package designed to simulate the effects of the Atmosphere, E-ELT, and MICADO instrument on incoming light. The current version (v0.2) can simulate the MICADO imaging modi (4mas and 1.5mas per pixel in the wavelength range 0.7µm to 2.5µm).
 
+### Reference Material
+* The inner workings of SimCADO are described in detail in [Leschinski et al. (2016)](https://arxiv.org/pdf/1609.01480v1.pdf)
 
-### Downloading and Installing
+* The current status of MICADO is described in [Davies et al. (2016)](https://arxiv.org/pdf/1607.01954.pdf)
+
+
+## Downloading and Installing
 For more information, see the [Downloads](Download.md) section
+
+**SimCADO has only been tested in Python 3.x**. 
+
+It is hightly recommended to use Python 3, however the basics of generating images will still work in Python 2.7. We cannot guarantee this though. See the [Features](Features.md) page for more info on which functions with which Python version.
 
 The quick way:
 
-    $ pip install --user http://homepage.univie.ac.at/kieran.leschinski/SimCADO/SimCADO-0.2dev.zip
+    $ pip3 install --user http://www.unvie.ac.at/simcado/SimCADO-0.2dev.zip
 
 The **first time** in python 
 
 	>>> import simcado
 	>>> simcado.get_extras()
+    >>>
+    >>> # !! Only works in Python 3 - See Downloads section
 	>>> simcado.install_noise_cube()
 
-
-### Reference Material
-* The inner workings of SimCADO are described in detail in [Leschinski et al. (2016)](https://arxiv.org/pdf/1609.01480v1.pdf)
-
-* The current status of MICADO is described in [Davies et al. (2016)](https://arxiv.org/pdf/1607.01954.pdf)
 
 ## Running a simulation in 3 lines
 
@@ -40,13 +46,15 @@ We now pass the `source` object through SimCADO. This is as easy as calling `.ru
 
     >>> simcado.run(src, filename="my_first_sim.fits")
 
+### Changing simulation parameters
+
 The `sim.run()` also takes any [configuration keywords](Keywords.md) as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
 
     >>> simcado.run(src, filename="my_first_sim.fits", OBS_EXPTIME=600, OBS_NDIT=6)
     
 That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the [API](API/_build/index.html) documentation
 
-## SimCADO building blocks
+### SimCADO building blocks
 For a brief explanation of how SimCADO works and which classes are relevant, please see either the [Getting Started](GettingStarted.md) or [SimCADO in depth](deep_stuff/SimCADO.md) section.
 
 ## Bugs and Issues

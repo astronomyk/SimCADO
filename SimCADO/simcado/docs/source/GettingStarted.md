@@ -44,17 +44,17 @@ Two useful functions here are `.stars()` and `.source_from_image()`
 
 * `stars()` takes a list of magnitudes (and optionally spectral types) and positions for a common broad-band filter (default is "K") and generates a `Source` object with those stars in the field.
 
-
+```
     >>> x, y = [-2.5, 0.7, 16.3], [3.3, -0.2, 25.1]
     >>> mags, spec_types = [25,21,28], ["K0V", "A0III", "G2V"]
     >>> filt = "H"
     >>>
     >>> my_src = sim.source.stars(mags=mags, x=x, y=y, filter_name=filt, spec_types=spec_types)
-
+```
     
 * `source_from_image()` creates a `Source` based on a 2D numpy array provided by the user. The 2D array can come from anywhere, e.g. the data from a FITS image, a BITMAP image, from memory, etc. Alongside the image, the user must provide a spectrum (plus a vector with the bin centres) and the pixel field of view (e.g. 0.004 arcsec for MICADO). SimCADO then extracts all pixels from the image which have values above `flux_threshold` (defualt is 0) and saves these pixel coordinates. The spectrum provided is then connected to these pixel, and scaled by the pixel value.
 
-
+```
     >>> # ... Create an image - a circle with a radius of 20 pixels on a grid 200 pixel wide
     >>> XX = np.array([np.arange(-100,101)]*201) 
     >>> im = np.sqrt(XX**2 + XX.transpose()**2)
@@ -65,7 +65,7 @@ Two useful functions here are `.stars()` and `.source_from_image()`
     >>>
     >>> # ... Make the source object
     >>> my_src = sim.source.source_from_image(images=im, lam=lam, spectra=spec, pix_res=0.004)
-
+```
 
 SimCADO also provides a series of spectra for stars and galaxies, however these are meant as a guide to those who are just starting out. For serious work, the user is encouraged to provide their own spectra. More information on the in-built spectra can be found in the [Source Objects example](examples/Source) section.
 
@@ -109,9 +109,9 @@ Lets pull this function call apart in order of importance to the simulation:
 
 1. `**kwargs`: Although `kwargs` is the last parameter, it actually allows you to control every aspect of the simulation. `kwargs` takes any keyword-value pair that exist in the SimCADO configuration file, and so you can control single aspects of the simulation by passing these keyword-value pairs to `.run()`. For example, you can increase the exposure time of the image by passing 
 
-
+```
     >>> simcado.run(src, ... , OBS_EXPTIME=600, INST_FILTER_TC="J", ...)
-
+```
 
 A list of all the available keyword-value pairs can be found in the [Keywords section](Keywords) and a description of the default values can be found in the ["MICADO with SimCADO section"](SimCADO_defaults). 
 
@@ -148,10 +148,19 @@ Depending on what your intended use for SimCADO is, the keyword `OBS_SAVE_ALL_FR
 ### Reading out the detector
 **Warning**: running a full simulation could take ~10 minutes, depending on how much RAM you have available
 
+
 	>>> simcado.run("detector_layout="small"")
 
-detector_layout : str, optional
-["small", "wide", "zoom", "centre", "full"] Default is "small".
+
+The `detector_layout` keyword is key:
+    
+
+    detector_layout : str, optional
+        ["small", "wide", "zoom", "centre", "full"] Default is "small".
+
+
+Where each of the strings means:
+        
 * "small"   - 1x 1k-detector centred in the FoV
 * "centre"  - 1x 4k-detector centred in the FoV
 * "wide"    - 9x 4k-detector as per MICADO wide field mode (4mas)
