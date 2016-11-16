@@ -35,6 +35,8 @@ from .commands  import UserCommands
 # don't import these ones just yet
 #from .SpectralGrating  import *
 from .simulation import run
+from .utils import get_extras
+from .detector import install_noise_cube
 
 warnings.simplefilter('ignore', UserWarning)
 warnings.simplefilter('ignore', FutureWarning)
