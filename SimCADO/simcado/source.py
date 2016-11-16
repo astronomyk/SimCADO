@@ -14,9 +14,9 @@ Functions
 Functions to create `Source` objects
 ```
 empty_sky()
-star(mag, filter_name="K", spec_type="A0V", position=(0,0))
-stars(mags, x, y, filter_name="K", spec_types="A0V")
-star_grid(n, mag_min, mag_max, filter_name="K",0 seperation=1, area=1,
+star(mag, filter_name="Ks", spec_type="A0V", position=(0,0))
+stars(mags, x, y, filter_name="Ks", spec_types="A0V")
+star_grid(n, mag_min, mag_max, filter_name="Ks",0 seperation=1, area=1,
           spec_type="A0V")
 source_from_image(images, lam, spectra, pix_res, oversample=1, units="ph/s/m2",
                   flux_threshold=0, center_pixel_offset=(0,0))
@@ -25,11 +25,11 @@ source_1E4_Msun_cluster(distance=50000, half_light_radius=1)
 
 Functions for manipulating spectra for a `Source` object
 ```
-scale_spectrum(lam, spec, mag, filter_name="K", return_ec=False)
-scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="K",
+scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False)
+scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks",
                       return_ec=False)
-flat_spectrum(mag, filter_name="K", return_ec=False)
-flat_spectrum_sb(mag_per_arcsec, filter_name="K", pix_res=0.004, return_ec=False)
+flat_spectrum(mag, filter_name="Ks", return_ec=False)
+flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004, return_ec=False)
 ```
 
 Functions regarding photon flux and magnitudes
@@ -217,10 +217,10 @@ class Source(object):
         oversampled pixels - not the pixel size of the detector chips
 
         """
-        params = {"verbose"     :opt_train.cmds.verbose,
-                  "INST_DEROT_PERFORMANCE"  :100,
-                  "SCOPE_JITTER_FWHM"       :0,
-                  "SCOPE_DRIFT_DISTANCE"    :0}
+        params = {"verbose"                : opt_train.cmds.verbose,
+                  "INST_DEROT_PERFORMANCE" : opt_train.cmds["INST_DEROT_PERFORMANCE"],
+                  "SCOPE_JITTER_FWHM"      : opt_train.cmds["SCOPE_JITTER_FWHM"],
+                  "SCOPE_DRIFT_DISTANCE"   : opt_train.cmds["SCOPE_DRIFT_DISTANCE"]}
         params.update(self.params)
         params.update(kwargs)
 
@@ -300,9 +300,9 @@ class Source(object):
             # thing blurred by wind_jitter()
             if params["INST_DEROT_PERFORMANCE"] < 100:
                 image = opt_train.apply_derotator(image)
-            if params["SCOPE_DRIFT_DISTANCE"] > 0.1 * self.pix_res:
+            if params["SCOPE_DRIFT_DISTANCE"] > 0.33 * self.pix_res:
                 image = opt_train.apply_tracking(image)
-            if params["SCOPE_JITTER_FWHM"] > 0.1 * self.pix_res:
+            if params["SCOPE_JITTER_FWHM"] > 0.33 * self.pix_res:
                 image = opt_train.apply_wind_jitter(image)
 
             # 3.5
@@ -333,10 +333,9 @@ class Source(object):
         chip : detector.Chip
             the chip object where the image will land
         """
-
         chip.reset()
         scale_factor = self.pix_res / chip.pix_res
-
+       
         chip_arr = spi.zoom(image, scale_factor, order=1)
         chip_arr *= np.sum(image) / np.sum(chip_arr)
 
@@ -402,6 +401,9 @@ class Source(object):
             x_min, x_max = chip.x_min, chip.x_max,
             y_min, y_max = chip.y_min, chip.y_max
             x_cen, y_cen = chip.x_cen, chip.y_cen
+            
+            naxis1, naxis2 = chip.naxis1, chip.naxis2
+            
         else:
             mask = np.array([True]*len(self.x))
             params["pix_res"] /= params["oversample"]
@@ -409,10 +411,12 @@ class Source(object):
             y_min, y_max = np.min(self.y), np.max(self.y),
             x_cen, y_cen = (x_max + x_min) / 2, (y_max + y_min) / 2
 
-
-        naxis1 = int((x_max - x_min) / params["pix_res"])
-        naxis2 = int((y_max - y_min) / params["pix_res"])
-
+            # the conversion to int was causing problems because some 
+            # values were coming out at 4095.9999, so the array was (4095, 4096)
+            # hence the 1E-3 on the end
+            naxis1 = int((x_max - x_min) / params["pix_res"] + 1E-3)
+            naxis2 = int((y_max - y_min) / params["pix_res"] + 1E-3)
+        
         slice_array = np.zeros((naxis1, naxis2), dtype=np.float32)
         slice_photons = self.photons_in_range(lam_min, lam_max, min_bins=10)
 
@@ -427,7 +431,7 @@ class Source(object):
         ax, ay = np.array(slice_array.shape) // 2
         bx, by = np.array(psf.array.shape)   // 2
 
-        print("Creating layer between [um]:", lam_min, lam_max)
+        print("Chip ID:", chip.id, "- Creating layer between [um]:", lam_min, lam_max)
 
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array
@@ -556,7 +560,34 @@ class Source(object):
         tc.resample(self.lam)
         self.spectra *= tc.val
 
-
+    def rotate(self, angle, unit="arcsec"):
+        """
+        Rotates the `x` and `y` coordinates of the `Source` by `angle` arcseconds
+        
+        
+        
+        Parameters
+        ----------
+        angle : float
+            [deg]
+        """
+        
+        return None
+        
+        
+    def on_grid(pix_res=0.004):
+        """
+        Return an image with the positions of all sources
+        """
+        
+        xmin, xmax = np.min(self.x), np.max(self.x)
+        ymin, ymax = np.min(self.y), np.max(self.y)
+        xi, yi = ((self.x - xmin) / pix_res).astype(int), ((self.y - ymin) / pix_res).astype(int)
+        im = np.zeros((np.max(xi)+2, np.max(yi)+2))
+        im[xi,yi] = 1
+       
+        return im
+        
     def _convert_to_photons(self):
         """
         convert the spectra to photons/(s m2)
@@ -642,7 +673,7 @@ class Source(object):
         self.lam_res = np.median(lam[1:] - lam[:-1])
 
         if len(spectra.shape) == 1:
-            self.spectra = np.array((spectra, spectra))
+            self.spectra = np.array([spectra])
 
         self._convert_to_photons()
 
@@ -771,12 +802,13 @@ class Source(object):
             newsrc.spectra = list(self.spectra)
             for spec in x.spectra:
                 tmp = np.interp(self.lam, x.lam, spec)
-                newsrc.spectra += [tmp]
+                scale_factor = np.sum(spec) / np.sum(tmp)
+                newsrc.spectra += [tmp * scale_factor]
             newsrc.spectra = np.asarray(newsrc.spectra)
 
             newsrc.x = np.array((list(self.x) + list(x.x)))
             newsrc.y = np.array((list(self.y) + list(x.y)))
-            newsrc.ref = np.array((list(self.ref) + list(x.ref + x.spectra.shape[0])))
+            newsrc.ref = np.array((list(self.ref) + list(x.ref + self.spectra.shape[0])))
             newsrc.weight = np.array((list(self.weight) + list(x.weight)))
 
             newsrc.x_orig = deepcopy(newsrc.x)
@@ -994,6 +1026,8 @@ def _scale_pickles_to_photons(spec_type, mag=0):
 
     if isinstance(spec_type, (list, tuple, np.ndarray)):
         if isinstance(mag, (list, tuple, np.ndarray)):
+            if len(mag) != len(spec_type):
+                raise ValueError("len(mag) != len(spec_type)")
             mag = list(mag)
         else:
             mag = [mag]*len(spec_type)
@@ -1040,6 +1074,28 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     return lam, ec
 
 
+def mag_to_photons(filter_name, magnitude=0, area=1):
+    """
+    Return the number of photons for a certain filter and magnitude
+    
+    Parameters
+    ----------
+    filter_name : str
+        filter name. See simcado.optics.get_filter_set()
+    magnitude : float
+        [mag] the source brightness
+    area : float
+        [m2] Collecting area of main mirror
+    
+    Notes
+    -----
+    units in [ph/s/m2]
+    """
+    
+    flux_0 = zero_magnitude_photon_flux(filter_name, area)
+    return flux_0 * 10**(-0.4 * magnitude)
+    
+    
 def zero_magnitude_photon_flux(filter_name, area=1):
     """
     Return the number of photons for a m=0 star for a certain filter
@@ -1047,21 +1103,30 @@ def zero_magnitude_photon_flux(filter_name, area=1):
     Parameters
     ----------
     filter_name : str
-        the name of the broadband filter - UBVRIYzJHKKs
+        filter name. See simcado.optics.get_filter_set()
     area : float
         [m2] Collecting area of main mirror
+    
     Notes
     -----
     units in [ph/s/m2]
     """
 
-    if filter_name not in "UBVRIYzJHKKs":
-        raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
+    if not os.path.exists(os.path.join(__pkg_dir__, "data", filter_name)):
+        fname = os.path.join(__pkg_dir__, "data", 
+                             "TC_filter_" + filter_name + ".dat")
+        if not os.path.exists(fname):
+            raise ValueError("File " + fname + " does not exist")
+    else:
+        fname = filter_name
+        
+    # Outdated
+    # if filter_name not in "UBVRIYzJHKKs":
+        # raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
 
     lam, vega = _scale_pickles_to_photons("A0V", mag=-0.58)
 
-    vraw = ioascii.read(os.path.join(__pkg_dir__, "data",
-                                     "TC_filter_"+filter_name+".dat"))
+    vraw = ioascii.read(fname)
     vlam = vraw[vraw.colnames[0]]
     vval = vraw[vraw.colnames[1]]
     filt = np.interp(lam, vlam, vval)
@@ -1107,12 +1172,12 @@ def SED(spec_type, filter_name="V", magnitude=0.):
 
     Parameters
     ----------
-    spec_type : str
+    spec_type : str, list
         The spectral type of the star
     filter_name : str, optional
         [UBVRIYzJHKKs] Any braodband filter in the Vis+NIR regime.
         Default is "V"
-    magnitude : float, optional
+    magnitude : float, list, optional
         Apparent magnitude of the star. Default is 0.
 
     Returns
@@ -1162,11 +1227,11 @@ def empty_sky():
     Returns an empty source so that instrumental fluxes can be simulated
     """
     return Source(lam=np.linspace(0.3, 2.5, 221),
-                  spectra=np.zeros((2, 221)),
+                  spectra=np.zeros((1, 221)),
                   x=[0], y=[0], ref=[0], weight=[0])
 
 
-def star_grid(n, mag_min, mag_max, filter_name="K", separation=1, area=1,
+def star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1, area=1,
               spec_type="A0V"):
     """
     Creates a square grid of A0V stars at equal magnitude intervals
@@ -1237,7 +1302,7 @@ def star_grid(n, mag_min, mag_max, filter_name="K", separation=1, area=1,
     return src
 
 
-def star(mag, filter_name="K", spec_type="A0V", position=(0, 0)):
+def star(mag, filter_name="Ks", spec_type="A0V", position=(0, 0)):
     """
     Creates a simcado.Source object for a star with a given magnitude
 
@@ -1251,16 +1316,19 @@ def star(mag, filter_name="K", spec_type="A0V", position=(0, 0)):
         the spectral type of the star, e.g. "A0V", "G5III"
     position : tuple, optional
         [arcsec] the x,y position of the star on the focal plane 
+    
     Returns
     -------
-    source : `simcado.Source`
+    source : `simcado.Source`    
+    
     """
+    
     thestar = star_grid(1, mag, mag, filter_name, spec_type=spec_type)
     thestar.x, thestar.y = [position[0]], [position[1]]
     return thestar
 
 
-def stars(mags, x, y, filter_name="K", spec_types="A0V"):
+def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area = 1):
     """
     Creates a simcado.Source object for a bunch of stars.
 
@@ -1270,23 +1338,46 @@ def stars(mags, x, y, filter_name="K", spec_types="A0V"):
         [mag] magnitudes of the stars
     x, y : arrays
         [arcsec] x and y coordinates of the stars on the focal plane
-    filter_name : str
+    filter_name : str, optional
         BVRIzYJHKKs - filter in which the magnitudes are given
-    spec_type : str or array of strings (optional)
+        Default is "Ks"
+    spec_types : str, list of strings (optional)
         the spectral type(s) of the stars, e.g. "A0V", "G5III"
-
+        Default is "A0V"
+    area : float, optional
+        [m2] area of primary mirror
+        
     Returns
     -------
     source : `simcado.Source`
+    
     """
+    
     if isinstance(spec_types, (tuple, list)) and len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")
 
-    thestars = star_grid(len(mags), mags, mags, filter_name,
-                         spec_type=spec_types)
-    thestars.x, thestars.y = x, y
-    return thestars
+    # KL update refs and SED to only reference the unique spectra
+    lam, spec = SED(spec_types, filter_name=filter_name, magnitude=0)
+    if isinstance(spec_types, (list, tuple)):
+        ref = np.arange(len(spec_types))
+    else:
+        ref = np.zeros(len(mags))
+    weight = 10**(-0.4*mags) * area
 
+
+    if area == 1:
+        units = "ph/s/m2"
+    else:
+        units = "ph/s"
+
+    src = Source(lam=lam, spectra=spec,
+                 x=x, y=y,
+                 ref=ref, weight=weight,
+                 units=units,
+                 area=area)
+
+    return src    
+ 
 
 def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
     """
@@ -1298,6 +1389,8 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
         [pc] distance to the cluster
     half_light_radius : float
         [pc] half light radius of the cluster
+    mass : float
+        [Msun] If you'd like a different size cluster
 
     Returns
     -------
@@ -1351,11 +1444,86 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
 
     return src
 
+    
+def cluster(mass=1E3, distance=50000, half_light_radius=1):
+    """
+    Generate a source object for cluster
+
+    Parameters
+    ----------
+    mass : float
+        [Msun] Mass of the cluster (not number of stars). Max = 1E5 Msun
+    distance : float
+        [pc] distance to the cluster
+    half_light_radius : float
+        [pc] half light radius of the cluster
+    
+    Returns
+    -------
+    src : simcado.Source
+
+    """
+    # IMF is a realisation of stellar masses drawn from an initial mass
+    # function (TODO: which one?) summing to 1e4 M_sol.
+    if mass <= 1E4:
+        fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
+        imf = np.loadtxt(fname)
+        imf = imf[0:int(mass/1E4 * len(imf))]
+    elif mass > 1E4 and mass < 1E5:
+        fname = os.path.join(__pkg_dir__, "data", "IMF_1E5.dat")
+        imf = np.loadtxt(fname)
+        imf = imf[0:int(mass/1E5 * len(imf))]
+    else:
+        raise ValueError("Mass too high. Must be <10^5 Msun")
+        
+    # Assign stellar types to the masses in imf using list of average
+    # main-sequence star masses:
+    stel_type = [i + str(j) + "V" for i in "OBAFGKM" for j in range(10)]
+    mass = _get_stellar_mass(stel_type)
+    ref = utils.nearest(mass, imf)
+    thestars = [stel_type[i] for i in ref] # was stars, redefined function name
+
+    # assign absolute magnitudes to stellar types in cluster
+    unique_ref = np.unique(ref)
+    unique_type = [stel_type[i] for i in unique_ref]
+    unique_Mv = _get_stellar_Mv(unique_type)
+
+    # Mv_dict = {i : float(str(j)[:6]) for i, j in zip(unique_type, unique_Mv)}
+    ref_dict = {i : j for i, j in zip(unique_type, np.arange(len(unique_type)))}
+
+    # find spectra for the stellar types in cluster
+    lam, spectra = _scale_pickles_to_photons(unique_type)
+
+    # this one connects the stars to one of the unique spectra
+    stars_spec_ref = [ref_dict[i] for i in thestars]
+
+    # absolute mag + distance modulus
+    m = np.array([unique_Mv[i] for i in stars_spec_ref])
+    m += 5 * np.log10(distance) - 5
+
+    # set the weighting
+    weight = 10**(-0.4*m)
+
+    # draw positions of stars: cluster has Gaussian profile
+    distance *= u.pc
+    half_light_radius *= u.pc
+    hwhm = (half_light_radius/distance*u.rad).to(u.arcsec).value
+    sig = hwhm / np.sqrt(2 * np.log(2))
+
+    x = np.random.normal(0, sig, len(imf))
+    y = np.random.normal(0, sig, len(imf))
+
+    src = Source(lam=lam, spectra=spectra, x=x, y=y, ref=stars_spec_ref,
+                 weight=weight, units="ph/s/m2")
+
+    return src    
+    
 
 
-def source_from_image(images, lam, spectra, pix_res, oversample=1,
+def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                       units="ph/s/m2", flux_threshold=0,
-                      center_pixel_offset=(0, 0)):
+                      center_pixel_offset=(0, 0),
+                      conserve_flux=True):
     """
     Create a Source object from an image or a list of images.
 
@@ -1368,8 +1536,8 @@ def source_from_image(images, lam, spectra, pix_res, oversample=1,
         An array contains the centres of the wavelength bins for the spectra
     spectra : np.ndarray
         A (n,m) array with n spectra, each with m bins
-    pix_res : float
-        [arcsec] The pixel scale of the images in arcseconds
+    plate_scale : float
+        [arcsec] The plate scale of the images in arcseconds (e.g. 0.004"/pixel)
     oversample : int
         The factor with which to oversample the image. Each image pixel is split
         into (oversample)^2 individual point sources.
@@ -1381,6 +1549,9 @@ def source_from_image(images, lam, spectra, pix_res, oversample=1,
     center_pixel_offset : (int, int)
         [pixel] If the central pixel is offset from the centre of the image, add
         this offset to (x,y) coordinates.
+    convserve_flux : bool, optional
+        If True, when the image is rescaled, flux is conserved. 
+        If False, the maximum value of the image stays constant after rescaling
 
     Returns
     -------
@@ -1390,7 +1561,7 @@ def source_from_image(images, lam, spectra, pix_res, oversample=1,
     """
 
     if isinstance(images, (list, tuple)):
-        srcs = [source_from_image(images[i], lam, spectra[i, :], pix_res,
+        srcs = [source_from_image(images[i], lam, spectra[i, :], plate_scale,
                                   oversample, units, flux_threshold,
                                   center_pixel_offset)
                 for i in range(len(images))]
@@ -1399,31 +1570,51 @@ def source_from_image(images, lam, spectra, pix_res, oversample=1,
             src += srcs[i]
 
     else:
-        if not isinstance(oversample, int):
-            raise ValueError("Oversample must be of type 'int'")
+        #if not isinstance(oversample, int):
+        #    raise ValueError("Oversample must be of type 'int'")
 
         if isinstance(images, str) and images.split(".")[-1].lower() == "fits":
             images = fits.getdata(images)
 
-        im = images
-        x_cen, y_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
-        x_i, y_i = np.where(im > flux_threshold)
+        # im = images
+        # y_cen, x_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
+        # # x_cen, y_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
+        # # x_i, y_i = np.where(im > flux_threshold)
+        # y_i, x_i = np.where(im > flux_threshold)
 
+        # x = (x_i - x_cen) * plate_scale
+        # y = (y_i - y_cen) * plate_scale
+        # # weight = im[x_i, y_i]
+        # weight = im[y_i, x_i]
+
+        # i = oversample
+        # oset = np.linspace(-0.5, 0.5, 2*i+1)[1:2*i:2] * plate_scale
+
+        # x_list, y_list, w_list = [], [], []
+        # for i in oset:
+            # for j in oset:
+                # x_list += (x + i).tolist()
+                # y_list += (y + j).tolist()
+                # w_list += (weight / oversample**2).tolist()
+        # x, y, weight = np.array(x_list), np.array(y_list), np.array(w_list)
+        
+        if oversample != 1:
+            im = spi.zoom(images, oversample, order=1).astype(np.float32)
+            scale_factor = np.sum(images)/np.sum(im)
+            if conserve_flux:
+                im *= scale_factor
+        else:
+            im = images
+            scale_factor = 1
+            
+        y_cen, x_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
+        y_i, x_i = np.where(im > flux_threshold * scale_factor)
+        
+        pix_res = plate_scale / oversample
         x = (x_i - x_cen) * pix_res
         y = (y_i - y_cen) * pix_res
-        weight = im[x_i, y_i]
-
-        i = oversample
-        oset = np.linspace(-0.5, 0.5, 2*i+1)[1:2*i:2] * pix_res
-
-        x_list, y_list, w_list = [], [], []
-        for i in oset:
-            for j in oset:
-                x_list += (x + i).tolist()
-                y_list += (y + j).tolist()
-                w_list += (weight / oversample**2).tolist()
-        x, y, weight = np.array(x_list), np.array(y_list), np.array(w_list)
-
+        
+        weight = im[y_i, x_i]
         ref = np.zeros(len(x))
 
         src = Source(lam=lam, spectra=spectra, x=x, y=y, ref=ref, weight=weight,
@@ -1432,7 +1623,7 @@ def source_from_image(images, lam, spectra, pix_res, oversample=1,
         return src
 
 
-def scale_spectrum(lam, spec, mag, filter_name="K", return_ec=False):
+def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     """
     Scale a spectrum to be a certain magnitude
 
@@ -1445,7 +1636,7 @@ def scale_spectrum(lam, spec, mag, filter_name="K", return_ec=False):
     mag : float
         magnitude of the source
     filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "K"
+        filter name. See simcado.optics.get_filter_set(). Default is "Ks"
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -1481,7 +1672,7 @@ def scale_spectrum(lam, spec, mag, filter_name="K", return_ec=False):
         return curve.lam, curve.val
 
 
-def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="K",
+def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks",
                       return_ec=False):
     """
     Scale a spectrum to be a certain magnitude per arcsec
@@ -1497,7 +1688,7 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="K",
     pix_res : float
         [arcsec] the pixel resolution
     filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "K"
+        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -1524,7 +1715,7 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="K",
         return lam, spec
 
 
-def flat_spectrum(mag, filter_name="K", return_ec=False):
+def flat_spectrum(mag, filter_name="Ks", return_ec=False):
     """
     Return a flat spectrum scaled to a certain magnitude
 
@@ -1533,7 +1724,7 @@ def flat_spectrum(mag, filter_name="K", return_ec=False):
     mag : float
         [mag] magnitude of the source
     filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "K"
+        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -1550,30 +1741,31 @@ def flat_spectrum(mag, filter_name="K", return_ec=False):
     spec = np.ones(len(lam))
 
     if return_ec:     # TODO: mag_per_arcsec undefined? (OC)
-        curve = scale_spectrum(lam, spec, mag_per_arcsec, filter_name,
+        curve = scale_spectrum(lam, spec, mag, filter_name,
                                return_ec)
         return curve
     else:
-        lam, spec = scale_spectrum(lam, spec, mag_per_arcsec, filter_name,
+        lam, spec = scale_spectrum(lam, spec, mag, filter_name,
                                    return_ec)
         return lam, spec
 
 
-def flat_spectrum_sb(mag_per_arcsec, filter_name="K", pix_res=0.004,
+def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
                      return_ec=False):
     """
     Return a flat spectrum for a certain magnitude per arcsec
 
     Parameters
     ----------
-    mag : float
-        [mag] magnitude of the source
+    mag_per_arcsec : float
+        [mag/arcsec2] surface brightness of the source 
     filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "K"
+        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
     pix_res : float
         [arcsec] the pixel resolution. Default is 4mas (i.e. 0.004)
     return_ec : bool, optional
-        If True, a simcado.spectral.EmissionCurve object is returned. Default is False
+        Default is False. If True, a simcado.spectral.EmissionCurve object is 
+        returned. 
 
     Returns
     -------
@@ -1587,11 +1779,10 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="K", pix_res=0.004,
     spec = np.ones(len(lam))
 
     if return_ec:
-        curve = scale_spectrum(lam, spec, mag_per_arcsec, filter_name, return_ec)
-        curve.val *= pix_res**2
+        curve = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res, 
+                                  filter_name, return_ec)
         return curve
     else:
-        lam, spec = scale_spectrum(lam, spec, mag_per_arcsec, filter_name,
-                                   return_ec)
-        spec *= pix_res**2
+        lam, spec = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res, 
+                                  filter_name, return_ec)
         return lam, spec
