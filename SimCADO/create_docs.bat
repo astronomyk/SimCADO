@@ -6,6 +6,7 @@ mkdir images
 cd ../
 
 python SimCADO_defaults.py
+python Keywords.py
 mkdocs build --clean
 
 cd site/SimCADO_defaults/

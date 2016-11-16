@@ -4,7 +4,6 @@ cd D:\Dropbox\Uni\PhD\SimCADO\SimCADO
 del .\dist\*.zip
 dir .\dist\
 python setup.py sdist
-pip uninstall simcado
 
 @echo off
 
