@@ -3,24 +3,34 @@
 
 1. DONE LTAO PSF cube
 1. DONE - Implement the INST_NUM_MIRRORS and add an INST_MIRROR_TC
-1. Add downloading extras to simcado main
+1. DONE Add downloading extras to simcado main
+1. DONE Implement MAORY thermal background
+1. DONE Strehl ratio/path errors reduction in transmission
+1. DONE Link the API
+1. DONE chip layouts in sim.run() are not using the presets
+1. DONE by Oliver - Are the FITS output files saved in ESO format?
+1. DONE Added "download extras" to the docs
+1. DONE Add the `sim.run` parameters to Getting Started
 
 ## URGENT THINGS
 
-1. **!!! Read mode with poisson distribution**
-1. **!!! Strehl ratio/path errors reduction in transmission**
-1. **!!! Implement MAORY thermal background**
+1. derotate needs to take into account the chip centre
+1. **!! stars makes a star_grid!!**
+1. **!!! Read mode with poisson distribution `OBS_READ_MODE=all_in_one`**
+1. **!!! Upload a couple of ipy notebooks for creating sources and running a simulation** 
+1. **!!! Test MAORY thermal background**
 1. **Check the I/O for all objects.**
+1. **Series of test objects** 
 
 
 **Documentation**
-1. Add "download extras"
+
+1. Add "generate noise images"
 
 
-**Data**
-1. Update the TC filter curves
-
-
+Not urgent
+1. **!! Dark frames etc !!**
+1. **Add galaxy spectra**
 
 
 ## SimCADO
