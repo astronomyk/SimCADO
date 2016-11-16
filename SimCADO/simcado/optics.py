@@ -173,7 +173,7 @@ class OpticalTrain(object):
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
         mirr_list = self.cmds.mirrors_ao
-        scope_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
+        ao_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
                                         mirr_list["Inner"]**2)
 
         # Make the transmission curve for the blackbody photons from the mirror
@@ -181,9 +181,11 @@ class OpticalTrain(object):
         self.ec_ao = sc.BlackbodyCurve(lam     = self.tc_ao.lam,
                                        temp    = self.cmds["INST_AO_TEMPERATURE"],
                                        pix_res = self.cmds.pix_res,
-                                       area    = scope_area)
+                                       area    = ao_area)
 
-        if self.cmds["INST_USE_AO_MIRROR_BG"].lower() == "yes":
+        if self.cmds["INST_USE_AO_MIRROR_BG"].lower() == "yes" and \
+           self.cmds["SCOPE_PSF_FILE"].lower() != "scao":
+        
             self.ph_ao = self.ec_ao * self.tc_ao
             self.n_ph_ao = self.ph_ao.photons_in_range(self.lam_bin_edges[0],
                                                        self.lam_bin_edges[-1])
@@ -287,7 +289,7 @@ class OpticalTrain(object):
 
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
-        #self.jitter_psf = self._gen_telescope_shake()
+        self.jitter_psf = self._gen_telescope_shake()
         #self.field_rot = self._gen_field_rotation_angle()
 
 
@@ -407,14 +409,15 @@ class OpticalTrain(object):
 
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-
+            print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
+            
             if psf_m1[0].pix_res != self.pix_res:
                 psf_m1.resample(self.pix_res)
 
             if self.cmds["SCOPE_STREHL_RATIO"] < 1. and \
-                                        "PSF_POPPY" in self.cmds["SCOPE_PSF_FILE"]:
+                                    "PSF_POPPY" in self.cmds["SCOPE_PSF_FILE"]:
                 strehl = self.cmds["SCOPE_STREHL_RATIO"]
                 gauss = psf.GaussianPSF(fwhm=0.8,
                                         size=psf_m1[0].size,
@@ -423,6 +426,7 @@ class OpticalTrain(object):
                 psf_m1 = psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
 
         else:
+            print("Using PSF:", psf_type)
             ao_eff = self.cmds["SCOPE_AO_EFFECTIVENESS"]
 
             # Get a Diffraction limited PSF
