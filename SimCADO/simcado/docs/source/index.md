@@ -19,7 +19,7 @@ It is hightly recommended to use Python 3, however the basics of generating imag
 
 The quick way:
 
-    $ pip3 install --user http://www.unvie.ac.at/simcado/SimCADO-0.2dev.zip
+    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.zip
 
 The **first time** in python 
 

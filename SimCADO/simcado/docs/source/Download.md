@@ -1,8 +1,12 @@
 # Download
 
-SimCADO can be downloaded from this link 
+The latest stable version of SimCADO can be downloaded from this link 
 
-[http://www.unvie.ac.at/simcado/SimCADO-0.2dev.zip]()
+[http://www.univie.ac.at/simcado/SimCADO.zip]()
+
+If you're happy to have more bugs in exchange for more features, you can get the latest development version of SimCADO here:
+
+[http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip]()
 
 ## Python 3 vs Python 2
 **SimCADO has been programmed in Python 3.**
@@ -15,13 +19,13 @@ See the [Features](Features) for a list of the "known" issues when running in Py
 
 ## Installation
 ​
-To install it, download SimCADO from the link above and use the standard `pip3` call to install it
+To install it, download SimCADO from the link above and use the standard `pip3` call to install it:
 
-`$ pip3 install --user SimCADO-0.2dev.zip`
+`$ pip3 install --user SimCADO.zip`
 
 Alternatively give the full URL to pip and let it do the downloading for you
 
-`$ pip3 install --user http://www.unvie.ac.at/simcado/SimCADO-0.2dev.zip`
+`$ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.zip`
 
 **Note** that SimCADO will need to download several hundreds of MBs of instrument data into the install directory. Hence why we use the `--user` flag when installing via `pip`. If you want to keep SimCADO in your normal packages directory, then you will need to give python root access while updating SimCADO's data files.
 

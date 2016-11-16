@@ -16,6 +16,8 @@ OBS_ZENITH_DIST         60          # [deg] from zenith
 OBS_PARALLACTIC_ANGLE   0           # [deg] rotation of the source relative to the zenith
 OBS_SEEING              0.6         # [arcsec]
 
+OBS_BG_STAR_DENSITY     GalNP       # ["none", "2MASS", "GalNP", "GalCen", "GalAntiCen"] 
+
 OBS_EXPTIME             60          # [sec] simulated exposure time
 OBS_NDIT                1           # [#] number of exposures taken
 OBS_NONDESTRUCT_TRO     2.6         # [sec] time between non-destructive readouts in the detector
@@ -98,7 +100,7 @@ SCOPE_ALTITUDE          3060        # meters above sea level
 SCOPE_LATITUDE          -24.589167  # decimal degrees
 SCOPE_LONGITUDE         -70.192222  # decimal degrees
 
-SCOPE_PSF_FILE          default     # ["ltao" (default), <filename>, "scao", "mcao", "poppy"] import a PSF from a file. Default is <pkg_dir>/data/PSF_LTAO.fits
+SCOPE_PSF_FILE          default     # ["scao" (default), <filename>, "ltao", "mcao", "poppy"] import a PSF from a file. Default is <pkg_dir>/data/PSF_SCAO.fits
 SCOPE_STREHL_RATIO      1           # [0..1] defines the strength of the seeing halo if SCOPE_PSF_FILE is "default"
 SCOPE_AO_EFFECTIVENESS  100         # [%] percentage of seeing PSF corrected by AO - 100% = diff limited, 0% = 0.8" seeing
 SCOPE_JITTER_FWHM       0.001       # [arcsec] gaussian telescope jitter (wind, tracking)
@@ -125,7 +127,7 @@ INST_ENTR_NUM_SURFACES  4           # number of surfaces on the entrance window
 INST_ENTR_WINDOW_TC     default     # [<filename>, "default"] If "default": <pkg_dir>/data/TC_window.dat --> transmission = 0.95
 
 INST_DICHROIC_NUM_SURFACES  2       # number of surfaces on the entrance window
-INST_DICHROIC_TC        default     # [<filename>, "default"]If "default": <pkg_dir>/data/TC_dichroic.dat --> transmission = 1
+INST_DICHROIC_TC        default     # [<filename>, "default"] If "default": <pkg_dir>/data/TC_dichroic.dat --> transmission = 1
 
 INST_FILTER_TC          Ks          # [<filename>, string(filter name)] List acceptable filters with >>> simcado.optics.get_filter_set()
 
@@ -133,14 +135,14 @@ INST_PUPIL_NUM_SURFACES 2           # number of surfaces on the pupil window
 INST_PUPIL_TC           default     # [<filename>, "default"] If "default": <pkg_dir>/data/TC_pupil.dat --> transmission = 1
 
 # MICADO, collimator 5x, wide-field 2x (zoom 4x), camera 4x
-INST_NUM_MIRRORS        11           # number of reflecting surfaces in MICADO
+INST_NUM_MIRRORS        11          # number of reflecting surfaces in MICADO
 INST_MIRROR_TC          default     # If "default", INST_MIRROR_TC = SCOPE_M1_TC
 
 INST_USE_AO_MIRROR_BG   yes         # [yes/no]
 INST_AO_TEMPERATURE     0           # deg Celsius - inside temp of AO module
 INST_NUM_AO_MIRRORS     7           # number of reflecting surfaces between telescope and instrument (i.e. MAORY)
 INST_MIRROR_AO_TC       default     # If "default", INST_MIRROR_AO_TC = SCOPE_M1_TC
-INST_MIRROR_AO_LIST     default     # If "default", INST_MIRROR_AO_LIST = <pkg_dir>/data/EC_mirrors_ao.tbl
+INST_MIRROR_AO_LIST     default     # List of mirrors in the AO. If "default", INST_MIRROR_AO_LIST = <pkg_dir>/data/EC_mirrors_ao.tbl
 
 INST_ADC_PERFORMANCE    100         # [%] how well the ADC does its job
 INST_ADC_NUM_SURFACES   8           # number of surfaces in the ADC
@@ -150,7 +152,7 @@ INST_DEROT_PERFORMANCE  100         # [%] how well the derotator derotates
 INST_DEROT_PROFILE      linear      # [linear, gaussian] the profile with which it does it's job
 
 INST_DISTORTION_MAP     none        # path to distortion map
-INST_SURFACE_FACTOR     default     # Effect of transmission due to surface roughness. If "default": <pkg_dir>/data/TC_surface.dat
+INST_SURFACE_FACTOR     default     # Wavelength dependent effect on transmission due to surface roughness. If "default": <pkg_dir>/data/TC_surface.dat
 ```
 
 ## General detector parameters
@@ -166,11 +168,11 @@ FPA_READOUT_STDEV       1           # e-/px
 FPA_DARK_MEDIAN         0.01        # e-/s/px
 FPA_DARK_STDEV          0.01        # e-/s/px
 
-FPA_QE                  default     # if "default": <package_path>/data/TC_detector_H4RG.dat
+FPA_QE                  default     # Quantum efficiency of detector. If "default": <package_path>/data/TC_detector_H4RG.dat
 FPA_NOISE_PATH          default     # [default/generate/filename] if "generate": use NGHxRG to create a noise frame. If "default": <package_path>/data/FPA_noise.fits
 FPA_GAIN                1           # e- to ADU conversion
 FPA_WELL_DEPTH          1E5         # number of photons collectable before pixel is full
-FPA_LINEARITY_CURVE     default     # ["none", "default"] If "default": <package_path>/data/FPA_linearity.dat
+FPA_LINEARITY_CURVE     default     # [<filename>, "none", "default"] If "default": <package_path>/data/FPA_linearity.dat
 
 FPA_PIXEL_MAP           none        # path to a FITS file with the pixel sensitivity map
 # if FPA_PIXEL_MAP == none

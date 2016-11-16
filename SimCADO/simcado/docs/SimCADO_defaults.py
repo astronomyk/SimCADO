@@ -31,6 +31,7 @@ This document lists the current configuration which best describes MICADO. Each 
 The data for this table is generated from this [Excel sheet](https://github.com/gastronomyk/SimCADO/blob/master/SimCADO/simcado/docs/SimCADO_defaults.xlsx)
 
 """
+skycalc = None
 
 j = 1
 while data.rows[j][0].value != "EOF":
@@ -47,54 +48,88 @@ while data.rows[j][0].value != "EOF":
     if data.rows[j][7].value is not None:
         text += "**Description:** " + str(data.rows[j][7].value) + "\n\n "
 
-    # Keyword-default value pair
+    # Keyword-default value pair + short description
     if data.rows[j][3].value is not None and data.rows[j][4].value is not None:
-        text += "`" + str(data.rows[j][3].value) + \
-                " = " + str(data.rows[j][4].value) + "`          "
+        tmp = "```\n" + str(data.rows[j][3].value) + \
+                " = " + str(data.rows[j][4].value)
+        if data.rows[j][10].value is not None:
+            tmp +="     # " + str(data.rows[j][10].value)
+        
+        tmp += "\n```"
+        if len(tmp) > 80:
+            tmp = tmp.replace("#", "\n#")
+        
+        text += tmp
         
     # Source and last update date of data, with comments
     if data.rows[j][5].value is not None and data.rows[j][6].value is not None:
-        text += "Source: " + str(data.rows[j][5].value) + \
+        text += "\n\n Source: " + str(data.rows[j][5].value) + \
                 ", updated on " + str(data.rows[j][6].value)
         if data.rows[j][8].value is not None:
-            text += ", **" + str(data.rows[j][8].value) + "**"
+            text += "\n\n **" + str(data.rows[j][8].value) + "**"
     text += "\n\n"
     
+    
+    # if data.rows[j][9].value is not None and "tbl" in data.rows[j][9].value:
+        # f = open(os.path.join(data_dir, fname), "r")
+        # tmp = f.read()
+        # f.close()
+        # text += "\n\n ``` \n" + tmp + "\n ``` \n\n"
+        
     
     # if the default is a transmission curve, generate a plot
     if data.rows[j][9].value is not None:
         fname = os.path.split(data.rows[j][4].value)[1]
-        
-        if data.rows[j][9].value == "y":
-            print(data.rows[j][4].value)
+
+        if "y" in data.rows[j][9].value:
+            #print(data.rows[j][4].value)
             tmp = ascii.read(os.path.join(data_dir, fname))
             plt.figure(figsize=(6,3))
-            plt.plot(tmp[tmp.colnames[0]].data, tmp[tmp.colnames[1]].data)
+            x = tmp[tmp.colnames[0]].data
+            y = tmp[tmp.colnames[1]].data
+            
+            plt.plot(x, y)
             plt.xlabel("Wavelength [um]")
             plt.xlim(0.7,2.5)
+            if "l" in data.rows[j][9].value:
+                plt.semilogy()
+                if "ll" in data.rows[j][9].value:
+                    plt.loglog()
+                    plt.xlim(np.min(x), np.max(y))
+                    plt.xlabel("")
             plt.title(fname + "\n" + str(data.rows[j][6].value))
             plt.tight_layout()
 
         elif data.rows[j][9].value in ("ec", "tc"):
             #print(data.rows[j][4].value)
             print(os.path.join(data_dir, fname))
-            tmp = fits.getdata(os.path.join(data_dir, fname))
+
+            if skycalc is None:
+                print("skycalc open", skycalc)
+                f = fits.open(os.path.join(data_dir, fname))
+                skycalc = f[1].data
+                f.close(closed=True)
+
+            
             plt.figure(figsize=(6,3))
             if data.rows[j][9].value == "ec":
-                plt.plot(tmp["lam"].data, tmp["flux"].data)
+                plt.plot(skycalc["lam"].data, skycalc["flux"].data)
                 fname += "[emission]"
             elif data.rows[j][9].value == "tc":
-                plt.plot(tmp["lam"].data, tmp["trans"].data)
+                plt.plot(skycalc["lam"].data, skycalc["trans"].data)
                 fname += "[transmission]"
-            plt.xlabel("Wavelength [um]")
+
+                plt.xlabel("Wavelength [um]")
             plt.xlim(0.7,2.5)
             plt.semilogy()
             plt.ylim(ymin=0.1)
             plt.title(fname + "\n" + str(data.rows[j][6].value))
             plt.tight_layout()
+            
+            
 
         elif data.rows[j][9].value == "im":
-            print(data.rows[j][4].value, fname)
+            #print(data.rows[j][4].value, fname)
             tmp = fits.getdata(os.path.join(data_ext_dir, fname))
             w, h = tmp.shape
             n=32
@@ -110,7 +145,8 @@ while data.rows[j][0].value != "EOF":
 
         gname = os.path.join(site_plot_dir, fname+".png")
         text += "![" + gname + "](" + gname + ") \n\n"
-        print(hname, gname)
+        #print(hname, gname)
+        print(hname)
     j += 1
 
 f = open("./source/SimCADO_defaults.md", "w")
