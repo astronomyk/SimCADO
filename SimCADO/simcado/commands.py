@@ -404,9 +404,21 @@ class UserCommands(object):
             self.cmds["ATMO_EC"] = \
                 os.path.join(self.pkg_dir, "data", "skytable.fits")
 
-        if self.cmds["SCOPE_PSF_FILE"] == "default":
+        if self.cmds["SCOPE_PSF_FILE"].lower() in ("ltao"):
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_LTAO.fits")
+        elif self.cmds["SCOPE_PSF_FILE"].lower() in ("default", "scao"):
+            self.cmds["SCOPE_PSF_FILE"] = \
+                os.path.join(self.pkg_dir, "data", "PSF_SCAO.fits")
+            self.cmds["INST_USE_AO_MIRROR_BG"] = "no"
+        elif self.cmds["SCOPE_PSF_FILE"].lower() in ("mcao", "maory"):
+            print("Unfortunately SimCADO doesn't yet have a MCAO PSF")
+            print("Using the SCAO PSF instead")
+            self.cmds["SCOPE_PSF_FILE"] = \
+                os.path.join(self.pkg_dir, "data", "PSF_SCAO.fits")
+        elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
+            self.cmds["SCOPE_PSF_FILE"] = \
+                os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
 
         if self.cmds["SCOPE_M1_TC"] == "default":
             self.cmds["SCOPE_M1_TC"] = \
@@ -415,11 +427,11 @@ class UserCommands(object):
         if self.cmds["SCOPE_MIRROR_LIST"] == "default":
             self.cmds["SCOPE_MIRROR_LIST"] = \
                 os.path.join(self.pkg_dir, "data", "EC_mirrors_scope.tbl")
-        
+
         if self.cmds["INST_MIRROR_AO_LIST"] == "default":
             self.cmds["INST_MIRROR_AO_LIST"] = \
                 os.path.join(self.pkg_dir, "data", "EC_mirrors_ao.tbl")
-                
+
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
@@ -429,7 +441,7 @@ class UserCommands(object):
         if self.cmds["INST_PUPIL_TC"] == "default":
             self.cmds["INST_PUPIL_TC"] = \
                 os.path.join(self.pkg_dir, "data", "TC_pupil.dat")
-            
+
         if self.cmds["INST_ENTR_WINDOW_TC"] == "default":
             self.cmds["INST_ENTR_WINDOW_TC"] = \
                 os.path.join(self.pkg_dir, "data", "TC_window.dat")
@@ -446,9 +458,9 @@ class UserCommands(object):
             self.cmds["INST_DISTORTION_MAP"] = None
 
         if self.cmds["INST_SURFACE_FACTOR"] == "default":
-            self.cmds["INST_DISTORTION_MAP"] = \
+            self.cmds["INST_SURFACE_FACTOR"] = \
                 os.path.join(self.pkg_dir, "data", "TC_surface.dat")
-            
+
         if self.cmds["FPA_QE"] == "default":
             self.cmds["FPA_QE"] = \
                 os.path.join(self.pkg_dir, "data", "TC_detector_H4RG.dat")
@@ -464,7 +476,7 @@ class UserCommands(object):
         if self.cmds["FPA_PIXEL_MAP"] == "default":
             self.cmds["FPA_PIXEL_MAP"] = None
 
-        # which detector chip to use    
+        # which detector chip to use
         if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
@@ -474,10 +486,11 @@ class UserCommands(object):
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_small.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("centre", "central", "middle"):
+        elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("centre", "central",
+                                                      "middle", "center"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_centre.dat")
-                
+
 
         if self.cmds["HXRG_PCA0_FILENAME"] in (None, "none", "default"):
             self.cmds["HXRG_PCA0_FILENAME"] = \
@@ -491,22 +504,27 @@ class UserCommands(object):
 
         self.mirrors_telescope = ioascii.read(self.cmds["SCOPE_MIRROR_LIST"])
         self.mirrors_ao = ioascii.read(self.cmds["INST_MIRROR_AO_LIST"])
-        
+
         i = np.where(self.mirrors_telescope["Mirror"] == "M1")[0][0]
         self.diameter = self.mirrors_telescope["Outer"][i]
         self.area = np.pi / 4 * (self.diameter**2 - \
                                  self.mirrors_telescope["Inner"][i]**2)
-        
-        
+
+
         # Check for a filter curve file or a standard broadband name
-        if self.cmds["INST_FILTER_TC"] in "BVRIzYJHKKs":
-            fname = "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat"
-            self.cmds["INST_FILTER_TC"] = \
-                os.path.join(self.pkg_dir, "data", fname)
+        if not os.path.exists(os.path.join(self.pkg_dir, "data", \
+                                           self.cmds["INST_FILTER_TC"])):
+            fname = os.path.join(self.pkg_dir, "data",
+                            "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat")
+            if os.path.exists(fname):
+                self.cmds["INST_FILTER_TC"] = fname
+            else:
+                raise ValueError("File " + fname + " does not exist")
+
 
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.pix_res = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
-       
+
         # if SIM_USE_FILTER_LAM is true, then use the filter curve to set the
         # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
 
@@ -533,7 +551,7 @@ class UserCommands(object):
                                       self.lam_bin_edges[:-1])
 
         self.exptime = self.cmds["OBS_EXPTIME"]
-        
+
         self.cmds["SIM_N_MIRRORS"] = self.cmds["SCOPE_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_AO_MIRRORS"]
@@ -704,7 +722,7 @@ def dump_defaults(filename=None, selection="freq"):
                 os.path.join(path, gname))
 
 
-def dump_chip_layout(path="./"):
+def dump_chip_layout(path=None):
     ## OC, 2016-08-11: changed parameter from 'dir' (redefines built-in)
     """
     Dump the FPA_chip_layout.dat file to a path specified by the user
@@ -714,9 +732,11 @@ def dump_chip_layout(path="./"):
     path : str, optional
         path where the chip layout file is to be saved
     """
-    path = os.path.dirname(path)
-    shutil.copy(os.path.join(__pkg_dir__, "data", "FPA_chip_layout.dat"), path)
-
-
-class _bloedsinn():
-    pass
+    fname = os.path.join(__pkg_dir__, "data", "FPA_chip_layout.dat")
+    
+    if path is None:
+        f = open(fname, "r")
+        print(f.read())
+    else:
+        path = os.path.dirname(path)
+        shutil.copy(fname, path)
