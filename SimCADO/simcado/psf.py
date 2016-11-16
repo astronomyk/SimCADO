@@ -588,9 +588,20 @@ class UserPSF(PSF):
             pix_res = kwargs["pix_res"]
         elif "CDELT1" in header.keys():
             pix_res = header["CDELT1"]
+        elif "CD1_1" in header.keys():
+            pix_res = header["CD1_1"]
         else:
             pix_res = 0.004
-
+        
+        # If pix_res is 
+        #   * >1E-1 it must be in mas
+        #   * ~1E-3, it must be in arcsec
+        #   * <1E-5 it must be in deg
+        if pix_res > 1E-1:
+            pix_res *= 1E-3
+        elif pix_res < 1E-5:
+            pix_res *= 3600
+            
         super(UserPSF, self).__init__(size, pix_res)
         self.info["Type"] = "User"
         self.info['description'] = "PSF from FITS file: " + self.filename
@@ -1305,7 +1316,8 @@ class AiryDiskDiff2D(Fittable2DModel):
 # Convenience functions
 
 
-def make_foreign_PSF_cube(fnames, filename=None, window=None):
+def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
+                          pix_res_final=None, wavelengths=None):
     """
     Combine several PSF FITS images into a single PSF FITS file
     
@@ -1313,38 +1325,72 @@ def make_foreign_PSF_cube(fnames, filename=None, window=None):
     ----------
     fnames : list
         List of path names to the FITS files
-    filename : str, optional
-        If filename is not `None`, the resulting FITS file is saved under the name `filename`
-    window : list, tuple, optional
+    out_name : str, optional
+        If out_name is not `None`, the resulting FITS file is saved under the name `out_name`
+    window : int, list, tuple, optional
         If window is not `None`, a windowed section of the PSFs are extracted
         window = (left, right, top, bottom)
+        window = square radius
+
         
     Examples
     --------
-        >>> fnames = ["../data_ext/I_LTAO.fits", 
-                      "../data_ext/J_LTAO.fits", 
-                      "../data_ext/H_LTAO.fits", 
-                      "../data_ext/K_LTAO.fits"]
-        >>> dw, dh = 512, 512
-        >>> window=[2048-dw, 2048+dw, 2048-dh, 2048+dh]
-        >>> make_foreign_PSF_cube(fnames, filename="PSF_LTAO.fits", window=window)
+        >>> from glob import glob
+        >>> import simcado as sim
+        >>> fnames = glob("D:\Share_VW\Data_for_SimCADO\PSFs\yann_2016_11_10\*.fits")
+        >>> sim.psf.make_foreign_PSF_cube(fnames, "PSF_SCAO.fits",
+                                          window=512,
+                                          pix_res_orig=[0.0028, 0.0037, 0.00492], 
+                                          pix_res_final=[0.004, 0.004, 0.004],
+                                          wavelengths=[1.25,1.65,2.2])
     
     """
+    
+    if pix_res_orig is None:
+        pix_res_orig = [None]*len(fnames)
+    
+    if pix_res_final is None:
+        pix_res_final = [None]*len(fnames)
+        
+    if wavelengths is None:
+        wavelengths = [None]*len(fnames)
+
+        
     hdu_list = fits.HDUList()
-    for fname in fnames:
+    for fname, res_i, res_f, wave in zip(fnames, pix_res_orig, 
+                                         pix_res_final, wavelengths):
         dat = fits.getdata(fname)
         hdr = fits.getheader(fname)
-                
-        if window is not None:
-            w = window
-            dat = dat[w[0]:w[1],w[2]:w[3]]
-            
-            scale_factor = 1./np.sum(dat)
-            dat *= scale_factor
-            
-        hdu_list.append(fits.ImageHDU(dat, hdr))
+        
+        if res_i is not None and res_f is not None:
+            if res_i != res_f:
+                dat = spi.zoom(dat, res_i/res_f)
 
-    if filename is None:
+        if window is not None:
+            if type(window) in (tuple, list):
+                w = window
+                dat = dat[w[0]:w[1],w[2]:w[3]]
+            elif type(window) == int:
+                dw = window
+                xc, yc = dat.shape[0] // 2, dat.shape[1] // 2
+                dat = dat[xc-dw:xc+dw, yc-dw:yc+dw]
+            else:
+                print("Unknown type for window", type(window))
+                
+        scale_factor = 1./np.sum(dat)
+        dat *= scale_factor
+
+        hdu = fits.ImageHDU(dat, hdr)
+        
+        if res_f is not None:
+            hdu.header["CDELT1"] = (res_f, "[arcsec] pixel resolution")
+            hdu.header["CDELT2"] = (res_f, "[arcsec] pixel resolution")
+        if wave is not None:
+            hdu.header["WAVE0"] = (wave, "[micron] - Wavelength of slice")
+        
+        hdu_list.append(hdu)
+
+    if out_name is None:
         return hdu_list
     else:
-        hdu_list.writeto(filename, clobber=True)
+        hdu_list.writeto(out_name, clobber=True)
