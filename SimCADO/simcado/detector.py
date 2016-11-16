@@ -219,12 +219,14 @@ class Detector(object):
         self.cmds = cmds
 
         if small_fov:
+            print("Safety switch is on - Detector(..., small_fov='True')")
             self.layout = ioascii.read(
                 """#  id    x_cen    y_cen   x_len   y_len
                    #       arcsec   arcsec   pixel   pixel
                    0        0        0    1024    1024""")
         else:
             self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
+        
         self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
                            self.layout["x_len"][i], self.layout["y_len"][i],
                            self.cmds["SIM_DETECTOR_PIX_SCALE"],
@@ -241,7 +243,7 @@ class Detector(object):
         self._n_ph_ao = 0
         self.array = None        # defined in method
 
-    def read_out(self, filename=None, to_disk=False, chips=None):
+    def read_out(self, filename=None, to_disk=False, chips=None, **kwargs):
         """
         Simulate the read out process of the detector array
 
@@ -295,7 +297,7 @@ class Detector(object):
         """
 
         #removed kwargs
-        #self.cmds.update(kwargs)
+        self.cmds.update(kwargs)
 
         if filename is not None:
             to_disk = True
@@ -333,6 +335,7 @@ class Detector(object):
             # Put in a catch here so that only the chips specified in "chips"
             # are read out
             ######
+            print("Reading out chip", self.chips[i].id)
             array = self.chips[i].read_out(self.cmds)
 
             ## TODO: transpose is just a hack - need to make sure
@@ -381,49 +384,14 @@ class Detector(object):
                 except NameError:   # any other exceptions possible?
                     pass
             hdulist.append(thishdu)
-#        hdulist = fits.HDUList(hdus)
+            # hdulist = fits.HDUList(hdus)
 
         if not to_disk:
             return hdulist
         else:
             hdulist.writeto(filename, clobber=True, checksum=True)
-
-    def open(self, filename):
-        """
-        Opens a saved `Detector` file.
-
-
-        Summary
-        -------
-        ** Not yet implemented **
-        ** Should be moved outside of `Detector` and called with
-        `detector.open()` **
-
-        Detector objects can be saved to FITS file and read back in for later
-        simulations.
-
-        Parameters
-        ----------
-        filename : str
-            path to the FITS file where the `Detector` object is stored
-
-        Returns
-        -------
-        `simcado.Detector` object
-
-        Examples
-        --------
-        """
-
-        if not os.path.exists(filename):
-            raise FileNotFoundError(filename + " doesn't exist")
-
-        with fits.open(filename) as fp1:
-            self.params.update(fp1[0].header)
-            self.array = fp1[0].data
-
-
-
+    
+    
     def write(self, filename=None, **kwargs):
         """
         Write a `Detector` object out to a FITS file
@@ -473,6 +441,43 @@ class Detector(object):
         except OSError:
             warnings.warn(filename+" exists and is busy. OS won't let me write")
 
+
+def open(self, filename):
+    """
+    Opens a saved `Detector` file.
+
+
+    Summary
+    -------
+    ** Not yet implemented **
+    ** Should be moved outside of `Detector` and called with
+    `detector.open()` **
+
+    Detector objects can be saved to FITS file and read back in for later
+    simulations.
+
+    Parameters
+    ----------
+    filename : str
+        path to the FITS file where the `Detector` object is stored
+
+    Returns
+    -------
+    `simcado.Detector` object
+
+    Examples
+    --------
+    """
+
+    if not os.path.exists(filename):
+        raise FileNotFoundError(filename + " doesn't exist")
+
+    with fits.open(filename) as fp1:
+        self.params.update(fp1[0].header)
+        self.array = fp1[0].data
+
+            
+            
 
 def plot_detector_layout(detector):
     """Plot the detector layout. NOT FINISHED """
@@ -866,13 +871,25 @@ class Chip(object):
         #######################################################################
 
         out_array = self._read_out_superfast(self.array, dit, ndit)
+        
+        # apply the linearity curve
+        fname = cmds["FPA_LINEARITY_CURVE"]
 
+        data = ioascii.read(fname)
+        real_cts = data[data.colnames[0]]
+        measured_cts =  data[data.colnames[1]]
+
+        out_array = np.interp(out_array.flatten(), 
+                              real_cts, measured_cts).reshape(out_array.shape)
+        out_array = out_array.astype(np.float32)
+        
         #### TODO #########
         # add read out noise for every readout
         # add a for loop to _read_noise where n random noise frames are added
         # based on the size of the noise cube
-        ro = np.array([self._read_noise_frame(cmds) for i in range(ndit)])
-        ro = np.sum(ro, axis=0) + dark * dit * ndit
+        ro = self._read_noise_frame(cmds)
+        for i in range(1, ndit):
+            ro += self._read_noise_frame(cmds) + dark * dit
 
         out_array += ro
 
@@ -983,11 +1000,14 @@ class Chip(object):
         """
         image2 = image * dit
         image2[image2 > 2.14E9] = 2.14E9
-        cube = np.random.poisson(lam=image2 * dit, size=(ndit,
-                                                         image2.shape[0],
-                                                         image2.shape[1]))
-        return image.astype(np.float32)
 
+        im_st = np.zeros(np.shape(im))
+        for i in range(10):
+            im_st += np.random.poisson(image2)
+            
+        return im_st.astype(np.float32)
+
+        
     def _read_out_fast(self, image, dit):
         """
         <One-line summary goes here>
@@ -1004,7 +1024,10 @@ class Chip(object):
         --------
         """
 
-        return np.random.poisson(image * dit)
+        image2 = image * dit
+        image2[image2 > 2.14E9] = 2.14E9
+        
+        return np.random.poisson(image2 * dit)
 
 
     def _read_out_superfast(self, image, dit, ndit):
@@ -1106,7 +1129,8 @@ class Chip(object):
         return self.__sub__(x)
 
 
-def _generate_hxrg_noise(naxis1, naxis2, cmds):
+def _generate_hxrg_noise(cmds):
+#def _generate_hxrg_noise(naxis1, naxis2, cmds):
     """
     Generate a read noise frame using a UserCommands object
 
@@ -1122,13 +1146,16 @@ def _generate_hxrg_noise(naxis1, naxis2, cmds):
     Examples
     --------
     """
-
+    import multiprocessing as mp
+    
     #if len(kwargs) > 0 and self.verbose: print("updating ",kwargs)
     #self.params.update(kwargs)
     print("Generating a new chip noise array")
+    print(mp.current_process())
     # HXRG needs a pca file to run. Work out what a PCA file means!!
-    ng_h4rg = HXRGNoise(naxis1=naxis1,
-                        naxis2=naxis2,
+    ng_h4rg = HXRGNoise(naxis1=4096,
+                        naxis2=4096,
+                        naxis3=1,
                         n_out=cmds["HXRG_NUM_OUTPUTS"],
                         nroh=cmds["HXRG_NUM_ROW_OH"],
                         pca0_file=cmds["HXRG_PCA0_FILENAME"],
@@ -1177,29 +1204,27 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     layout = ioascii.read(cmds.cmds["FPA_CHIP_LAYOUT"])
     naxis1, naxis2 = layout["x_len"][0], layout["y_len"][0]
 
-    #if "Windows" in os.environ.get('OS',''):
-    #multicore = False
+    if "Windows" in os.environ.get('OS',''):
+        multicore = False
 
-    if __name__ == "__main__":# and multicore:
+    if __name__ == "__main__" and multicore:
         pool = mp.Pool(processes=mp.cpu_count()-1)
-        frames = pool.map(_generate_hxrg_noise, (naxis1, naxis2, cmds))
-        hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
-                           [fits.ImageHDU(frames[i]) \
-                            for i in range(1, num_layers)])
+        frames = pool.map(_generate_hxrg_noise, (cmds)*num_layers)
     else:
-        frames = [_generate_hxrg_noise(naxis1, naxis2, cmds) \
+        frames = [_generate_hxrg_noise(cmds) \
                   for i in range(num_layers)]
-        hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
-                           [fits.ImageHDU(frames[i]) \
-                            for i in range(1, num_layers)])
-
+    
+    hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
+        [fits.ImageHDU(frames[i]) \
+        for i in range(1, num_layers)])
+    
     if filename is None:
         return hdu
     else:
         hdu.writeto(filename, clobber=True, checksum=True)
 
 
-def install_noise_cube(n=16):
+def install_noise_cube(n=9):
     """
     Install a noise cube in the package directory
 
@@ -1210,11 +1235,11 @@ def install_noise_cube(n=16):
 
     Warning
     -------
-    Each layer is ~64MB, default is 16 layers (~1GB). If you have less than
-    2 GB on the drive where your Python installation is. Be careful!
+    Each layer is ~64MB, default is 9 layers (~600MB). If you have less than
+    1 GB on the drive where your Python installation is. Be careful!
     """
 
-    print("WARNING - this process can take minutes. Fear not!")
+    print("WARNING - this process can take up to 10 minutes. Fear not!")
     hdu = make_noise_cube(n, filename=None)
     filename = os.path.join(__pkg_dir__, "data", "FPA_noise.fits")
     hdu.writeto(filename, clobber=True, checksum=True)
