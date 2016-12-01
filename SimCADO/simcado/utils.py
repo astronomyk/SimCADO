@@ -440,7 +440,12 @@ def get_extras():
     if os.path.exists(fname):
         old_extras = ascii.read(fname)
         check_replace = 1
-        
+    else:
+        old_extras = ascii.read("""
+        filename                version         size    group
+        PSF_POPPY.fits          20151103a       48MB    typical
+        """)
+    
     url = "http://www.univie.ac.at/simcado/data_ext/"
     new_extras = ascii.read(download_file(url + "extras.dat"))
     
