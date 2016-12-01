@@ -136,7 +136,7 @@ INST_PUPIL_TC           default     # [<filename>, "default"] If "default": <pkg
 
 # MICADO, collimator 5x, wide-field 2x (zoom 4x), camera 4x
 INST_NUM_MIRRORS        11          # number of reflecting surfaces in MICADO
-INST_MIRROR_TC          default     # If "default", INST_MIRROR_TC = SCOPE_M1_TC
+INST_MIRROR_TC          TC_mirror_gold.dat     # If "default", INST_MIRROR_TC = SCOPE_M1_TC
 
 INST_USE_AO_MIRROR_BG   yes         # [yes/no]
 INST_AO_TEMPERATURE     0           # deg Celsius - inside temp of AO module
@@ -190,7 +190,7 @@ Keyword                 Default     [units] Explanation
 # See Rauscher (2015) for details
 # http://arxiv.org/pdf/1509.06264.pdf
 
-HXRG_NUM_OUTPUTS        32          # Number of
+HXRG_NUM_OUTPUTS        64          # Number of
 HXRG_NUM_ROW_OH         8           # Number of row overheads
 HXRG_PCA0_FILENAME      default     # if "default": <pkg_dir>/data/FPA_nirspec_pca0.fits
 HXRG_OUTPUT_PATH        none        # Path to save the detector noise

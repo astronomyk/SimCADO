@@ -4,7 +4,12 @@ The (slowly expanding) documentation base for SimCADO
 ## SimCADO in a nutshell
 SimCADO is a python package designed to simulate the effects of the Atmosphere, E-ELT, and MICADO instrument on incoming light. The current version (v0.2) can simulate the MICADO imaging modi (4mas and 1.5mas per pixel in the wavelength range 0.7µm to 2.5µm).
 
+### iPython/Jupyter notebooks
+A (continualy expanding) series of iPython Notebooks detailing how to use SimCADO are available [here in the Notebooks section](examples/Notebooks.md).
+
+
 ### Reference Material
+
 * The inner workings of SimCADO are described in detail in [Leschinski et al. (2016)](https://arxiv.org/pdf/1609.01480v1.pdf)
 
 * The current status of MICADO is described in [Davies et al. (2016)](https://arxiv.org/pdf/1607.01954.pdf)
@@ -23,11 +28,17 @@ The quick way:
 
 The **first time** in python 
 
-	>>> import simcado
-	>>> simcado.get_extras()
+    >>> import simcado
+    >>> simcado.get_extras()
     >>>
     >>> # !! Only works in Python 3 - See Downloads section
-	>>> simcado.install_noise_cube()
+    >>> simcado.install_noise_cube()
+    
+### Keeping SimCADO updated
+
+As MICADO developes, the data files that SimCADO uses will also be updated. Therefore before you do any major work with SimCADO we *HIGHLY* recommend calling:
+
+    >>> simcado.get_extras()
 
 
 ## Running a simulation in 3 lines

@@ -2,11 +2,11 @@
 
 The latest stable version of SimCADO can be downloaded from this link 
 
-[http://www.univie.ac.at/simcado/SimCADO.zip]()
+[http://www.univie.ac.at/simcado/SimCADO.zip](http://www.univie.ac.at/simcado/SimCADO.zip)
 
 If you're happy to have more bugs in exchange for more features, you can get the latest development version of SimCADO here:
 
-[http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip]()
+[http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip](http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip)
 
 ## Python 3 vs Python 2
 **SimCADO has been programmed in Python 3.**

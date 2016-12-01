@@ -370,7 +370,7 @@ FPA_LINEARITY_CURVE = data/FPA_linearity.dat
 **Description:** Number of read out channels per chip
 
  ```
-HXRG_NUM_OUTPUTS = 32
+HXRG_NUM_OUTPUTS = 64
 ```
 
 **Description:** Number of row overhead in pixels
