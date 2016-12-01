@@ -41,7 +41,6 @@ Examples
 By default `UserCommands` contains the parameters needed to generate the MICADO
 optical train:
 ```
->>> import simcado
 >>> my_cmds = simcado.UserCommands()
 >>> my_cmds["SCOPE_NUM_MIRRORS"]
 5
@@ -65,9 +64,10 @@ keywords - e.g. for the keywords for the instrument:
 
 import os
 import inspect
+
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
-# import warnings   ## not used
+import warnings
 import shutil
 import numpy as np
 
@@ -248,6 +248,7 @@ class UserCommands(object):
             self.cmds.update(utils.read_config(filename))
 
         # set the default paths and file names
+        self._find_files()
         self._default_data()
 
         self.cmds["CONFIG_USER"] = filename
@@ -331,6 +332,7 @@ class UserCommands(object):
         else:
             raise ValueError("Cannot update with type: "+type(new_dict))
 
+        self._find_files()
         self._default_data()
         self._update_attributes()
 
@@ -381,6 +383,29 @@ class UserCommands(object):
             if isinstance(value, str) and value.lower() == "none":
                 self.cmds[key] = None
 
+                
+    def _find_files(self):
+        """
+        Checks for a file in the directorys: "./", <pkg_dir>, <pkg_dir>/data 
+        """
+                
+        for key in self.cmds:
+            fname = self.cmds[key]
+            if isinstance(fname, str) and \
+               "." in fname and \
+               len(fname.split(".")[-1]) > 1:
+                if not os.path.exists(fname):
+                    fname = os.path.join(__pkg_dir__, 
+                                                    os.path.split(fname)[-1])
+                if not os.path.exists(fname):
+                    fname = os.path.join(__pkg_dir__, "data", \
+                                                    os.path.split(fname)[-1])
+                if not os.path.exists(fname):
+                    fname = self.cmds[key]
+                    warnings.warn("Keyword "+key+" path doesn't exist: "+fname)
+                    
+                self.cmds[key] = fname
+                
 
     def _default_data(self):
         """
@@ -477,7 +502,7 @@ class UserCommands(object):
             self.cmds["FPA_PIXEL_MAP"] = None
 
         # which detector chip to use
-        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide"):
+        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide", "full"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("zoom", "narrow"):
@@ -512,16 +537,20 @@ class UserCommands(object):
 
 
         # Check for a filter curve file or a standard broadband name
-        if not os.path.exists(os.path.join(self.pkg_dir, "data", \
-                                           self.cmds["INST_FILTER_TC"])):
-            fname = os.path.join(self.pkg_dir, "data",
-                            "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat")
-            if os.path.exists(fname):
-                self.cmds["INST_FILTER_TC"] = fname
-            else:
-                raise ValueError("File " + fname + " does not exist")
+        if isinstance(self.cmds["INST_FILTER_TC"], str) and \
+                                not os.path.exists(self.cmds["INST_FILTER_TC"]):
+            # try in pkg_dir
+            fname = os.path.join(self.pkg_dir, "data", self.cmds["INST_FILTER_TC"])
+            
+            if not os.path.exists(self.cmds["INST_FILTER_TC"]):
+                # try the name of the filter
+                fname = os.path.join(self.pkg_dir, "data",
+                        "TC_filter_" + self.cmds["INST_FILTER_TC"] + ".dat")
+                if not os.path.exists(fname):
+                    raise ValueError("File " + fname + " does not exist")
 
-
+            self.cmds["INST_FILTER_TC"] = fname
+        
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.pix_res = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
 
@@ -529,7 +558,10 @@ class UserCommands(object):
         # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
 
         if self.cmds["SIM_USE_FILTER_LAM"].lower() == "yes":
-            tc_filt = sc.TransmissionCurve(filename=self.cmds['INST_FILTER_TC'])
+            if isinstance(self.cmds["INST_FILTER_TC"], str):
+                tc_filt = sc.TransmissionCurve(filename=self.cmds['INST_FILTER_TC'])
+            else: 
+                tc_filt = self.cmds["INST_FILTER_TC"]
             mask = np.where(tc_filt.val > self.cmds["SIM_FILTER_THRESHOLD"])[0]
             imin = np.max((mask[0] - 1, 0))
             imax = np.min((mask[-1] + 1, len(tc_filt.lam) - 1))
@@ -610,11 +642,11 @@ class UserCommands(object):
         ## convert angle shift into number of pixels
         ## pixel shifts are defined with respect to last slice
         rel_shift = (angle_shift - angle_shift[-1]) / self.pix_res
+        rel_shift *= (1. - effectiveness)
         if np.max(np.abs(rel_shift)) > 1000:
             raise ValueError("Pixel shifts too great (>1000), check units")
 
         ## Rotate by the paralytic angle
-        rel_shift *= (1. - effectiveness)
         int_shift = np.array(rel_shift / shift_threshold, dtype=np.int)
         idx = [np.where(int_shift == i)[0][0]
                for i in np.unique(int_shift)[::-1]]
@@ -680,6 +712,7 @@ class UserCommands(object):
             raise ValueError(key+" not in UserCommands.keys()")
 
         self.cmds[key] = val
+        self._find_files()
         self._default_data()
         self._update_attributes()
 
@@ -709,17 +742,20 @@ def dump_defaults(filename=None, selection="freq"):
         fname = "default.config"
 
     if filename is None:
-        with open(os.path.join(__pkg_dir__, "data", fname)) as fd1:
-            return fd1.readlines()
+        gname = os.path.join(__pkg_dir__, "data", fname)
+        f = open(gname, "r")
+        print(f.read())
+        f.close()
+        return None
+    else:
+        path, gname = os.path.split(filename)
+        if path == "":
+            path = "."
 
-    path, gname = os.path.split(filename)
-    if path == "":
-        path = "."
-
-    if gname == "":
-        gname = fname
-    shutil.copy(os.path.join(__pkg_dir__, "data", fname),
-                os.path.join(path, gname))
+        if gname == "":
+            gname = fname
+        shutil.copy(os.path.join(__pkg_dir__, "data", fname),
+                    os.path.join(path, gname))
 
 
 def dump_chip_layout(path=None):
@@ -737,6 +773,7 @@ def dump_chip_layout(path=None):
     if path is None:
         f = open(fname, "r")
         print(f.read())
+        f.close()
     else:
         path = os.path.dirname(path)
         shutil.copy(fname, path)
