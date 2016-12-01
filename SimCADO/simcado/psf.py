@@ -97,6 +97,7 @@ from copy import deepcopy
 
 import numpy as np
 import scipy.ndimage.interpolation as spi
+from scipy.signal import fftconvolve
 
 from astropy.io import fits
 #from astropy import units as u   ## unused (OC)
@@ -198,7 +199,8 @@ class PSF(object):
 
         arr_tmp = np.zeros((new_size, new_size))
         arr_tmp[new_size//2, new_size//2] = 1
-        self.set_array(convolve_fft(arr_tmp, self.array))
+        self.set_array(fftconvolve(arr_tmp, self.array, mode="same"))
+        #self.set_array(convolve_fft(arr_tmp, self.array))
 
     def resample(self, new_pix_res):
         """
@@ -236,9 +238,11 @@ class PSF(object):
         psf_new = deepcopy(self)
 
         if issubclass(type(kernel), PSF):
-            psf_new.set_array(convolve_fft(self.array, kernel.array))
+            psf_new.set_array(fftconvolve(self.array, kernel.array, mode="same"))
+            #psf_new.set_array(convolve_fft(self.array, kernel.array))
         else:
-            psf_new.set_array(convolve_fft(self.array, kernel))
+            psf_new.set_array(fftconvolve(self.array, kernel, mode="same"))
+            #psf_new.set_array(convolve_fft(self.array, kernel))
         psf_new.info["Type"] = "Combined"
 
         return psf_new
@@ -547,7 +551,8 @@ class CombinedPSF(PSF):
         arr_tmp[size // 2, size // 2] = 1
 
         for psf in psf_list:
-            arr_tmp = convolve_fft(arr_tmp, psf.array)
+            arr_tmp = fftconvolve(arr_tmp, psf.array, mode="same")
+            #arr_tmp = convolve_fft(arr_tmp, psf.array)
 
 
         super(CombinedPSF, self).__init__(size, pix_res)
@@ -1024,7 +1029,7 @@ class UserPSFCube(PSFCube):
                 raise ValueError("""Could not determine wavelength of PSF in
                                  extension """ + str(i) + """. FITS file
                                  needs either WAVE0 or WAVELENG header
-                                 keywords. \n Use SimCADO.utils.add_keyword()
+                                 keywords. \n Use simcado.utils.add_keyword()
                                  to add WAVELENG to the FITS header""")
             # If the wavelength is not in the 0.1-2.5 range, it must be in [m]
             if psf_lam_cen[i] < 0.1:
@@ -1033,7 +1038,8 @@ class UserPSFCube(PSFCube):
 
         # find the closest PSFs in the file to what is needed for the psf
         i_slices = utils.nearest(psf_lam_cen, lam_bin_centers)
-
+        i_psf_lam_cen = [psf_lam_cen[i] for i in np.unique(i_slices)]
+        
         # import only the relevant PSFs
         for i in np.unique(i_slices):
 
@@ -1062,7 +1068,7 @@ class UserPSFCube(PSFCube):
 
         lam_bin_centers = np.array(lam_bin_centers)
 
-        super(UserPSFCube, self).__init__(lam_bin_centers)
+        super(UserPSFCube, self).__init__(i_psf_lam_cen)
         self.psf_slices = psf_slices
         self.size = [psf.size for psf in self.psf_slices]
 
