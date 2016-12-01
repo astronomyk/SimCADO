@@ -49,6 +49,7 @@ __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
 import numpy as np
 import scipy.ndimage as spi
+from scipy.signal import fftconvolve
 
 from astropy.convolution import convolve_fft, Gaussian2DKernel
 
@@ -146,7 +147,7 @@ def tracking(arr, cmds):
     !! TODO, work out the shift during the DIT for the object RA, DEC etc !!
     """
     if cmds["SCOPE_DRIFT_DISTANCE"] > 0.:
-        pix_res = cmds["SIM_detector_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]
+        pix_res = cmds["SIM_DETECTOR_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]
         kernel = cmds["SCOPE_DRIFT_PROFILE"]
         shift = cmds["SCOPE_DRIFT_DISTANCE"] / pix_res
 
@@ -182,12 +183,13 @@ def wind_jitter(arr, cmds):
     !! TODO, get the read spectrum for wind jitter !!
     !! Add in an angle parameter for the ellipse   !!
     """
-    pix_res = cmds["SIM_detector_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]
+    pix_res = cmds["SIM_DETECTOR_PIX_SCALE"] / cmds["SIM_OVERSAMPLING"]
     fwhm = cmds["SCOPE_JITTER_FWHM"] / pix_res
     n = (fwhm / 2.35)
     kernel = Gaussian2DKernel(n, mode="oversample")
 
-    return convolve_fft(arr, kernel, allow_huge=True)
+    return fftconvolve(arr, kernel, mode="same")
+    #return convolve_fft(arr, kernel, allow_huge=True)
 
 
 def adc_shift(cmds):
