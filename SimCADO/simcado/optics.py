@@ -364,7 +364,13 @@ class OpticalTrain(object):
                 raise ValueError(key + " is not in your list of commands")
 
             if self.cmds[key] is not None:
-                tc_dict[key] = sc.TransmissionCurve(filename=self.cmds[key],
+                if isinstance(self.cmds[key], (sc.TransmissionCurve, 
+                                               sc.EmissionCurve,
+                                               sc.UnityCurve,
+                                               sc.BlackbodyCurve)):
+                    tc_dict[key] = self.cmds[key]
+                else:
+                    tc_dict[key] = sc.TransmissionCurve(filename=self.cmds[key],
                                                     lam_res=self.lam_res)
             else:
                 tc_dict[key] = sc.UnityCurve()
