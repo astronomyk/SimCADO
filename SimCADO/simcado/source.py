@@ -101,6 +101,7 @@ from copy import deepcopy
 
 import numpy as np
 import scipy.ndimage.interpolation as spi
+from scipy.signal import fftconvolve
 
 from astropy.io import fits
 from astropy.io import ascii as ioascii
@@ -211,6 +212,14 @@ class Source(object):
         chips : int, list
             Default is "all"
 
+            
+        Optional parameters (**kwargs)
+        ------------------------------
+        sub_pixel : bool
+            if sub-pixel accuracy is needed, each source is shifted individually.
+            Default is False
+            
+            
         Notes
         -----
         Output array is in units of [ph/s/pixel] where the pixel is internal
@@ -220,7 +229,8 @@ class Source(object):
         params = {"verbose"                : opt_train.cmds.verbose,
                   "INST_DEROT_PERFORMANCE" : opt_train.cmds["INST_DEROT_PERFORMANCE"],
                   "SCOPE_JITTER_FWHM"      : opt_train.cmds["SCOPE_JITTER_FWHM"],
-                  "SCOPE_DRIFT_DISTANCE"   : opt_train.cmds["SCOPE_DRIFT_DISTANCE"]}
+                  "SCOPE_DRIFT_DISTANCE"   : opt_train.cmds["SCOPE_DRIFT_DISTANCE"],
+                  "sub_pixel"              : False}
         params.update(self.params)
         params.update(kwargs)
 
@@ -277,20 +287,25 @@ class Source(object):
 
                 # apply the psf (get_slice_photons is called within)
                 lam_min, lam_max = opt_train.lam_bin_edges[i:i+2]
-                psf = opt_train.psf[i]
+                psf_i = utils.nearest(opt_train.psf.lam_bin_centers, 
+                                      opt_train.lam_bin_centers[i])
+                psf = opt_train.psf[psf_i]
 
 
                 oversample = opt_train.cmds["SIM_OVERSAMPLING"]
+                sub_pixel = params["sub_pixel"]
                 if image is None:
                     image = self.image_in_range(psf, lam_min, lam_max,
                                                 detector.chips[chip_i],
                                                 pix_res=opt_train.pix_res,
-                                                oversample=oversample)
+                                                oversample=oversample,
+                                                sub_pixel=sub_pixel)
                 else:
                     image += self.image_in_range(psf, lam_min, lam_max,
                                                  detector.chips[chip_i],
                                                  pix_res=opt_train.pix_res,
-                                                 oversample=oversample)
+                                                 oversample=oversample,
+                                                 sub_pixel=sub_pixel)
 
             # 3.
             # !!!!!!!!!!!!!! All of these need to be combined into a single
@@ -486,9 +501,13 @@ class Source(object):
             for ii, jj, ph in zip(i, j, slice_photons[mask]):
                 slice_array[ii, jj] += ph
 
+            # make the move to scipy
             try:
-                slice_array = convolve_fft(slice_array, psf.array,
-                                           allow_huge=True)
+                slice_array = fftconvolve(slice_array, psf.array, mode="same")
+                
+            # try:
+                # slice_array = convolve_fft(slice_array, psf.array,
+                #                            allow_huge=True)
             except ValueError:
                 slice_array = convolve(slice_array, psf.array)
 
@@ -573,6 +592,16 @@ class Source(object):
         """
         
         return None
+        
+        
+    def offset(dx=0, dy=0):
+        """
+        Shifts the coordinates of the source by (dx, dy) in [arcsec]
+        """
+        
+        self.x += dx
+        self.y += dy
+        
         
         
     def on_grid(pix_res=0.004):
