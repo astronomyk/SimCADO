@@ -1,0 +1,22 @@
+# Updates to SimCADO
+
+## Data updates
+The data files used by SimCADO are continually being updated to reflect the newest information coming from the MICADO work packages. 
+
+To update your version of SimCADO, use the `simcado.get_extras()` command.
+
+### 2016-11-12
+* `TC_surface.dat` 
+  Updated with more optimistic Strehl values for JHK central wavelengths
+* `TC_mirror_gold.dat`
+  Added a reflectivity curve for an unprotected gold coating
+* `default.config`
+  Changed `INST_MIRROR_TC` to reference `TC_mirror_gold.dat`
+
+
+## Source Code updates
+The current stable version is SimCADO v0.3. The current development version is SimCADO v0.4dev
+
+### Development version
+* Bug fix in simcado.psf - psf.lam_bin_centers was taking opt_train.lam_bin_centers instead of using the "WAVE0" keywords in the FITS header
+* Bug fix in source.psf - apply_optical_train() was asking for PSFs outisde of the opt.train.psf range. related to the point above
