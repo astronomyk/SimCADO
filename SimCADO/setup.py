@@ -25,8 +25,8 @@ def get_old_version(filename='simcado/version.py'):
     
 # Is this the version number scheme that we want?
 MAJOR = 0
-MINOR = 3
-ATTR = 'stable'
+MINOR = 4
+ATTR = 'dev'
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
 ## This updates TINY every time setup.py is run - doesn't work if
