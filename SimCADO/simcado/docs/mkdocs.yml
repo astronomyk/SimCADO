@@ -4,11 +4,13 @@ pages:
 - Home: index.md
 - Getting Started: GettingStarted.md
 - Examples:
+    - Notebooks: examples/Notebooks.md
     - Creating Sources: examples/Source.md
     - Controlling SimCADO: examples/UserCommands.md
     - Manipulating the Optical Train: examples/OpticalTrain.md
     - Reading out the Detector: examples/Detector.md
 - Download: Download.md
+- Updates: Updates.md
 - Features: Features.md
 - SimCADO in depth: 
     - How SimCADO works: deep_stuff/SimCADO.md
