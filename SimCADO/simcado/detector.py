@@ -90,7 +90,7 @@ written to disk.
 # - update open, write - remove references to self.params
 
 
-import os
+import os, sys
 import inspect
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
@@ -377,12 +377,15 @@ class Detector(object):
 
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
-                if isinstance(val, str) and len(val) > 35:
-                    val = "... " + val[-35:]
+                if isinstance(val, str): 
+                    if len(val) > 35:
+                        val = "... " + val[-35:]
                 try:
                     thishdu.header["HIERARCH "+key] = val
                 except NameError:   # any other exceptions possible?
                     pass
+                except ValueError:
+                    warnings.warn("ValueError - Couldn't add keyword: "+key)
             hdulist.append(thishdu)
             # hdulist = fits.HDUList(hdus)
 
@@ -873,15 +876,16 @@ class Chip(object):
         out_array = self._read_out_superfast(self.array, dit, ndit)
         
         # apply the linearity curve
-        fname = cmds["FPA_LINEARITY_CURVE"]
+        if cmds["FPA_LINEARITY_CURVE"] is not None:
+            fname = cmds["FPA_LINEARITY_CURVE"]
 
-        data = ioascii.read(fname)
-        real_cts = data[data.colnames[0]]
-        measured_cts =  data[data.colnames[1]]
+            data = ioascii.read(fname)
+            real_cts = data[data.colnames[0]]
+            measured_cts =  data[data.colnames[1]]
 
-        out_array = np.interp(out_array.flatten(), 
+            out_array = np.interp(out_array.flatten(), 
                               real_cts, measured_cts).reshape(out_array.shape)
-        out_array = out_array.astype(np.float32)
+            out_array = out_array.astype(np.float32)
         
         #### TODO #########
         # add read out noise for every readout
@@ -1196,7 +1200,13 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     multicore doesn't work - fix it
 
     """
-
+    
+    if sys.version_info.major >= 3:
+        print("Sorry, but this only works in Python 3 and above. \
+           See the SimCADO FAQs for work-around options")
+        return None
+    
+    
     cmds = commands.UserCommands()
     cmds["FPA_NOISE_PATH"] = "generate"
     cmds["FPA_CHIP_LAYOUT"] = "default"
@@ -1239,9 +1249,15 @@ def install_noise_cube(n=9):
     1 GB on the drive where your Python installation is. Be careful!
     """
 
-    print("WARNING - this process can take up to 10 minutes. Fear not!")
-    hdu = make_noise_cube(n, filename=None)
-    filename = os.path.join(__pkg_dir__, "data", "FPA_noise.fits")
-    hdu.writeto(filename, clobber=True, checksum=True)
-    print("Saved noise cube with", n, "layers to the package directory:")
-    print(filename)
+    if sys.version_info.major >= 3:
+        print("WARNING - this process can take up to 10 minutes. Fear not!")
+        hdu = make_noise_cube(n, filename=None)
+        filename = os.path.join(__pkg_dir__, "data", "FPA_noise.fits")
+        hdu.writeto(filename, clobber=True, checksum=True)
+        print("Saved noise cube with", n, "layers to the package directory:")
+        print(filename)
+    else:
+        print("Sorry, but this only works in Python 3 and above. \
+               See the SimCADO FAQs for work-around options")
+    
+    
