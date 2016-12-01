@@ -30,11 +30,9 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         A custom detector layout for the simulation. Default is None
 
     detector_layout : str, optional
-        ["small", "wide", "zoom", "centre", "full"] Default is "small".
+        ["small", "centre", "full"] Default is "small".
         "small"   - 1x 1k-detector centred in the FoV
         "centre"  - 1x 4k-detector centred in the FoV
-        "wide"    - 9x 4k-detector as per MICADO wide field mode (4mas)
-        "zoom"    - 9x 4k-detector as per MICADO zoom mode (1.5mas)
         "full"    - "wide" or "zoom" depending on "mode" keyword.
 
     filename : str, optional
