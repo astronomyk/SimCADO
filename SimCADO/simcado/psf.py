@@ -1728,6 +1728,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     wavelength *= 1E-6
     hdu_list = osys.calc_psf(wavelength)
     hdu_list[0].data = spi.zoom(hdu_list[0].data, 1./params["oversample"])
+    hdu_list[0].data /= np.sum(hdu_list[0].data)
     
     for hdu in hdu_list:
         hdu.data = hdu.data.astype(np.float32)
