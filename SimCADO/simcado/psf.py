@@ -1457,7 +1457,9 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     "support_width"        : 0.2,   # [m]
     "support_angle_offset" : 0,     # [deg]
     "n_missing"            : None
-    
+    "use_cold_stop"        : True
+    "cold_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
+    "cold_outer_radius"    : 19     # [m]
     
     Returns
     -------
@@ -1481,7 +1483,11 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
               "n_supports"           : 6,
               "support_width"        : 0.2,
               "support_angle_offset" : 0,
-              "n_missing"            : None}
+              "n_missing"            : None,
+              "use_cold_stop"        : True,
+              "cold_inner_radius"    : None, 
+              "cold_outer_radius"    : 19
+              }
     params.update(kwargs)
     
     if "pix_res" not in params: 
@@ -1509,8 +1515,9 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     hdu_list = fits.HDUList()
     for psf in eelt:
         poppy_ao = fits.ImageHDU()
-        poppy_ao.data = (1. - strehl) * seeing[0].data + strehl * eelt[0].data
-
+        poppy_ao.data = (1. - strehl) * seeing[0].data + strehl * psf.data
+        poppy_ao.data = poppy_ao.data.astype(np.float32)
+        
         poppy_ao.header["PIXELSCL"] = params["pix_res"]
         poppy_ao.header["PSF_TYPE"] = "POPPY"
         poppy_ao.header["CDELT1"]   = params["pix_res"]
@@ -1521,12 +1528,15 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
         for key in params:
             try: poppy_ao.header[key] = params[key]
             except: pass
+
+        poppy_ao.header.extend(psf.header.cards)
         
         hdu_list.append(poppy_ao)
 
     if filename is None:
         return hdu_list
     else:
+        print("Writing to", filename)
         hdu_list.writeto(filename, clobber=True)
 
 
@@ -1599,11 +1609,12 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
     if filename is None:
         return hdu_list
     else:
+        print("Writing to", filename)
         hdu_list.writeto(filename, clobber=True)
 
 
 def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
-                  segments=None, filename=None, **kwargs):
+                  segments=None, filename=None, use_cold_stop=True, **kwargs):
     """
     Generate a PSF for the E-ELT for plan A or B with POPPY
     
@@ -1627,7 +1638,8 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     filename : str, optional
         Default = None. If filename is not None, the resulting FITS object will
         be saved to disk
-
+    use_cold_stop : str, optional
+        Default = True.
 
     Kwargs
     ------
@@ -1640,6 +1652,8 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     "support_width"        : 0.2 [m]
     "support_angle_offset" : 0 [deg]
     "n_missing"            : None
+    "cold_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
+    "cold_outer_radius"    : 19     # [m]
     
     
     Returns
@@ -1657,7 +1671,8 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     try: 
         import poppy
     except: 
-        raise ImportError("Poppy is not installed - google 'JWST POPPY'")
+        raise ImportError("""Poppy is not installed - 
+        See https://pythonhosted.org/poppy""")
 
     params = {"flattoflat"           : 1.256,
               "gap"                  : 0.004,
@@ -1665,12 +1680,19 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
               "n_supports"           : 6,
               "support_width"        : 0.2,
               "support_angle_offset" : 0,
-              "n_missing"            : None}
+              "n_missing"            : None,
+              "oversample"           : 2,
+              "cold_inner_radius"    : None, 
+              "cold_outer_radius"    : 19}
     # Careful - when calling the detector, the rusulting PSF is 2x oversampled. 
     # Hence we double the pixelscale at osys.add_detector
-    params["pixelscale"] = 0.004 if mode == "wide" else 0.0015
     
     params.update(**kwargs)
+
+    params["pixelscale"] = 0.004 if mode.lower() == "wide" else 0.0015
+    if params["cold_inner_radius"] is None:
+        params["cold_inner_radius"] = 11.5 if plan.lower() == "b" else 5.6
+    
     
     
     if segments is None:
@@ -1683,9 +1705,18 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
                                      n_supports          = params["n_supports"], 
                                      support_width       = params["support_width"], 
                                      support_angle_offset= params["support_angle_offset"])
-    eelt = poppy.CompoundAnalyticOptic( opticslist=[ap, sec], name='E-ELT Plan '+plan)
+
+    opticslist = [ap, sec]
+                       
+    if use_cold_stop:
+        cold_in = poppy.SecondaryObscuration(secondary_radius=params["cold_inner_radius"], n_supports=0)
+        cold_out = poppy.CircularAperture(radius=params["cold_outer_radius"])                                     
+        opticslist += [cold_in, cold_out]
+        
+    eelt = poppy.CompoundAnalyticOptic(opticslist=opticslist, 
+                                       name='E-ELT Plan '+plan)
     
-    osys = poppy.OpticalSystem(oversample=1)
+    osys = poppy.OpticalSystem(oversample=params["oversample"], pupil_diameter=50)
     osys.add_pupil(eelt)
     osys.add_detector(pixelscale = params["pixelscale"], 
                       fov_arcsec = params["pixelscale"] * size)
@@ -1696,6 +1727,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     
     wavelength *= 1E-6
     hdu_list = osys.calc_psf(wavelength)
+    hdu_list[0].data = spi.zoom(hdu_list[0].data, 1./params["oversample"])
     
     for hdu in hdu_list:
         hdu.data = hdu.data.astype(np.float32)
@@ -1709,6 +1741,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     if filename is None:
         return hdu_list
     else:
+        print("Writing to", filename)
         hdu_list.writeto(filename, clobber=True)
 
 
