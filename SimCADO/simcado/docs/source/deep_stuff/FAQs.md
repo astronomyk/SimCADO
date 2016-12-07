@@ -3,7 +3,6 @@
 
 Here are some answers to known issues with SimCADO.
 
-
 ## Work around for failing `simcado.install_noise_cube` with Python 2.7
 The problem lies with Python 2.7. The noise cube code is 3rd party code that only works on Python 3 and I haven't had a chance to dig into that code yet to find the problem
 
@@ -19,6 +18,8 @@ Generate a noise cube in Python 3
 Download a 15 slice noise cube from my Google Drive folder and save it in the simcado/data folder
     https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing
 
+Your simcado/data folder can be found by printing the `__pkg_dir__` variable:
+    >>> simcado.utils.__pkg_dir__
 
 ### Copy the new noise cube into the Python 2.7 simcado/data folder. 
 By default SimCADO looks for the noise cube in its data directory - `<Your Python 2.7 Directory>/lib/python/site-packages/simcado/data/`
