@@ -4,30 +4,32 @@ This module contains classes which control how a simulation is run
 Summary
 -------
 UserCommands is essentially a dictionary that holds all the variables that
-the user may wish to change. It also has some set variables like `pix_res`
+the user may wish to change. It also has some set variables like ``pix_res``
 that can be accessed directly, instead of from the dictionary.
 
 UserCommands is imported directly into the simcado package and is accessible
-from the main package - `simcado.UserCommands`
+from the main package - ``simcado.UserCommands``
 
-If UserCommands is called without any arguments, the default values for MICADO
+If ``UserCommands`` is called without any arguments, the default values for MICADO
 are used.
 
 Classes
 -------
-`UserCommands(filename, default=<path_to_default>)`
+``UserCommands(filename, default=<path_to_default>)``
 
 Routines
 --------
-`dump_defaults(filename="./", type="freq")`
-`dump_chip_layout(dir="./")`
+
+* ``dump_defaults(filename="./", type="freq")`` 
+* ``dump_chip_layout(dir="./")``
 
 
 See Also
 --------
-Classes that require a `UserCommands` object directly include:
-- `Detector`
-- `OpticalTrain`
+Classes that require a ``UserCommands`` object directly include:
+
+* ``Detector``
+* ``OpticalTrain``
 
 
 Notes
@@ -38,26 +40,25 @@ References
 
 Examples
 --------
-By default `UserCommands` contains the parameters needed to generate the MICADO
+By default ``UserCommands`` contains the parameters needed to generate the MICADO
 optical train:
-```
->>> my_cmds = simcado.UserCommands()
->>> my_cmds["SCOPE_NUM_MIRRORS"]
-5
-```
+
+    >>> my_cmds = simcado.UserCommands()
+    >>> my_cmds["SCOPE_NUM_MIRRORS"]
+    5
 
 To list the keywords that are available:
-```
->>> my_cmds.keys()
-...
-```
+
+    >>> my_cmds.keys()
+    ...
+
 
 The UserCommands object also contains smaller dictionaries for each category of
 keywords - e.g. for the keywords for the instrument:
-```
->>> my_cmds.inst
-...
-```
+
+    >>> my_cmds.inst
+    ...
+    
 
 """
 
@@ -89,17 +90,18 @@ class UserCommands(object):
 
     Summary
     -------
-    A `UserCommands` object contains a dictionary which holds all the keywords
-    from the `default.config` file. It also has attributes which represent the
-    frequently used variables, i.e. `pix_res`, `lam_bin_edges`, `exptime`, etc
+    A ``UserCommands`` object contains a dictionary which holds all the keywords
+    from the ``default.config`` file. It also has attributes which represent the
+    frequently used variables, i.e. ``pix_res``, ``lam_bin_edges``, ``exptime``, 
+    etc
 
-    `<UserCommands>.cmds` is a dictionary that holds all the variables
+    ``<UserCommands>.cmds`` is a dictionary that holds all the variables
     the user may wish to change. It also has some set variables like
-    `<UserCommands>.pix_res` that can be accessed directly, instead of from the
-    dictionary.
+    ``<UserCommands>.pix_res`` that can be accessed directly, instead of from 
+    the dictionary.
 
-    `UserCommands` is imported directly into the simcado package and is
-    accessable from the main package - `simcado.UserCommands`
+    ``UserCommands`` is imported directly into the simcado package and is
+    accessable from the main package - ``simcado.UserCommands``
 
     If UserCommands is called without any arguments, the default values for
     MICADO and the E-ELT are used.
@@ -124,7 +126,7 @@ class UserCommands(object):
         parameters about the atmosphere
     scope : dict (collections.OrderedDict)
         parameters about the telescope
-    inst : dic (collections.OrderedDict)
+    inst : dict (collections.OrderedDict)
         parameters about the instrument
     fpa : dict (collections.OrderedDict)
         parameters about the detector array (FPA - Focal Plane Array)
@@ -218,6 +220,18 @@ class UserCommands(object):
     >>> my_cmds.inst
     ...
     ```
+    
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        x = np.random.randn(1000)
+        plt.hist( x, 20)
+        plt.grid()
+        plt.title(r'Normal: $\mu=%.2f, \sigma=%.2f$'%(x.mean(), x.std()))
+        plt.show()
+    
+    
     """
 
 
