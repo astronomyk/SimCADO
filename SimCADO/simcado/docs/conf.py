@@ -21,6 +21,24 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+
+# From the recommonmark readthedocs page
+# You need to pip install recommonmark to get this to work
+from recommonmark.parser import CommonMarkParser
+
+# now add the autostructify stuffimport recommonmark
+import recommonmark
+from recommonmark.transform import AutoStructify
+
+# from the original recommonmark command
+source_parsers = {'.md': CommonMarkParser,}
+source_suffix = ['.rst', '.md']
+
+# !!! can't forget to add numpydoc to the extensions!!!
+# pip install numpydoc
+# then
+# extensionns = [... , numpydoc]
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -34,6 +52,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
+    'numpydoc',
+    'matplotlib.sphinxext.plot_directive',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -435,3 +455,11 @@ epub_exclude_files = ['search.html']
 # If false, no index is generated.
 #
 # epub_use_index = True
+
+github_doc_root = 'https://github.com/rtfd/recommonmark/tree/master/docs/'
+def setup(app):
+    app.add_config_value('recommonmark_config', {
+            'url_resolver': lambda url: github_doc_root + url,
+            'auto_toc_tree_section': 'Contents',
+            }, True)
+    app.add_transform(AutoStructify)
