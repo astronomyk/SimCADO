@@ -165,8 +165,78 @@ class OpticalTrain(object):
         if cmds is not None:
             self.cmds.update(cmds)
 
+        self._gen_all_tc()
+        self.psf = self._gen_master_psf()
 
-        ############## AO INSTRUMENT PHOTONS #########################    
+        # Get the ADC shifts, telescope shake and field rotation angle
+        self.adc_shifts = self._gen_adc_shifts()
+        self.jitter_psf = self._gen_telescope_shake()
+        #self.field_rot = self._gen_field_rotation_angle()
+
+
+    def update_filter(self, filter_name=None, trans=None, lam=None):
+        """
+        Update the filter curve without recreating the full OpticalTrain object
+
+        Parameters
+        ----------
+        filter_name : str, optional
+            The name of a filter curve contained in the package_dir. User
+            get_filter_set() to find which filter curves are installed.
+        trans : TransmissionCurve, np.array, list, optional
+            [0 .. 1] the transmission coefficients. Either a TransmissionCurve
+            object can be passed (in which case omit `lam`) or an array/list can
+            be passed (in which case specify `lam`)
+        lam : np.array, list, optional
+            [um] an array for the spectral bin centres, if `trans` is not a 
+            TransmissionCurve object
+        
+        
+        See also
+        --------
+        simcado.spectral.TransmissionCurve
+        simcado.optics.get_filter_set()
+        
+        """
+        if filter_name == lam == val == None:
+            raise ValueError("At least one parameter must be specified")
+
+        if filter_name is not None:
+            filt = get_filter_curve(filter_name)
+        elif trans is not None:
+            if isinstance(trans, (sc.TransmissionCurve,
+                                  sc.EmissionCurve,
+                                  sc.UnityCurve,
+                                  sc.BlackbodyCurve)):
+                tc_dict[key] = self.cmds[key]
+            elif isinstance(trans, (np.ndarray, list, tuple)) and \
+                 isinstance(lam  , (np.ndarray, list, tuple)):
+                filt = sc.TransmissionCurve(lam=lam, val=trans, 
+                                            lam_res=self.lam_res)
+
+        self.cmds["INST_FILTER_TC"] = filt
+        self._gen_all_tc()
+
+
+    def read(self, filename):
+        pass
+
+    def save(self, filename):
+        pass
+
+
+    def apply_tracking(self, arr):
+        return pe.tracking(arr, self.cmds)
+
+    def apply_derotator(self, arr):
+        return pe.derotator(arr, self.cmds)
+
+    def apply_wind_jitter(self, arr):
+        return pe.wind_jitter(arr, self.cmds)
+
+    def _gen_all_tc(self):
+
+        ############## AO INSTRUMENT PHOTONS #########################
         if self.cmds.verbose:
             print("Generating AO module mirror emission photons")
 
@@ -185,7 +255,7 @@ class OpticalTrain(object):
 
         if self.cmds["INST_USE_AO_MIRROR_BG"].lower() == "yes" and \
            self.cmds["SCOPE_PSF_FILE"].lower() != "scao":
-        
+
             self.ph_ao = self.ec_ao * self.tc_ao
             self.n_ph_ao = self.ph_ao.photons_in_range(self.lam_bin_edges[0],
                                                        self.lam_bin_edges[-1])
@@ -195,7 +265,7 @@ class OpticalTrain(object):
             self.n_ph_ao = 0.
 
 
-            
+
         ############## TELESCOPE PHOTONS #########################
         if self.cmds.verbose:
             print("Generating telescope mirror emission photons")
@@ -277,37 +347,6 @@ class OpticalTrain(object):
             print("Generating optical path for source photons")
         # Make the transmission curve and PSF for the source photons
         self.tc_source = self._gen_master_tc(preset="source")
-        self.psf = self._gen_master_psf()
-
-        # Detector has been outsourced - this is irrelevant now
-          ############## detector #########################
-        #if self.cmds.verbose:
-        #    print("Generating the detector array")
-        # Make a detector Plane
-        #self.detector = fpa.Detector(self.cmds)
-        #self.chips = self.detector.chips
-
-        # Get the ADC shifts, telescope shake and field rotation angle
-        self.adc_shifts = self._gen_adc_shifts()
-        self.jitter_psf = self._gen_telescope_shake()
-        #self.field_rot = self._gen_field_rotation_angle()
-
-
-    def read(self, filename):
-        pass
-
-    def save(self, filename):
-        pass
-
-
-    def apply_tracking(self, arr):
-        return pe.tracking(arr, self.cmds)
-
-    def apply_derotator(self, arr):
-        return pe.derotator(arr, self.cmds)
-
-    def apply_wind_jitter(self, arr):
-        return pe.wind_jitter(arr, self.cmds)
 
 
     def _gen_master_tc(self, tc_keywords=None, preset=None):
@@ -337,10 +376,10 @@ class OpticalTrain(object):
                        ['INST_FILTER_TC'] + \
                        ['INST_SURFACE_FACTOR'] + \
                        ['FPA_QE']
-                
+
                 ao =   ['INST_MIRROR_AO_TC'] + ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1)
-                
-                
+
+
                 if preset == "ao":
                     tc_keywords = base
                 if preset == "mirror":
@@ -349,7 +388,7 @@ class OpticalTrain(object):
                     tc_keywords = base + ao + ['SCOPE_M1_TC']
                 if preset == "source":
                     tc_keywords = base + ao + ['SCOPE_M1_TC', 'ATMO_TC']
-                
+
             else:
                 raise ValueError("""
                 No presets or keywords passed to gen_master_tc().
@@ -364,7 +403,7 @@ class OpticalTrain(object):
                 raise ValueError(key + " is not in your list of commands")
 
             if self.cmds[key] is not None:
-                if isinstance(self.cmds[key], (sc.TransmissionCurve, 
+                if isinstance(self.cmds[key], (sc.TransmissionCurve,
                                                sc.EmissionCurve,
                                                sc.UnityCurve,
                                                sc.BlackbodyCurve)):
@@ -418,7 +457,7 @@ class OpticalTrain(object):
             print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
-            
+
             if psf_m1[0].pix_res != self.pix_res:
                 psf_m1.resample(self.pix_res)
 
@@ -485,28 +524,22 @@ class OpticalTrain(object):
 
 
 ## note: 'filter' redefines a built-in and should not be used
-def get_filter_curve(filtername):
+def get_filter_curve(filter_name):
     """
     Return a Vis/NIR broadband filter TransmissionCurve object
 
-    Notes
-    -----
-    Acceptable filter names are B V R I Y z J H K Ks
-    """
-    return filter_curve(filtername)
-
-
-def filter_curve(filtername):
-    """
-    Return a Vis/NIR broadband filter TransmissionCurve object
+    Parameters
+    ----------
+    filter_name : str
 
     Notes
     -----
-    Acceptable filter names are B V R I Y z J H K Ks
+    Acceptable filters can be found be calling get_filter_set()
     """
-    if filtername not in "BVRIYzJHKKs":
+
+    if filter_name not in get_filter_set(path=None):
         raise ValueError("filter not recognised: "+filter)
-    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filtername+".dat")
+    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filter_name+".dat")
     return sc.TransmissionCurve(filename=fname)
 
 
