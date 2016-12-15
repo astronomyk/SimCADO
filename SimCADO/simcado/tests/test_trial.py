@@ -39,4 +39,42 @@ def get_module_dir():
     return __pkg_dir__
 
 
+def background_increases_consistently_with_exptime():
+    """
+    Run an empty source for exposure time: (1,2,4,8,16,32,64) mins
+    If true the background level increases linearly and the stdev increases as sqrt(exptime)
+    """
+    
+    import numpy as np
+    import simcado as sim
+
+    cmd = sim.UserCommands()
+    cmd["OBS_REMOVE_CONST_BG"] = "no"
+
+    opt = sim.OpticalTrain(cmd)
+    fpa = sim.Detector(cmd)
+
+    stats = []
+
+    for t in [2**i for i in range(7)]:
+        src = sim.source.empty_sky()
+        src.apply_optical_train(opt, fpa)
+        hdu = fpa.read_out(OBS_EXPTIME=60*t, FPA_LINEARITY_CURVE=None)
+        im = hdu[0].data
+        stats += [[t, np.sum(im), np.median(im), np.std(im)]]
+
+    stats = np.array(stats)
+
+    factors = stats / stats[0,:]
+    bg_stats = [i == np.round(l**2) == np.round(j) == np.round(k) for i, j, k, l in factors] 
+
+    return_val = np.all(bg_stats)
+    if not return_val:
+        print(factors)
+    
+    return return_val
+
+
+def test_background_increases_consistently_with_exptime():
+    assert background_increases_consistently_with_exptime() == True
 
