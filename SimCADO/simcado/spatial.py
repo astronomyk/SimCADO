@@ -75,12 +75,12 @@ def _line_blur(arr, shift, kernel="gaussian", angle=0):
     Introduce a linear blur due to tracking error.
 
     Parameters
-    ==========
+    ----------
     - arr: [2D array] the image
     - shift: [pixel] how many pixels the image has moved
 
     Optional parameters
-    ===================
+    -------------------
     - kernel: 'gaussian' - shift is the FWHM of the blur, approximating a random
                            walk in tracking error
               'linear' - shift is the length of the tracking blur with all
