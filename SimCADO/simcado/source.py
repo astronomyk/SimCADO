@@ -294,6 +294,8 @@ class Source(object):
 
                 oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                 sub_pixel = params["sub_pixel"]
+                
+                # image is in units of ph/s/pixel/m2
                 if image is None:
                     image = self.image_in_range(psf, lam_min, lam_max,
                                                 detector.chips[chip_i],
@@ -594,7 +596,7 @@ class Source(object):
         return None
         
         
-    def offset(dx=0, dy=0):
+    def offset(self, dx=0, dy=0):
         """
         Shifts the coordinates of the source by (dx, dy) in [arcsec]
         """
@@ -604,7 +606,7 @@ class Source(object):
         
         
         
-    def on_grid(pix_res=0.004):
+    def on_grid(self, pix_res=0.004):
         """
         Return an image with the positions of all sources
         """
