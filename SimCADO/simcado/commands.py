@@ -791,3 +791,31 @@ def dump_chip_layout(path=None):
     else:
         path = os.path.dirname(path)
         shutil.copy(fname, path)
+
+        
+def dump_mirror_config(path=None, what="scope"):
+    """
+    Dump the EC_mirrors_scope.tbl or the EC_mirrors_ao.tbl to disk
+
+    Parameters
+    ----------
+    path : str, optional
+        path where the mirror configuration file is to be saved
+    what : str, optional
+        ["scope", "ao"] dump the mirror configuration for either the telescope
+        or the AO module 
+    """
+    if what.lower() == "scope":
+        print("Dumping telescope mirror configuration.")
+        fname = os.path.join(__pkg_dir__, "data", "EC_mirrors_scope.tbl")
+    elif what.lower() == "ao":
+        print("Dumping AO mirror configuration.")
+        fname = os.path.join(__pkg_dir__, "data", "EC_mirrors_ao.tbl")
+    
+    if path is None:
+        f = open(fname, "r")
+        print(f.read())
+        f.close()
+    else:
+        path = os.path.dirname(path)
+        shutil.copy(fname, path)
