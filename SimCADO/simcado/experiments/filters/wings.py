@@ -1,76 +1,18 @@
 """
 A module that holds the functions needed to plot the increase in flux due to
 non-zero blocking outside of a filter's wavelength range
-
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-import simcado as sim
 
-
-
-def plot_filter_wings_flux(lam_min=1.490 , lam_max=1.780, spec_types=["A0V", "G2V", "M5V"],
-                           plot_atmosphere=True, **kwargs):
-    """
-    Plot the effect of non-zero blocking in the filter wings
-    
-    Parameters
-    ----------
-    lam_min, lam_max : float
-        [um] the cut-off wavelengths for the filter
-    spec_type : list of strings, optional
-        The spectral types to be used for the comparison
-    plot_atmosphere : bool
-        Default is True. Plot only the atmospheric emission, i.e. no star
-    
-    Optional parameters
-    -------------------
-    Any keyword-value pair from a simcado config file
-    
-    Notes
-    -----
-    The current filter fluxes are calculated with all sources of noise turned off for 
-    the stars. No shot noise is taken into accoung either.
-    For the atmosphere, all background emission is turned on, but still no shot noise is used
-    """
-    
-    kwargs = {"ATMO_USE_ATMO_BG "     : "no", 
-              "SCOPE_USE_MIRROR_BG"   : "no",
-              "INST_USE_AO_MIRROR_BG" : "no", 
-              "FPA_USE_NOISE"         : "no"}
-    
-    filts = make_tophat_tcs(lam_min, lam_max)
-
-    
-    src_stars = [sim.source.star(20, "H", spec_type=spt) for spt in spec_types]
-    stars = get_flux(src_stars, filts, **kwargs)
-
-    plt.figure(figsize=(10,10))
-    plt.suptitle("Narrow band H-cont filter (1.5685um to 1.5915um)", fontsize=20)
-
-    for i, ttl in zip(range(len(spec_types)), spec_types):
-
-        star_tbl = make_wing_tbl(stars[i])
-
-        plt.subplot(2, len(spec_types)%2+1, i+1)
-        plot_flux_vs_wing(star_tbl, loc=4)
-        plt.title(ttl)
-        plt.ylim(1E-5,1E-1)
-        
-    if plot_atmosphere:
-        
-        src_sky = [sim.source.empty_sky()]
-        sky = get_flux(src_sky, filts)
-        
-        sky_tbl = make_wing_tbl(sky)
-        
-        plt.subplot(2, len(spec_types)%2+1, len(spec_types)+1)
-        plot_flux_vs_wing(sky_tbl, loc=4)
-        plt.title("Atmospheric BG")
-        plt.ylim(1E-5,1E-1)
+from ... import commands
+from ... import optics
+from ... import spectral
+from ... import detector
+from ... import source
 
 
 def get_flux(srcs, filts, **kwargs):
@@ -92,24 +34,26 @@ def get_flux(srcs, filts, **kwargs):
         A list of fluxes per filter for each source
     
     """
-    
-    cmd = sim.UserCommands()
-    cmd.update(kwargs)
+    cmd = commands.UserCommands()
+    cmd.cmds.update(kwargs)
     
     fluxes = []
-    for src in srcs:
+    
+    for filt in filts:
+        cmd["INST_FILTER_TC"] = filt
+        opt = optics.OpticalTrain(cmd)
+
         flux_i = []
-        for filt in filts:
-            
-            cmd["INST_FILTER_TC"] = filt
-            opt = sim.OpticalTrain(cmd)
-            fpa = sim.Detector(cmd)
+        for src in srcs:        
+            fpa = detector.Detector(cmd)
 
             src.apply_optical_train(opt, fpa)
             flux_i += [np.sum(fpa.chips[0].array)]
 
         fluxes += [flux_i]
-   
+
+    fluxes = np.array(fluxes).T.tolist()
+        
     if len(fluxes) == 1:
         fluxes = fluxes[0]
     return fluxes
@@ -137,9 +81,9 @@ def make_tophat_tcs(lam_min, lam_max):
     filt = np.array([0,0,1,1,0,0])
     red  = np.array([0,0,0,0,1,1])
 
-    tc_blue = sim.spectral.TransmissionCurve(lam=lam, val=blue, lam_res=0.001)
-    tc_filt = sim.spectral.TransmissionCurve(lam=lam, val=filt, lam_res=0.001)
-    tc_red  = sim.spectral.TransmissionCurve(lam=lam, val=red , lam_res=0.001)
+    tc_blue = spectral.TransmissionCurve(lam=lam, val=blue, lam_res=0.001)
+    tc_filt = spectral.TransmissionCurve(lam=lam, val=filt, lam_res=0.001)
+    tc_red  = spectral.TransmissionCurve(lam=lam, val=red , lam_res=0.001)
     
     return tc_blue, tc_filt, tc_red
 
@@ -197,3 +141,71 @@ def plot_flux_vs_wing(tbl, loc=2):
         plt.legend(loc=loc)
         plt.xlabel("Wing transmission")
         plt.ylabel("Fractional flux increase")
+        
+def plot_filter_wings_flux(lam_min=1.490 , lam_max=1.780, spec_types=["A0V", "G2V", "M5V"],
+                           plot_thermal_bg=True, filter_name="My Filter", **kwargs):
+
+    """
+    Plot the effect of non-zero blocking in the filter wings
+
+    Parameters
+    ----------
+    lam_min, lam_max : float
+        [um] the cut-off wavelengths for the filter
+    spec_type : list of strings, optional
+        The spectral types to be used for the comparison
+    plot_thermal_bg : bool
+        Default is True. Plot only the atmospheric emission, i.e. no star
+
+    Optional parameters
+    -------------------
+    Any keyword-value pair from a simcado config file
+
+    Notes
+    -----
+    The current filter fluxes are calculated with all sources of noise turned off for 
+    the stars. No shot noise is taken into accoung either.
+    For the atmosphere, all background emission is turned on, but still no shot noise is used
+    """
+
+    params = {"SCOPE_USE_MIRROR_BG"   : "no",
+              "INST_USE_AO_MIRROR_BG" : "no", 
+              "FPA_USE_NOISE"         : "no",
+              "ATMO_USE_ATMO_BG"      : "no"}
+    params.update(kwargs)
+    
+    filts = make_tophat_tcs(lam_min, lam_max)
+
+
+    src_stars = [source.star(20, "H", spec_type=spt) for spt in spec_types]
+    stars = get_flux(src_stars, filts, **params)
+
+
+    plt.figure(figsize=(10,10))
+    plt.suptitle(filter_name+" ("+str(lam_min)+"um to "+str(lam_max)+"um)", fontsize=20)
+
+    for i, ttl in zip(range(len(spec_types)), spec_types):
+
+        star_tbl = make_wing_tbl(stars[i])
+
+        plt.subplot(2, len(spec_types)%2+1, i+1)
+        plot_flux_vs_wing(star_tbl, loc=4)
+        plt.title(ttl)
+        plt.ylim(1E-5,1E-1)
+
+    if plot_thermal_bg:
+
+        params.update({"ATMO_USE_ATMO_BG" : "yes", 
+                       "SCOPE_USE_MIRROR_BG" : "yes",
+                       "INST_USE_AO_MIRROR_BG" : "yes", 
+                       "FPA_USE_NOISE" : "no"})
+
+        src_sky = [source.empty_sky()]
+        sky = get_flux(src_sky, filts, **params)
+
+        sky_tbl = make_wing_tbl(sky)
+
+        plt.subplot(2, len(spec_types)%2+1, len(spec_types)+1)
+        plot_flux_vs_wing(sky_tbl, loc=4)
+        plt.title("Thermal BG (Atmo+Mirrors)")
+        plt.ylim(1E-5,1E-1)
