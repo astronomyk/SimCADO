@@ -53,11 +53,11 @@
 #
 
 import os
-import inspect
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+from .utils import __pkg_dir__
 
 from copy import deepcopy
-import warnings
+import warnings, logging
+
 import numpy as np
 from astropy import units as u
 from astropy import constants as c

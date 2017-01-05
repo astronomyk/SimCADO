@@ -13,11 +13,10 @@
 #
 
 import os
-import inspect
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+from .utils import __pkg_dir__
 
 import glob
-import warnings
+import warnings, logging
 from datetime import datetime as dt
 
 import numpy as np
@@ -162,6 +161,8 @@ class OpticalTrain(object):
 
         if self.cmds.verbose:
             print("Generating an optical train")
+        logging.debug("[OpticalTrain] Generating an optical train")
+        
         if cmds is not None:
             self.cmds.update(cmds)
         self._load_all_tc()
@@ -258,7 +259,8 @@ class OpticalTrain(object):
         ############## AO INSTRUMENT PHOTONS #########################
         if self.cmds.verbose:
             print("Generating AO module mirror emission photons")
-
+        logging.debug("[_gen_all_tc] Generating AO module mirror emission photons")
+        
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
         mirr_list = self.cmds.mirrors_ao
@@ -288,7 +290,8 @@ class OpticalTrain(object):
         ############## TELESCOPE PHOTONS #########################
         if self.cmds.verbose:
             print("Generating telescope mirror emission photons")
-
+        logging.debug("[_gen_all_tc] Generating telescope mirror emission photons")
+        
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
         mirr_list = self.cmds.mirrors_telescope
@@ -315,6 +318,8 @@ class OpticalTrain(object):
         ############## ATMOSPHERIC PHOTONS #########################
         if self.cmds.verbose:
             print("Generating atmospheric emission photons")
+        logging.debug("[_gen_all_tc] Generating atmospheric emission photons")
+            
         # Make the spectral curves for the atmospheric background photons
         self.tc_atmo = self._gen_master_tc(preset="atmosphere")
 
@@ -364,6 +369,8 @@ class OpticalTrain(object):
         ############## SOURCE PHOTONS #########################
         if self.cmds.verbose:
             print("Generating optical path for source photons")
+        logging.debug("[_gen_all_tc] GGenerating optical path for source photons")
+        
         # Make the transmission curve and PSF for the source photons
         self.tc_source = self._gen_master_tc(preset="source")
 
@@ -473,7 +480,10 @@ class OpticalTrain(object):
 
         if self.cmds["SCOPE_PSF_FILE"] is not None and \
                                 os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-            print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
+            if self.cmds.verbose:
+                print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
+            logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
+            
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
 
@@ -492,7 +502,10 @@ class OpticalTrain(object):
                 
                 
         else:
-            print("Using PSF:", psf_type)
+            if self.cmds.verbose:
+                print("Using PSF:", psf_type)
+            logging.debug("Using PSF: " + psf_type)
+            
             ao_eff = self.cmds["SCOPE_AO_EFFECTIVENESS"]
 
             # Get a Diffraction limited PSF
@@ -610,6 +623,7 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
         import poppy
     except ImportError:
         print("Please install poppy \n >>sudo pip3 install poppy")
+        logging.error("[Import Error] import POPPY failed")
         return
 
     params = {"diameter_out"  :37,
@@ -661,10 +675,13 @@ def poppy_eelt_psf_cube(lam_bin_centers, filename=None, **kwargs):
 
     except (ImportError, mp.ProcessError):  # anything else to catch? (OC)
         print("Not possible to use multiple threads")
+        logging.error("[ImportError, mp.ProcessError] something failed with multiprocessing")
+        
         psf_hdu = []
         for lam in lam_bin_centers:
             psf_hdu += [_get_poppy_psf(osys, lam)]
             print(lam)
+            logging.debug("[optics.poppy_eelt_psf_cube] single threading")
 
     for psfi in psf_hdu:   # was 'psf', conflict with module
         psfi.data = psfi.data.astype(np.float32)

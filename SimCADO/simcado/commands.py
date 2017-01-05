@@ -66,9 +66,9 @@ keywords - e.g. for the keywords for the instrument:
 import os
 import inspect
 
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+from .utils import __pkg_dir__
 
-import warnings
+import warnings, logging
 import shutil
 import numpy as np
 
@@ -248,6 +248,9 @@ class UserCommands(object):
 
 
         """
+        
+        logging.info("UserCommands object created")
+        
         self.pkg_dir = __pkg_dir__
         default = os.path.join(self.pkg_dir, "data", "default.config")
 
@@ -279,7 +282,8 @@ class UserCommands(object):
 
         if self.verbose and filename is not None:
             print("Read in parameters from " + filename)
-
+            logging.debug("Read in parameters from " + filename)
+        
         # Subcategories of parameters, filled later by _split_categories
         self.obs = None
         self.sim = None
@@ -633,7 +637,8 @@ class UserCommands(object):
         """
         if self.cmds["SIM_VERBOSE"] == "yes":
             print("Determining lam_bin_edges")
-
+        logging.debug("[UserCommands] Determining lam_bin_edges")
+            
         effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
 
         # This is redundant because also need to look at the PSF width
@@ -691,7 +696,8 @@ class UserCommands(object):
             print("PSF edges were", np.round(lam_bin_edges_psf, 3))
             print("ADC edges were", np.round(lam_bin_edges_adc, 3))
             print("All edges were", np.round(lam_bin_edges, 3))
-
+        logging.debug("[UserCommands] lam_bin_edges found")
+            
         return lam_bin_edges
 
 
@@ -791,7 +797,7 @@ def dump_chip_layout(path=None):
     else:
         path = os.path.dirname(path)
         shutil.copy(fname, path)
-
+        logging.debug("Printed chip layout to file: "+path+"/"+fname)
         
 def dump_mirror_config(path=None, what="scope"):
     """

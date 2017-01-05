@@ -94,9 +94,9 @@ Examples
 
 
 import os
-import inspect
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+from .utils import __pkg_dir__
 
+import warnings, logging
 from copy import deepcopy
 
 import numpy as np
@@ -121,7 +121,6 @@ except ImportError:
     import psf as sim_psf
     import utils
 
-__pkg_dir__ = os.path.split(__file__)[0]
 __all__ = ["Source"]
 
 
@@ -219,7 +218,7 @@ class Source(object):
         sub_pixel : bool
             if sub-pixel accuracy is needed, each source is shifted individually.
             Default is False
-            
+        
             
         Notes
         -----
@@ -295,6 +294,7 @@ class Source(object):
 
                 oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                 sub_pixel = params["sub_pixel"]
+                verbose = params["verbose"]
                 
                 # image is in units of ph/s/pixel/m2
                 if image is None:
@@ -302,13 +302,15 @@ class Source(object):
                                                 detector.chips[chip_i],
                                                 pix_res=opt_train.pix_res,
                                                 oversample=oversample,
-                                                sub_pixel=sub_pixel)
+                                                sub_pixel=sub_pixel,
+                                                verbose=verbose)
                 else:
                     image += self.image_in_range(psf, lam_min, lam_max,
                                                  detector.chips[chip_i],
                                                  pix_res=opt_train.pix_res,
                                                  oversample=oversample,
-                                                 sub_pixel=sub_pixel)
+                                                 sub_pixel=sub_pixel,
+                                                 verbose=verbose)
 
             # 3.
             # !!!!!!!!!!!!!! All of these need to be combined into a single
@@ -386,6 +388,8 @@ class Source(object):
         oversample : int
             the psf images will be oversampled to better conserve flux.
             Default is 1 (i.e. not oversampled)
+        verbose : bool
+            Default that of the OpticalTrain object
 
         Returns
         -------
@@ -396,7 +400,8 @@ class Source(object):
 
         params = {"pix_res"     :0.004,
                   "sub_pixel"   :False,
-                  "oversample"  :1}
+                  "oversample"  :1,
+                  "verbose"     :False}
 
         params.update(kwargs)
 
@@ -448,8 +453,10 @@ class Source(object):
         # certain slice of the psf on the output array.
         ax, ay = np.array(slice_array.shape) // 2
         bx, by = np.array(psf.array.shape)   // 2
-
-        print("Chip ID:", chip.id, "- Creating layer between [um]:", lam_min, lam_max)
+        
+        if params["verbose"]:
+            print("Chip ID:", chip.id, \
+                  "- Creating layer between [um]:", lam_min, lam_max)
 
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array

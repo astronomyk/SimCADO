@@ -91,10 +91,8 @@ written to disk.
 
 
 import os, sys
-import inspect
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
-import warnings
+import warnings, logging
 from copy import deepcopy
 
 import multiprocessing as mp
@@ -106,14 +104,11 @@ from astropy.io import fits
 from astropy.io import ascii as ioascii  # ascii redefines builtin
 #from astropy.stats.funcs import median_absolute_deviation as mad
 
-try:
-    import simcado.spectral as sc
-    import simcado.commands as commands
-    from simcado.nghxrg import HXRGNoise
-except ImportError:
-    import spectral as sc
-    import commands
-    from nghxrg import HXRGNoise
+from .utils import __pkg_dir__
+
+from . import spectral as sc
+from . import commands
+from .nghxrg import HXRGNoise
 
 __all__ = ["Detector", "Chip"]
 
@@ -322,8 +317,14 @@ class Detector(object):
             primary_hdu = fits.PrimaryHDU()
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
+                
+                if isinstance(val, (sc.TransmissionCurve, sc.EmissionCurve, 
+                                    sc.UnityCurve, sc.BlackbodyCurve)):
+                    val = val.params["filename"]
+                
                 if isinstance(val, str) and len(val) > 35:
                     val = "... " + val[-35:]
+                
                 try:
                     primary_hdu.header["HIERARCH "+key] = val
                 except NameError:   # any other exceptions possible?
@@ -1006,7 +1007,7 @@ class Chip(object):
         image2[image2 > 2.14E9] = 2.14E9
 
         im_st = np.zeros(np.shape(im))
-        for i in range(10):
+        for i in range(ndit):
             im_st += np.random.poisson(image2)
             
         return im_st.astype(np.float32)

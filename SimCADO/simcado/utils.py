@@ -19,8 +19,10 @@ Helper functions for SimCADO
 #  moffat(r, alpha, beta)
 #
 
-import requests, shutil, os, inspect  
+import requests, shutil, os, inspect 
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
+import warnings, logging 
 
 from collections import OrderedDict
 import numpy as np

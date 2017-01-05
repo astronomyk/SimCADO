@@ -4,6 +4,7 @@ End-to-end simulator for MICADO on the E-ELT
 """
 # turn off warnings - interesting for development, but not for runtime
 import warnings
+import logging
 
 from astropy.utils.exceptions import AstropyWarning
 
@@ -38,6 +39,11 @@ from .simulation import run
 from .utils import get_extras
 from .detector import install_noise_cube
 
+logging.basicConfig(filename='simcado.log', filemode='w', level=logging.DEBUG,
+                    format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.info("SimCADO imported")
+
 warnings.simplefilter('ignore', UserWarning)
 warnings.simplefilter('ignore', FutureWarning)
 warnings.simplefilter('ignore', category=AstropyWarning)
+

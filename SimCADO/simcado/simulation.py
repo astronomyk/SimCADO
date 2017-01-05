@@ -3,6 +3,8 @@ simulation.py
 """
 
 # from astropy.io import ascii as ioascii ## unused (OC)
+import warnings, logging
+
 import numpy as np
 import simcado as sim
 

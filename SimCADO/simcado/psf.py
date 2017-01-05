@@ -89,10 +89,9 @@
 # convolution of a list of PSF components
 
 import os
-import inspect
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+from .utils import __pkg_dir__
 
-import warnings
+import warnings, logging
 from copy import deepcopy
 
 import numpy as np
@@ -117,12 +116,7 @@ try:
 except: 
     warnings.warn("""Poppy is not installed. Functions beginning with "poppy_" 
                   will not work. See http://pythonhosted.org/poppy/""")
-
-
-    
-    
-    
-    
+   
 
 ## TODO
 # - Add a ellipticity to the GaussianPSF
