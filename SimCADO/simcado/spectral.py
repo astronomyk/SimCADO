@@ -80,17 +80,26 @@ class TransmissionCurve(object):
     filename: string with the path to the transmission curve file where
               the first column is wavelength in [um] and the second is the
               transmission coefficient between [0,1]
+              
+  
+              
     """
-    def __init__(self, filename=None, **kwargs):
+    def __init__(self, filename=None, lam=None, val=None, **kwargs):
         # TODO: remove automatic resampling to lam_res. This should
         #       only be done when requested (i.e. lam_res in kwargs)
         # See answer below
 
-        self.params = {"lam_res"   :0.001,
-                       "Type"      :"Transmission",
-                       "min_step"  :1E-4,
-                       "lam_unit"  :u.um}
-
+        self.params = {"filename"    : filename,
+                       "lam"         : lam,
+                       "val"         : val,
+                       "lam_res"     : 0.001,
+                       "Type"        : "Transmission",
+                       "min_step"    : 1E-4,
+                       "lam_unit"    : u.um,
+                       "use_default_lam" : True,
+                       "on_default_lam" : False,
+                       "default_lam" : np.arange(0.3, 3, 0.001)}
+        
         if isinstance(filename, str):
             self.params["filename"] = filename
 
@@ -132,7 +141,7 @@ class TransmissionCurve(object):
         Get the wavelength and value vectors from the input parameters
         """
 
-        if "lam" in self.params.keys() and "val" in self.params.keys():
+        if self.params["lam" ] is not None and self.params["val" ] is not None:
             lam = self.params["lam"]
             val = self.params["val"]
 
@@ -163,7 +172,8 @@ class TransmissionCurve(object):
         return lam, val
 
 
-    def resample(self, bins, action="average", use_edges=False, min_step=1E-5):
+    def resample(self, bins, action="average", use_edges=False, min_step=None,
+                 use_default_lam=True):
         """
         Resamples both the wavelength and value vectors to an even grid.
         In order to avoid losing spectral information, the TransmissionCurve
@@ -172,38 +182,60 @@ class TransmissionCurve(object):
         'bins'.
 
         Parameters
-        ==========
-        - bins: [um]: float - taken to mean the width of bins on an even grid
-                      array - the centres of the spectral bins
-                            - the edges of the spectral bins if use_edges = True
-
-        Optional parameters
-        ===================
-        - action: ['average','sum'] How to rebin the spectral curve. If 'sum',
-                  then the curve is normalised against the integrated value of
-                  the original curve. If 'average', the average value per bin
-                  becomes the value for each bin.
-        - use_edges: [False, True] True if the array passed in 'bins' describes
-                     the edges of the wavelength bins.
-        - min_step: [um] default=1E-5, the step size for the down-sample
+        ----------
+        bins : float or array of floats  
+            [um]: float - taken to mean the width of bins on an even grid
+                  array - the centres of the spectral bins
+                        - the edges of the spectral bins if use_edges = True
+        action : str, optional 
+            ['average','sum'] How to rebin the spectral curve. If 'sum',
+            then the curve is normalised against the integrated value of
+            the original curve. If 'average', the average value per bin
+            becomes the value for each bin.
+        use_edges : bool, optional
+            [False, True] True if the array passed in 'bins' describes
+            the edges of the wavelength bins. Default is False
+        min_step : float, optional
+            [um] default=1E-4, the step size for the down-sample
+        use_default_lam : bool, optional
+            Default is True. If True, `bins` is ignored and the default 
+            wavelength range is used as the resampling grid.
         """
+
+        self.params["use_default_lam"] = use_default_lam
+        if min_step is not None:
+            self.params["min_step"] = min_step
+        
+        
+        # No need to resample if the curve is already on the default grid
+        if self.params["on_default_lam"] and self.params["use_default_lam"]:
+            return 
+        
         #####################################################
         # Work out the irregular grid problem while summing #
         #####################################################
-
-        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1],
-                          self.params["min_step"])
+        
+        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], 
+                                                        self.params["min_step"])
         tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
 
-        # if bins is a single number, use it as the bin width
-        # else as the bin centres
-        if not hasattr(bins, "__len__"):
-            lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1]+1E-7, bins)
+        #print("resampling", len(self.lam_orig))
+
+        # use_default_lam overrides the bins argument
+        if self.params["use_default_lam"]:
+            lam_tmp = self.params["default_lam"]
+            self.params["on_default_lam"] = True
         else:
-            lam_tmp = bins
+            # if bins is a single number, use it as the bin width
+            # else as the bin centres
+            if not hasattr(bins, "__len__"):
+                lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1]+1E-7, bins)
+            else:
+                lam_tmp = bins
+                
 
         lam_res = lam_tmp[1] - lam_tmp[0]
-        if min_step >= lam_res:
+        if self.params["min_step"] >= lam_res:
             warnings.warn("min_step > resample resolution. Can't resample")
 
         # define the edges and centres of each wavelength bin
@@ -480,13 +512,20 @@ class BlackbodyCurve(EmissionCurve):
     Blackbody emission curve
 
     Parameters
-    ==========
-    - lam: 1D numpy array of length n in [um]
-    - temp: [deg C] float for the average temperature of the blackbody
-    - pix_res: [arcsec] float or int for the field of view for each pixel
-    - area: [m2] float or int for the emitting surface
+    ----------
+    lam : 1D np.ndarray 
+        [um] the centres of the wavelength bins
+    temp : float
+        [deg C] float for the average temperature of the blackbody
+    pix_res : float, optional
+        [arcsec] Default is 0.004. Field of view for each pixel
+    area : float, optional 
+        [m2] Default is 978m2. Area of the emitting surface
 
-    Return values are in units of [ph/s/voxel]
+    Returns
+    -------
+    EmissionCurve object with units of [ph/s/voxel], i.e. photons per second
+        per wavelength bin per full area per pixel field of view
     """
 
     def __init__(self, lam, temp, **kwargs):
