@@ -164,7 +164,7 @@ class OpticalTrain(object):
             print("Generating an optical train")
         if cmds is not None:
             self.cmds.update(cmds)
-
+        self._load_all_tc()
         self._gen_all_tc()
         self.psf = self._gen_master_psf()
 
@@ -172,6 +172,13 @@ class OpticalTrain(object):
         self.adc_shifts = self._gen_adc_shifts()
         self.jitter_psf = self._gen_telescope_shake()
         #self.field_rot = self._gen_field_rotation_angle()
+
+
+    def replace_psf(self, psf, lam_bin_centres):
+        """
+        Change the PSF of the optical train
+        """
+        pass
 
 
     def update_filter(self, filter_name=None, trans=None, lam=None):
@@ -198,7 +205,7 @@ class OpticalTrain(object):
         simcado.optics.get_filter_set()
         
         """
-        if filter_name == lam == val == None:
+        if filter_name == lam == trans == None:
             raise ValueError("At least one parameter must be specified")
 
         if filter_name is not None:
@@ -208,7 +215,7 @@ class OpticalTrain(object):
                                   sc.EmissionCurve,
                                   sc.UnityCurve,
                                   sc.BlackbodyCurve)):
-                tc_dict[key] = self.cmds[key]
+                filt = trans
             elif isinstance(trans, (np.ndarray, list, tuple)) and \
                  isinstance(lam  , (np.ndarray, list, tuple)):
                 filt = sc.TransmissionCurve(lam=lam, val=trans, 
@@ -234,6 +241,18 @@ class OpticalTrain(object):
     def apply_wind_jitter(self, arr):
         return pe.wind_jitter(arr, self.cmds)
 
+    def _load_all_tc(self, tc_list=["ATMO_TC", "SCOPE_M1_TC", "INST_MIRROR_AO_TC", 
+                                    "INST_ENTR_WINDOW_TC", "INST_DICHROIC_TC",
+                                    "INST_MIRROR_TC", "INST_ADC_TC", 
+                                    "INST_PUPIL_TC", "INST_FILTER_TC", 
+                                    "INST_SURFACE_FACTOR", "FPA_QE"]):
+        """
+        Pre-loads all the transmission curves
+        """
+        for tc in tc_list:
+            if isinstance(self.cmds[tc], str):
+                self.cmds[tc] = sc.TransmissionCurve(filename=self.cmds[tc])
+        
     def _gen_all_tc(self):
 
         ############## AO INSTRUMENT PHOTONS #########################
@@ -468,8 +487,10 @@ class OpticalTrain(object):
                                         size=psf_m1[0].size,
                                         pix_res=self.pix_res,
                                         undersized=True)
-                psf_m1 = psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
-
+                psf_m1 = strehl * psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
+                # !!!!!! The line above won't work !!! addition on a list? #####
+                
+                
         else:
             print("Using PSF:", psf_type)
             ao_eff = self.cmds["SCOPE_AO_EFFECTIVENESS"]
