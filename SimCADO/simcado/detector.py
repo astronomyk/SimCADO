@@ -502,7 +502,7 @@ def plot_detector_layout(detector):
                  c=clr[i%len(clr)])
         plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max),
                  c=clr[i%len(clr)])
-        plt.text(chip.x_cen, chip.y_cen, str(i), fontsize=14)
+        plt.text(chip.x_cen, chip.y_cen, chip.id, fontsize=14)
         plt.xlabel("Distance [arcsec]", fontsize=14)
         plt.ylabel("Distance [arcsec]", fontsize=14)
 

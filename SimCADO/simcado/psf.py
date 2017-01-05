@@ -1592,7 +1592,7 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
     elif "gauss" in psf_type.lower():
         sigma = fwhm_pix/2.3548
         seeing_psf = Gaussian2DKernel(stddev=sigma, 
-                                      x_size=1024, y_size=1024, 
+                                      x_size=size, y_size=size, 
                                       factor=1).array
 
     hdu = fits.PrimaryHDU(seeing_psf)

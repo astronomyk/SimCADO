@@ -196,6 +196,7 @@ class Source(object):
         self.ref = np.array(self.ref, dtype=int)
         self.x_orig = deepcopy(self.x)
         self.y_orig = deepcopy(self.y)
+        self.spectra_orig = deepcopy(self.spectra)
 
 
     def apply_optical_train(self, opt_train, detector, chips="all", **kwargs):
@@ -539,8 +540,9 @@ class Source(object):
         # Check if the slice limits are within the spectrum wavelength range
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
             print((lam_min, lam_max), (self.lam[0], self.lam[-1]))
-            raise ValueError("lam_min or lam_max outside wavelength range" + \
-                                                                "of spectra")
+            warnings.warn("lam_min or lam_max outside wavelength range" + \
+                            " of spectra. Returning 0 photons for this range")
+            return np.array([0])
 
 
 
@@ -578,8 +580,8 @@ class Source(object):
         - transmission_curve: The TransmissionCurve to be applied
         """
         tc = deepcopy(transmission_curve)
-        tc.resample(self.lam)
-        self.spectra *= tc.val
+        tc.resample(self.lam, use_default_lam=False)
+        self.spectra = self.spectra_orig * tc.val
 
     def rotate(self, angle, unit="arcsec"):
         """
@@ -1084,6 +1086,11 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     # TODO: Wouldn't
     #   ph_factor = dlam * ph0 * 10**(-0.4 * (Mv + mag))
     # work?  (OC)
+    #
+    # [KL] 
+    # Please feel free to fix this. I very seldomly re-read 6-month old code
+    # or better still, open a GitHub issue! =) Then it's on record
+    
     ph_factor = []
     for i in range(len(mag)):
         tmp = dlam * ph0 * 10**(-0.4*(Mv[i] + mag[i]))
@@ -1200,6 +1207,8 @@ def value_at_lambda(lam_i, lam, val, return_index=False):
 def SED(spec_type, filter_name="V", magnitude=0.):
     """
     Return a scaled SED for a X type star at magnitude Y star in band Z
+    
+    Note: spec_type must be a list! 
 
     Parameters
     ----------
@@ -1226,6 +1235,9 @@ def SED(spec_type, filter_name="V", magnitude=0.):
 
     """
 
+    if isinstance(spec_type, np.ndarray):
+        spec_type = spec_type.tolist()
+    
     if filter_name not in "UBVRIYzJHKKs":
         raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
 
@@ -1359,7 +1371,7 @@ def star(mag, filter_name="Ks", spec_type="A0V", position=(0, 0)):
     return thestar
 
 
-def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area = 1):
+def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area=1):
     """
     Creates a simcado.Source object for a bunch of stars.
 
@@ -1384,12 +1396,12 @@ def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area = 1):
     
     """
     
-    if isinstance(spec_types, (tuple, list)) and len(mags) != len(spec_types):
+    if isinstance(spec_types, (tuple, list, np.ndarray)) and len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")
 
     # KL update refs and SED to only reference the unique spectra
     lam, spec = SED(spec_types, filter_name=filter_name, magnitude=0)
-    if isinstance(spec_types, (list, tuple)):
+    if isinstance(spec_types, (list, tuple, np.ndarray)):
         ref = np.arange(len(spec_types))
     else:
         ref = np.zeros(len(mags))
@@ -1684,7 +1696,7 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     ideal_ph = zero_magnitude_photon_flux(filter_name) * 10**(-0.4 * mag)
 
     from simcado.spectral import EmissionCurve
-    from simcado.optics import filter_curve
+    from simcado.optics import get_filter_curve
 
     curve = EmissionCurve(lam=lam, val=spec, area=1, units="ph/s/m2")
     curve.resample(0.001)
