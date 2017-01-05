@@ -1,12 +1,16 @@
 # Welcome to SimCADocs
 The (slowly expanding) documentation base for SimCADO
 
+<img src="./images/Omega_Cen_Fabricius.png" width=600>
+
+Omega Cen as imaged with HST/WFC3, HST/SimCADO and MICADO/SimCADO by Maximilian Fabricius (MPE). The synthetic images
+of the same region of Omega Cen are based on the HST catalog by Anderson & van der Marel 2010 and augmented by all the faint stars that did not end up in the HST catalogue.
+
 ## SimCADO in a nutshell
 SimCADO is a python package designed to simulate the effects of the Atmosphere, E-ELT, and MICADO instrument on incoming light. The current version (v0.2) can simulate the MICADO imaging modi (4mas and 1.5mas per pixel in the wavelength range 0.7µm to 2.5µm).
 
 ### iPython/Jupyter notebooks
 A (continualy expanding) series of iPython Notebooks detailing how to use SimCADO are available [here in the Notebooks section](examples/Notebooks.md).
-
 
 ### Reference Material
 
