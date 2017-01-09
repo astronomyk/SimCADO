@@ -18,19 +18,22 @@ Helper functions for SimCADO
 #  parallactic_angle_2(ha, de, lat=-24.589167)
 #  moffat(r, alpha, beta)
 #
-
-import requests, shutil, os, inspect
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
-
-import warnings, logging
+#
+import shutil
+import os
+import inspect
 
 from collections import OrderedDict
+
+import requests
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii as ioascii
 
-## These functions are exported to the package
+__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
+# These functions are exported to the package
 __all__ = ["read_config", "update_config", "unify", "parallactic_angle",
            "poissonify", "atmospheric_refraction", "nearest", "add_keyword"]
 
@@ -179,7 +182,7 @@ def unify(x, unit, length=1):
     return y
 
 
-### Just a sketch
+# Just a sketch
 def parallactic_angle(ha, de, lat=-24.589167):
     """
     Compute the parallactic angle
@@ -215,10 +218,11 @@ def parallactic_angle(ha, de, lat=-24.589167):
     n_zenith = n_zenith/np.sqrt((n_zenith**2).sum())
 
     # Angle between the great circles
-    ## CHECK: exact definition, modulo 180 deg?
+    # CHECK: exact definition, modulo 180 deg?
     parang = np.arccos((n_pole * n_zenith).sum()) * 180. / np.pi
 
     return parang
+
 
 # From Filippenko1982
 def parallactic_angle_2(ha, de, lat=-24.589167):
@@ -331,28 +335,27 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     http://www.caha.es/newsletter/news03b/pedraz/newslet.html
     """
 
-    #### need T, P, RH for Ps, Pw Pa
+    # need T, P, RH for Ps, Pw Pa
     T = 273.15 + temp
 
     Ps = -10474. + 116.43 * T - 0.43284 * T**2 + 0.0005384 * T**3
     Pw = Ps * rel_hum / 100.
     Pa = pres - Pw
 
-    #### need n0 for gamma
+    # need n0 for gamma
     sig = 1. / lam
     Da = (Pa / T) * (1. + Pa * (57.9E-8 - 0.0009325 / T + 0.25844 / T**2))
     Dw = (Pw / T) * (1. + Pw * (1. + 3.7E-4 * Pw) *
-                     (-2.37321E-3 + 2.23366 / T - 710.792 / T**2
-                      + 77514.1 / T**3))
+                     (-2.37321E-3 + 2.23366 / T - 710.792 / T**2 +
+                      77514.1 / T**3))
 
     na = Da * (2371.34 + 683939.7 / (130. - sig**2) + 4547.3 / (38.9 - sig**2))
     nw = Dw * (6487.31 + 58.058 * sig**2 - 0.7115 * sig**4 + 0.08851 * sig**6)
     n0 = 1E-8 * (na + nw) + 1.
 
-    #### need gamma, kappa and beta for R
+    # need gamma, kappa and beta for R
     g = n0 - 1.
     b = 0.001254 * (273.15 + temp) / 273.15
-    #k = 1
     k = 1. + 0.005302 * np.sin(np.deg2rad(lat))**2 \
         - 0.00000583 * np.sin(2. * np.deg2rad(lat))**2 - 0.000000315 * h
 
@@ -406,7 +409,8 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
     value : str, float, int
     comment : str
     ext : int, optional
-        The fits extension index where the keyword should be added. Default is 0
+        The fits extension index where the keyword should be added.
+        Default is 0
     """
     f = fits.open(filename, mode="update")
     f[ext].header[keyword] = (value, comment)
@@ -414,10 +418,7 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
     f.close()
 
 
-
 ############# Check the server for data extras
-
-
 def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     """
     Download the extra data that aren't in the SimCADO package
@@ -439,10 +440,10 @@ def get_extras():
     save_dir = os.path.join(__pkg_dir__, "data")
     fname = os.path.join(save_dir, "extras.dat")
 
-    check_replace = 0
+    # check_replace = 0  ## unused (OC)
     if os.path.exists(fname):
         old_extras = ioascii.read(fname)
-        check_replace = 1
+        # check_replace = 1   ## unused (OC)
     else:
         old_extras = ioascii.read("""
         filename                version         size    group
@@ -461,15 +462,16 @@ def get_extras():
 
             # is the new name in the old list of filenames
             if name in old_extras["filename"]:
-                i = np.where(old_extras["filename"] == name)[0][0]
-                #print(i, old_extras["version"][i] == vers)
+                iname = np.where(old_extras["filename"] == name)[0][0]
+                # print(iname, old_extras["version"][iname] == vers)
 
                 # Are the versions the same?
-                if vers == old_extras["version"][i]:
+                if vers == old_extras["version"][iname]:
                     check_download = 0
 
         if check_download:
-            print("Downloading: " + name + "  Version: " + vers + "  Size: " + size)
+            print("Downloading: " + name + "  Version: " + vers +
+                  "  Size: " + size)
             download_file(url + name)
         else:
             print(name + " is already the latest version: " + vers)
