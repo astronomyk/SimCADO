@@ -19,15 +19,16 @@ Helper functions for SimCADO
 #  moffat(r, alpha, beta)
 #
 
-import requests, shutil, os, inspect 
+import requests, shutil, os, inspect
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
-import warnings, logging 
+import warnings, logging
 
 from collections import OrderedDict
 import numpy as np
 from astropy import units as u
-from astropy.io import fits, ascii   
+from astropy.io import fits
+from astropy.io import ascii as ioascii
 
 ## These functions are exported to the package
 __all__ = ["read_config", "update_config", "unify", "parallactic_angle",
@@ -365,7 +366,7 @@ def atmospheric_refraction(lam, z0=60, temp=0, rel_hum=60, pres=750,
     # we can get the angle of refraction
 
     ang = np.rad2deg(R * 3600)
-    
+
     # return value is in arcsec
     return ang
 
@@ -412,16 +413,16 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
     f.flush()
     f.close()
 
-    
-    
-############# Check the server for data extras 
+
+
+############# Check the server for data extras
 
 
 def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     """
     Download the extra data that aren't in the SimCADO package
     """
-    
+
     local_filename = os.path.join(save_dir, url.split('/')[-1])
     r = requests.get(url, stream=True)
     with open(local_filename, 'wb') as f:
@@ -429,48 +430,48 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
 
     return local_filename
 
-    
+
 def get_extras():
     """
     Downloads large files that SimCADO needs to simulate MICADO
     """
-    
+
     save_dir = os.path.join(__pkg_dir__, "data")
     fname = os.path.join(save_dir, "extras.dat")
-    
+
     check_replace = 0
     if os.path.exists(fname):
-        old_extras = ascii.read(fname)
+        old_extras = ioascii.read(fname)
         check_replace = 1
     else:
-        old_extras = ascii.read("""
+        old_extras = ioascii.read("""
         filename                version         size    group
         PSF_POPPY.fits          20151103a       48MB    typical
         """)
-    
+
     url = "http://www.univie.ac.at/simcado/data_ext/"
-    new_extras = ascii.read(download_file(url + "extras.dat"))
-    
+    new_extras = ioascii.read(download_file(url + "extras.dat"))
+
     for name, vers, size, group in new_extras:
         check_download = 1
-        
+
         # does the file exist on the users disk?
         fname = os.path.join(__pkg_dir__, "data", name)
         if os.path.exists(fname):
-        
+
             # is the new name in the old list of filenames
             if name in old_extras["filename"]:
                 i = np.where(old_extras["filename"] == name)[0][0]
                 #print(i, old_extras["version"][i] == vers)
-                
+
                 # Are the versions the same?
                 if vers == old_extras["version"][i]:
                     check_download = 0
-        
+
         if check_download:
             print("Downloading: " + name + "  Version: " + vers + "  Size: " + size)
             download_file(url + name)
         else:
             print(name + " is already the latest version: " + vers)
-    
+
     print("Finished downloading data for SimCADO")
