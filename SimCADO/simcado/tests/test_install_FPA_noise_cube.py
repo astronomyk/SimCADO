@@ -5,9 +5,9 @@ def install_FPA_noise_cube():
     if os.path.exists(fname):
         sim.detector.install_noise_cube(1)
         fname = os.path.join(sim.utils.__pkg_dir__, data, "FPA_noise.fits")
-        return os.path.exists(fname):
-    else: 
+        return os.path.exists(fname)
+    else:
         return False
-    
-def test_install_FPA
+
+def test_install_FPA():
     assert install_FPA_noise_cube() == True
