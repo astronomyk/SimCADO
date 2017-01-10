@@ -1478,9 +1478,9 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
               "support_width"        : 0.2,
               "support_angle_offset" : 0,
               "n_missing"            : None,
-              "use_cold_stop"        : True,
-              "cold_inner_radius"    : None, 
-              "cold_outer_radius"    : 19
+              "use_pupil_mask"        : True,
+              "pupil_inner_radius"    : None, 
+              "pupil_outer_radius"    : 19
               }
     params.update(kwargs)
     
@@ -1608,7 +1608,7 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
 
 
 def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
-                  segments=None, filename=None, use_cold_stop=True, **kwargs):
+                  segments=None, filename=None, use_pupil_mask=True, **kwargs):
     """
     Generate a PSF for the E-ELT for plan A or B with POPPY
     
@@ -1632,7 +1632,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     filename : str, optional
         Default = None. If filename is not None, the resulting FITS object will
         be saved to disk
-    use_cold_stop : str, optional
+    use_pupil_mask : str, optional
         Default = True.
 
     Kwargs
@@ -1646,8 +1646,8 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     "support_width"        : 0.2 [m]
     "support_angle_offset" : 0 [deg]
     "n_missing"            : None
-    "cold_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
-    "cold_outer_radius"    : 19     # [m]
+    "pupil_inner_radius"   : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
+    "pupil_outer_radius"   : 19     # [m]
     
     
     Returns
@@ -1676,16 +1676,16 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
               "support_angle_offset" : 0,
               "n_missing"            : None,
               "oversample"           : 2,
-              "cold_inner_radius"    : None, 
-              "cold_outer_radius"    : 19}
+              "pupil_inner_radius"    : None, 
+              "pupil_outer_radius"    : 19}
     # Careful - when calling the detector, the rusulting PSF is 2x oversampled. 
     # Hence we double the pixelscale at osys.add_detector
     
     params.update(**kwargs)
 
     params["pixelscale"] = 0.004 if mode.lower() == "wide" else 0.0015
-    if params["cold_inner_radius"] is None:
-        params["cold_inner_radius"] = 11.5 if plan.lower() == "b" else 5.6
+    if params["pupil_inner_radius"] is None:
+        params["pupil_inner_radius"] = 11.5 if plan.lower() == "b" else 5.6
     
     
     
@@ -1702,9 +1702,9 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
 
     opticslist = [ap, sec]
                        
-    if use_cold_stop:
-        cold_in = poppy.SecondaryObscuration(secondary_radius=params["cold_inner_radius"], n_supports=0)
-        cold_out = poppy.CircularAperture(radius=params["cold_outer_radius"])                                     
+    if use_pupil_mask:
+        cold_in = poppy.SecondaryObscuration(secondary_radius=params["pupil_inner_radius"], n_supports=0)
+        cold_out = poppy.CircularAperture(radius=params["pupil_outer_radius"])                                     
         opticslist += [cold_in, cold_out]
         
     eelt = poppy.CompoundAnalyticOptic(opticslist=opticslist, 
@@ -1780,18 +1780,20 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         raise ImportError("Poppy is not installed - google 'JWST POPPY'")
     
     if plan.lower() == "b":
-        inner_diam = 21.9
+        #inner_diam = 21.9
+        first_seg = 270
         if missing is None: missing = 5
     else:
+        first_seg = 60
         if missing is None: missing = 0
-    
+        
     
     ap = poppy.MultiHexagonAperture(flattoflat=1.256, gap=0.004, 
                                                     segmentlist=np.arange(2000))
     rad = [np.sqrt(np.sum(np.array(ap._hex_center(j))**2)) 
                                                         for j in ap.segmentlist]
 
-    mask = (np.array(rad) < 0.5*outer_diam) * (np.array(rad) > 0.5*inner_diam)
+    mask = (np.array(rad) < 0.5*outer_diam) * (ap.segmentlist > first_seg)
     segs = np.array(ap.segmentlist)[mask]
     
     if isinstance(missing, int):
