@@ -1451,9 +1451,9 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     "support_width"        : 0.2,   # [m]
     "support_angle_offset" : 0,     # [deg]
     "n_missing"            : None
-    "use_cold_stop"        : True
-    "cold_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
-    "cold_outer_radius"    : 19     # [m]
+    "use_pupil_mask"        : True
+    "pupil_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
+    "pupil_outer_radius"    : 19     # [m]
     
     Returns
     -------
