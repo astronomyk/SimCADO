@@ -429,8 +429,11 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
 
     local_filename = os.path.join(save_dir, url.split('/')[-1])
     try:
-        wget.download(url, out=local_filename, bar=wget.bar_adaptive)
+        temp_file = wget.download(url,
+                                  out=wget.tempfile.mktemp(dir='.', suffix='.tmp'),
+                                  bar=wget.bar_adaptive)
         print("\n")
+        os.rename(temp_file, local_filename)
     except wget.ulib.HTTPError:
         print(url + " not found")
 
