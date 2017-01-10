@@ -19,7 +19,6 @@ Helper functions for SimCADO
 #  moffat(r, alpha, beta)
 #
 #
-import shutil
 import os
 import inspect
 
@@ -432,7 +431,7 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     try:
         wget.download(url, out=local_filename, bar=wget.bar_adaptive)
         print("\n")
-    except HTTPError:
+    except wget.ulib.HTTPError:
         print(url + " not found")
 
     return local_filename
