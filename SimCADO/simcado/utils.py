@@ -25,7 +25,11 @@ import inspect
 
 from collections import OrderedDict
 
-import requests
+try:
+    import wget
+except ImportError:
+    print("Package wget is not available. simcado.get_extras() will not work.")
+
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
@@ -425,9 +429,11 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     """
 
     local_filename = os.path.join(save_dir, url.split('/')[-1])
-    r = requests.get(url, stream=True)
-    with open(local_filename, 'wb') as f:
-        shutil.copyfileobj(r.raw, f)
+    try:
+        wget.download(url, out=local_filename, bar=wget.bar_adaptive)
+        print("\n")
+    except HTTPError:
+        print(url + " not found")
 
     return local_filename
 
