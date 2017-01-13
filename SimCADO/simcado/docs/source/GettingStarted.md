@@ -66,23 +66,19 @@ SimCADO also provides a series of spectra for stars and galaxies, however these 
 ### The quick, the dirty and the ugly
 
 As seen on the [home](Home) page, a simulation can be run using 3 lines of code:
-
     
     >>> import simcado
     >>> src = simcado.Source(filename="my_source.fits")
-    >>> simcado.run(src, filename="my_image.fits")
-    
+    >>> simcado.run(src, filename="my_image.fits")   
     
 The `.run()` function is quite powerful. Many users may find that they don't need anything else to run the simulations they need. The full function call looks like this:
-
 
     simcado.run(src, filename=None, 
                 mode="wide", detector_layout="small",  
                 cmds=None, opt_train=None, fpa=None, 
                 return_internals=False,
                 **kwargs)
-
-                
+               
 Lets pull this function call apart in order of importance to the simulation:
 
 1. `src`: Obviously the more important aspect is the `Source` object. Without a `Source` these is nothing to observe
@@ -91,8 +87,7 @@ Lets pull this function call apart in order of importance to the simulation:
 
     * `"small"`   - 1x 1k-detector centred in the FoV
     * `"centre"`  - 1x 4k-detector centred in the FoV
-    * `"wide"`    - 9x 4k-detector as per MICADO wide field mode (4mas)
-    * `"zoom"`    - 9x 4k-detector as per MICADO zoom mode (1.5mas)
+    * `"full"`    - 9x 4k-detector as per MICADO imaging mode (either 4mas or 1.5mas)
     * `"default"` - depends on "mode" keyword. Full MICADO 9 chip detector array for either 4mas or 1.5mas modes
 
 1. `cmds, opt_train, fpa` are all parameters that allow you to provide custom built parts of the machinary. Say you have a set of commands saved from a previous simulation run which differ from the default values, then you can use these by passing a `UserCommands` object via the `cmd` parameter. The same goes for passing an custom `OpticalTrain` object to `opt_train` and a custom `Detector` object to `fpa`. For more information see the relevant examples sections - [`UserCommands` examples](examples/UserCommands), [`OpticalTrain` examples](examples/OpticalTrain), [`Detector` examples](examples/Detector).
@@ -101,9 +96,7 @@ Lets pull this function call apart in order of importance to the simulation:
 
 1. `**kwargs`: Although `kwargs` is the last parameter, it actually allows you to control every aspect of the simulation. `kwargs` takes any keyword-value pair that exist in the SimCADO configuration file, and so you can control single aspects of the simulation by passing these keyword-value pairs to `.run()`. For example, you can increase the exposure time of the image by passing 
 
-```
     >>> simcado.run(src, ... , OBS_EXPTIME=600, INST_FILTER_TC="J", ...)
-```
 
 A list of all the available keyword-value pairs can be found in the [Keywords section](Keywords) and a description of the default values can be found in the ["MICADO with SimCADO section"](SimCADO_defaults). 
 
@@ -113,18 +106,14 @@ Alternatively you can dump a copy of the default parameters by calling `simcado.
 ### Changing Filters
 The keyword `INST_FILTER_TC` allows you to supply either the name of a filter (i.e. "Ks", "PaBeta") or a path to an ASCII file containing a filter curve. `INST_FILTER_TC` can be passed to `.run()` just like any other SimCADO configuration keyword.
 
-
     >>> simcado.run(src, INST_FILTER_TC="J")
     >>> simcado.run(src, INST_FILTER_TC="path/to/my_filter_curve.txt")
-
-    
+   
 SimCADO has some generic filters built in. These include all the regular NIR broadband filters (I, z, Y, J, H, K, Ks). There are also some narrow band filter. As the MICADO filter set is expected to change, we will not list the SimCADO filter set here. Instead the user can find out which filters are available by calling the  function (as of Nov 2016):
-
 
     >>> print(sim.optics.get_filter_set())
     ['B', 'BrGamma', 'CH4_169', 'CH4_227', 'FeII_166', 'H', 'H2O_204', 'H2_212', 'Hcont_158', 
      'I', 'J', 'K', 'Ks', 'NH3_153', 'PaBeta', 'R', 'U', 'V', 'Y', 'z']
-
 
 If you'd like to use your own filter curve, note that the ASCII file should contain two columns - the first holds the wavelength values and the second hold the transmission values between 0 and 1.
 
@@ -140,24 +129,45 @@ Depending on what your intended use for SimCADO is, the keyword `OBS_SAVE_ALL_FR
 ### Reading out the detector
 **Warning**: running a full simulation could take ~10 minutes, depending on how much RAM you have available
 
-
 	>>> simcado.run("detector_layout="small"")
-
 
 The `detector_layout` keyword is key:
     
-
     detector_layout : str, optional
-        ["small", "wide", "zoom", "centre", "full"] Default is "small".
-
+        ["small", "centre", "full"] Default is "small".
 
 Where each of the strings means:
         
-* "small"   - 1x 1k-detector centred in the FoV
-* "centre"  - 1x 4k-detector centred in the FoV
-* "wide"    - 9x 4k-detector as per MICADO wide field mode (4mas)
-* "zoom"    - 9x 4k-detector as per MICADO zoom mode (1.5mas)
-* "full"    - "wide" or "zoom" depending on "mode" keyword.
+* `"small"`   - 1x 1k-detector centred in the FoV
+* `"centre"`  - 1x 4k-detector centred in the FoV
+* `"full"`    - 9x 4k-detector as per MICADO imaging mode (either 4mas or 1.5mas)
+* `"default"` - depends on "mode" keyword. Full MICADO 9 chip detector array for either 4mas or 1.5mas modes
+
+
+## Saving and re-using commands - the ``UserCommands`` object
+Passing more than a few keyword-value pairs to the ``simcado.run()`` becomes tedious. SimCADO therefore provides a dictionary of commands so that you can keep track of everthing that is happening in a simulation.
+
+    >>> my_cmds = simcado.UserCommands()
+    >>> simcado.run(my_src, cmds=my_cmds)
+
+When initialised the ``UserCommands`` object contains all the default values for MICADO, as given in [Keywords](Keywords). The `` UserCommands`` object is used just like a normal python dictionary:
+
+    >>> my_cmds["OBS_EXPTIME"] = 180
+    >>> my_cmds["OBS_EXPTIME"]
+    180.0
+
+It can be saved to disk and re-read later on:
+
+    >>> my_cmds.writeto("path/to/new_cmds.txt")
+    >>> new_cmds = simcado.UserCommands("path/to/new_cmds.txt")
+    >>> new_cmds["OBS_EXPTIME"]
+    180.0
+
+If you prefer not to use interactive python and just want to dump a commands file to edit in your favourite text editor:
+
+    >>> simcado.commands.dump_defaults("path/to/cmds_file.txt")
+    
+More information on the ``UserCommands`` object is given in the [Examples Section](examples/UserCommands)
 
 
 ## Behind the scenes of SimCADO
@@ -168,12 +178,12 @@ SimCADO uses 4 main classes during a simulation:
 * `Detector` represents the focal plane detector array and contains information on the electronic characteristics of the detector chips and their physical positions.
 * `UserCommands` is a dictionary of all the important keywords needed by SimCADO to run the simultationm, e.g. `OBS_EXPTIME` (exposure time) or `INST_FILTER_TC` (filter curve)
 
-For more information on how SimCADO works please see the [SimCADO in Depth](deep_stuff/SimCADO.md) section.
+For more information on how SimCADO works please see the [SimCADO in Depth](deep_stuff/SimCADO) section.
 
 
 ## Things to watch out for
 
-
+This space. It will soon expand!
 
 
 
