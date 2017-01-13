@@ -1,6 +1,9 @@
 # Getting Started with SimCADO
 SimCADO can be super easy to use, or super complicated. The level of complexity is completely up to the user. A basic simulation involves only 1 thing: a ``Source`` object to describe the observable object. Once the user has created this object, the function ``simcado.run()`` is all that needs to be called. Controlling the parameters of the simulation can be done either by passing keyword-value pairs, or my using a ``UserCommands`` dictionary.
 
++ [Source objects](#source)
++ [Simulations](#simulating-with-simcado)
++ [UserCommands object](#saving-and-reusing-commands)
 
 ## Source
 For full details, please see the [API](API) and examples of [Source Objects](examples/Source)
@@ -144,7 +147,8 @@ Where each of the strings means:
 * `"default"` - depends on "mode" keyword. Full MICADO 9 chip detector array for either 4mas or 1.5mas modes
 
 
-## Saving and re-using commands - the ``UserCommands`` object
+## Saving and reusing commands
+### The ``UserCommands`` object
 Passing more than a few keyword-value pairs to the ``simcado.run()`` becomes tedious. SimCADO therefore provides a dictionary of commands so that you can keep track of everthing that is happening in a simulation.
 
     >>> my_cmds = simcado.UserCommands()
