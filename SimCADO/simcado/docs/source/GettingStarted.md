@@ -1,13 +1,5 @@
 # Getting Started with SimCADO
-SimCADO can be super easy to use, or super complicated. The level of complexity is completely up to the user. Regardless of your intended use for SimCADO, it's probably a good idea to at least have a vague understanding of what is going on during a simulation.
-
-## Behind the scenes of SimCADO
-SimCADO uses 4 main classes during a simulation: 
-
-* `Source` holds spatial and spectral information about the astronomical source of photons, e.g. galaxy, star cluster, etc.
-* `OpticalTrain` contains information on the various elements along the optical path, e.g. mirrors reflectivity curves, PSFs, instrumental distortion, etc.
-* `Detector` represents the focal plane detector array and contains information on the electronic characteristics of the detector chips and their physical positions.
-* `UserCommands` is a dictionary of all the important keywords needed by SimCADO to run the simultationm, e.g. `OBS_EXPTIME` (exposure time) or `INST_FILTER_TC` (filter curve)
+SimCADO can be super easy to use, or super complicated. The level of complexity is completely up to the user. A basic simulation involves only 1 thing: a ``Source`` object to describe the observable object. Once the user has created this object, the function ``simcado.run()`` is all that needs to be called. Controlling the parameters of the simulation can be done either by passing keyword-value pairs, or my using a ``UserCommands`` dictionary.
 
 
 ## Source
@@ -167,12 +159,17 @@ Where each of the strings means:
 * "zoom"    - 9x 4k-detector as per MICADO zoom mode (1.5mas)
 * "full"    - "wide" or "zoom" depending on "mode" keyword.
 
-                
-## Building your own simulation run
-### Creating `UserCommand` objects
-### Creating `OpticalTrain` objects
-### Creating `Detector` array objects
-### Running the simulation
+
+## Behind the scenes of SimCADO
+SimCADO uses 4 main classes during a simulation: 
+
+* `Source` holds spatial and spectral information about the astronomical source of photons, e.g. galaxy, star cluster, etc.
+* `OpticalTrain` contains information on the various elements along the optical path, e.g. mirrors reflectivity curves, PSFs, instrumental distortion, etc.
+* `Detector` represents the focal plane detector array and contains information on the electronic characteristics of the detector chips and their physical positions.
+* `UserCommands` is a dictionary of all the important keywords needed by SimCADO to run the simultationm, e.g. `OBS_EXPTIME` (exposure time) or `INST_FILTER_TC` (filter curve)
+
+For more information on how SimCADO works please see the [SimCADO in Depth](deep_stuff/SimCADO.md) section.
+
 
 ## Things to watch out for
 
