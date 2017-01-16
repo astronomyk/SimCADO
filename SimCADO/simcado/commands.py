@@ -296,6 +296,7 @@ class UserCommands(object):
         self.fpa = None
         self.hxrg = None
 
+
     def update(self, new_dict):
         """
         Update multiple entries of a `UserCommands` dictionary
@@ -304,19 +305,21 @@ class UserCommands(object):
         -------
         `update(new_dict)` takes either a normal python `dict` object or a
         `UserCommands` object. Only keywords that match those in the
-        `UserCommands` object will be updated. No warning is given for
-        misspelled keywords.
+        `UserCommands` object will be updated. Misspelled keywords raise an
+        error.
 
         To update single items in the dictionary, it is recommended to simply
         call the key and update the value - i.e `<UserCommands>[key] = value`.
 
         Parameters
         ----------
-        new_dict : dict, `UserCommands`
+        new_dict : dict, `UserCommands`
 
 
         Raises
         ------
+        KeyError
+            If a parameter is not found in `self.cmds`.
 
         See Also
         --------
@@ -347,11 +350,17 @@ class UserCommands(object):
         """
 
         if isinstance(new_dict, UserCommands):
-            self.cmds.update(new_dict.cmds)
+            tmpcmds = new_dict.cmds
         elif isinstance(new_dict, dict):
-            self.cmds.update(new_dict)
+            tmpcmds = new_dict
         else:
             raise ValueError("Cannot update with type: "+type(new_dict))
+
+        for thekey in tmpcmds:
+            if not thekey in self.cmds:
+                raise KeyError("Unknown parameter " + thekey)
+            else:
+                self.cmds[thekey] = tmpcmds[thekey]
 
         self._find_files()
         self._default_data()
