@@ -37,8 +37,8 @@ from astropy.io import ascii as ioascii
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
 # These functions are exported to the package
-__all__ = ["read_config", "update_config", "unify", "parallactic_angle",
-           "poissonify", "atmospheric_refraction", "nearest", "add_keyword"]
+__all__ = ["unify", "parallactic_angle", "poissonify",
+           "atmospheric_refraction", "nearest", "add_keyword"]
 
 
 def msg(cmds, message, level=3):
@@ -58,95 +58,6 @@ def msg(cmds, message, level=3):
     if cmds["SIM_VERBOSE"] == "yes" and level <= cmds["SIM_MESSAGE_LEVEL"]:
         print(message)
 
-
-def read_config(config_file):
-    """
-    Read in a SimCADO configuration file
-
-    The configuration file is in SExtractor format:
-       'PARAMETER    Value    # Comment'
-
-    Parameters
-    ----------
-    config_file : str
-        the filename of the .config file
-
-    Returns
-    -------
-    config_dict : dict (collections.OrderedDict)
-        A dictionary with keys 'PARAMETER' and values 'Value'.
-
-    Notes
-    -----
-    The values of the dictionary are strings and will have to be converted to
-    the appropriate data type as they are needed.
-    """
-
-    import re
-
-    # Read the file into a list of strings
-    config_dict = OrderedDict()
-
-    # remove lines that are all spaces or spaces + '#'
-    # these are the regular expressions
-    isempty = re.compile(r'^\s*$')
-    iscomment = re.compile(r'^\s*#')
-
-    with open(config_file, 'r') as fp1:
-        for line in fp1:
-            if isempty.match(line):
-                continue
-            if iscomment.match(line):
-                continue
-
-            line = line.rstrip()             # remove trailing \n
-            content = line.split('#', 1)[0]  # remove comment
-            param, value = content.split(None, 1)
-
-            # Convert to number if possible
-            try:
-                config_dict[param] = float(value.strip())
-            except ValueError:
-                config_dict[param] = value.strip()
-
-            # Convert string "none" to python None
-            if isinstance(value, str) and value.lower() == "none":
-                config_dict[param] = None
-
-    return config_dict
-
-
-def update_config(config_file, config_dict):
-    """
-    Update a SimCADO configuration dictionary
-
-    A configuration file in the SExtractor format:
-         'PARAMETER    Value    # Comment'
-    an existing configuration dictionary.
-
-    Parameters
-    ----------
-    config_file : str
-        the filename of the .config file
-
-    Returns
-    -------
-    config_dict : dict
-        A dictionary with keys 'PARAMETER' and values 'Value'.
-
-    Returns:
-    -------
-    config_dict : dict
-        A dictionary with keys 'PARAMETER' and values 'Value'.
-
-    Notes
-    -----
-    the values of the dictionary are strings and will have
-    to be converted to the appropriate data type as they are needed.
-    """
-    config_dict.update(read_config(config_file))
-
-    return config_dict
 
 
 def unify(x, unit, length=1):

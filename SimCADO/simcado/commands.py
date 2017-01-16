@@ -20,7 +20,7 @@ Classes
 Routines
 --------
 
-* ``dump_defaults(filename="./", type="freq")`` 
+* ``dump_defaults(filename="./", type="freq")``
 * ``dump_chip_layout(dir="./")``
 
 
@@ -58,7 +58,7 @@ keywords - e.g. for the keywords for the instrument:
 
     >>> my_cmds.inst
     ...
-    
+
 
 """
 
@@ -66,20 +66,21 @@ keywords - e.g. for the keywords for the instrument:
 import os
 import inspect
 
-from .utils import __pkg_dir__
-
-import warnings, logging
+import warnings
+import logging
 import shutil
-import numpy as np
 
+import numpy as np
 import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
+
+from .utils import __pkg_dir__
 
 try:
     import simcado.spectral as sc
-    import simcado.utils as utils
+    from simcado.utils import atmospheric_refraction
 except ImportError:
     import spectral as sc
-    import utils as utils
+    from utils import atmospheric_refraction
 
 __all__ = ["UserCommands"]
 
@@ -92,12 +93,12 @@ class UserCommands(object):
     -------
     A ``UserCommands`` object contains a dictionary which holds all the keywords
     from the ``default.config`` file. It also has attributes which represent the
-    frequently used variables, i.e. ``pix_res``, ``lam_bin_edges``, ``exptime``, 
+    frequently used variables, i.e. ``pix_res``, ``lam_bin_edges``, ``exptime``,
     etc
 
     ``<UserCommands>.cmds`` is a dictionary that holds all the variables
     the user may wish to change. It also has some set variables like
-    ``<UserCommands>.pix_res`` that can be accessed directly, instead of from 
+    ``<UserCommands>.pix_res`` that can be accessed directly, instead of from
     the dictionary.
 
     ``UserCommands`` is imported directly into the simcado package and is
@@ -220,7 +221,7 @@ class UserCommands(object):
     >>> my_cmds.inst
     ...
     ```
-    
+
     .. plot::
 
         import matplotlib.pyplot as plt
@@ -230,8 +231,8 @@ class UserCommands(object):
         plt.grid()
         plt.title(r'Normal: $\mu=%.2f, \sigma=%.2f$'%(x.mean(), x.std()))
         plt.show()
-    
-    
+
+
     """
 
 
@@ -248,21 +249,21 @@ class UserCommands(object):
 
 
         """
-        
+
         logging.info("UserCommands object created")
-        
+
         self.pkg_dir = __pkg_dir__
         default = os.path.join(self.pkg_dir, "data", "default.config")
 
         # read in the default keywords
-        self.cmds = utils.read_config(default)
+        self.cmds = read_config(default)
 
         # turn any "none" strings into python None values
         self._convert_none()
 
         # read in the users wishes
         if filename is not None:
-            self.cmds.update(utils.read_config(filename))
+            self.cmds.update(read_config(filename))
 
         # set the default paths and file names
         self._find_files()
@@ -283,7 +284,7 @@ class UserCommands(object):
         if self.verbose and filename is not None:
             print("Read in parameters from " + filename)
             logging.debug("Read in parameters from " + filename)
-        
+
         # Subcategories of parameters, filled later by _split_categories
         self.obs = None
         self.sim = None
@@ -401,19 +402,19 @@ class UserCommands(object):
             if isinstance(value, str) and value.lower() == "none":
                 self.cmds[key] = None
 
-                
+
     def _find_files(self):
         """
-        Checks for a file in the directorys: "./", <pkg_dir>, <pkg_dir>/data 
+        Checks for a file in the directorys: "./", <pkg_dir>, <pkg_dir>/data
         """
-                
+
         for key in self.cmds:
             fname = self.cmds[key]
             if isinstance(fname, str) and \
                "." in fname and \
                len(fname.split(".")[-1]) > 1:
                 if not os.path.exists(fname):
-                    fname = os.path.join(__pkg_dir__, 
+                    fname = os.path.join(__pkg_dir__,
                                                     os.path.split(fname)[-1])
                 if not os.path.exists(fname):
                     fname = os.path.join(__pkg_dir__, "data", \
@@ -421,9 +422,9 @@ class UserCommands(object):
                 if not os.path.exists(fname):
                     fname = self.cmds[key]
                     warnings.warn("Keyword "+key+" path doesn't exist: "+fname)
-                    
+
                 self.cmds[key] = fname
-                
+
 
     def _default_data(self):
         """
@@ -559,7 +560,7 @@ class UserCommands(object):
                                 not os.path.exists(self.cmds["INST_FILTER_TC"]):
             # try in pkg_dir
             fname = os.path.join(self.pkg_dir, "data", self.cmds["INST_FILTER_TC"])
-            
+
             if not os.path.exists(self.cmds["INST_FILTER_TC"]):
                 # try the name of the filter
                 fname = os.path.join(self.pkg_dir, "data",
@@ -568,7 +569,7 @@ class UserCommands(object):
                     raise ValueError("File " + fname + " does not exist")
 
             self.cmds["INST_FILTER_TC"] = fname
-        
+
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.pix_res = self.fpa_res / self.cmds["SIM_OVERSAMPLING"]
 
@@ -578,7 +579,7 @@ class UserCommands(object):
         if self.cmds["SIM_USE_FILTER_LAM"].lower() == "yes":
             if isinstance(self.cmds["INST_FILTER_TC"], str):
                 tc_filt = sc.TransmissionCurve(filename=self.cmds['INST_FILTER_TC'])
-            else: 
+            else:
                 tc_filt = self.cmds["INST_FILTER_TC"]
             mask = np.where(tc_filt.val > self.cmds["SIM_FILTER_THRESHOLD"])[0]
             imin = np.max((mask[0] - 1, 0))
@@ -638,7 +639,7 @@ class UserCommands(object):
         if self.cmds["SIM_VERBOSE"] == "yes":
             print("Determining lam_bin_edges")
         logging.debug("[UserCommands] Determining lam_bin_edges")
-            
+
         effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
 
         # This is redundant because also need to look at the PSF width
@@ -650,13 +651,13 @@ class UserCommands(object):
 
         ## get the angle shift for each slice
         lam = np.arange(lam_min, lam_max + 1E-7, 0.001)
-        angle_shift = utils.atmospheric_refraction(lam,
-                                                   self.cmds["OBS_ZENITH_DIST"],
-                                                   self.cmds["ATMO_TEMPERATURE"],
-                                                   self.cmds["ATMO_REL_HUMIDITY"],
-                                                   self.cmds["ATMO_PRESSURE"],
-                                                   self.cmds["SCOPE_LATITUDE"],
-                                                   self.cmds["SCOPE_ALTITUDE"])
+        angle_shift = atmospheric_refraction(lam,
+                                             self.cmds["OBS_ZENITH_DIST"],
+                                             self.cmds["ATMO_TEMPERATURE"],
+                                             self.cmds["ATMO_REL_HUMIDITY"],
+                                             self.cmds["ATMO_PRESSURE"],
+                                             self.cmds["SCOPE_LATITUDE"],
+                                             self.cmds["SCOPE_ALTITUDE"])
 
         ## convert angle shift into number of pixels
         ## pixel shifts are defined with respect to last slice
@@ -697,7 +698,7 @@ class UserCommands(object):
             print("ADC edges were", np.round(lam_bin_edges_adc, 3))
             print("All edges were", np.round(lam_bin_edges, 3))
         logging.debug("[UserCommands] lam_bin_edges found")
-            
+
         return lam_bin_edges
 
 
@@ -789,7 +790,7 @@ def dump_chip_layout(path=None):
         path where the chip layout file is to be saved
     """
     fname = os.path.join(__pkg_dir__, "data", "FPA_chip_layout.dat")
-    
+
     if path is None:
         f = open(fname, "r")
         print(f.read())
@@ -798,7 +799,7 @@ def dump_chip_layout(path=None):
         path = os.path.dirname(path)
         shutil.copy(fname, path)
         logging.debug("Printed chip layout to file: "+path+"/"+fname)
-        
+
 def dump_mirror_config(path=None, what="scope"):
     """
     Dump the EC_mirrors_scope.tbl or the EC_mirrors_ao.tbl to disk
@@ -809,7 +810,7 @@ def dump_mirror_config(path=None, what="scope"):
         path where the mirror configuration file is to be saved
     what : str, optional
         ["scope", "ao"] dump the mirror configuration for either the telescope
-        or the AO module 
+        or the AO module
     """
     if what.lower() == "scope":
         print("Dumping telescope mirror configuration.")
@@ -817,7 +818,7 @@ def dump_mirror_config(path=None, what="scope"):
     elif what.lower() == "ao":
         print("Dumping AO mirror configuration.")
         fname = os.path.join(__pkg_dir__, "data", "EC_mirrors_ao.tbl")
-    
+
     if path is None:
         f = open(fname, "r")
         print(f.read())
@@ -825,3 +826,93 @@ def dump_mirror_config(path=None, what="scope"):
     else:
         path = os.path.dirname(path)
         shutil.copy(fname, path)
+
+
+def read_config(config_file):
+    """
+    Read in a SimCADO configuration file
+
+    The configuration file is in SExtractor format:
+       'PARAMETER    Value    # Comment'
+
+    Parameters
+    ----------
+    config_file : str
+        the filename of the .config file
+
+    Returns
+    -------
+    config_dict : dict (collections.OrderedDict)
+        A dictionary with keys 'PARAMETER' and values 'Value'.
+
+    Notes
+    -----
+    The values of the dictionary are strings and will have to be converted to
+    the appropriate data type as they are needed.
+    """
+
+    import re
+
+    # Read the file into a list of strings
+    config_dict = OrderedDict()
+
+    # remove lines that are all spaces or spaces + '#'
+    # these are the regular expressions
+    isempty = re.compile(r'^\s*$')
+    iscomment = re.compile(r'^\s*#')
+
+    with open(config_file, 'r') as fp1:
+        for line in fp1:
+            if isempty.match(line):
+                continue
+            if iscomment.match(line):
+                continue
+
+            line = line.rstrip()             # remove trailing \n
+            content = line.split('#', 1)[0]  # remove comment
+            param, value = content.split(None, 1)
+
+            # Convert to number if possible
+            try:
+                config_dict[param] = float(value.strip())
+            except ValueError:
+                config_dict[param] = value.strip()
+
+            # Convert string "none" to python None
+            if isinstance(value, str) and value.lower() == "none":
+                config_dict[param] = None
+
+    return config_dict
+
+
+def update_config(config_file, config_dict):
+    """
+    Update a SimCADO configuration dictionary
+
+    A configuration file in the SExtractor format:
+         'PARAMETER    Value    # Comment'
+    an existing configuration dictionary.
+
+    Parameters
+    ----------
+    config_file : str
+        the filename of the .config file
+
+    Returns
+    -------
+    config_dict : dict
+        A dictionary with keys 'PARAMETER' and values 'Value'.
+
+    Returns:
+    -------
+    config_dict : dict
+        A dictionary with keys 'PARAMETER' and values 'Value'.
+
+    Notes
+    -----
+    the values of the dictionary are strings and will have
+    to be converted to the appropriate data type as they are needed.
+    """
+    config_dict.update(read_config(config_file))
+
+    return config_dict
