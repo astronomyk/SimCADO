@@ -221,7 +221,7 @@ class Detector(object):
                    0        0        0    1024    1024       1.7  """)
         else:
             self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
-        
+
         self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
                            self.layout["x_len"][i], self.layout["y_len"][i],
                            self.cmds["SIM_DETECTOR_PIX_SCALE"],
@@ -318,14 +318,14 @@ class Detector(object):
             primary_hdu = fits.PrimaryHDU()
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
-                
-                if isinstance(val, (sc.TransmissionCurve, sc.EmissionCurve, 
+
+                if isinstance(val, (sc.TransmissionCurve, sc.EmissionCurve,
                                     sc.UnityCurve, sc.BlackbodyCurve)):
                     val = val.params["filename"]
-                
+
                 if isinstance(val, str) and len(val) > 35:
                     val = "... " + val[-35:]
-                
+
                 try:
                     primary_hdu.header["HIERARCH "+key] = val
                 except NameError:   # any other exceptions possible?
@@ -382,7 +382,7 @@ class Detector(object):
 
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
-                if isinstance(val, str): 
+                if isinstance(val, str):
                     if len(val) > 35:
                         val = "... " + val[-35:]
                 try:
@@ -398,8 +398,8 @@ class Detector(object):
             return hdulist
         else:
             hdulist.writeto(filename, clobber=True, checksum=True)
-    
-    
+
+
     def write(self, filename=None, **kwargs):
         """
         Write a `Detector` object out to a FITS file
@@ -484,8 +484,8 @@ def open(self, filename):
         self.params.update(fp1[0].header)
         self.array = fp1[0].data
 
-            
-            
+
+
 
 def plot_detector_layout(detector):
     """Plot the detector layout. NOT FINISHED """
@@ -881,7 +881,7 @@ class Chip(object):
 
         out_array = self._read_out_superfast(self.array, dit, ndit)
         out_array /= self.gain
-        
+
         # apply the linearity curve
         if cmds["FPA_LINEARITY_CURVE"] is not None:
             fname = cmds["FPA_LINEARITY_CURVE"]
@@ -890,10 +890,10 @@ class Chip(object):
             real_cts = data[data.colnames[0]]
             measured_cts =  data[data.colnames[1]]
 
-            out_array = np.interp(out_array.flatten(), 
+            out_array = np.interp(out_array.flatten(),
                               real_cts, measured_cts).reshape(out_array.shape)
             out_array = out_array.astype(np.float32)
-        
+
         #### TODO #########
         # add read out noise for every readout
         # add a for loop to _read_noise where n random noise frames are added
@@ -1015,10 +1015,10 @@ class Chip(object):
         im_st = np.zeros(np.shape(im))
         for i in range(ndit):
             im_st += np.random.poisson(image2)
-            
+
         return im_st.astype(np.float32)
 
-        
+
     def _read_out_fast(self, image, dit):
         """
         <One-line summary goes here>
@@ -1037,7 +1037,7 @@ class Chip(object):
 
         image2 = image * dit
         image2[image2 > 2.14E9] = 2.14E9
-        
+
         return np.random.poisson(image2 * dit)
 
 
@@ -1158,7 +1158,7 @@ def _generate_hxrg_noise(cmds):
     --------
     """
     import multiprocessing as mp
-    
+
     #if len(kwargs) > 0 and self.verbose: print("updating ",kwargs)
     #self.params.update(kwargs)
     print("Generating a new chip noise array")
@@ -1207,13 +1207,13 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     multicore doesn't work - fix it
 
     """
-    
-    if sys.version_info.major >= 3:
+
+    if sys.version_info.major < 3:
         print("Sorry, but this only works in Python 3 and above. \
            See the SimCADO FAQs for work-around options")
         return None
-    
-    
+
+
     cmds = commands.UserCommands()
     cmds["FPA_NOISE_PATH"] = "generate"
     cmds["FPA_CHIP_LAYOUT"] = "default"
@@ -1230,11 +1230,11 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     else:
         frames = [_generate_hxrg_noise(cmds) \
                   for i in range(num_layers)]
-    
+
     hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
         [fits.ImageHDU(frames[i]) \
         for i in range(1, num_layers)])
-    
+
     if filename is None:
         return hdu
     else:
@@ -1266,5 +1266,3 @@ def install_noise_cube(n=9):
     else:
         print("Sorry, but this only works in Python 3 and above. \
                See the SimCADO FAQs for work-around options")
-    
-    
