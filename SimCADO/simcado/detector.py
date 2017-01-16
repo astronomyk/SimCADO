@@ -216,15 +216,16 @@ class Detector(object):
         if small_fov:
             print("Safety switch is on - Detector(..., small_fov='True')")
             self.layout = ioascii.read(
-                """#  id    x_cen    y_cen   x_len   y_len
-                   #       arcsec   arcsec   pixel   pixel
-                   0        0        0    1024    1024""")
+                """#  id    x_cen    y_cen   x_len   y_len   gain
+                   #       arcsec   arcsec   pixel   pixel   e-/ADU
+                   0        0        0    1024    1024       1.7  """)
         else:
             self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
         
         self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
                            self.layout["x_len"][i], self.layout["y_len"][i],
                            self.cmds["SIM_DETECTOR_PIX_SCALE"],
+                           self.layout["gain"][i],
                            self.layout["id"][i])
                       for i in range(len(self.layout["x_cen"]))]
 
@@ -346,22 +347,22 @@ class Detector(object):
             thishdu.header["EXTNAME"] = ("CHIP_{:02d}".format(self.chips[i].id),
                                          "Chip ID")
 
-            thishdu.header["CTYPE1"] = "LINEAR"
-            thishdu.header["CUNIT1"] = "arcsec"
-            thishdu.header["CRVAL1"] = 0.
+            thishdu.header["CTYPE1"] = "RA---TAN"
+            thishdu.header["CUNIT1"] = "deg"
+            thishdu.header["CRVAL1"] = (self.cmds["OBS_RA"], "[degrees]")
             thishdu.header["CRPIX1"] = (self.chips[i].naxis1 //2 -
                                         self.chips[i].x_cen / self.chips[i].pix_res)
-            thishdu.header["CDELT1"] = (self.chips[i].pix_res,
-                                        "[arcsec] Pixel scale")
+            thishdu.header["CDELT1"] = (-1 * self.chips[i].pix_res / 3600.,
+                                        "[degrees] Pixel scale")
 
             # axis 2
-            thishdu.header["CTYPE2"] = "LINEAR"
+            thishdu.header["CTYPE2"] = "DEC--TAN"
             thishdu.header["CUNIT2"] = "arcsec"
-            thishdu.header["CRVAL2"] = 0.
+            thishdu.header["CRVAL2"] = (self.cmds["OBS_DEC"], "[degrees]")
             thishdu.header["CRPIX2"] = (self.chips[i].naxis2 //2 -
                                         self.chips[i].y_cen / self.chips[i].pix_res)
-            thishdu.header["CDELT2"] = (self.chips[i].pix_res,
-                                        "[arcsec] Pixel resolution")
+            thishdu.header["CDELT2"] = (self.chips[i].pix_res / 3600.,
+                                        "[degrees] Pixel resolution")
 
             # possible rotation
             thishdu.header["PC1_1"] = 1.
@@ -370,11 +371,14 @@ class Detector(object):
             thishdu.header["PC2_2"] = 1.
 
             thishdu.header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
-            thishdu.header["BUNIT"] = ("ph/s", "")
+            thishdu.header["BUNIT"] = ("ADU", "")
             thishdu.header["EXPTIME"] = (self.exptime, "[s] Exposure time")
             thishdu.header["NDIT"] = (self.ndit, "Number of exposures")
             thishdu.header["TRO"] = (self.tro,
                                      "[s] Time between non-destructive readouts")
+            thishdu.header["GAIN"] = (self.chips[i].gain, "[e-/ADU]")
+            thishdu.header["AIRMASS"] = (self.cmds["ATMO_AIRMASS"], "")
+            thishdu.header["ZD"] = (self.cmds["OBS_ZENITH_DIST"], "[deg]")
 
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
@@ -627,13 +631,14 @@ class Chip(object):
     --------
     """
 
-    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, chipid=None):
+    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, gain, chipid=None):
 
         self.x_cen  = x_cen
         self.y_cen  = y_cen
         self.naxis1 = x_len
         self.naxis2 = y_len
         self.pix_res = pix_res
+        self.gain   = gain
         self.id     = chipid      # id is built-in, should not be redefined
 
         dx = (x_len // 2) * pix_res
@@ -875,6 +880,7 @@ class Chip(object):
         #######################################################################
 
         out_array = self._read_out_superfast(self.array, dit, ndit)
+        out_array /= self.gain
         
         # apply the linearity curve
         if cmds["FPA_LINEARITY_CURVE"] is not None:
