@@ -18,6 +18,7 @@ from .utils import __pkg_dir__
 import glob
 import warnings, logging
 from datetime import datetime as dt
+from copy import deepcopy
 
 import numpy as np
 
@@ -108,7 +109,7 @@ class OpticalTrain(object):
     def __init__(self, cmds):
         self.info = dict([])
 
-        self.cmds = cmds
+        self.cmds = deepcopy(cmds)
 
         self.tc_master = None   # set in separate method
         self.psf_size = None   # set in separate method
@@ -252,7 +253,11 @@ class OpticalTrain(object):
         """
         for tc in tc_list:
             if isinstance(self.cmds[tc], str):
-                self.cmds[tc] = sc.TransmissionCurve(filename=self.cmds[tc])
+                airmass = self.cmds["ATMO_AIRMASS"] if tc == "ATMO_TC" else None
+                self.cmds[tc] = sc.TransmissionCurve(filename=self.cmds[tc],
+                                                     airmass=airmass)
+                
+                
         
     def _gen_all_tc(self):
 
@@ -328,7 +333,8 @@ class OpticalTrain(object):
             if self.cmds["ATMO_EC"] is not None:
                 self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
                                                 pix_res=self.cmds.pix_res,
-                                                area=self.cmds.area)
+                                                area=self.cmds.area,
+                                                airmass=self.cmds["ATMO_AIRMASS"])
                 self.ph_atmo = self.tc_atmo * self.ec_atmo
                 self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
                                                                self.lam_bin_edges[-1])
@@ -435,8 +441,10 @@ class OpticalTrain(object):
                                                sc.BlackbodyCurve)):
                     tc_dict[key] = self.cmds[key]
                 else:
+                    airmass = self.cmds["ATMO_AIRMASS"] if key == "ATMO_TC" else None
                     tc_dict[key] = sc.TransmissionCurve(filename=self.cmds[key],
-                                                    lam_res=self.lam_res)
+                                                        lam_res=self.lam_res,
+                                                        airmass=airmass)
             else:
                 tc_dict[key] = sc.UnityCurve()
 

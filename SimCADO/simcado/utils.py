@@ -394,3 +394,22 @@ def get_extras():
             print(name + " is already the latest version: " + vers)
 
     print("Finished downloading data for SimCADO")
+
+    
+def airmass_to_zenith_dist(airmass):
+    """
+    returns zenith distance in degrees
+    
+    Z = arccos(1/X)
+    """
+    return np.rad2deg(np.arccos(1. / airmass))
+    
+
+def zentih_dist_to_airmass(zenith_dist):
+    """
+    `zenith_dist` is in degrees
+    
+    X = sec(Z)
+    """
+    return 1. / np.cos(np.deg2rad(zenith_dist))
+   

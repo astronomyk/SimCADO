@@ -95,3 +95,6 @@ To register, or just to show interest, please send an email to:
 * Maximilian Fabricius
 * Gijs Verdoes Kleijn
 * Suzanne Ramsay
+* Davide Massari
+* Simona Paiano
+* Eckhard Sturm

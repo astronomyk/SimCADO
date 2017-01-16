@@ -529,9 +529,12 @@ class Source(object):
                          mask=None):
         ## Argument 'mask' is unused (OC)
         """
+        
+        Number of photons between lam_min and lam_max in units of [ph/s/m2]
+        
         Calculate how many photons for each source exist in the wavelength range
         defined by lam_min and lam_max.
-
+        
         Parameters
         ----------
         lam_min, lam_max : float, optional
@@ -539,6 +542,12 @@ class Source(object):
             limits are set at lam[0], lam[-1] for the source's wavelength range
         min_bins : float, optional
             the minimum number of spectral bins counted per layer
+            
+        Returns
+        -------
+        slice_photons : float
+            [ph/s/m2] The number of photons in the wavelength range
+        
         """
         if lam_min is None:
             lam_min = self.lam[0]
@@ -1730,7 +1739,7 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
 def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks",
                       return_ec=False):
     """
-    Scale a spectrum to be a certain magnitude per arcsec
+    Scale a spectrum to be a certain magnitude per arcsec2 
 
     Parameters
     ----------
@@ -1739,7 +1748,7 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks"
     spec : np.ndarray
         The spectrum to be scaled into [ph/s/m2] for the given broadband filter
     mag_per_arcsec : float
-        [mag] surface brightness of the source
+        [mag/arcsec2] surface brightness of the source
     pix_res : float
         [arcsec] the pixel resolution
     filter_name : str, optional
@@ -1753,7 +1762,7 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks"
     lam : np.ndarray
         [um] The centres of the wavelength bins for the new spectrum
     spec : np.array
-        [ph/s/m2/arcsec] The spectrum scaled to the specified magnitude
+        [ph/s/m2/pixel] The spectrum scaled to the specified magnitude
 
     """
 
