@@ -70,6 +70,8 @@ import warnings
 import logging
 import shutil
 
+from collections import OrderedDict
+
 import numpy as np
 import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
 

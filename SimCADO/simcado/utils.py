@@ -22,8 +22,6 @@ Helper functions for SimCADO
 import os
 import inspect
 
-from collections import OrderedDict
-
 try:
     import wget
 except ImportError:
