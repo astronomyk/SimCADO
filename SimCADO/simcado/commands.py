@@ -441,11 +441,11 @@ class UserCommands(object):
 
         if self.cmds["ATMO_TC"] == "default":
             self.cmds["ATMO_TC"] = \
-                os.path.join(self.pkg_dir, "data", "skytable.fits")
+                os.path.join(self.pkg_dir, "data", "TC_sky_25.tbl")
 
         if self.cmds["ATMO_EC"] == "default":
             self.cmds["ATMO_EC"] = \
-                os.path.join(self.pkg_dir, "data", "skytable.fits")
+                os.path.join(self.pkg_dir, "data", "EC_sky_25.tbl")
 
         if self.cmds["SCOPE_PSF_FILE"].lower() in ("ltao"):
             self.cmds["SCOPE_PSF_FILE"] = \
@@ -606,6 +606,9 @@ class UserCommands(object):
                                      self.cmds["INST_NUM_MIRRORS"] + \
                                      self.cmds["INST_NUM_AO_MIRRORS"]
 
+        self.cmds["ATMO_AIRMASS"] = 1. / np.cos(self.cmds["OBS_ZENITH_DIST"] / 57.3)
+                                     
+                                     
         # replace 'none', 'None' with None
         self._convert_none()
 
