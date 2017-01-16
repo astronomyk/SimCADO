@@ -94,9 +94,9 @@ Examples
 
 
 import os
-from .utils import __pkg_dir__
 
-import warnings, logging
+import warnings
+import logging
 from copy import deepcopy
 
 import numpy as np
@@ -109,6 +109,7 @@ from astropy.convolution import convolve, convolve_fft
 import astropy.units as u
 import astropy.constants as c
 
+from .utils import __pkg_dir__
 
 try:
     import simcado.spatial as pe
@@ -212,14 +213,14 @@ class Source(object):
         chips : int, list
             Default is "all"
 
-            
+
         Optional parameters (**kwargs)
         ------------------------------
         sub_pixel : bool
             if sub-pixel accuracy is needed, each source is shifted individually.
             Default is False
-        
-            
+
+
         Notes
         -----
         Output array is in units of [ph/s/pixel] where the pixel is internal
@@ -287,7 +288,7 @@ class Source(object):
 
                 # apply the psf (get_slice_photons is called within)
                 lam_min, lam_max = opt_train.lam_bin_edges[i:i+2]
-                psf_i = utils.nearest(opt_train.psf.lam_bin_centers, 
+                psf_i = utils.nearest(opt_train.psf.lam_bin_centers,
                                       opt_train.lam_bin_centers[i])
                 psf = opt_train.psf[psf_i]
 
@@ -295,7 +296,7 @@ class Source(object):
                 oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                 sub_pixel = params["sub_pixel"]
                 verbose = params["verbose"]
-                
+
                 # image is in units of ph/s/pixel/m2
                 if image is None:
                     image = self.image_in_range(psf, lam_min, lam_max,
@@ -355,7 +356,7 @@ class Source(object):
         """
         chip.reset()
         scale_factor = self.pix_res / chip.pix_res
-       
+
         chip_arr = spi.zoom(image, scale_factor, order=1)
         chip_arr *= np.sum(image) / np.sum(chip_arr)
 
@@ -424,9 +425,9 @@ class Source(object):
             x_min, x_max = chip.x_min, chip.x_max,
             y_min, y_max = chip.y_min, chip.y_max
             x_cen, y_cen = chip.x_cen, chip.y_cen
-            
+
             naxis1, naxis2 = chip.naxis1, chip.naxis2
-            
+
         else:
             mask = np.array([True]*len(self.x))
             params["pix_res"] /= params["oversample"]
@@ -434,12 +435,12 @@ class Source(object):
             y_min, y_max = np.min(self.y), np.max(self.y),
             x_cen, y_cen = (x_max + x_min) / 2, (y_max + y_min) / 2
 
-            # the conversion to int was causing problems because some 
+            # the conversion to int was causing problems because some
             # values were coming out at 4095.9999, so the array was (4095, 4096)
             # hence the 1E-3 on the end
             naxis1 = int((x_max - x_min) / params["pix_res"] + 1E-3)
             naxis2 = int((y_max - y_min) / params["pix_res"] + 1E-3)
-        
+
         slice_array = np.zeros((naxis1, naxis2), dtype=np.float32)
         slice_photons = self.photons_in_range(lam_min, lam_max, min_bins=10)
 
@@ -453,7 +454,7 @@ class Source(object):
         # certain slice of the psf on the output array.
         ax, ay = np.array(slice_array.shape) // 2
         bx, by = np.array(psf.array.shape)   // 2
-        
+
         if params["verbose"]:
             print("Chip ID:", chip.id, \
                   "- Creating layer between [um]:", lam_min, lam_max)
@@ -461,7 +462,7 @@ class Source(object):
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array
             x_int, y_int = x_pix.astype(int), y_pix.astype(int)
-            dx, dy = self.x - x_int, self.y - y_int
+            # dx, dy = self.x - x_int, self.y - y_int # unused variables
 
             for i in range(len(slice_photons)):
 
@@ -514,7 +515,7 @@ class Source(object):
             # make the move to scipy
             try:
                 slice_array = fftconvolve(slice_array, psf.array, mode="same")
-                
+
             # try:
                 # slice_array = convolve_fft(slice_array, psf.array,
                 #                            allow_huge=True)
@@ -590,44 +591,48 @@ class Source(object):
         tc.resample(self.lam, use_default_lam=False)
         self.spectra = self.spectra_orig * tc.val
 
+
     def rotate(self, angle, unit="arcsec"):
         """
         Rotates the `x` and `y` coordinates of the `Source` by `angle` arcseconds
-        
-        
-        
+
+
+
         Parameters
         ----------
         angle : float
             [deg]
         """
-        
+
         return None
-        
-        
+
+
     def offset(self, dx=0, dy=0):
         """
         Shifts the coordinates of the source by (dx, dy) in [arcsec]
         """
-        
+
         self.x += dx
         self.y += dy
-        
-        
-        
+
+
+
     def on_grid(self, pix_res=0.004):
         """
         Return an image with the positions of all sources
         """
-        
-        xmin, xmax = np.min(self.x), np.max(self.x)
-        ymin, ymax = np.min(self.y), np.max(self.y)
-        xi, yi = ((self.x - xmin) / pix_res).astype(int), ((self.y - ymin) / pix_res).astype(int)
+
+        xmin = np.min(self.x)
+        ymin = np.min(self.y)
+        # xmin, xmax = np.min(self.x), np.max(self.x)
+        # ymin, ymax = np.min(self.y), np.max(self.y)
+        xi = ((self.x - xmin) / pix_res).astype(int)
+        yi = ((self.y - ymin) / pix_res).astype(int)
         im = np.zeros((np.max(xi)+2, np.max(yi)+2))
-        im[xi,yi] = 1
-       
+        im[xi, yi] = 1
+
         return im
-        
+
     def _convert_to_photons(self):
         """
         convert the spectra to photons/(s m2)
@@ -645,17 +650,17 @@ class Source(object):
 
         factor = 1.
         if u.s not in bases:
-            factor /= (self.exptime*u.s)
+            factor /= (self.exptime * u.s)
         if u.m not in bases:
-            factor /= (self.area   *u.m**2)
+            factor /= (self.area * u.m**2)
         if u.micron in bases:
-            factor *= (self.lam_res*u.um)
+            factor *= (self.lam_res * u.um)
         if u.arcsec in bases:
-            factor *= (self.pix_res*u.arcsec)**2
+            factor *= (self.pix_res * u.arcsec)**2
 
         #print((factor*self.units).unit, factor)
 
-        self.units = (factor*self.units).unit
+        self.units = (factor * self.units).unit
         self.spectra *= factor
 
 
@@ -806,7 +811,7 @@ class Source(object):
         specHDU.header["LAM_RES"] = (self.lam_res, "[um] Spectral resolution")
 
         hdu = fits.HDUList([xyHDU, specHDU])
-        hdu.writeto(filename, clobber=True, checksum=True)
+        hdu.writeto(filename, overwrite=True, checksum=True)
 
 
     def __str__(self):
@@ -845,7 +850,7 @@ class Source(object):
                 scale_factor = np.sum(spec) / np.sum(tmp)
                 newsrc.spectra += [tmp * scale_factor]
             newsrc.spectra = np.asarray(newsrc.spectra)
-
+            newsrc.spectra_orig = newsrc.spectra
             newsrc.x = np.array((list(self.x) + list(x.x)))
             newsrc.y = np.array((list(self.y) + list(x.y)))
             newsrc.ref = np.array((list(self.ref) + list(x.ref + self.spectra.shape[0])))
@@ -1094,10 +1099,10 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     #   ph_factor = dlam * ph0 * 10**(-0.4 * (Mv + mag))
     # work?  (OC)
     #
-    # [KL] 
+    # [KL]
     # Please feel free to fix this. I very seldomly re-read 6-month old code
     # or better still, open a GitHub issue! =) Then it's on record
-    
+
     ph_factor = []
     for i in range(len(mag)):
         tmp = dlam * ph0 * 10**(-0.4*(Mv[i] + mag[i]))
@@ -1122,7 +1127,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
 def mag_to_photons(filter_name, magnitude=0, area=1):
     """
     Return the number of photons for a certain filter and magnitude
-    
+
     Parameters
     ----------
     filter_name : str
@@ -1131,16 +1136,16 @@ def mag_to_photons(filter_name, magnitude=0, area=1):
         [mag] the source brightness
     area : float
         [m2] Collecting area of main mirror
-    
+
     Notes
     -----
     units in [ph/s/m2]
     """
-    
+
     flux_0 = zero_magnitude_photon_flux(filter_name, area)
     return flux_0 * 10**(-0.4 * magnitude)
-    
-    
+
+
 def zero_magnitude_photon_flux(filter_name, area=1):
     """
     Return the number of photons for a m=0 star for a certain filter
@@ -1151,20 +1156,20 @@ def zero_magnitude_photon_flux(filter_name, area=1):
         filter name. See simcado.optics.get_filter_set()
     area : float
         [m2] Collecting area of main mirror
-    
+
     Notes
     -----
     units in [ph/s/m2]
     """
 
     if not os.path.exists(os.path.join(__pkg_dir__, "data", filter_name)):
-        fname = os.path.join(__pkg_dir__, "data", 
+        fname = os.path.join(__pkg_dir__, "data",
                              "TC_filter_" + filter_name + ".dat")
         if not os.path.exists(fname):
             raise ValueError("File " + fname + " does not exist")
     else:
         fname = filter_name
-        
+
     # Outdated
     # if filter_name not in "UBVRIYzJHKKs":
         # raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
@@ -1214,8 +1219,8 @@ def value_at_lambda(lam_i, lam, val, return_index=False):
 def SED(spec_type, filter_name="V", magnitude=0.):
     """
     Return a scaled SED for a X type star at magnitude Y star in band Z
-    
-    Note: spec_type must be a list! 
+
+    Note: spec_type must be a list!
 
     Parameters
     ----------
@@ -1244,7 +1249,7 @@ def SED(spec_type, filter_name="V", magnitude=0.):
 
     if isinstance(spec_type, np.ndarray):
         spec_type = spec_type.tolist()
-    
+
     if filter_name not in "UBVRIYzJHKKs":
         raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
 
@@ -1365,14 +1370,14 @@ def star(mag, filter_name="Ks", spec_type="A0V", position=(0, 0)):
     spec_type : str, optional
         the spectral type of the star, e.g. "A0V", "G5III"
     position : tuple, optional
-        [arcsec] the x,y position of the star on the focal plane 
-    
+        [arcsec] the x,y position of the star on the focal plane
+
     Returns
     -------
-    source : `simcado.Source`    
-    
+    source : `simcado.Source`
+
     """
-    
+
     thestar = star_grid(1, mag, mag, filter_name, spec_type=spec_type)
     thestar.x, thestar.y = [position[0]], [position[1]]
     return thestar
@@ -1396,13 +1401,13 @@ def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area=1):
         Default is "A0V"
     area : float, optional
         [m2] area of primary mirror
-        
+
     Returns
     -------
     source : `simcado.Source`
-    
+
     """
-    
+
     if isinstance(spec_types, (tuple, list, np.ndarray)) and len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")
 
@@ -1426,8 +1431,8 @@ def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area=1):
                  units=units,
                  area=area)
 
-    return src    
- 
+    return src
+
 
 def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
     """
@@ -1451,6 +1456,80 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
     # function (TODO: which one?) summing to 1e4 M_sol.
     fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
     imf = np.loadtxt(fname)
+
+    # Assign stellar types to the masses in imf using list of average
+    # main-sequence star masses:
+    stel_type = [i + str(j) + "V" for i in "OBAFGKM" for j in range(10)]
+    mass = _get_stellar_mass(stel_type)
+    ref = utils.nearest(mass, imf)
+    thestars = [stel_type[i] for i in ref] # was stars, redefined function name
+
+    # assign absolute magnitudes to stellar types in cluster
+    unique_ref = np.unique(ref)
+    unique_type = [stel_type[i] for i in unique_ref]
+    unique_Mv = _get_stellar_Mv(unique_type)
+
+    # Mv_dict = {i : float(str(j)[:6]) for i, j in zip(unique_type, unique_Mv)}
+    ref_dict = {i: j for i, j in zip(unique_type, np.arange(len(unique_type)))}
+
+    # find spectra for the stellar types in cluster
+    lam, spectra = _scale_pickles_to_photons(unique_type)
+
+    # this one connects the stars to one of the unique spectra
+    stars_spec_ref = [ref_dict[i] for i in thestars]
+
+    # absolute mag + distance modulus
+    m = np.array([unique_Mv[i] for i in stars_spec_ref])
+    m += 5 * np.log10(distance) - 5
+
+    # set the weighting
+    weight = 10**(-0.4*m)
+
+    # draw positions of stars: cluster has Gaussian profile
+    distance *= u.pc
+    half_light_radius *= u.pc
+    hwhm = (half_light_radius/distance*u.rad).to(u.arcsec).value
+    sig = hwhm / np.sqrt(2 * np.log(2))
+
+    x = np.random.normal(0, sig, len(imf))
+    y = np.random.normal(0, sig, len(imf))
+
+    src = Source(lam=lam, spectra=spectra, x=x, y=y, ref=stars_spec_ref,
+                 weight=weight, units="ph/s/m2")
+
+    return src
+
+
+def cluster(mass=1E3, distance=50000, half_light_radius=1):
+    """
+    Generate a source object for cluster
+
+    Parameters
+    ----------
+    mass : float
+        [Msun] Mass of the cluster (not number of stars). Max = 1E5 Msun
+    distance : float
+        [pc] distance to the cluster
+    half_light_radius : float
+        [pc] half light radius of the cluster
+
+    Returns
+    -------
+    src : simcado.Source
+
+    """
+    # IMF is a realisation of stellar masses drawn from an initial mass
+    # function (TODO: which one?) summing to 1e4 M_sol.
+    if mass <= 1E4:
+        fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
+        imf = np.loadtxt(fname)
+        imf = imf[0:int(mass/1E4 * len(imf))]
+    elif mass > 1E4 and mass < 1E5:
+        fname = os.path.join(__pkg_dir__, "data", "IMF_1E5.dat")
+        imf = np.loadtxt(fname)
+        imf = imf[0:int(mass/1E5 * len(imf))]
+    else:
+        raise ValueError("Mass too high. Must be <10^5 Msun")
 
     # Assign stellar types to the masses in imf using list of average
     # main-sequence star masses:
@@ -1494,80 +1573,6 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
 
     return src
 
-    
-def cluster(mass=1E3, distance=50000, half_light_radius=1):
-    """
-    Generate a source object for cluster
-
-    Parameters
-    ----------
-    mass : float
-        [Msun] Mass of the cluster (not number of stars). Max = 1E5 Msun
-    distance : float
-        [pc] distance to the cluster
-    half_light_radius : float
-        [pc] half light radius of the cluster
-    
-    Returns
-    -------
-    src : simcado.Source
-
-    """
-    # IMF is a realisation of stellar masses drawn from an initial mass
-    # function (TODO: which one?) summing to 1e4 M_sol.
-    if mass <= 1E4:
-        fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
-        imf = np.loadtxt(fname)
-        imf = imf[0:int(mass/1E4 * len(imf))]
-    elif mass > 1E4 and mass < 1E5:
-        fname = os.path.join(__pkg_dir__, "data", "IMF_1E5.dat")
-        imf = np.loadtxt(fname)
-        imf = imf[0:int(mass/1E5 * len(imf))]
-    else:
-        raise ValueError("Mass too high. Must be <10^5 Msun")
-        
-    # Assign stellar types to the masses in imf using list of average
-    # main-sequence star masses:
-    stel_type = [i + str(j) + "V" for i in "OBAFGKM" for j in range(10)]
-    mass = _get_stellar_mass(stel_type)
-    ref = utils.nearest(mass, imf)
-    thestars = [stel_type[i] for i in ref] # was stars, redefined function name
-
-    # assign absolute magnitudes to stellar types in cluster
-    unique_ref = np.unique(ref)
-    unique_type = [stel_type[i] for i in unique_ref]
-    unique_Mv = _get_stellar_Mv(unique_type)
-
-    # Mv_dict = {i : float(str(j)[:6]) for i, j in zip(unique_type, unique_Mv)}
-    ref_dict = {i : j for i, j in zip(unique_type, np.arange(len(unique_type)))}
-
-    # find spectra for the stellar types in cluster
-    lam, spectra = _scale_pickles_to_photons(unique_type)
-
-    # this one connects the stars to one of the unique spectra
-    stars_spec_ref = [ref_dict[i] for i in thestars]
-
-    # absolute mag + distance modulus
-    m = np.array([unique_Mv[i] for i in stars_spec_ref])
-    m += 5 * np.log10(distance) - 5
-
-    # set the weighting
-    weight = 10**(-0.4*m)
-
-    # draw positions of stars: cluster has Gaussian profile
-    distance *= u.pc
-    half_light_radius *= u.pc
-    hwhm = (half_light_radius/distance*u.rad).to(u.arcsec).value
-    sig = hwhm / np.sqrt(2 * np.log(2))
-
-    x = np.random.normal(0, sig, len(imf))
-    y = np.random.normal(0, sig, len(imf))
-
-    src = Source(lam=lam, spectra=spectra, x=x, y=y, ref=stars_spec_ref,
-                 weight=weight, units="ph/s/m2")
-
-    return src    
-    
 
 
 def source_from_image(images, lam, spectra, plate_scale, oversample=1,
@@ -1600,7 +1605,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         [pixel] If the central pixel is offset from the centre of the image, add
         this offset to (x,y) coordinates.
     convserve_flux : bool, optional
-        If True, when the image is rescaled, flux is conserved. 
+        If True, when the image is rescaled, flux is conserved.
         If False, the maximum value of the image stays constant after rescaling
 
     Returns
@@ -1618,7 +1623,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         src = srcs[0]
         for i in range(1, len(images)):
             src += srcs[i]
-
+        return src
     else:
         #if not isinstance(oversample, int):
         #    raise ValueError("Oversample must be of type 'int'")
@@ -1647,7 +1652,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                 # y_list += (y + j).tolist()
                 # w_list += (weight / oversample**2).tolist()
         # x, y, weight = np.array(x_list), np.array(y_list), np.array(w_list)
-        
+
         if oversample != 1:
             im = spi.zoom(images, oversample, order=1).astype(np.float32)
             scale_factor = np.sum(images)/np.sum(im)
@@ -1656,14 +1661,14 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         else:
             im = images
             scale_factor = 1
-            
+
         y_cen, x_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
         y_i, x_i = np.where(im > flux_threshold * scale_factor)
-        
+
         pix_res = plate_scale / oversample
         x = (x_i - x_cen) * pix_res
         y = (y_i - y_cen) * pix_res
-        
+
         weight = im[y_i, x_i]
         ref = np.zeros(len(x))
 
@@ -1708,7 +1713,7 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     curve = EmissionCurve(lam=lam, val=spec, area=1, units="ph/s/m2")
     curve.resample(0.001)
 
-    filt = filter_curve(filter_name)
+    filt = get_filter_curve(filter_name)
 
     tmp = curve * filt
     obs_ph = tmp.photons_in_range()
@@ -1808,14 +1813,14 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
     Parameters
     ----------
     mag_per_arcsec : float
-        [mag/arcsec2] surface brightness of the source 
+        [mag/arcsec2] surface brightness of the source
     filter_name : str, optional
         broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
     pix_res : float
         [arcsec] the pixel resolution. Default is 4mas (i.e. 0.004)
     return_ec : bool, optional
-        Default is False. If True, a simcado.spectral.EmissionCurve object is 
-        returned. 
+        Default is False. If True, a simcado.spectral.EmissionCurve object is
+        returned.
 
     Returns
     -------
@@ -1829,10 +1834,10 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
     spec = np.ones(len(lam))
 
     if return_ec:
-        curve = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res, 
+        curve = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res,
                                   filter_name, return_ec)
         return curve
     else:
-        lam, spec = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res, 
-                                  filter_name, return_ec)
+        lam, spec = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res,
+                                      filter_name, return_ec)
         return lam, spec
