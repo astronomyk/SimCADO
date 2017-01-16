@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 SimCADO: A python package to simulate MICADO
 """
@@ -9,6 +9,12 @@ SimCADO: A python package to simulate MICADO
 #import os
 #if os.path.exists('MANIFEST'):
 #    os.remove('MANIFEST')
+
+# setuptools to allow 'python setup.py develop'. Not necessary for user.
+try:
+    from setuptools import setup
+except ImportError:
+    pass
 
 from datetime import datetime
 
@@ -21,8 +27,8 @@ def get_old_version(filename='simcado/version.py'):
     vers = vers.replace("dev", "").replace("'","").split(".")[-1]
     return int(float(vers))
 
-    
-    
+
+
 # Is this the version number scheme that we want?
 MAJOR = 0
 MINOR = 4
@@ -47,7 +53,7 @@ date    = '{}'
     timestamp = datetime.utcnow().strftime('%Y-%m-%d %T GMT')
     with open(filename, 'w') as fd:
         fd.write(cnt.format(VERSION, timestamp))
-        
+
 from distutils.core import setup
 
 def setup_package():
@@ -61,13 +67,12 @@ def setup_package():
           author_email = """kieran.leschinski@unive.ac.at,
                             oliver.czoske@univie.ac.at""",
           url = "http://homepage.univie.ac.at/kieran.leschinski/",
-          package_dir={'simcado': 'simcado'}, 
+          package_dir={'simcado': 'simcado'},
           packages=['simcado', 'simcado.tests'],
           include_package_data=True,
           package_data = {'simcado': ['data/*']},
           )
-    
-    
+
+
 if __name__ == '__main__':
     setup_package()
-
