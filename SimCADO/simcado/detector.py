@@ -905,8 +905,8 @@ class Chip(object):
         out_array += ro
 
         if cmds["OBS_REMOVE_CONST_BG"].lower() == "yes":
-            min_val = np.min(out_array)
-            out_array -= min_val
+            bg_val = np.median(out_array)
+            out_array -= bg_val
 
         return out_array
 
