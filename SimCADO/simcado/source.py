@@ -94,9 +94,9 @@ Examples
 
 
 import os
+from .utils import __pkg_dir__
 
-import warnings
-import logging
+import warnings, logging
 from copy import deepcopy
 
 import numpy as np
@@ -109,7 +109,6 @@ from astropy.convolution import convolve, convolve_fft
 import astropy.units as u
 import astropy.constants as c
 
-from .utils import __pkg_dir__
 
 try:
     import simcado.spatial as pe
@@ -170,6 +169,11 @@ class Source(object):
                        "pix_res" :0.004}
         self.params.update(kwargs)
 
+        if isinstance(x, (tuple, list)):
+            x = np.array(x)
+        if isinstance(y, (tuple, list)):
+            y = np.array(x)
+        
         self.info = dict([])
         self.info['created'] = 'yes'
         self.info['description'] = "List of spectra and their positions"
@@ -220,7 +224,7 @@ class Source(object):
             if sub-pixel accuracy is needed, each source is shifted individually.
             Default is False
 
-
+            
         Notes
         -----
         Output array is in units of [ph/s/pixel] where the pixel is internal
@@ -406,6 +410,10 @@ class Source(object):
 
         params.update(kwargs)
 
+        if isinstance(psf, type(None)):
+            psf = np.zeros((7,7))
+            psf[3,3] = 1
+        
         if isinstance(psf, (sim_psf.PSFCube, sim_psf.UserPSFCube)):
             lam_cen = (lam_max + lam_min) / 2.
             psf = psf.nearest(lam_cen)
@@ -416,8 +424,7 @@ class Source(object):
             size = psf.shape[0]
             psf = sim_psf.PSF(size, pix_res)
             psf.set_array(arr)
-
-
+            
         if chip is not None:
             mask = (self.x > chip.x_min) * (self.x < chip.x_max) * \
                    (self.y > chip.y_min) * (self.y < chip.y_max)
@@ -454,51 +461,41 @@ class Source(object):
         # certain slice of the psf on the output array.
         ax, ay = np.array(slice_array.shape) // 2
         bx, by = np.array(psf.array.shape)   // 2
-
+        mx, my = np.array(psf.array.shape) % 2
+        
         if params["verbose"]:
             print("Chip ID:", chip.id, \
                   "- Creating layer between [um]:", lam_min, lam_max)
 
+        psf_array = np.copy(psf.array)
+                  
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array
-            x_int, y_int = x_pix.astype(int), y_pix.astype(int)
-            # dx, dy = self.x - x_int, self.y - y_int # unused variables
+            #x_int, y_int = np.floor(x_pix), np.floor(y_pix)
+            #dx, dy = src.x - x_int, src.y - y_int
 
-            for i in range(len(slice_photons)):
-
-                if not mask[i]:
-                    continue
-
-                ## Unused variable (OC)
-                # psf_tmp = spi.shift(psf.array, (dx[i], dy[i]), order=1)
-                x_pint, y_pint = x_int[i], y_int[i]
-
-                # Find the slice borders for the array where the psf will go
-                ax0 = np.max(np.array((x_pint - bx, [0]*len(x_pint))), axis=0)
-                ax1 = np.min(np.array((x_pint + bx + 1,
-                                       [slice_array.shape[0]]*len(x_pint))),
-                             axis=0)
-                ay0 = np.max(np.array((y_pint - by, [0] * len(y_pint))),
-                             axis=0)
-                ay1 = np.min(np.array((y_pint + by + 1,
-                                       [slice_array.shape[1]]*len(y_pint))),
-                             axis=0)
-
-                # the slice limits of the psf array are found by taking the
-                # pixel distance from the x,y position to the slice limits
-                # of the slice_array. This distance is subtracted from the
-                # centre of the psf array.
-                bx0 = bx - (x_pint - ax0)
-                bx1 = bx + (ax1 - x_pint)
-                by0 = by - (y_pint - ay0)
-                by1 = by + (ay1 - y_pint)
-
-                slice_array[ax0:ax1, ay0:ay1] = psf.array[bx0:bx1, by0:by1] \
-                                        * slice_photons[i] * self.weight[i]
+            if bx > ax and by > ay: 
+                psf_array = psf_array[bx-ax:bx+ax, by-ay:by+ay]
+            elif bx < ax and by < ay:
+                pad_x, pad_y = ax-bx, ay-by
+                psf_array = np.pad(psf_array, 
+                                   ((pad_x, pad_x-mx),
+                                    (pad_y, pad_y-my)), 
+                                    mode="constant")
+            else:
+                print("PSF", psf.array.shape, "Chip", slice_array.shape)
+                raise ValueError("PSF and Detector chip sizes are odd:")
+                        
+            for i in range(len(x_pix)):
+                psf_tmp = np.copy(psf_array)
+                #print(x_pix[i], y_pix[i])
+                psf_tmp = spi.shift(psf_tmp, (x_pix[i], y_pix[i]), order=1)
+                slice_array += psf_tmp * slice_photons[i] * self.weight[i]
 
         elif params["sub_pixel"] == "raw":
             #x_int, y_int = np.round(x_pix).astype(int), np.round(y_pix).astype(int)
-            x_int, y_int = x_pix.astype(int), y_pix.astype(int)
+            # use np.floor instead of int-ing
+            x_int, y_int = np.floor(x_pix), np.floor(y_pix)
             i, j = ax + x_int[mask], ay + y_int[mask]
             slice_array[i, j] = slice_photons[mask]
 
@@ -506,19 +503,17 @@ class Source(object):
             # If astrometric precision is not that important and everything
             # has been oversampled, use this section.
             #  - ax, ay are the pixel coordinates of the image centre
-
-            x_int, y_int = x_pix.astype(int), y_pix.astype(int)
+            # use np.floor instead of int-ing
+            x_int, y_int = np.floor(x_pix), np.floor(y_pix)
             i, j = ax + x_int[mask], ay + y_int[mask]
             for ii, jj, ph in zip(i, j, slice_photons[mask]):
                 slice_array[ii, jj] += ph
 
-            # make the move to scipy
             try:
-                slice_array = fftconvolve(slice_array, psf.array, mode="same")
-
-            # try:
                 # slice_array = convolve_fft(slice_array, psf.array,
                 #                            allow_huge=True)
+                # make the move to scipy
+                slice_array = fftconvolve(slice_array, psf.array, mode="same")
             except ValueError:
                 slice_array = convolve(slice_array, psf.array)
 
@@ -601,9 +596,33 @@ class Source(object):
         self.spectra = self.spectra_orig * tc.val
 
 
+    def scale_spectum(self, idx=0, mag=20, filter_name="Ks"):
+        """
+        Scale a certain spectrum to a certain magnitude
+        
+        Calls simcado.source.scale_spectrum
+        
+        Parameters
+        ----------
+        idx : int
+            The index of the spectrum to be scaled: <Source>.spectra[idx]
+            Default is <Source>.spectra[0]
+        mag : float
+            [mag] new magnitude of spectrum
+        filter_name : str
+            Broadband filter name 
+        """
+        
+        self.lam, self.spectra[idx] = scale_spectrum(lam=self.lam, 
+                                                     spec=self.spectra[idx],
+                                                     mag=mag,
+                                                     filter_name=filter_name, 
+                                                     return_ec=False)
+        
+        
     def rotate(self, angle, unit="arcsec"):
         """
-        Rotates the `x` and `y` coordinates of the `Source` by `angle` arcseconds
+        Rotates the `x` and `y` coordinates of the `Source` by `angle` [arcsec]
 
 
 
@@ -642,96 +661,7 @@ class Source(object):
 
         return im
 
-    def _convert_to_photons(self):
-        """
-        convert the spectra to photons/(s m2)
-        if [arcsec] are in the units, we want to find the photons per pixel
-        if [um] are in the units, we want to find the photons per wavelength bin
-
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        ! Come back and put in other energy units like Jy, mag, ergs !
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        """
-        self.units = u.Unit(self.params["units"])
-        bases = self.units.bases
-
-        #print(self.units, bases, self.area)
-
-        factor = 1.
-        if u.s not in bases:
-            factor /= (self.exptime * u.s)
-        if u.m not in bases:
-            factor /= (self.area * u.m**2)
-        if u.micron in bases:
-            factor *= (self.lam_res * u.um)
-        if u.arcsec in bases:
-            factor *= (self.pix_res * u.arcsec)**2
-
-        #print((factor*self.units).unit, factor)
-
-        self.units = (factor * self.units).unit
-        self.spectra *= factor
-
-
-    def _from_cube(self, filename):
-        """
-        Make a Source object from a cube in memory or a FITS cube on disk
-        """
-        if isinstance(filename, str) and os.path.exists(filename):
-            hdr = fits.getheader(filename)
-            cube = fits.getdata(filename)
-        else:
-            raise ValueError(filename+" doesn't exist")
-
-        lam_res = hdr["CDELT3"]
-        lam_min = hdr["CRVAL3"] - hdr["CRPIX3"] * lam_res
-        lam_max = lam_min + hdr["NAXIS3"] * lam_res
-
-        flux_map = np.sum(cube, axis=0).astype(dtype=np.float32)
-        x, y = np.where(flux_map != 0)
-
-        self.lam = np.linspace(lam_min, lam_max, hdr["NAXIS3"])
-        ## TODO: ipt is undefined (OC)
-        self.spectra = np.swapaxes(ipt[:, x, y], 0, 1)
-        self.x = x
-        self.y = y
-        self.ref = np.arange(len(x))
-        self.weight = np.ones(len(x))
-
-        if "BUNIT" in hdr.keys():
-            self.params["units"] = u.Unit(hdr["BUNIT"])
-        if "EXPTIME" in hdr.keys():
-            self.params["exptime"] = hdr["EXPTIME"]
-        if "AREA"   in hdr.keys():
-            self.params["area"] = hdr["AREA"]
-        if "CDELT1" in hdr.keys():
-            self.params["pix_res"] = hdr["CDELT1"]
-        if "CUNIT1" in hdr.keys():
-            self.params["pix_unit"] = hdr["CUNIT1"]
-        self.lam_res = lam_res
-
-        self._convert_to_photons()
-
-    def _from_arrays(self, lam, spectra, x, y, ref, weight=None):
-        """
-        Make a Source object from a series of lists
-        - x,y : [arcsec]
-
-        """
-        self.lam = lam
-        self.spectra = spectra
-        self.x = x
-        self.y = y
-        self.ref = ref
-        self.weight = weight   if weight is not None   else np.array([1]*len(x))
-        self.lam_res = np.median(lam[1:] - lam[:-1])
-
-        if len(spectra.shape) == 1:
-            self.spectra = np.array([spectra])
-
-        self._convert_to_photons()
-
-
+        
     def read(self, filename):
         """
         Read in a previously saved Source FITS file
@@ -821,6 +751,96 @@ class Source(object):
 
         hdu = fits.HDUList([xyHDU, specHDU])
         hdu.writeto(filename, overwrite=True, checksum=True)
+
+       
+    def _convert_to_photons(self):
+        """
+        convert the spectra to photons/(s m2)
+        if [arcsec] are in the units, we want to find the photons per pixel
+        if [um] are in the units, we want to find the photons per wavelength bin
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Come back and put in other energy units like Jy, mag, ergs !
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        """
+        self.units = u.Unit(self.params["units"])
+        bases = self.units.bases
+
+        #print(self.units, bases, self.area)
+
+        factor = 1.
+        if u.s not in bases:
+            factor /= (self.exptime*u.s)
+        if u.m not in bases:
+            factor /= (self.area   *u.m**2)
+        if u.micron in bases:
+            factor *= (self.lam_res*u.um)
+        if u.arcsec in bases:
+            factor *= (self.pix_res*u.arcsec)**2
+
+        #print((factor*self.units).unit, factor)
+
+        self.units = (factor*self.units).unit
+        self.spectra *= factor
+
+
+    def _from_cube(self, filename):
+        """
+        Make a Source object from a cube in memory or a FITS cube on disk
+        """
+        if isinstance(filename, str) and os.path.exists(filename):
+            hdr = fits.getheader(filename)
+            cube = fits.getdata(filename)
+        else:
+            raise ValueError(filename+" doesn't exist")
+
+        lam_res = hdr["CDELT3"]
+        lam_min = hdr["CRVAL3"] - hdr["CRPIX3"] * lam_res
+        lam_max = lam_min + hdr["NAXIS3"] * lam_res
+
+        flux_map = np.sum(cube, axis=0).astype(dtype=np.float32)
+        x, y = np.where(flux_map != 0)
+
+        self.lam = np.linspace(lam_min, lam_max, hdr["NAXIS3"])
+        ## TODO: ipt is undefined (OC)
+        self.spectra = np.swapaxes(ipt[:, x, y], 0, 1)
+        self.x = x
+        self.y = y
+        self.ref = np.arange(len(x))
+        self.weight = np.ones(len(x))
+
+        if "BUNIT" in hdr.keys():
+            self.params["units"] = u.Unit(hdr["BUNIT"])
+        if "EXPTIME" in hdr.keys():
+            self.params["exptime"] = hdr["EXPTIME"]
+        if "AREA"   in hdr.keys():
+            self.params["area"] = hdr["AREA"]
+        if "CDELT1" in hdr.keys():
+            self.params["pix_res"] = hdr["CDELT1"]
+        if "CUNIT1" in hdr.keys():
+            self.params["pix_unit"] = hdr["CUNIT1"]
+        self.lam_res = lam_res
+
+        self._convert_to_photons()
+
+    def _from_arrays(self, lam, spectra, x, y, ref, weight=None):
+        """
+        Make a Source object from a series of lists
+        - x,y : [arcsec]
+
+        """
+        self.lam = lam
+        self.spectra = spectra
+        self.x = x
+        self.y = y
+        self.ref = ref
+        self.weight = weight   if weight is not None   else np.array([1]*len(x))
+        self.lam_res = np.median(lam[1:] - lam[:-1])
+
+        if len(spectra.shape) == 1:
+            self.spectra = np.array([spectra])
+
+        self._convert_to_photons()
 
 
     def __str__(self):
@@ -1236,8 +1256,8 @@ def SED(spec_type, filter_name="V", magnitude=0.):
     spec_type : str, list
         The spectral type of the star
     filter_name : str, optional
-        [UBVRIYzJHKKs] Any braodband filter in the Vis+NIR regime.
-        Default is "V"
+        Default is "V". Any filter in the simcado/data directory can be used, 
+        or the user can specify a file path to an ASCII file for the filter
     magnitude : float, list, optional
         Apparent magnitude of the star. Default is 0.
 
@@ -1256,34 +1276,18 @@ def SED(spec_type, filter_name="V", magnitude=0.):
 
     """
 
-    if isinstance(spec_type, np.ndarray):
-        spec_type = spec_type.tolist()
-
-    if filter_name not in "UBVRIYzJHKKs":
-        raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
-
+    if isinstance(spec_type, (tuple, list, np.ndarray)):
+        spec_type = list(spec_type)
+    elif isinstance(spec_type, str):
+        spec_type = [spec_type]
+    
     if isinstance(magnitude, (list, tuple)):
         magnitude = np.asarray(magnitude)
 
-    flux_0 = zero_magnitude_photon_flux(filter_name)
-    flux = flux_0 * 10**(-0.4 * magnitude)
-
     lam, starflux = _scale_pickles_to_photons(spec_type)
-    # was 'star' but that redefines function star()
+    lam, starflux = scale_spectrum(lam=lam, spec=starflux, mag=magnitude, filter_name=filter_name)
 
-    vraw = ioascii.read(os.path.join(__pkg_dir__, "data",
-                                     "TC_filter_"+filter_name+".dat"))
-    vlam = vraw[vraw.colnames[0]]
-    vval = vraw[vraw.colnames[1]]
-    filt = np.interp(lam, vlam, vval)
-
-    n_ph = np.sum(starflux  * filt)
-
-    scale_factor = flux / n_ph
-    #print("scale_factor, flux, n_ph, flux_0 [ph/s/m2/bin]")
-    #print(scale_factor, flux, n_ph, flux_0, filter_name)
-
-    return lam, (scale_factor * starflux.transpose()).transpose()
+    return lam, starflux
 
 
 def empty_sky():
@@ -1366,49 +1370,52 @@ def star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1, area=1,
     return src
 
 
-def star(mag, filter_name="Ks", spec_type="A0V", position=(0, 0)):
+
+def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0, area=1):
     """
     Creates a simcado.Source object for a star with a given magnitude
 
     Parameters
     ----------
+    spec_type : str
+        the spectral type of the star, e.g. "A0V", "G5III"
     mag : float
         magnitude of star
     filter_name : str
-        filter in which the magnitude is given
-    spec_type : str, optional
-        the spectral type of the star, e.g. "A0V", "G5III"
-    position : tuple, optional
-        [arcsec] the x,y position of the star on the focal plane
-
+        Filter in which the magnitude is given. Can be the name of any filter 
+        curve file in the simcado/data folder, or a path to a custom ASCII file
+    x, y : float, int, optional
+        [arcsec] the x,y position of the star on the focal plane 
+    area : float, optional
+        [m2] area of primary mirror
+        
     Returns
     -------
     source : `simcado.Source`
 
     """
-
-    thestar = star_grid(1, mag, mag, filter_name, spec_type=spec_type)
-    thestar.x, thestar.y = [position[0]], [position[1]]
+    
+    thestar = stars(spec_type, mag, filter_name, x, y, area)
     return thestar
 
 
-def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area=1):
+def stars(spec_types=["A0V"], mags=[0], filter_name="Ks", x=None, y=None, area=1):
     """
     Creates a simcado.Source object for a bunch of stars.
 
     Parameters
     ----------
-    mags : array
-        [mag] magnitudes of the stars
-    x, y : arrays
-        [arcsec] x and y coordinates of the stars on the focal plane
-    filter_name : str, optional
-        BVRIzYJHKKs - filter in which the magnitudes are given
-        Default is "Ks"
-    spec_types : str, list of strings (optional)
+    spec_types : str, list of strings
         the spectral type(s) of the stars, e.g. "A0V", "G5III"
         Default is "A0V"
-    area : float, optional
+    mags : float, array
+        [mag] magnitudes of the stars. 
+    filter_name : str,
+        Filter in which the magnitude is given. Can be the name of any filter 
+        curve file in the simcado/data folder, or a path to a custom ASCII file
+    x, y : arrays
+        [arcsec] x and y coordinates of the stars on the focal plane
+    area : float
         [m2] area of primary mirror
 
     Returns
@@ -1420,12 +1427,28 @@ def stars(mags, x, y, filter_name="Ks", spec_types="A0V", area=1):
     if isinstance(spec_types, (tuple, list, np.ndarray)) and len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")
 
-    # KL update refs and SED to only reference the unique spectra
-    lam, spec = SED(spec_types, filter_name=filter_name, magnitude=0)
+    if isinstance(mags, (int, float)):
+        mags = [mags]*len(spec_types)
+    mags = np.array(mags)
+        
+    if x is None:
+        x = np.zeros(len(mags))
+    if y is None:
+        y = np.zeros(len(mags))
+          
+    # only pull in the spectra for unique spectral types
+    
+    # assign absolute magnitudes to stellar types in cluster
+    unique_types = np.unique(spec_types)
+    lam, spec = SED(unique_types, filter_name=filter_name, magnitude=[0]*len(unique_types))
+    
+    # get the references to the unique stellar types
+    ref_dict = {i : j for i, j in zip(unique_types, np.arange(len(unique_types)))}
     if isinstance(spec_types, (list, tuple, np.ndarray)):
-        ref = np.arange(len(spec_types))
+        ref = np.array([ref_dict[i] for i in spec_types])
     else:
         ref = np.zeros(len(mags))
+    
     weight = 10**(-0.4*mags) * area
 
 
@@ -1586,7 +1609,7 @@ def cluster(mass=1E3, distance=50000, half_light_radius=1):
 
 def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                       units="ph/s/m2", flux_threshold=0,
-                      center_pixel_offset=(0, 0),
+                      center_offset=(0, 0),
                       conserve_flux=True):
     """
     Create a Source object from an image or a list of images.
@@ -1610,9 +1633,9 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
     flux_threshold : float, optional
         If there is noise in the image, set threshold to the noise limit so that
         only real photon sources are extracted. Default is 0.
-    center_pixel_offset : (int, int)
-        [pixel] If the central pixel is offset from the centre of the image, add
-        this offset to (x,y) coordinates.
+    center_offset : (int, int)
+        [arcsec] If the central of the image is offset, add this offset to (x,y) 
+        coordinates.
     convserve_flux : bool, optional
         If True, when the image is rescaled, flux is conserved.
         If False, the maximum value of the image stays constant after rescaling
@@ -1627,7 +1650,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
     if isinstance(images, (list, tuple)):
         srcs = [source_from_image(images[i], lam, spectra[i, :], plate_scale,
                                   oversample, units, flux_threshold,
-                                  center_pixel_offset)
+                                  center_offset)
                 for i in range(len(images))]
         src = srcs[0]
         for i in range(1, len(images)):
@@ -1641,8 +1664,8 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
             images = fits.getdata(images)
 
         # im = images
-        # y_cen, x_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
-        # # x_cen, y_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
+        # y_cen, x_cen = np.array(im.shape) / 2 + np.array(center_offset)
+        # # x_cen, y_cen = np.array(im.shape) / 2 + np.array(center_offset)
         # # x_i, y_i = np.where(im > flux_threshold)
         # y_i, x_i = np.where(im > flux_threshold)
 
@@ -1670,14 +1693,14 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         else:
             im = images
             scale_factor = 1
-
-        y_cen, x_cen = np.array(im.shape) / 2 + np.array(center_pixel_offset)
+            
+        y_cen, x_cen = np.array(im.shape) / 2
         y_i, x_i = np.where(im > flux_threshold * scale_factor)
 
         pix_res = plate_scale / oversample
-        x = (x_i - x_cen) * pix_res
-        y = (y_i - y_cen) * pix_res
-
+        x = (x_i - x_cen) * pix_res + center_offset[0]
+        y = (y_i - y_cen) * pix_res + center_offset[1]
+        
         weight = im[y_i, x_i]
         ref = np.zeros(len(x))
 
@@ -1699,8 +1722,9 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
         The spectrum to be scaled into [ph/s/m2] for the given broadband filter
     mag : float
         magnitude of the source
-    filter_name : str, optional
-        filter name. See simcado.optics.get_filter_set(). Default is "Ks"
+    filter_name : str, TransmissionCurve, optional
+        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
+        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -1712,28 +1736,45 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     spec : np.array
         [ph/s/m2] The spectrum scaled to the specified magnitude
 
+    if return_ec == True, a simcado.spectral.EmissionCurve is returned
+    
+    See Also
+    --------
+    .spectral.TransmissionCurve, .spectral.TransmissionCurve
+    .optics.get_filter_curve(), .optics.get_filter_set()
+    
     """
 
-    ideal_ph = zero_magnitude_photon_flux(filter_name) * 10**(-0.4 * mag)
-
-    from simcado.spectral import EmissionCurve
+    from simcado.spectral import EmissionCurve, TransmissionCurve
     from simcado.optics import get_filter_curve
+    
+    ideal_phs = zero_magnitude_photon_flux(filter_name) * 10**(-0.4 * mag)
+    if isinstance(ideal_phs, (int, float)): ideal_phs = [ideal_phs]
+    
+    if len(spec.shape) > 1:
+        curves = [EmissionCurve(lam=lam, val=sp, area=1, units="ph/s/m2") for sp in spec]
+    else: 
+        curves = [EmissionCurve(lam=lam, val=spec, area=1, units="ph/s/m2")]
+    for curve in curves: curve.resample(0.001)
 
-    curve = EmissionCurve(lam=lam, val=spec, area=1, units="ph/s/m2")
-    curve.resample(0.001)
-
-    filt = get_filter_curve(filter_name)
-
-    tmp = curve * filt
-    obs_ph = tmp.photons_in_range()
-
-    scale_factor = ideal_ph / obs_ph
-    curve *= scale_factor
-
-    if return_ec:
-        return curve
+    if isinstance(filter_name, TransmissionCurve):
+        filt = filter_name
     else:
-        return curve.lam, curve.val
+        filt = get_filter_curve(filter_name)
+    
+    for i in range(len(curves)):
+        tmp = curves[i] * filt
+        obs_ph = tmp.photons_in_range()
+
+        scale_factor = ideal_phs[i] / obs_ph
+        curves[i] *= scale_factor
+    
+    if return_ec:
+        if len(curves) > 1: return curves  
+        else: curves[0]
+    else:
+        if len(curves) > 1: return curve.lam, np.array([curve.val for curve in curves])  
+        else: return curve.lam, curves[0].val
 
 
 def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks",

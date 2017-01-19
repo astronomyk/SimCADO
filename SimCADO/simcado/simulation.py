@@ -75,6 +75,7 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     if fpa is None:
         fpa = sim.Detector(cmds, small_fov=False)
         
+    print("Detector layout")
     print(fpa.layout)
     print("Creating", len(cmds.lam_bin_centers), "layer(s) per chip")
     print(len(fpa.chips), "chip(s) will be simulated")

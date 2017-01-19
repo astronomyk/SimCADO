@@ -5,6 +5,10 @@ The data files used by SimCADO are continually being updated to reflect the newe
 
 To update your version of SimCADO, use the `simcado.get_extras()` command.
 
+### 2017-01-18
+* Added E-ELT mirror transmission curve
+        TC_mirror_EELT.dat
+
 ### 2017-01-05
 * VLT mirror coating
         TC_aluminium.dat        

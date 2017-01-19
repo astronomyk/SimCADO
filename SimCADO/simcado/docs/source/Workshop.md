@@ -1,6 +1,9 @@
 # SimCADO Workshop
 University of Vienna  
-[Department of Astrophysics](https://astro.univie.ac.at/en/home/)
+[Department of Astrophysics](https://astro.univie.ac.at/en/home/)  
+Türkenschanzstraße 17  
+1170 Vienna  
+Austria
       
 Start:  13:00, 16th February, 2017  
 End:    14:00, 17th February, 2017
@@ -98,3 +101,5 @@ To register, or just to show interest, please send an email to:
 * Davide Massari
 * Simona Paiano
 * Eckhard Sturm
+* Michele Perna
+* Michael Wegner
