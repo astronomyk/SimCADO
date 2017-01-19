@@ -296,6 +296,7 @@ class UserCommands(object):
         self.fpa = None
         self.hxrg = None
 
+        self._split_categories()
 
     def update(self, new_dict):
         """
@@ -619,8 +620,8 @@ class UserCommands(object):
                                      self.cmds["INST_NUM_AO_MIRRORS"]
 
         self.cmds["ATMO_AIRMASS"] = 1. / np.cos(self.cmds["OBS_ZENITH_DIST"] / 57.3)
-                                     
-                                     
+
+
         # replace 'none', 'None' with None
         self._convert_none()
 
