@@ -880,6 +880,7 @@ class Chip(object):
         #######################################################################
 
         out_array = self._read_out_superfast(self.array, dit, ndit)
+        # TODO: noise estimate is np.sqrt(self.array * dit * ndit)
         out_array /= self.gain
 
         # apply the linearity curve
