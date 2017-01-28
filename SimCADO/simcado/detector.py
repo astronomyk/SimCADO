@@ -90,9 +90,11 @@ written to disk.
 # - update open, write - remove references to self.params
 
 
-import os, sys
+import os
+import sys
 
-import warnings, logging
+import warnings
+import logging
 from copy import deepcopy
 
 import multiprocessing as mp
@@ -220,7 +222,12 @@ class Detector(object):
                    #       arcsec   arcsec   pixel   pixel   e-/ADU
                    0        0        0    1024    1024       1.7  """)
         else:
-            self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
+            if os.path.exists(self.cmds["FPA_CHIP_LAYOUT"]):
+                self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
+            else:
+                raise FileNotFoundError("File " +
+                      self.cmds["FPA_CHIP_LAYOUT"] +
+                      " (FPA_CHIP_LAYOUT) does not exist")
 
         self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
                            self.layout["x_len"][i], self.layout["y_len"][i],
