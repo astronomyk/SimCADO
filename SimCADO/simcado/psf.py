@@ -110,13 +110,13 @@ try:
     import simcado.utils as utils
 except ImportError:
     import utils
-    
-try: 
+
+try:
     import poppy
-except: 
-    warnings.warn("""Poppy is not installed. Functions beginning with "poppy_" 
+except:
+    warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
                   will not work. See http://pythonhosted.org/poppy/""")
-   
+
 
 ## TODO
 # - Add a ellipticity to the GaussianPSF
@@ -600,8 +600,8 @@ class UserPSF(PSF):
             pix_res = header["CD1_1"]
         else:
             pix_res = 0.004
-        
-        # If pix_res is 
+
+        # If pix_res is
         #   * >1E-1 it must be in mas
         #   * ~1E-3, it must be in arcsec
         #   * <1E-5 it must be in deg
@@ -609,7 +609,7 @@ class UserPSF(PSF):
             pix_res *= 1E-3
         elif pix_res < 1E-5:
             pix_res *= 3600
-            
+
         super(UserPSF, self).__init__(size, pix_res)
         self.info["Type"] = "User"
         self.info['description'] = "PSF from FITS file: " + self.filename
@@ -1042,14 +1042,21 @@ class UserPSFCube(PSFCube):
         # find the closest PSFs in the file to what is needed for the psf
         i_slices = utils.nearest(psf_lam_cen, lam_bin_centers)
         i_psf_lam_cen = [psf_lam_cen[i] for i in np.unique(i_slices)]
-        
+
         # import only the relevant PSFs
         for i in np.unique(i_slices):
 
             hdr = fits.getheader(filename, ext=i)
             self.header = hdr
 
-            pix_res = hdr["CDELT1"]
+            if 'CDELT1' in hdr.keys():
+                pix_res = hdr["CDELT1"]
+            elif 'CD1_1' in hdr.keys():
+                pix_res = hdr['CD1_1']
+            else:
+                raise KeyError("Could not get pixel scale from " +
+                               filename)
+
             if pix_res > 1:
                 warnings.warn("CDELT > 1. Assuming the scale to be [mas]")
                 pix_res *= 1E-3
@@ -1319,8 +1326,8 @@ class AiryDiskDiff2D(Fittable2DModel):
                     2.0 * eps * cls._j1(eps * rt) / rt)**2
         z *= amplitude
         return z
-        
-        
+
+
 ################################################################################
 # Convenience functions
 
@@ -1329,20 +1336,20 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
                           pix_res_final=None, wavelengths=None):
     """
     Combine several PSF FITS images into a single PSF FITS file
-    
+
     Parameters
     ----------
     fnames : list
         List of path names to the FITS files
     out_name : str, optional
-        If out_name is not `None`, the resulting FITS file is saved under the 
+        If out_name is not `None`, the resulting FITS file is saved under the
         name `out_name`
     window : int, list, tuple, optional
         If window is not `None`, a windowed section of the PSFs are extracted
         window = (left, right, top, bottom)
         window = square radius
 
-        
+
     Examples
     --------
         >>> from glob import glob
@@ -1350,28 +1357,28 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
         >>> fnames = glob("D:\Share_VW\Data_for_SimCADO\PSFs\yann_2016_11_10\*.fits")
         >>> sim.psf.make_foreign_PSF_cube(fnames, "PSF_SCAO.fits",
                                           window=512,
-                                          pix_res_orig=[0.0028, 0.0037, 0.00492], 
+                                          pix_res_orig=[0.0028, 0.0037, 0.00492],
                                           pix_res_final=[0.004, 0.004, 0.004],
                                           wavelengths=[1.25,1.65,2.2])
-    
+
     """
-    
+
     if pix_res_orig is None:
         pix_res_orig = [None]*len(fnames)
-    
+
     if pix_res_final is None:
         pix_res_final = [None]*len(fnames)
-        
+
     if wavelengths is None:
         wavelengths = [None]*len(fnames)
 
-        
+
     hdu_list = fits.HDUList()
-    for fname, res_i, res_f, wave in zip(fnames, pix_res_orig, 
+    for fname, res_i, res_f, wave in zip(fnames, pix_res_orig,
                                          pix_res_final, wavelengths):
         dat = fits.getdata(fname)
         hdr = fits.getheader(fname)
-        
+
         if res_i is not None and res_f is not None:
             if res_i != res_f:
                 dat = spi.zoom(dat, res_i/res_f)
@@ -1386,18 +1393,18 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
                 dat = dat[xc-dw:xc+dw, yc-dw:yc+dw]
             else:
                 print("Unknown type for window", type(window))
-                
+
         scale_factor = 1./np.sum(dat)
         dat *= scale_factor
 
         hdu = fits.ImageHDU(dat, hdr)
-        
+
         if res_f is not None:
             hdu.header["CDELT1"] = (res_f, "[arcsec] pixel resolution")
             hdu.header["CDELT2"] = (res_f, "[arcsec] pixel resolution")
         if wave is not None:
             hdu.header["WAVE0"] = (wave, "[micron] - Wavelength of slice")
-        
+
         hdu_list.append(hdu)
 
     if out_name is None:
@@ -1405,72 +1412,72 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
     else:
         hdu_list.writeto(out_name, clobber=True)
 
-        
-        
+
+
 def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
                  **kwargs):
     """
     Create a diffraction limited E-ELT PSF with a Seeing halo
-    
-    Uses POPPY to create a diffraction limited PSF for the E-ELT for a 
-    certain configuration of mirror segments. The diffraction limited core is 
+
+    Uses POPPY to create a diffraction limited PSF for the E-ELT for a
+    certain configuration of mirror segments. The diffraction limited core is
     added to seeing halo, modelled by either a moffat or gassian profile.
-    
-    
+
+
     Parameters
     ----------
     strehl : float
-        [0 .. 1] The components are summed and weighted according to the strehl 
+        [0 .. 1] The components are summed and weighted according to the strehl
         ratio
         psf = (1-strehl)*seeing_psf + (strehl)*diff_limited_psf
     mode : str, optional
-        ["wide", "zoom"] Default = "wide". Sets the pixel size for each 
-        of the MICADO imaging modes - {"wide" : 4mas, "zoom" : 1.5mas}    
+        ["wide", "zoom"] Default = "wide". Sets the pixel size for each
+        of the MICADO imaging modes - {"wide" : 4mas, "zoom" : 1.5mas}
     plan : str, optional
         ["A", "B"], Default = "A"
         * Plan A is for a fully populated mirror (798 segments)
-        * Plan B has the inner 5 rings missing (588 segments) and a further 
+        * Plan B has the inner 5 rings missing (588 segments) and a further
         5 random segments missing (583 segments)
     size : int, optional
         [pixels] Default = 1024
     filename : str, optional
         Default = None. If filename is not None, the resulting FITS object will
         be saved to disk
-    
-    
+
+
     Kwargs
     ------
     "fwhm"                 : 0.8,   # [arcsec]
-    "psf_type"             : "moffat", 
+    "psf_type"             : "moffat",
     "wavelength"           : 2.2,   # [um]
-    "segments"             : None, 
+    "segments"             : None,
     "flattoflat"           : 1.256, # [m]
     "gap"                  : 0.004, # [arcsec]
     "secondary_radius"     : 5,     # [m]
-    "n_supports"           : 6,   
+    "n_supports"           : 6,
     "support_width"        : 0.2,   # [m]
     "support_angle_offset" : 0,     # [deg]
     "n_missing"            : None
     "use_pupil_mask"        : True
     "pupil_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
     "pupil_outer_radius"    : 19     # [m]
-    
+
     Returns
     -------
-    hdu_list : astropy.HDUList - an astropy FITS object containing the PSFs for 
+    hdu_list : astropy.HDUList - an astropy FITS object containing the PSFs for
     the given wavelengths
-    
-    
-    
+
+
+
     """
     params = {"strehl"               : strehl,
-              "mode"                 : mode, 
-              "size"                 : size,     
-              "plan"                 : plan, 
-              "fwhm"                 : 0.8, 
-              "psf_type"             : "moffat", 
-              "wavelength"           : 2.2, 
-              "segments"             : None, 
+              "mode"                 : mode,
+              "size"                 : size,
+              "plan"                 : plan,
+              "fwhm"                 : 0.8,
+              "psf_type"             : "moffat",
+              "wavelength"           : 2.2,
+              "segments"             : None,
               "flattoflat"           : 1.256,
               "gap"                  : 0.004,
               "secondary_radius"     : 5,
@@ -1479,30 +1486,30 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
               "support_angle_offset" : 0,
               "n_missing"            : None,
               "use_pupil_mask"        : True,
-              "pupil_inner_radius"    : None, 
+              "pupil_inner_radius"    : None,
               "pupil_outer_radius"    : 19
               }
     params.update(kwargs)
-    
-    if "pix_res" not in params: 
+
+    if "pix_res" not in params:
         params["pix_res"] = 0.0015 if mode.lower() == "zoom" else 0.004
-    
+
     #work out the multiple wavelength
     wavelength = params["wavelength"]
     if np.isscalar(wavelength):
         wavelength = np.array([wavelength])
-    
+
     # Make the PSF(s) for the E-ELT
     eelt = fits.HDUList()
     for wave in wavelength:
         print("Generating an E-ELT PSF at", wave, "[um]")
         params["wavelength"] = wave
         eelt.append(poppy_eelt_psf(**params)[0])
-    
+
     # Make a seeing limited PSF
-    seeing = seeing_psf(fwhm     = params["fwhm"], 
-                        psf_type = params["psf_type"], 
-                        size     = size, 
+    seeing = seeing_psf(fwhm     = params["fwhm"],
+                        psf_type = params["psf_type"],
+                        size     = size,
                         pix_res  = params["pix_res"])
 
     # Combine the two PSF FITS objects
@@ -1511,7 +1518,7 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
         poppy_ao = fits.ImageHDU()
         poppy_ao.data = (1. - strehl) * seeing[0].data + strehl * psf.data
         poppy_ao.data = poppy_ao.data.astype(np.float32)
-        
+
         poppy_ao.header["PIXELSCL"] = params["pix_res"]
         poppy_ao.header["PSF_TYPE"] = "POPPY"
         poppy_ao.header["CDELT1"]   = params["pix_res"]
@@ -1524,7 +1531,7 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
             except: pass
 
         poppy_ao.header.extend(psf.header.cards)
-        
+
         hdu_list.append(poppy_ao)
 
     if filename is None:
@@ -1534,11 +1541,11 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
         hdu_list.writeto(filename, clobber=True)
 
 
-def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004, 
+def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
                filename=None):
     """
     Return a seeing limited PSF
-    
+
     Parameters
     ----------
     fwhm : float, optional
@@ -1552,13 +1559,13 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
     filename : str, optional
         Default = None. If filename is not None, the resulting FITS object will
         be saved to disk
-    
-    
+
+
     Returns
     -------
     seeing_psf : 2D-array
-    
-    
+
+
     Notes
     -----
     # Moffat description
@@ -1569,24 +1576,24 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
     """
 
 
-    
+
     if fwhm > 5:
         warnings.warn("FWHM is rather large: [arcsec]"+str(fwhm))
     fwhm_pix = fwhm/pix_res
-    
+
     if "moff" in psf_type.lower():
         beta = 4.785
         alpha = fwhm_pix / (2 * np.sqrt(2**(1/beta)-1))
 
         # astropy gamma = Trujillo alpha
-        # astropy alpha = Trujillo beta 
-        seeing_psf = Moffat2DKernel(gamma=alpha, alpha=beta, 
-                                    x_size=size, y_size=size, 
+        # astropy alpha = Trujillo beta
+        seeing_psf = Moffat2DKernel(gamma=alpha, alpha=beta,
+                                    x_size=size, y_size=size,
                                     factor=1).array
     elif "gauss" in psf_type.lower():
         sigma = fwhm_pix/2.3548
-        seeing_psf = Gaussian2DKernel(stddev=sigma, 
-                                      x_size=size, y_size=size, 
+        seeing_psf = Gaussian2DKernel(stddev=sigma,
+                                      x_size=size, y_size=size,
                                       factor=1).array
 
     hdu = fits.PrimaryHDU(seeing_psf)
@@ -1599,7 +1606,7 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
     hdu.header["CUNIT2"]    = "arcsec"
 
     hdu_list = fits.HDUList([hdu])
-    
+
     if filename is None:
         return hdu_list
     else:
@@ -1611,23 +1618,23 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
                   segments=None, filename=None, use_pupil_mask=True, **kwargs):
     """
     Generate a PSF for the E-ELT for plan A or B with POPPY
-    
+
     Parameters
     ----------
     plan : str, optional
         ["A", "B"], Default = "A"
         * Plan A is for a fully populated mirror (798 segments)
-        * Plan B has the inner 5 rings missing (588 segments) and a further 
+        * Plan B has the inner 5 rings missing (588 segments) and a further
         5 random segments missing (583 segments)
     wavelength : float, list, array, optional
         [um] Default = 2.2um. The wavelength(s) for which a PSF should be made
     mode : str, optional
-        ["wide", "zoom"] Default = "wide". Sets the pixel size for each 
+        ["wide", "zoom"] Default = "wide". Sets the pixel size for each
         of the MICADO imaging modes - {"wide" : 4mas, "zoom" : 1.5mas}
     size : int, optional
         [pixels] Default = 1024
     segments : list, optional
-        Default = None. A list of which segments to use for generating the E-ELT 
+        Default = None. A list of which segments to use for generating the E-ELT
         mirror. See `get_eelt_segments()`
     filename : str, optional
         Default = None. If filename is not None, the resulting FITS object will
@@ -1638,7 +1645,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     Kwargs
     ------
     Values to pass to the POPPY functions
-    
+
     "flattoflat"           : 1.256 [m]
     "gap"                  : 0.004 [m]
     "secondary_radius"     : 5 [m]
@@ -1648,24 +1655,24 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     "n_missing"            : None
     "pupil_inner_radius"   : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
     "pupil_outer_radius"   : 19     # [m]
-    
-    
+
+
     Returns
     -------
-    `astropy.HDUList` : an astropy FITS object with the PSF in the data 
+    `astropy.HDUList` : an astropy FITS object with the PSF in the data
     extensions
-    
-    
+
+
     See also
     --------
     `get_eelt_segments()`
-    
+
     """
-    
-    try: 
+
+    try:
         import poppy
-    except: 
-        raise ImportError("""Poppy is not installed - 
+    except:
+        raise ImportError("""Poppy is not installed -
         See https://pythonhosted.org/poppy""")
 
     params = {"flattoflat"           : 1.256,
@@ -1676,19 +1683,19 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
               "support_angle_offset" : 0,
               "n_missing"            : None,
               "oversample"           : 2,
-              "pupil_inner_radius"    : None, 
+              "pupil_inner_radius"    : None,
               "pupil_outer_radius"    : 19}
-    # Careful - when calling the detector, the rusulting PSF is 2x oversampled. 
+    # Careful - when calling the detector, the rusulting PSF is 2x oversampled.
     # Hence we double the pixelscale at osys.add_detector
-    
+
     params.update(**kwargs)
 
     params["pixelscale"] = 0.004 if mode.lower() == "wide" else 0.0015
     if params["pupil_inner_radius"] is None:
         params["pupil_inner_radius"] = 11.5 if plan.lower() == "b" else 5.6
-    
-    
-    
+
+
+
     if segments is None:
         segments = get_eelt_segments(plan=plan, missing=params["n_missing"])
 
@@ -1696,34 +1703,34 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
                                     gap        = params["gap"],
                                     segmentlist= segments)
     sec = poppy.SecondaryObscuration(secondary_radius    = params["secondary_radius"],
-                                     n_supports          = params["n_supports"], 
-                                     support_width       = params["support_width"], 
+                                     n_supports          = params["n_supports"],
+                                     support_width       = params["support_width"],
                                      support_angle_offset= params["support_angle_offset"])
 
     opticslist = [ap, sec]
-                       
+
     if use_pupil_mask:
         cold_in = poppy.SecondaryObscuration(secondary_radius=params["pupil_inner_radius"], n_supports=0)
-        cold_out = poppy.CircularAperture(radius=params["pupil_outer_radius"])                                     
+        cold_out = poppy.CircularAperture(radius=params["pupil_outer_radius"])
         opticslist += [cold_in, cold_out]
-        
-    eelt = poppy.CompoundAnalyticOptic(opticslist=opticslist, 
+
+    eelt = poppy.CompoundAnalyticOptic(opticslist=opticslist,
                                        name='E-ELT Plan '+plan)
-    
+
     osys = poppy.OpticalSystem(oversample=params["oversample"], pupil_diameter=50)
     osys.add_pupil(eelt)
-    osys.add_detector(pixelscale = params["pixelscale"], 
+    osys.add_detector(pixelscale = params["pixelscale"],
                       fov_arcsec = params["pixelscale"] * size)
-    
-    if np.any(wavelength) < 0.1: 
+
+    if np.any(wavelength) < 0.1:
         warnings.warn("One or more wavelengths is/are very short")
         print(wavelength)
-    
+
     wavelength *= 1E-6
     hdu_list = osys.calc_psf(wavelength)
     hdu_list[0].data = spi.zoom(hdu_list[0].data, 1./params["oversample"])
     hdu_list[0].data /= np.sum(hdu_list[0].data)
-    
+
     for hdu in hdu_list:
         hdu.data = hdu.data.astype(np.float32)
         hdu.header["PIXELSCL"] = params["pixelscale"]
@@ -1732,7 +1739,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
         hdu.header["CDELT2"]   = params["pixelscale"]
         hdu.header["CUNIT1"]   = "arcsec"
         hdu.header["CUNIT2"]   = "arcsec"
-    
+
     if filename is None:
         return hdu_list
     else:
@@ -1740,21 +1747,21 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
         hdu_list.writeto(filename, clobber=True)
 
 
-    
-def get_eelt_segments(plan="A", missing=None, return_missing_segs=False, 
+
+def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
                       inner_diam=10.6, outer_diam=39.):
     """
     Generate a list of segments for POPPY for the E-ELT
-    
+
     Parameters
     ----------
     plan : str, optional
         ["A", "B"], Default = "A"
         * Plan A is for a fully populated mirror (798 segments)
-        * Plan B has the inner 5 rings missing (588 segments) and a further 
+        * Plan B has the inner 5 rings missing (588 segments) and a further
         5 random segments missing (583 segments)
     missing : int, list, optional
-        Default = None. If an integer is passed, this many random segments are 
+        Default = None. If an integer is passed, this many random segments are
         removed. If `missing` is a list, entries refer to specific segment IDs
     return_missing_segs : bool, optional
         Defualt is False. Returns the missing segment numbers
@@ -1762,23 +1769,23 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         [m] Default = 10.6. Diameter which produces ESO's mirror configuration
     outer_diam : float, optional
         [m] Default = 39.0. Diameter which produces ESO's mirror configuration
-        
-        
+
+
     Returns
     -------
     segs : list
         A list of segment IDs for the mirror segments.
     missing : list, conditional
-        Only returned if `return_missing_segs == True`. A list of segment IDS 
-        for the segments which are missing. 
-        
+        Only returned if `return_missing_segs == True`. A list of segment IDS
+        for the segments which are missing.
+
     """
 
-    try: 
+    try:
         import poppy
-    except: 
+    except:
         raise ImportError("Poppy is not installed - google 'JWST POPPY'")
-    
+
     if plan.lower() == "b":
         #inner_diam = 21.9
         first_seg = 270
@@ -1786,30 +1793,30 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
     else:
         first_seg = 60
         if missing is None: missing = 0
-        
-    
-    ap = poppy.MultiHexagonAperture(flattoflat=1.256, gap=0.004, 
+
+
+    ap = poppy.MultiHexagonAperture(flattoflat=1.256, gap=0.004,
                                                     segmentlist=np.arange(2000))
-    rad = [np.sqrt(np.sum(np.array(ap._hex_center(j))**2)) 
+    rad = [np.sqrt(np.sum(np.array(ap._hex_center(j))**2))
                                                         for j in ap.segmentlist]
 
     mask = (np.array(rad) < 0.5*outer_diam) * (ap.segmentlist > first_seg)
     segs = np.array(ap.segmentlist)[mask]
-    
+
     if isinstance(missing, int):
         if missing > 0:
             i = np.random.randint(0, len(segs)-missing, size=missing)
             missing = segs[i]
         else:
             missing = []
-            
+
     for i in missing:
-        if i in segs: 
+        if i in segs:
             x = np.where(segs == i)[0][0]
             segs = segs.tolist()
             segs.pop(x)
             segs = np.array(segs)
-            
+
     if return_missing_segs:
         return segs, missing
     else:
