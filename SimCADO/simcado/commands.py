@@ -20,7 +20,7 @@ Classes
 Routines
 --------
 
-* ``dump_defaults(filename="./", type="freq")``
+* ``dump_defaults(filename="./", selection="freq")``
 * ``dump_chip_layout(dir="./")``
 
 
@@ -619,8 +619,8 @@ class UserCommands(object):
                                      self.cmds["INST_NUM_AO_MIRRORS"]
 
         self.cmds["ATMO_AIRMASS"] = 1. / np.cos(self.cmds["OBS_ZENITH_DIST"] / 57.3)
-                                     
-                                     
+
+
         # replace 'none', 'None' with None
         self._convert_none()
 
