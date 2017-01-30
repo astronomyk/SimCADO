@@ -279,15 +279,8 @@ class UserCommands(object):
         else:
             self.cmds["PSF_MODE"] = "linear_interp"
 
-        # update the UserCommand "special" attributes
-
-        self._update_attributes()
-
-        if self.verbose and filename is not None:
-            print("Read in parameters from " + filename)
-            logging.debug("Read in parameters from " + filename)
-
         # Subcategories of parameters, filled later by _split_categories
+        # in _update_attributes
         self.obs = None
         self.sim = None
         self.atmo = None
@@ -296,7 +289,14 @@ class UserCommands(object):
         self.fpa = None
         self.hxrg = None
 
-        self._split_categories()
+        # update the UserCommand "special" attributes
+        self._update_attributes()
+
+        if self.verbose and filename is not None:
+            print("Read in parameters from " + filename)
+            logging.debug("Read in parameters from " + filename)
+
+
 
     def update(self, new_dict):
         """
