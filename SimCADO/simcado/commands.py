@@ -20,7 +20,7 @@ Classes
 Routines
 --------
 
-* ``dump_defaults(filename="./", type="freq")``
+* ``dump_defaults(filename="./", selection="freq")``
 * ``dump_chip_layout(dir="./")``
 
 
