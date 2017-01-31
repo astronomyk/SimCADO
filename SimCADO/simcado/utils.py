@@ -345,7 +345,8 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
                                                            suffix='.tmp'),
                                   bar=wget.bar_adaptive)
         print("\n")
-        os.remove(local_filename)
+        if os.path.exists(local_filename): 
+            os.remove(local_filename)
         os.rename(temp_file, local_filename)
     except wget.ulib.HTTPError:
         print(url + " not found")
