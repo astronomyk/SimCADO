@@ -12,7 +12,7 @@ OBS_RA                  0           # [deg] RA of the object [not yet implemente
 OBS_DEC                 0           # [deg] Dec of the object [not yet implemented]
 OBS_ALT                 0           # [deg] Altitude of the object [not yet implemented]
 OBS_AZ                  0           # [deg] Azimuth of the object [not yet implemented]
-OBS_ZENITH_DIST         60          # [deg] from zenith
+OBS_ZENITH_DIST         0           # [deg] from zenith
 OBS_PARALLACTIC_ANGLE   0           # [deg] rotation of the source relative to the zenith
 OBS_SEEING              0.6         # [arcsec]
 
@@ -88,6 +88,7 @@ ATMO_BG_MAGNITUDE       default     # [ph/s] background photons for the bandpass
 ATMO_TEMPERATURE        0           # deg Celcius
 ATMO_PRESSURE           750         # millibar
 ATMO_REL_HUMIDITY       60          # %
+ATMO_PWV                2.5         # [mm] Paranal standard value
 ```
 
 ## Parameters regarding the telescope
@@ -111,7 +112,7 @@ SCOPE_USE_MIRROR_BG     yes         # [yes/no]
 
 SCOPE_NUM_MIRRORS       5           # number of reflecting surfaces
 SCOPE_TEMP              0           # deg Celsius - temperature of mirror
-SCOPE_M1_TC             default     # [<filename>, "default"] Mirror reflectance curve. Default is <pkg_dir>/data/TC_mirror_mgf2agal.dat
+SCOPE_M1_TC             TC_mirror_EELT.dat     # [<filename>, "default"] Mirror reflectance curve. Default is <pkg_dir>/data/TC_mirror_EELT.dat
 SCOPE_MIRROR_LIST       default     # [<filename>, "default"] List of mirror sizes. Default is <pkg_dir>/data/EC_mirrors_scope.tbl
 ```
 
@@ -168,7 +169,7 @@ FPA_READOUT_STDEV       1           # e-/px
 FPA_DARK_MEDIAN         0.01        # e-/s/px
 FPA_DARK_STDEV          0.01        # e-/s/px
 
-FPA_QE                  default     # Quantum efficiency of detector. If "default": <package_path>/data/TC_detector_H4RG.dat
+FPA_QE                  TC_HAWKI_H2RG.dat     # Quantum efficiency of detector. If "default": <package_path>/data/TC_detector_H4RG.dat
 FPA_NOISE_PATH          default     # [default/generate/filename] if "generate": use NGHxRG to create a noise frame. If "default": <package_path>/data/FPA_noise.fits
 FPA_GAIN                1           # e- to ADU conversion
 FPA_WELL_DEPTH          1E5         # number of photons collectable before pixel is full
@@ -179,7 +180,7 @@ FPA_PIXEL_MAP           none        # path to a FITS file with the pixel sensiti
 FPA_DEAD_PIXELS         1           # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
 FPA_DEAD_LINES          1           # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
 
-FPA_CHIP_LAYOUT         small       # ["small", "centre", "wide", "zoom", "full", <filename>] description of the chip layout on the detector array. if "default": <pkg_dir>/data/FPA_chip_layout.dat
+FPA_CHIP_LAYOUT         full       # ["small", "centre", "wide", "zoom", "full", <filename>] description of the chip layout on the detector array. if "default": <pkg_dir>/data/FPA_chip_layout.dat
 ```
 
 ## NXRG Noise Generator package parameters

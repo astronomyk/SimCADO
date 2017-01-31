@@ -13,7 +13,6 @@
 #
 
 import os
-from .utils import __pkg_dir__
 
 import glob
 import warnings, logging
@@ -26,20 +25,13 @@ from astropy.io import fits
 from astropy.io import ascii as ioascii    # 'ascii' redefines built-in
 import astropy.units as u
 
-try:
-    #import simcado.detector as fpa
-    import simcado.psf as psf
-    import simcado.spectral as sc
-    import simcado.spatial as pe
-    #import simcado.utils as utils
-except ImportError:
-    #import detector as fpa
-    import psf as psf
-    import spectral as sc
-    import spatial as pe
-    #import utils
+from . import psf as psf
+from . import spectral as sc
+from . import spatial as pe
+from .commands import UserCommands
+from .utils import __pkg_dir__
 
-__all__ = ["OpticalTrain"]
+__all__ = ["OpticalTrain", "get_filter_curve", "get_filter_set"]
 
 class OpticalTrain(object):
     """
@@ -47,70 +39,88 @@ class OpticalTrain(object):
     model the optical path for all (3) sources of photons: the astronomical
     source, the atmosphere and the primary mirror.
 
-    Attributes
-    ==========
-    General attributes
+    Parameters
+    ----------
+    cmds : UserCommands, optional
+        Holds the commands needed to generate a model of the optical train
+
+    
+    Optional Parameters
+    -------------------
+    Any keyword-value pair contained in the default configuration file
+
+
+    See Also
+    --------
+    .commands.dump_defaults(), .commands.UserCommands
+    
+    
+    General Attributes
     ------------------
-    - cmds : commands
+    - cmds : commands, optional
         a dictionary of commands for running the simulation
 
     Spatial attributes (for PSFs)
     -----------------------------
-    - lam_bin_edges : 1D array
+    lam_bin_edges : 1D array
         [um] wavelengths of the edges of the bins used for each PSF layer
-    - lam_bin_centers
+    lam_bin_centers
         [um] wavelengths of the centre of the bins used for each PSF layer
-    - pix_res : float
+    pix_res : float
         [arcsec] infernal oversampled pixel resolution (NOT detector plate scale)
-    - psf :
-    - jitter_psf :
-    - adc_shifts
+    psf :
+    jitter_psf :
+    adc_shifts
         [pixel]
-    - field_rot :
+    field_rot :
         [degrees]
 
     Spectral attributes (for EmissionCurves)
     ----------------------------------------
-    - lam : 1D array
+    lam : 1D array
         [um] Vector of wavelength bins for spectrals
-    - lam_res : float
+    lam_res : float
         [um] resolution between
-    - psf_size : int
+    psf_size : int
         [pixels] The width of a PSF
-    - tc_ao : TransmissionCurve
+    tc_ao : TransmissionCurve
         [0..1]
-    - tc_mirror : TransmissionCurve
+    tc_mirror : TransmissionCurve
         [0..1]
-    - tc_atmo : TransmissionCurve
+    tc_atmo : TransmissionCurve
         [0..1]
-    - tc_source : TransmissionCurve
+    tc_source : TransmissionCurve
         [0..1]
-    - ec_ao : EmissionCurve
+    ec_ao : EmissionCurve
         [ph/s/voxel]
-    - ec_mirror : EmissionCurve
+    ec_mirror : EmissionCurve
         [ph/s/voxel]
-    - ec_atmo : EmissionCurve
+    ec_atmo : EmissionCurve
         [ph/s/voxel]
-    - ph_ao : EmissionCurve
+    ph_ao : EmissionCurve
         [ph/s/voxel]
-    - ph_mirror : EmissionCurve
+    ph_mirror : EmissionCurve
         [ph/s/voxel]
-    - ph_atmo : EmissionCurve
+    ph_atmo : EmissionCurve
         [ph/s/voxel]
-    - n_ph_ao : float
+    n_ph_ao : float
         [ph/s]
-    - n_ph_mirror : float
+    n_ph_mirror : float
         [ph/s]
-    - n_ph_atmo : float
+    n_ph_atmo : float
         [ph/s]
 
 
     """
-    def __init__(self, cmds):
+    
+    def __init__(self, cmds, **kwargs):
         self.info = dict([])
 
+        if cmds is None:
+            cmds = UserCommands()
         self.cmds = deepcopy(cmds)
-
+        self.cmds.update(kwargs)
+        
         self.tc_master = None   # set in separate method
         self.psf_size = None   # set in separate method
 
@@ -183,23 +193,22 @@ class OpticalTrain(object):
         pass
 
 
-    def update_filter(self, filter_name=None, trans=None, lam=None):
+    def update_filter(self, trans=None, lam=None, filter_name=None, ):
         """
         Update the filter curve without recreating the full OpticalTrain object
 
         Parameters
         ----------
+        trans : TransmissionCurve, np.array, list, optional
+            [0 .. 1] the transmission coefficients. Either a TransmissionCurve
+            object can be passed (in which case omit ``lam``) or an array/list can
+            be passed (in which case specify ``lam``)
+        lam : np.array, list, optional
+            [um] an array for the spectral bin centres, if ``trans`` is not a 
+            TransmissionCurve object
         filter_name : str, optional
             The name of a filter curve contained in the package_dir. User
             get_filter_set() to find which filter curves are installed.
-        trans : TransmissionCurve, np.array, list, optional
-            [0 .. 1] the transmission coefficients. Either a TransmissionCurve
-            object can be passed (in which case omit `lam`) or an array/list can
-            be passed (in which case specify `lam`)
-        lam : np.array, list, optional
-            [um] an array for the spectral bin centres, if `trans` is not a 
-            TransmissionCurve object
-        
         
         See also
         --------
@@ -592,5 +601,5 @@ def get_filter_set(path=None):
     if path is None:
         path = os.path.join(__pkg_dir__, "data")
     lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
-           for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
+                    for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst

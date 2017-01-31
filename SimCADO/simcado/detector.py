@@ -3,24 +3,24 @@ A description of the Chip noise properties and their positions on the Detector
 
 Summary
 -------
-This module holds three classes: `Detector`, `Chip` and `HXRGNoise`.
+This module holds three classes: ``Detector``, ``Chip`` and ``HXRGNoise``.
 
-`Chip`
-Everything to do with photons and electrons happens in the `Chip` class. Each
-`Chip` is initialised with a position relative to the centre of the detector
+``Chip``  
+Everything to do with photons and electrons happens in the ``Chip`` class. Each
+``Chip`` is initialised with a position relative to the centre of the detector
 array, a size [in pixels] and a resolution [in arcsec]. Photons fall onto the
-`Chip`s and are read out together with the read noise characteristics of the
-`Chip`.
+``Chip`` s and are read out together with the read noise characteristics of the
+``Chip``.
 
-`Detector`
-The `Detector` holds the information on where the ´Chip`s are placed on the
+``Detector``  
+The ``Detector`` holds the information on where the ``Chip`` s are placed on the
 focal plane. Focal plane coordinates are in [arcsec]. These coordinates are
-either read in from a default file or determined by the user. The `Detector`
+either read in from a default file or determined by the user. The ``Detector``
 object is an intermediary - it only passes photons information on the photons
-to the `Chip`s. It is mainly a convenience class so that the user can read out
-all `Chip`s at the same time.
+to the ``Chip`` s. It is mainly a convenience class so that the user can read out
+all ``Chip`` s at the same time.
 
-`HXRGNoise`
+``HXRGNoise``  
 This class is borrowed from Berhand Rauscher's script which generates realistic
 noise frames for the JWST NIRSpec instrument. NIRSpec uses Hawaii 2RG detectors
 but the noise properties scale well up to the H4RG chips that MICADO will use.
@@ -28,7 +28,7 @@ but the noise properties scale well up to the H4RG chips that MICADO will use.
 Routines
 --------
 Detector(cmds)
-    builds an array of `Chip`s based on a `UserCommands` object
+    builds an array of ``Chip`` s based on a ``UserCommands`` object
 Chip(**kwargs)
     coverts incoming photons into ADUs and adds in read-out noise
 HXRGNoise(**kwargs)
@@ -48,40 +48,35 @@ References
 
 Examples
 --------
-The `Detector` can be used in stand alone mode. In this case it outputs
+The ``Detector`` can be used in stand alone mode. In this case it outputs
 only the noise that a sealed off detector would generate
 
-```
->>> import simcado
->>> fpa = simcado.Detector(simcado.UserCommands())
->>> fpa.read_out(ouput=True, chips = [0])
-...
-```
+    >>> import simcado
+    >>> fpa = simcado.Detector(simcado.UserCommands())
+    >>> fpa.read_out(ouput=True, chips = [0])
 
-The `Detector` is more useful if we combine it with a `Source` object and an
-`OpticalTrain`. Here we create a `Source` object for an open cluster in the LMC
+The ``Detector`` is more useful if we combine it with a ``Source`` object and an
+``OpticalTrain``. Here we create a ``Source`` object for an open cluster in the LMC
 and pass the photons arriving from it through the E-ELT and MICADO. The photons
-are then cast onto the detector array. Each `Chip` converts the photons to ADUs
-and adds the resulting image to an Astropy `HDUList`. The `HDUList` is then
+are then cast onto the detector array. Each ``Chip`` converts the photons to ADUs
+and adds the resulting image to an Astropy ``HDUList``. The ``HDUList`` is then
 written to disk.
 
-```
-# Create an set of commands, optical train and detector
-
->>> import simcado
->>> cmds = simcado.UserCommands()
->>> opt_train = simcado.OpticalTrain(cmds)
->>> fpa = simcado.Detector(cmds)
-
-# Pass photons from a 10^4 Msun open cluster in the LMC through to the detector
-
->>> src = sim.source.source_1E4_Msun_cluster()
->>> src.apply_optical_train(opt_train, fpa)
-
-# Read out the detector array to a FITS file
-
->>> fpa.read_out(filename="my_raw_image.fits")
-```
+    >>> # Create an set of commands, optical train and detector
+    >>>
+    >>> import simcado
+    >>> cmds = simcado.UserCommands()
+    >>> opt_train = simcado.OpticalTrain(cmds)
+    >>> fpa = simcado.Detector(cmds)
+    >>>
+    >>> # Pass photons from a 10^4 Msun open cluster in the LMC through to the detector
+    >>>
+    >>> src = sim.source.source_1E4_Msun_cluster()
+    >>> src.apply_optical_train(opt_train, fpa)
+    >>>
+    >>># Read out the detector array to a FITS file
+    >>>
+    >>> fpa.read_out(filename="my_raw_image.fits")
 
 """
 
@@ -122,15 +117,15 @@ __all__ = ["Detector", "Chip"]
 
 class Detector(object):
     """
-    Generate a series of `Chip` objects for a focal plane array
+    Generate a series of ``Chip`` objects for a focal plane array
 
 
     Summary
     -------
-    The `Detector` is a holder for the series of `Chip` objects which make up
-    the detector array. The main advantage of the `Detector` object is that the
+    The ``Detector`` is a holder for the series of ``Chip`` objects which make up
+    the detector array. The main advantage of the ``Detector`` object is that the
     user can read out all chips in the whole detector array at once. A
-    `Detector` is a parameter in the `Source.apply_optical_train()` method.
+    ``Detector`` is a parameter in the ``Source.apply_optical_train()`` method.
 
 
     Parameters
@@ -147,7 +142,7 @@ class Detector(object):
     layout : astropy.table.Table
         table of positions and sizes of the chips on the focal plane
     chips : list
-        a list of the `Chips` which make up the detector array
+        a list of the ``Chips`` which make up the detector array
     oversample : int
         factor between the internal angular resolution and the pixel FOV
     fpa_res : float
@@ -189,18 +184,18 @@ class Detector(object):
 
     Examples
     --------
-    Create a `Detector` object
-    ```
-    >>> import simcado
-    >>> my_cmds = simcado.UserCommands()
-    >>> my_detector = simcado.Detector(my_cmds)
-    ```
+    Create a ``Detector`` object
+    
+        >>> import simcado
+        >>> my_cmds = simcado.UserCommands()
+        >>> my_detector = simcado.Detector(my_cmds)
+        
 
     Read out only the first `Chip`
-    ```
-    >>> my_detector.readout(filename=image.fits, chips=[0])
-    ```
-
+    
+        >>> my_detector.readout(filename=image.fits, chips=[0])
+    
+    
     """
 
 
@@ -243,7 +238,7 @@ class Detector(object):
         self.tro     = self.cmds["OBS_NONDESTRUCT_TRO"]
         self._n_ph_atmo   = 0
         self._n_ph_mirror = 0
-        self._n_ph_ao = 0
+        self._n_ph_ao     = 0
         self.array = None        # defined in method
 
     def read_out(self, filename=None, to_disk=False, chips=None, **kwargs):
@@ -252,36 +247,36 @@ class Detector(object):
 
         Summary
         -------
-        Based on the parameters set in the `UserCommands` object, the detector
-        will read out the images stored on the `Chips` according to the
+        Based on the parameters set in the ``UserCommands`` object, the detector
+        will read out the images stored on the ``Chips`` according to the
         specified read out scheme, i.e. Fowler, up-the-ramp, single read, etc.
 
         Parameters
         ----------
         filename : str
-            where the file is to be saved. If `None` the current directory is
-            used. Default is `None`
+            where the file is to be saved. If ``None`` the current directory is
+            used. Default is ``None``
         to_disk : bool
-            a flag for where the output should go. If `True` the  `Chip` images
+            a flag for where the output should go. If ``False`` the  ``Chip`` images
             will be returned to the user (i.e. in an iPython session) as an
-            `astropy.fits.HDUList` object. If `False` the `Chip` images will be
-            written to a `.fits` file on disk. If no `filename` is specified,
-            the output is be called "output.fits". The default is `False`
+            ``astropy.fits.HDUList`` object. If ``True`` the ``Chip`` images will be
+            written to a ``.fits`` file on disk. If no ``filename`` is specified,
+            the output is be called "output.fits". The default is ``False``
         chips : int, array-like, optional
             The chip or chips to be read out, based on the detector_layout.dat
-            file. Default is the first `Chip` specified in the list, i.e. [0]
+            file. Default is the first ``Chip`` specified in the list, i.e. [0]
 
         Returns
         -------
-        `if to_disk == False:`
+        ``if to_disk == False:``
             astropy.io.fits.HDUList
-        `else:`
+        ``else:``
             <filename>.fits file
 
         Keyword Arguments (**kwargs)
         ----------------------------
-        **kwargs are used to update the `UserCommands` object which controls
-        the `Detector`. Therefore any dictionay keywords can be passed in the
+        **kwargs are used to update the ``UserCommands`` object which controls
+        the ``Detector``. Therefore any dictionay keywords can be passed in the
         form of a dictionary, i.e. {"EXPTIME" : 60, "OBS_OUPUT_DIR" : "./"}
 
         Notes
@@ -318,7 +313,7 @@ class Detector(object):
         elif chips is None:
             ro_chips = np.arange(len(self.chips))
         else:
-            raise ValueError("Something wrong with `chips`")
+            raise ValueError("Something wrong with ``chips``")
 
         hdulist = fits.HDUList()
         if len(ro_chips) > 1:
@@ -409,12 +404,12 @@ class Detector(object):
 
     def write(self, filename=None, **kwargs):
         """
-        Write a `Detector` object out to a FITS file
+        Write a ``Detector`` object out to a FITS file
 
 
         Summary
         -------
-        Writes the important information containeed in a `Detector` object into
+        Writes the important information containeed in a ``Detector`` object into
         FITS file for later use. The main information written out include: the
         layout of the detector chips, any pixel maps associated with the
         detector chips, a linearity curve and a QE curve for the chips.
@@ -423,8 +418,8 @@ class Detector(object):
         Parameters
         ----------
         filename : str, optional
-            path to the FITS file where the `Detector` object is stored. If
-            `filename=None` (by default), the file written is `./detector.fits`
+            path to the FITS file where the ``Detector`` object is stored. If
+            ``filename=None`` (by default), the file written is ``./detector.fits``
 
 
         Returns
@@ -459,14 +454,14 @@ class Detector(object):
 
 def open(self, filename):
     """
-    Opens a saved `Detector` file.
+    Opens a saved ``Detector`` file.
 
 
     Summary
     -------
     ** Not yet implemented **
-    ** Should be moved outside of `Detector` and called with
-    `detector.open()` **
+    ** Should be moved outside of ``Detector`` and called with
+    ``detector.open()`` **
 
     Detector objects can be saved to FITS file and read back in for later
     simulations.
@@ -474,11 +469,11 @@ def open(self, filename):
     Parameters
     ----------
     filename : str
-        path to the FITS file where the `Detector` object is stored
+        path to the FITS file where the ``Detector`` object is stored
 
     Returns
     -------
-    `simcado.Detector` object
+    ``simcado.Detector`` object
 
     Examples
     --------
@@ -567,11 +562,11 @@ class Chip(object):
 
     Summary
     -------
-    The `Chip` object contains information on where it is located in the focal
-    plane array. The method `<Source>.apply_optical_train()` passes an image of
-    the on-sky object to each `Chip`. THis image is resampled to the `Chip`
-    pixel scale. Each `Chip` holds the "ideal" image as an array of expectraion
-    values for the level of photons arriving during an EXPTIME. The `Chip` then
+    The ``Chip`` object contains information on where it is located in the focal
+    plane array. The method ``<Source>.apply_optical_train()`` passes an image of
+    the on-sky object to each ``Chip``. THis image is resampled to the ``Chip``
+    pixel scale. Each ``Chip`` holds the "ideal" image as an array of expectraion
+    values for the level of photons arriving during an EXPTIME. The ``Chip`` then
     adds detector noise and other characteristics to the image when
     <Detector>.readout() is called.
 
@@ -599,30 +594,30 @@ class Chip(object):
     pix_res : float
         [arcsec] the field of view per pixel
     chipid : int, optional
-        the id of the chip relative to the others on the detector array. Default is `None`
+        the id of the chip relative to the others on the detector array. Default is ``None``
     dx, dy : float
         [arcsec] half of the field of view of each chip
     x_min, x_max, y_min, y_max : float
         [arcsec] the borders of the chip realtive to the centre of the focal plane
     array : np.ndarray
-        an array for holding the signal registered by the `Chip`
+        an array for holding the signal registered by the ``Chip``
 
 
     Methods
     -------
     add_signal(signal)
-        adds signal to `.array`. The signal should be the same dimensions as
-        `Chip.array`
+        adds signal to ``.array``. The signal should be the same dimensions as
+        ``Chip.array``
     add_uniform_background(emission, lam_min, lam_max, output=False)
-        adds a constant to the signal in `.array`. The background level is found
-        by integrating the the `emission` curve between `lam_min` and `lam_max`.
-        It output is set to `True`, an image with the same dimensions as
-        `.array` scaled to the bacground flux is returned
+        adds a constant to the signal in ``.array``. The background level is found
+        by integrating the ``emission`` curve between ``lam_min`` and ``lam_max``.
+        It output is set to ``True``, an image with the same dimensions as
+        ``.array`` scaled to the bacground flux is returned
     apply_pixel_map(pixel_map_path=None, dead_pix=None, max_well_depth=1E5)
-        applies a mask to `.array` representing the position of the current
+        applies a mask to ``.array`` representing the position of the current
         "hot" and "dead" pixels / lines
     reset()
-        resets the signal on the `Chip` to zero. In future releases, an
+        resets the signal on the ``Chip`` to zero. In future releases, an
         imlementation of the persistence characteristics of the detector will
         go here.
 
@@ -670,8 +665,8 @@ class Chip(object):
         Parameters
         ----------
         signal : np.ndarray
-            [ph/pixel/s] photon signal. `signal` should have the same dimensions
-            as the `array`
+            [ph/pixel/s] photon signal. ``signal`` should have the same dimensions
+            as the ``array``
 
         Returns
         -------
@@ -741,7 +736,7 @@ class Chip(object):
 
         Summary
         -------
-        applies a mask to `.array` representing the positions of the current
+        applies a mask to ``.array`` representing the positions of the current
         "hot" and "dead" pixels / lines. The method either reads in a FITS file
         with locations of these pixels, or generates a series of random
         coordinates and random weights for the pixels.
@@ -752,7 +747,7 @@ class Chip(object):
             path to the FITS file. Default is None
         dead_pix : int
             [%] the percentage of dead or hot pixels on the chip - only used if
-            pixel_map_path = None. Default is `None`.
+            ``pixel_map_path = None``. Default is ``None``.
         max_well_depth : 1E5
 
 
@@ -792,7 +787,7 @@ class Chip(object):
         Parameters
         ----------
         x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
+            Description of ``x``. [(Default value)]
 
         Returns
         -------
@@ -818,7 +813,7 @@ class Chip(object):
         Parameters
         ----------
         x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
+            Description of ``x``. [(Default value)]
 
         Returns
         -------
@@ -1009,7 +1004,7 @@ class Chip(object):
         Parameters
         ----------
         x : type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
+            Description of ``x``. [(Default value)]
 
         Returns
         -------
@@ -1034,7 +1029,7 @@ class Chip(object):
         Parameters
         ----------
         x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
+            Description of ``x``. [(Default value)]
 
         Returns
         -------
@@ -1059,7 +1054,7 @@ class Chip(object):
         Parameters
         ----------
         x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
+            Description of ``x``. [(Default value)]
 
         Returns
         -------
@@ -1081,7 +1076,7 @@ class Chip(object):
         Parameters
         ----------
         x  :  type [, optional [, {set values} ]]
-            Description of `x`. [(Default value)]
+            Description of ``x``. [(Default value)]
 
         Returns
         -------

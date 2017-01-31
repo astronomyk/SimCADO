@@ -63,28 +63,19 @@ keywords - e.g. for the keywords for the instrument:
 """
 
 
-import os
-import inspect
-
-import warnings
-import logging
-import shutil
+import os, shutil
+import warnings, logging
 
 from collections import OrderedDict
 
 import numpy as np
 import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
 
-from .utils import __pkg_dir__
+from . import spectral as sc
+from .utils import __pkg_dir__, atmospheric_refraction
 
-try:
-    import simcado.spectral as sc
-    from simcado.utils import atmospheric_refraction
-except ImportError:
-    import spectral as sc
-    from utils import atmospheric_refraction
-
-__all__ = ["UserCommands"]
+__all__ = ["UserCommands", "dump_chip_layout", "dump_mirror_config", 
+           "dump_mirror_config"]
 
 
 class UserCommands(object):
@@ -142,7 +133,7 @@ class UserCommands(object):
         a vector containing the centres of the wavelength bins used when
         resampling the spectra or transmission curves
     lam_res : float
-        [um] the resolution of the `lam`
+        [um] the resolution of the ``lam``
 
     Attributes pertaining to the binning in spectral space for which different
     PSFs need to be used
@@ -174,11 +165,11 @@ class UserCommands(object):
     Methods
     -------
     update(new_dict)
-        updates the current `UserCommands` object from another dict-like object
+        updates the current ``UserCommands`` object from another dict-like object
     keys()
-        returns the keys in the `UserCommands.cmds` dictionary
+        returns the keys in the ``UserCommands.cmds`` dictionary
     values()
-        returns the values in the `UserCommands.cmds` dictionary
+        returns the values in the ``UserCommands.cmds`` dictionary
 
     Raises
     ------
@@ -195,45 +186,34 @@ class UserCommands(object):
 
     Examples
     --------
-    By default `UserCommands` contains the parameters needed to generate the
+    By default ``UserCommands`` contains the parameters needed to generate the
     MICADO optical train:
-    ```
-    >>> import simcado
-    >>> my_cmds = simcado.UserCommands()
-    >>> my_cmds["SCOPE_NUM_MIRRORS"]
-    5
-    ```
+    
+        >>> import simcado
+        >>> my_cmds = simcado.UserCommands()
+        >>> my_cmds["SCOPE_NUM_MIRRORS"]
+        5
 
-    `UserCommands` supports indexing like a dictionary object.
-    ```
-    >>> my_cmds["SCOPE_NUM_MIRRORS"] = 8
-    >>> my_cmds["SCOPE_NUM_MIRRORS"]
-    8
-    ```
+
+    ``UserCommands`` supports indexing like a dictionary object.
+
+        >>> my_cmds["SCOPE_NUM_MIRRORS"] = 8
+        >>> my_cmds["SCOPE_NUM_MIRRORS"]
+        8
+    
 
     To list the keywords that are available:
-    ```
-    >>> my_cmds.keys()
-    ...
-    ```
+    
+        >>> my_cmds.keys()
+        ...
+        
 
-    The `UserCommands` object also contains smaller dictionaries for each category
+    The ``UserCommands`` object also contains smaller dictionaries for each category
     of keywords - e.g. for the keywords describing the instrument:
-    ```
-    >>> my_cmds.inst
-    ...
-    ```
-
-    .. plot::
-
-        import matplotlib.pyplot as plt
-        import numpy as np
-        x = np.random.randn(1000)
-        plt.hist( x, 20)
-        plt.grid()
-        plt.title(r'Normal: $\mu=%.2f, \sigma=%.2f$'%(x.mean(), x.std()))
-        plt.show()
-
+    
+        >>> my_cmds.inst
+        ...
+        
 
     """
 
@@ -300,27 +280,27 @@ class UserCommands(object):
 
     def update(self, new_dict):
         """
-        Update multiple entries of a `UserCommands` dictionary
+        Update multiple entries of a ``UserCommands`` dictionary
 
         Summary
         -------
-        `update(new_dict)` takes either a normal python `dict` object or a
-        `UserCommands` object. Only keywords that match those in the
-        `UserCommands` object will be updated. Misspelled keywords raise an
+        ``update(new_dict)`` takes either a normal python ``dict`` object or a
+        ``UserCommands`` object. Only keywords that match those in the
+        ``UserCommands`` object will be updated. Misspelled keywords raise an
         error.
 
         To update single items in the dictionary, it is recommended to simply
-        call the key and update the value - i.e `<UserCommands>[key] = value`.
+        call the key and update the value - i.e ``<UserCommands>[key] = value``.
 
         Parameters
         ----------
-        new_dict : dict, `UserCommands`
+        new_dict : dict, ``UserCommands``
 
 
         Raises
         ------
         KeyError
-            If a parameter is not found in `self.cmds`.
+            If a parameter is not found in ``self.cmds``.
 
         See Also
         --------
@@ -332,22 +312,23 @@ class UserCommands(object):
         Examples
         --------
         View the default commands
-        ```
-        >>> import simcado
-        >>> my_cmds = simcado.UserCommands()
-        >>> print(my_cmds.cmds)
-        ```
+        
+            >>> import simcado
+            >>> my_cmds = simcado.UserCommands()
+            >>> print(my_cmds.cmds)
+
 
         Change a single command
-        ```
-        >>> my_cmds["OBS_EXPTIME"] = 60
-        ```
+
+            >>> my_cmds["OBS_EXPTIME"] = 60
+        
 
         Change a series of commands at once
-        ```
-        >>> new_cmds = {"OBS_EXPTIME" : 60 , "OBS_NDIT" : 10}
-        >>> my_cmds.update(new_cmds)
-        ```
+        
+            >>> new_cmds = {"OBS_EXPTIME" : 60 , "OBS_NDIT" : 10}
+            >>> my_cmds.update(new_cmds)
+
+            
         """
 
         if isinstance(new_dict, UserCommands):
@@ -407,7 +388,7 @@ class UserCommands(object):
 
     def _convert_none(self):
         """
-        Turn all string "none" or "None" values into python `None` values
+        Turn all string "none" or "None" values into python ``None`` values
         """
         for key in self.cmds:
             value = self.cmds[key]
@@ -642,10 +623,10 @@ class UserCommands(object):
         Notes
         -------
         Atmospheric diffraction causes blurring in an image. To model this
-        effect the spectra from a `Source` object are cut into bins based on
+        effect the spectra from a ``Source`` object are cut into bins based on
         how far the photons at different wavelength are diffracted from the
         image center. The threshold for defining a new layer based on the how
-        far a certain bin will move is given by `SIM_ADC_SHIFT_THRESHOLD`. The
+        far a certain bin will move is given by ``SIM_ADC_SHIFT_THRESHOLD``. The
         default value is 1 pixel.
 
         The PSF also causes blurring as it spreads out over a bandpass. This

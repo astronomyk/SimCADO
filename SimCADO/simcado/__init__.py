@@ -46,4 +46,3 @@ logging.info("SimCADO imported")
 warnings.simplefilter('ignore', UserWarning)
 warnings.simplefilter('ignore', FutureWarning)
 warnings.simplefilter('ignore', category=AstropyWarning)
-

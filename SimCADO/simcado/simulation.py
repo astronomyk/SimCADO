@@ -43,9 +43,9 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         FITS format astropy.io.HDUList objects.
 
     return_internals : bool
-        [False, True] Default is False. If True, the `UserCommands`,
-        `OpticalTrain` and `Detector` objects used in the simulation are
-        returned in a tuple: `return hdu, (cmds, opt_train, fpa)`
+        [False, True] Default is False. If True, the ``UserCommands``,
+        ``OpticalTrain`` and ``Detector`` objects used in the simulation are
+        returned in a tuple: ``return hdu, (cmds, opt_train, fpa)``
 
     """
 
@@ -102,8 +102,8 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
     Return the signal-to-noise for a list of magnitudes in a specific filter
 
     Uses the standard setup for MICADO and calculates the signal-to-noise
-    ratio or a list of magnitudes in `mags` in a certain broadband
-    `filter_name`.
+    ratio or a list of magnitudes in ``mags`` in a certain broadband
+    ``filter_name``.
     A custom UserCommands object can also be used. Note that this runs a basic
     SimCADO simulation len(mags) times, so execution time can be many minutes.
 
@@ -116,7 +116,7 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
     exptime : float
         [s] Total exposure time length. Default is 18000s (5 hours)
     ndit : int, optional
-        Number of readouts during the period `exptime`. Default is 1
+        Number of readouts during the period ``exptime``. Default is 1
     cmds : simcado.UserCommands, optional
         A custom set of commands for the simulations. If not specified, SimCADO
         uses the default MICADO parameters

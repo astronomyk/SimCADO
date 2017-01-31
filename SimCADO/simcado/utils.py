@@ -21,6 +21,7 @@ Helper functions for SimCADO
 #
 import os
 import inspect
+from glob import glob
 
 try:
     import wget
@@ -31,6 +32,7 @@ import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii as ioascii
+
 
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
@@ -69,7 +71,7 @@ def unify(x, unit, length=1):
     unit : astropy.Quantity
         The units to attach to the array
     length : int, optional
-        If `x` is a scalar, and the desired output is an array with `length`
+        If ``x`` is a scalar, and the desired output is an array with ``length``
 
     Returns
     -------
@@ -295,12 +297,12 @@ def nearest(arr, val):
     arr : np.ndarray, list, tuple
         Array to be searched
     val : float, int
-        Value to find in `arr`
+        Value to find in ``arr``
 
     Returns
     -------
     i : int
-        index of array where the nearest value to `val` is
+        index of array where the nearest value to ``val`` is
     """
     if isinstance(val, (list, tuple, np.ndarray)):
         arr = np.array(arr)
@@ -339,9 +341,11 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     local_filename = os.path.join(save_dir, url.split('/')[-1])
     try:
         temp_file = wget.download(url,
-                                  out=wget.tempfile.mktemp(dir='.', suffix='.tmp'),
+                                  out=wget.tempfile.mktemp(dir=save_dir, 
+                                                           suffix='.tmp'),
                                   bar=wget.bar_adaptive)
         print("\n")
+        os.remove(local_filename)
         os.rename(temp_file, local_filename)
     except wget.ulib.HTTPError:
         print(url + " not found")
@@ -396,6 +400,44 @@ def get_extras():
     print("Finished downloading data for SimCADO")
 
     
+def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
+    """
+    Adds the SED given in ``file_in`` to the SimCADO data directory
+    
+    Parameters
+    ----------
+    file_in : str
+        path to the SED file. Can be either FITS or ASCII format with 2 columns
+        Column 1 is the wavelength, column 2 is the flux
+    file_out : str, optional
+        Default is None. The file path to save the ASCII file. If ``None``, the SED 
+        is saved to the SimCADO data directory i.e. to ``<utils.__pkg_dir__>/data/``
+    lam_units : str, astropy.Units
+        Units for the wavelength column, either as a string or as astropy units
+        Default is [um]
+    
+    """
+    
+    file_name, file_ext = os.path.basename(file_in).split(".")
+    
+    if file_out is None:
+        if "SED_" not in file_name:
+            file_out = __pkg_dir__+"/data/SED_"+file_name+".dat"
+        else: file_out = __pkg_dir__+"/data/"+file_name+".dat"
+            
+    if file_ext.lower() in "fits":
+        data = fits.getdata(file_in)
+        lam, val = data[data.columns[0].name], data[data.columns[1].name]
+    else:
+        lam, val = ioascii.read(file_in)[:2]
+
+    lam = (lam * u.Unit(lam_units)).to(u.um)
+    mask = (lam > 0.3*u.um) * (lam < 5.0*u.um) 
+
+    np.savetxt(file_out, np.array((lam[mask], val[mask]), dtype=np.float32).T, 
+               header="wavelength    value \n [um]         [flux]")
+
+    
 def airmass_to_zenith_dist(airmass):
     """
     returns zenith distance in degrees
@@ -407,7 +449,7 @@ def airmass_to_zenith_dist(airmass):
 
 def zentih_dist_to_airmass(zenith_dist):
     """
-    `zenith_dist` is in degrees
+    ``zenith_dist`` is in degrees
     
     X = sec(Z)
     """

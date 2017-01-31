@@ -103,3 +103,4 @@ To register, or just to show interest, please send an email to:
 * Eckhard Sturm
 * Michele Perna
 * Michael Wegner
+* Natascha Förster Schreiber

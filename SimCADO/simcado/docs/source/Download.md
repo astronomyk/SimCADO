@@ -6,7 +6,7 @@ The latest stable version of SimCADO can be downloaded from this link
 
 If you're happy to have more bugs in exchange for more features, you can get the latest development version of SimCADO here:
 
-[http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip](http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip)
+[http://www.univie.ac.at/simcado/SimCADO-0.4dev.zip](http://www.univie.ac.at/simcado/SimCADO-0.4dev.zip)
 
 ## Python 3 vs Python 2
 **SimCADO has been programmed in Python 3.**
@@ -56,15 +56,17 @@ Obviously a trade-off has to be made when running `.install_noise_cube(n)`. The 
 ## Dependencies
  
 Required
+
 | Package | Version |
 |---------|--------:|
 |numpy    |>1.10.4  |
 |scipy    |>0.17    |
 |astropy  |>1.1.2   |
+|wget     |>3.0     |
 
 Optional
 
 | Package | Version |
 |---------|--------:|
-|matplotlib|        |
+|matplotlib|>1.5.0  |
 |poppy     |>0.4    |
