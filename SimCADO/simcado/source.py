@@ -11,41 +11,41 @@ Source
 
 Functions
 ---------
-Functions to create `Source` objects
-```
-empty_sky()
-star(mag, filter_name="Ks", spec_type="A0V", position=(0,0))
-stars(mags, x, y, filter_name="Ks", spec_types="A0V")
-star_grid(n, mag_min, mag_max, filter_name="Ks",0 seperation=1, area=1,
-          spec_type="A0V")
-source_from_image(images, lam, spectra, pix_res, oversample=1, units="ph/s/m2",
-                  flux_threshold=0, center_pixel_offset=(0,0))
-source_1E4_Msun_cluster(distance=50000, half_light_radius=1)
-```
+Functions to create ``Source`` objects
+
+    empty_sky()
+    star(mag, filter_name="Ks", spec_type="A0V", position=(0,0))
+    stars(mags, x, y, filter_name="Ks", spec_types="A0V")
+    star_grid(n, mag_min, mag_max, filter_name="Ks",0 seperation=1, area=1,
+              spec_type="A0V")
+    source_from_image(images, lam, spectra, pix_res, oversample=1, units="ph/s/m2",
+                      flux_threshold=0, center_pixel_offset=(0,0))
+    source_1E4_Msun_cluster(distance=50000, half_light_radius=1)
+
 
 Functions for manipulating spectra for a `Source` object
-```
-scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False)
-scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks",
-                      return_ec=False)
-flat_spectrum(mag, filter_name="Ks", return_ec=False)
-flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004, return_ec=False)
-```
+
+    scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False)
+    scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks",
+                          return_ec=False)
+    flat_spectrum(mag, filter_name="Ks", return_ec=False)
+    flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004, return_ec=False)
+
 
 Functions regarding photon flux and magnitudes
-```
-zero_magnitude_photon_flux(filter_name, area=1)
-_get_stellar_properties(spec_type, cat=None, verbose=False)
-_get_stellar_mass(spec_type)
-_get_stellar_Mv(spec_type)
-_get_pickles_curve(spec_type, cat=None, verbose=False)
-```
+
+    zero_magnitude_photon_flux(filter_name, area=1)
+    _get_stellar_properties(spec_type, cat=None, verbose=False)
+    _get_stellar_mass(spec_type)
+    _get_stellar_Mv(spec_type)
+    _get_pickles_curve(spec_type, cat=None, verbose=False)
+
 
 Helper functions
-```
-value_at_lambda(lam_i, lam, val, return_index=False)
-SED(spec_type, filter_name="V", magnitude=0.)
-```
+
+    value_at_lambda(lam_i, lam, val, return_index=False)
+    SED(spec_type, filter_name="V", magnitude=0.)
+
 
 See also
 --------
@@ -94,10 +94,10 @@ Examples
 
 
 import os
-from .utils import __pkg_dir__
 
 import warnings, logging
 from copy import deepcopy
+from glob import glob
 
 import numpy as np
 import scipy.ndimage.interpolation as spi
@@ -109,24 +109,18 @@ from astropy.convolution import convolve, convolve_fft
 import astropy.units as u
 import astropy.constants as c
 
-
-try:
-    import simcado.spatial as pe
-    import simcado.spectral as sc
-    import simcado.psf as sim_psf
-    import simcado.utils as utils
-except ImportError:
-    import spatial as pe
-    import spectral as sc
-    import psf as sim_psf
-    import utils
+from . import spatial as pe
+from . import spectral as sc
+from . import psf as sim_psf
+from . import utils
+from .utils import __pkg_dir__
 
 __all__ = ["Source"]
 
 
 # add_uniform_background() moved to detector
 # get_slice_photons() renamed to photons_in_range() and moved to Source
-# apply_transmission_curve() moved to Source
+# _apply_transmission_curve() moved to Source
 # apply_optical_train() moved to Source
 
 
@@ -172,7 +166,7 @@ class Source(object):
         if isinstance(x, (tuple, list)):
             x = np.array(x)
         if isinstance(y, (tuple, list)):
-            y = np.array(x)
+            y = np.array(y)
 
         self.info = dict([])
         self.info['created'] = 'yes'
@@ -270,7 +264,7 @@ class Source(object):
             chips = [chips]
 
         # 1.
-        self.apply_transmission_curve(opt_train.tc_source)
+        self._apply_transmission_curve(opt_train.tc_source)
 
         for chip_i in chips:
 
@@ -535,7 +529,7 @@ class Source(object):
         Parameters
         ----------
         lam_min, lam_max : float, optional
-            [um] integrate photons between these two limits. If both are `None`,
+            [um] integrate photons between these two limits. If both are ``None``,
             limits are set at lam[0], lam[-1] for the source's wavelength range
         min_bins : float, optional
             the minimum number of spectral bins counted per layer
@@ -585,19 +579,7 @@ class Source(object):
         slice_photons = spec_photons[self.ref] * self.weight
         return slice_photons
 
-
-    def apply_transmission_curve(self, transmission_curve):
-        """
-        Apply the values from a TransmissionCurve object to self.spectra
-
-        Keywords:
-        - transmission_curve: The TransmissionCurve to be applied
-        """
-        tc = deepcopy(transmission_curve)
-        tc.resample(self.lam, use_default_lam=False)
-        self.spectra = self.spectra_orig * tc.val
-
-
+        
     def scale_spectum(self, idx=0, mag=20, filter_name="Ks"):
         """
         Scale a certain spectrum to a certain magnitude
@@ -624,7 +606,7 @@ class Source(object):
 
     def rotate(self, angle, unit="arcsec"):
         """
-        Rotates the `x` and `y` coordinates of the `Source` by `angle` [arcsec]
+        Rotates the ``x`` and ``y`` coordinates of the ``Source`` by ``angle`` [arcsec]
 
 
 
@@ -755,6 +737,18 @@ class Source(object):
         hdu.writeto(filename, overwrite=True, checksum=True)
 
 
+    def _apply_transmission_curve(self, transmission_curve):
+        """
+        Apply the values from a TransmissionCurve object to self.spectra
+
+        Keywords:
+        - transmission_curve: The TransmissionCurve to be applied
+        """
+        tc = deepcopy(transmission_curve)
+        tc.resample(self.lam, use_default_lam=False)
+        self.spectra = self.spectra_orig * tc.val
+
+
     def _convert_to_photons(self):
         """
         convert the spectra to photons/(s m2)
@@ -862,7 +856,7 @@ class Source(object):
         newsrc = deepcopy(self)
         if isinstance(x, (sc.TransmissionCurve, sc.EmissionCurve,
                           sc.UnityCurve, sc.BlackbodyCurve)):
-            newsrc.apply_transmission_curve(x)
+            newsrc._apply_transmission_curve(x)
         else:
             newsrc.array *= x
         return newsrc
@@ -926,7 +920,7 @@ class Source(object):
 def _get_stellar_properties(spec_type, cat=None, verbose=False):
     """
     Returns an astropy.Table with the list of properties for the star in
-    `spec_type`
+    ``spec_type``
 
     Parameters
     ----------
@@ -1019,7 +1013,7 @@ def _get_stellar_Mv(spec_type):
 
 def _get_pickles_curve(spec_type, cat=None, verbose=False):
     """
-    Returns the emission curve for a single or list of `spec_type`, normalised
+    Returns the emission curve for a single or list of ``spec_type``, normalised
     to 5556A
 
     Parameters
@@ -1246,17 +1240,34 @@ def value_at_lambda(lam_i, lam, val, return_index=False):
     else:
         return val_i[1]
 
+        
+def get_SED_names(path=None):
+    """
+    Return a list of the SEDs installed in the package directory
+    """
+    if path is None:
+        path = os.path.join(__pkg_dir__, "data")
+    lst = [i.replace(".dat", "").split("SED_")[-1] \
+                    for i in glob(os.path.join(path, "SED_*.dat"))]
+    return lst        
+        
 
 def SED(spec_type, filter_name="V", magnitude=0.):
     """
-    Return a scaled SED for a X type star at magnitude Y star in band Z
+    Return a scaled SED for a star or type of galaxy
 
-    Note: spec_type must be a list!
-
+    The SED can be for stellar spectra of galacty spectra. It is best not to mix
+    the two types when calling ``SED()``. Either provide a list of stellar types,
+    e.g. ["G2V", "A0V"], of a list of galaxy types, e.g. ["elliptical", "starburst"]
+    
+    To get the list of galaxy types that are installed, call get_SED_names().
+    All stellar types from the Pickles (1998) catalogue are available.
+    
     Parameters
     ----------
     spec_type : str, list
-        The spectral type of the star
+        The spectral type of the star(s) - from the Pickles 1998 catalogue
+        The names of a galaxy spectrum - see get_SED_names()
     filter_name : str, optional
         Default is "V". Any filter in the simcado/data directory can be used,
         or the user can specify a file path to an ASCII file for the filter
@@ -1270,11 +1281,30 @@ def SED(spec_type, filter_name="V", magnitude=0.):
     val : np.ndarray
         [ph/s/m2/bin] The photon flux of the star in each bin
 
+    
+    Examples
+    --------
+    
+    Get the SED and the wavelength bins for a J=0 A0V star
+    
+        >>> from simcado.source import SED
+        >>> lam, spec = SED("A0V", "J", 0)
+    
+    Get the SED for a generic starburst galaxy
+    
+        >>> lam, spec = SED("starburst")
+        
+    Get the SEDs for several spectral types with different magnitudes
+    
+        >>> lam, spec = SED(spec_type=["A0V", "G2V"], 
+                            filter_name="PaBeta",
+                            magnitude=[15, 20])
+    
     Notes
     -----
-    Original flux units are in [ph/s/m2/AA], so we multiply the flux by 5 to
-    get [ph/s/m2/bin]. Therefore divide by 5*1E4 if you need the flux in
-    [ph/s/cm2/Angstrom]
+    Original flux units for the stellar spectra are in [ph/s/m2/AA], so we 
+    multiply the flux by 5 to get [ph/s/m2/bin]. Therefore divide by 5*1E4 if 
+    you need the flux in [ph/s/cm2/Angstrom]
 
     """
 
@@ -1286,18 +1316,34 @@ def SED(spec_type, filter_name="V", magnitude=0.):
     if isinstance(magnitude, (list, tuple)):
         magnitude = np.asarray(magnitude)
 
-    lam, starflux = _scale_pickles_to_photons(spec_type)
-    lam, starflux = scale_spectrum(lam=lam, spec=starflux, mag=magnitude, filter_name=filter_name)
+    # Check if any of the names given are in the package directory
+    gal_seds = get_SED_names()
+    if np.any([i in gal_seds for i in spec_type]):
+        galflux = []
+        for gal in spec_type:
+            data = ioascii.read(__pkg_dir__+"/data/SED_"+gal+".dat")
+            galflux += [data[data.colnames[1]]]
+            galflux = np.array(galflux)
+        lam = data[data.colnames[0]]
+        
+        lam, galflux = scale_spectrum(lam=lam, spec=galflux, mag=magnitude, 
+                                      filter_name=filter_name)
+        return lam, galflux
+        
+    else:
+        lam, starflux = _scale_pickles_to_photons(spec_type)
+        lam, starflux = scale_spectrum(lam=lam, spec=starflux, mag=magnitude, 
+                                       filter_name=filter_name)
 
-    return lam, starflux
+        return lam, starflux
 
 
 def empty_sky():
     """
     Returns an empty source so that instrumental fluxes can be simulated
     """
-    return Source(lam=np.linspace(0.3, 2.5, 221),
-                  spectra=np.zeros((1, 221)),
+    return Source(lam=np.linspace(0.3, 3.0, 271),
+                  spectra=np.zeros((1, 271)),
                   x=[0], y=[0], ref=[0], weight=[0])
 
 
@@ -1314,7 +1360,8 @@ def star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1, area=1,
         [vega mag] the minimum (brightest) and maximum (faintest) magnitudes for
         stars in the grid
     filter_name : str
-        broadband filter - B V R I Y z J H K Ks
+        any filter that is in the SimCADO package directory. 
+        See ``simcado.optics.get_filter_set()``
     separation : float, optional
         [arcsec] an average speration between the stars in the grid can be
         specified. Default is 1 arcsec
@@ -1325,11 +1372,11 @@ def star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1, area=1,
 
     Returns
     -------
-    source : `simcado.Source`
+    source : ``simcado.Source``
 
     Notes
     -----
-    The units of the A0V spectrum in `source` are [ph/s/bin] or [ph/s/m2/bin]
+    The units of the A0V spectrum in ``source`` are [ph/s/bin] or [ph/s/m2/bin]
     depending on if area is given.
     The weight values are the scaling factors to bring a V=0 A0V spectrum down
     to the required magnitude for each star.
@@ -1376,6 +1423,8 @@ def star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1, area=1,
 def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0, area=1):
     """
     Creates a simcado.Source object for a star with a given magnitude
+    
+    This is just the single star variant for ``simcado.source.stars()``
 
     Parameters
     ----------
@@ -1393,11 +1442,15 @@ def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0, area=1):
 
     Returns
     -------
-    source : `simcado.Source`
+    source : ``simcado.Source``
 
+    See Also
+    --------
+    .stars()
+    
     """
-
-    thestar = stars(spec_type, mag, filter_name, x, y, area)
+    
+    thestar = stars([spec_type], [mag], filter_name, [x], [y], area)
     return thestar
 
 
@@ -1422,8 +1475,38 @@ def stars(spec_types=["A0V"], mags=[0], filter_name="Ks", x=None, y=None, area=1
 
     Returns
     -------
-    source : `simcado.Source`
+    source : ``simcado.Source``
 
+    
+    Examples
+    --------
+    
+    Create a ``Source`` object for a random group of stars
+    
+        >>> import numpy as np
+        >>> from simcado.source import stars
+        >>>
+        >>> spec_types = ["A0V", "G2V", "K0III", "M5III", "O8I"]
+        >>> ids = np.random.randint(0,5, size=100)
+        >>> star_list = [spec_type[i] for i in ids]
+        >>> mags = np.random.normal(20, 3, size=100)
+        >>>
+        >>> src = stars(spec_types, mags, filter_name="Ks)
+        
+    If we don't specify any coordinates all stars have the position (0, 0). 
+    **All positions are in arcsec.**
+    There are two possible ways to add positions. If we know them to begin with
+    we can add them when generating the source full of stars
+    
+        >>> x, y = np.random.random(-20, 20, size=(100,2)).tolist()
+        >>> src = stars(star_list, mags, filter_name="Ks, x=x, y=y)
+    
+    Or we can add them to the ``Source`` object directly (although, there are 
+    less checks to make sure the dimensions match here):
+    
+        >>> src.x, src.y = x, y
+        
+        
     """
 
     if isinstance(spec_types, (tuple, list, np.ndarray)) and len(mags) != len(spec_types):
@@ -1458,7 +1541,7 @@ def stars(spec_types=["A0V"], mags=[0], filter_name="Ks", x=None, y=None, area=1
         units = "ph/s/m2"
     else:
         units = "ph/s"
-
+    
     src = Source(lam=lam, spectra=spec,
                  x=x, y=y,
                  ref=ref, weight=weight,
@@ -1484,6 +1567,10 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
     Returns
     -------
     src : simcado.Source
+    
+    See Also
+    --------
+    .cluster()
 
     """
     # IMF is a realisation of stellar masses drawn from an initial mass
@@ -1536,7 +1623,12 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
 
 def cluster(mass=1E3, distance=50000, half_light_radius=1):
     """
-    Generate a source object for cluster
+    Generate a source object for a cluster
+    
+    The cluster distribution follows a gaussian profile with the 
+    ``half_light_radius`` corresponding to the HWHM of the distribution. The 
+    choice of stars follows a Kroupa IMF, with no evolved stars in the mix. Ergo
+    this is more suitable for a young cluster than an evolved custer
 
     Parameters
     ----------
@@ -1550,6 +1642,16 @@ def cluster(mass=1E3, distance=50000, half_light_radius=1):
     Returns
     -------
     src : simcado.Source
+    
+    Examples
+    --------
+    
+    Create a ``Source`` object for a young open cluster with half light radius 
+    of around 0.2 pc at the galactic centre and 100 solar masses worth of stars:
+    
+        >>> from simcado.source import cluster
+        >>> src = cluster(mass=100, distance=8500, half_light_radius=0.2)
+    
 
     """
     # IMF is a realisation of stellar masses drawn from an initial mass
@@ -1615,6 +1717,8 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                       conserve_flux=True):
     """
     Create a Source object from an image or a list of images.
+    
+    
 
     Parameters
     ----------
@@ -1639,13 +1743,60 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         [arcsec] If the central of the image is offset, add this offset to (x,y)
         coordinates.
     convserve_flux : bool, optional
-        If True, when the image is rescaled, flux is conserved.
+        If True, when the image is rescaled, flux is conserved
+        i.e. np.sum(image) remains constant
         If False, the maximum value of the image stays constant after rescaling
+        i.e. np.max(image) remains constant
 
+    
     Returns
     -------
-    src : source.Source
+    src : source.Source object
+    
+    
+    Examples
+    --------
+    
+    To create a ``Source`` object we need an image that describes the spatial
+    distribution of the object of interest and spectrum. For the sake of ease we
+    will assign a generic elliptical galagy spectrum to the image.
+        
+        >>> from astropy.io import fits
+        >>> from simcado.source import SED, source_from_image
+        
+        >>> im = fits.getdata("galaxy.fits")
+        >>> lam, spec = SED("elliptical")
+        >>> src = source_from_image(im, lam, spec, 
+                                    plate_scale=0.004)
+    
+    **Note** Here we have assumed that the plate scale of the image is the same 
+    as the MICADO wide-field mode, i.e. 0.004 arcseconds. If the image is from a 
+    real observation, or it was generated with a different pixel scale, we will 
+    need to tell SimCADO about this:
 
+        >>> src = source_from_image(im, lam, spec, 
+                                    plate_scale=0.01, 
+                                    oversample=2.5)
+
+    If the image is from real observations, chances are good that the background
+    flux is higher than zero. We can set a ``threshold`` in order to tell 
+    SimCADO to ignore all pixel with values below the background level:
+        
+        >>> src = source_from_image(im, lam, spec, 
+                                    plate_scale=0.01, 
+                                    oversample=2.5,
+                                    flux_threshold=0.2)
+    
+    Finally, if the image centre is not the centre of the observation, we can
+    shift the image relative to the MICADO field of view. The units for the 
+    offset are [arcsec]
+    
+        >>> src = source_from_image(im, lam, spec, 
+                                    plate_scale=0.01, 
+                                    oversample=2.5,
+                                    flux_threshold=0.2,
+                                    center_offset=(10,-15))
+    
 
     """
 
@@ -1658,6 +1809,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         for i in range(1, len(images)):
             src += srcs[i]
         return src
+        
     else:
         #if not isinstance(oversample, int):
         #    raise ValueError("Oversample must be of type 'int'")
@@ -1744,7 +1896,49 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     --------
     .spectral.TransmissionCurve, .spectral.TransmissionCurve
     .optics.get_filter_curve(), .optics.get_filter_set()
-
+    .source.SED(), .source.stars()
+    
+    Examples
+    --------
+    
+    Scale the spectrum of a G2V star to J=25
+    
+        >>> lam, spec = simcado.source.SED("G2V")
+        >>> lam, spec = simcado.scale_spectrum(lam, spec, 25, "J")
+        
+    Scale the spectra for many stars to different H-band magnitudes
+    
+        >>> from simcado.source import SED, scale_spectrum
+        >>>
+        >>> star_list = ["A0V", "G2V", "M5V", "B6III", "O9I", "M2IV"]
+        >>> magnitudes = [ 20,  25.5,  29.1,      17,  14.3,   22   ]
+        >>> lam, spec = SED(star_list)
+        >>> lam, spec = scale_spectrum(lam, spec, magnitudes, "H")
+        
+    Re-scale the above spectra to the same magnitudes in Pa-Beta
+    
+        >>> # Find which filters are in the simcado/data directory
+        >>>
+        >>> import simcado.optics as sim_op
+        >>> print(sim_op.get_filter_set()       )
+        ['B', 'BrGamma', 'CH4_169', 'CH4_227', 'FeII_166', 'H', 'H2O_204', 
+            'H2_212', 'Hcont_158', 'I', 'J', 'K', 'Ks', 'NH3_153', 'PaBeta', 
+            'R', 'U', 'V', 'Y', 'z']
+        >>>
+        >>> lam, spec = scale_spectrum(lam, spec, magnitudes, "PaBeta")
+    
+    Create a tophat filter and rescale to magnitudes in that band
+    
+        >>> # first make a tranmsission curve for the filter
+        >>>
+        >>> from simcado.spectral import TransmissionCurve
+        >>> filt_lam   = np.array([0.3, 1.09, 1.1, 1.15, 1.16, 3.])
+        >>> filt_trans = np.array([0.,  0.,   1.,  1.,   0.,   0.])
+        >>> new_filt   = TransmissionCurve(lam=filt_lam, val=filt_trans)
+        >>>
+        >>> lam, spec = scale_spectrum(lam, spec, magnitudes, new_filt)
+        
+        
     """
 
     from simcado.spectral import EmissionCurve, TransmissionCurve
@@ -1794,8 +1988,9 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks"
         [mag/arcsec2] surface brightness of the source
     pix_res : float
         [arcsec] the pixel resolution
-    filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
+    filter_name : str, TransmissionCurve, optional
+        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
+        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -1830,8 +2025,9 @@ def flat_spectrum(mag, filter_name="Ks", return_ec=False):
     ----------
     mag : float
         [mag] magnitude of the source
-    filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
+    filter_name : str, TransmissionCurve, optional
+        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
+        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -1866,8 +2062,9 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
     ----------
     mag_per_arcsec : float
         [mag/arcsec2] surface brightness of the source
-    filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
+    filter_name : str, TransmissionCurve, optional
+        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
+        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
     pix_res : float
         [arcsec] the pixel resolution. Default is 4mas (i.e. 0.004)
     return_ec : bool, optional

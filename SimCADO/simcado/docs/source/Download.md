@@ -2,11 +2,11 @@
 
 The latest stable version of SimCADO can be downloaded from this link 
 
-[http://www.univie.ac.at/simcado/SimCADO.zip](http://www.univie.ac.at/simcado/SimCADO.zip)
+[http://www.univie.ac.at/simcado/SimCADO.tar.gz](http://www.univie.ac.at/simcado/SimCADO.tar.gz)
 
 If you're happy to have more bugs in exchange for more features, you can get the latest development version of SimCADO here:
 
-[http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip](http://www.univie.ac.at/simcado/SimCADO-0.2dev.zip)
+[http://www.univie.ac.at/simcado/SimCADO-0.4dev.tar.gz](http://www.univie.ac.at/simcado/SimCADO-0.4dev.tar.gz)
 
 ## Python 3 vs Python 2
 **SimCADO has been programmed in Python 3.**
@@ -21,13 +21,32 @@ See the [Features](Features) for a list of the "known" issues when running in Py
 ​
 To install it, download SimCADO from the link above and use the standard `pip3` call to install it:
 
-`$ pip3 install --user SimCADO.zip`
+`$ pip3 install --user SimCADO.tar.gz`
 
 Alternatively give the full URL to pip and let it do the downloading for you
 
-`$ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.zip`
+`$ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz`
 
 **Note** that SimCADO will need to download several hundreds of MBs of instrument data into the install directory. Hence why we use the `--user` flag when installing via `pip`. If you want to keep SimCADO in your normal packages directory, then you will need to give python root access while updating SimCADO's data files.
+
+## Dependencies
+ 
+Required
+
+| Package | Version |
+|---------|--------:|
+|numpy    |>1.10.4  |
+|scipy    |>0.17    |
+|astropy  |>1.1.2   |
+|wget     |>3.0     |
+
+Optional
+
+| Package | Version |
+|---------|--------:|
+|matplotlib|>1.5.0  |
+|poppy     |>0.4    |
+
 
 ## Getting up-to-date data for SimCADO
 
@@ -51,20 +70,3 @@ By default SimCADO only supplies a single H4RG noise frame. Hence if you plan on
 SimCADO contains the code to generate unique detector noise images ([Rauscher 2015](http://adsabs.harvard.edu/abs/2015PASP..127.1144R)), however creating a 4k detector noise frame takes about 20 seconds. In order to avoid wasting time by generating noise for each frame every time SimCADO is run, `.install_noise_cube(n)` generates `n` noise frames and saves them in the SimCADO data directory. In future simulation one of these detector noise frames are picked at random whenever a `<Detector>.read_out()` is called. 
 
 Obviously a trade-off has to be made when running `.install_noise_cube(n)`. The more noise frames available, the less systematic noise is visible in the read noise of stacked images. However, the more frames are generated, the longer it takes. A good solution is to open a seperate window and have SimCADO generate frames in the background.
-
-
-## Dependencies
- 
-Required
-| Package | Version |
-|---------|--------:|
-|numpy    |>1.10.4  |
-|scipy    |>0.17    |
-|astropy  |>1.1.2   |
-
-Optional
-
-| Package | Version |
-|---------|--------:|
-|matplotlib|        |
-|poppy     |>0.4    |

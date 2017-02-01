@@ -12,16 +12,16 @@ OBS_RA                  0           # [deg] RA of the object [not yet implemente
 OBS_DEC                 0           # [deg] Dec of the object [not yet implemented]
 OBS_ALT                 0           # [deg] Altitude of the object [not yet implemented]
 OBS_AZ                  0           # [deg] Azimuth of the object [not yet implemented]
-OBS_ZENITH_DIST         60          # [deg] from zenith
+OBS_ZENITH_DIST         0           # [deg] from zenith
 OBS_PARALLACTIC_ANGLE   0           # [deg] rotation of the source relative to the zenith
 OBS_SEEING              0.6         # [arcsec]
 
-OBS_BG_STAR_DENSITY     GalNP       # ["none", "2MASS", "GalNP", "GalCen", "GalAntiCen"] 
+OBS_BG_STAR_DENSITY     GalNP       # ["none", "2MASS", "GalNP", "GalCen", "GalAntiCen"]
 
 OBS_EXPTIME             60          # [sec] simulated exposure time
 OBS_NDIT                1           # [#] number of exposures taken
 OBS_NONDESTRUCT_TRO     2.6         # [sec] time between non-destructive readouts in the detector
-OBS_REMOVE_CONST_BG     yes         # remove the minimum background value
+OBS_REMOVE_CONST_BG     no          # remove the median background value
 OBS_READ_MODE           single      # [single, fowler, ramp] Only single is implemented at the moment
 OBS_SAVE_ALL_FRAMES     no          # yes/no to saving all DITs in an NDIT sequence
 
@@ -78,16 +78,17 @@ SIM_NUM_CPUS           -1           # Number of CPUs to use for multicore comput
 Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
 
-ATMO_USE_ATMO_BG        yes         # [yes/no] 
+ATMO_USE_ATMO_BG        yes         # [yes/no]
 
 ATMO_TC                 default     # [<filename>, "default"] for atmospheric transmission curve. If "default": <pkg_dir>/data/skytable.fits
 ATMO_EC                 default     # [<filename>, "default", "none"] for atmospheric emission curve. If "default": <pkg_dir>/data/skytable.fits
-# If ATMO_EC is "none": set ATMO_BG_MAGNITUDE for the simulation filter. 
+# If ATMO_EC is "none": set ATMO_BG_MAGNITUDE for the simulation filter.
 ATMO_BG_MAGNITUDE       default     # [ph/s] background photons for the bandpass if ATMO_EC = None
 
 ATMO_TEMPERATURE        0           # deg Celcius
 ATMO_PRESSURE           750         # millibar
 ATMO_REL_HUMIDITY       60          # %
+ATMO_PWV                2.5         # [mm] Paranal standard value
 ```
 
 ## Parameters regarding the telescope
@@ -111,7 +112,7 @@ SCOPE_USE_MIRROR_BG     yes         # [yes/no]
 
 SCOPE_NUM_MIRRORS       5           # number of reflecting surfaces
 SCOPE_TEMP              0           # deg Celsius - temperature of mirror
-SCOPE_M1_TC             default     # [<filename>, "default"] Mirror reflectance curve. Default is <pkg_dir>/data/TC_mirror_mgf2agal.dat
+SCOPE_M1_TC             TC_mirror_EELT.dat     # [<filename>, "default"] Mirror reflectance curve. Default is <pkg_dir>/data/TC_mirror_EELT.dat
 SCOPE_MIRROR_LIST       default     # [<filename>, "default"] List of mirror sizes. Default is <pkg_dir>/data/EC_mirrors_scope.tbl
 ```
 
@@ -168,7 +169,7 @@ FPA_READOUT_STDEV       1           # e-/px
 FPA_DARK_MEDIAN         0.01        # e-/s/px
 FPA_DARK_STDEV          0.01        # e-/s/px
 
-FPA_QE                  default     # Quantum efficiency of detector. If "default": <package_path>/data/TC_detector_H4RG.dat
+FPA_QE                  TC_HAWKI_H2RG.dat     # Quantum efficiency of detector. If "default": <package_path>/data/TC_detector_H4RG.dat
 FPA_NOISE_PATH          default     # [default/generate/filename] if "generate": use NGHxRG to create a noise frame. If "default": <package_path>/data/FPA_noise.fits
 FPA_GAIN                1           # e- to ADU conversion
 FPA_WELL_DEPTH          1E5         # number of photons collectable before pixel is full
@@ -179,7 +180,7 @@ FPA_PIXEL_MAP           none        # path to a FITS file with the pixel sensiti
 FPA_DEAD_PIXELS         1           # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
 FPA_DEAD_LINES          1           # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
 
-FPA_CHIP_LAYOUT         small       # ["small", "centre", "wide", "zoom", "full", <filename>] description of the chip layout on the detector array. if "default": <pkg_dir>/data/FPA_chip_layout.dat
+FPA_CHIP_LAYOUT         full       # ["small", "centre", "wide", "zoom", "full", <filename>] description of the chip layout on the detector array. if "default": <pkg_dir>/data/FPA_chip_layout.dat
 ```
 
 ## NXRG Noise Generator package parameters

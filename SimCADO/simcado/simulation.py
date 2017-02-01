@@ -43,9 +43,9 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         FITS format astropy.io.HDUList objects.
 
     return_internals : bool
-        [False, True] Default is False. If True, the `UserCommands`,
-        `OpticalTrain` and `Detector` objects used in the simulation are
-        returned in a tuple: `return hdu, (cmds, opt_train, fpa)`
+        [False, True] Default is False. If True, the ``UserCommands``,
+        ``OpticalTrain`` and ``Detector`` objects used in the simulation are
+        returned in a tuple: ``return hdu, (cmds, opt_train, fpa)``
 
     """
 
@@ -74,27 +74,28 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         opt_train = sim.OpticalTrain(cmds)
     if fpa is None:
         fpa = sim.Detector(cmds, small_fov=False)
-        
+
     print("Detector layout")
     print(fpa.layout)
     print("Creating", len(cmds.lam_bin_centers), "layer(s) per chip")
     print(len(fpa.chips), "chip(s) will be simulated")
-    
+
     src.apply_optical_train(opt_train, fpa)
 
     if filename is not None:
         if cmds["OBS_SAVE_ALL_FRAMES"] == "yes":
             for n in cmds["OBS_NDIT"]:
                 fname = filename.replace(".",str(n)+".")
-                fpa.read_out(filename=fname, to_disk=True, OBS_NDIT=1)
+                hdu = fpa.read_out(filename=fname, to_disk=True, OBS_NDIT=1)
         else:
-            fpa.read_out(filename=filename, to_disk=True)
+            hdu = fpa.read_out(filename=filename, to_disk=True)
     else:
         hdu = fpa.read_out()
-        if return_internals:
-            return hdu, (cmds, opt_train, fpa)
-        else:
-            return hdu
+
+    if return_internals:
+        return hdu, (cmds, opt_train, fpa)
+    else:
+        return hdu
 
 
 def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
@@ -102,8 +103,8 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
     Return the signal-to-noise for a list of magnitudes in a specific filter
 
     Uses the standard setup for MICADO and calculates the signal-to-noise
-    ratio or a list of magnitudes in `mags` in a certain broadband
-    `filter_name`.
+    ratio or a list of magnitudes in ``mags`` in a certain broadband
+    ``filter_name``.
     A custom UserCommands object can also be used. Note that this runs a basic
     SimCADO simulation len(mags) times, so execution time can be many minutes.
 
@@ -116,7 +117,7 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
     exptime : float
         [s] Total exposure time length. Default is 18000s (5 hours)
     ndit : int, optional
-        Number of readouts during the period `exptime`. Default is 1
+        Number of readouts during the period ``exptime``. Default is 1
     cmds : simcado.UserCommands, optional
         A custom set of commands for the simulations. If not specified, SimCADO
         uses the default MICADO parameters
@@ -140,7 +141,7 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
 
     if type(mags) not in (list, tuple, np.adarray):
         mags = [mags]
-    
+
     sn = []
     for mag in mags:
         src = sim.source.star(mag)

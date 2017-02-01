@@ -53,7 +53,6 @@
 #
 
 import os
-from .utils import __pkg_dir__
 
 from copy import deepcopy
 import warnings, logging
@@ -63,6 +62,8 @@ from astropy import units as u
 from astropy import constants as c
 from astropy.io import fits
 from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
+
+from .utils import __pkg_dir__
 
 __all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve"]
 
@@ -80,7 +81,7 @@ class TransmissionCurve(object):
         transmission coefficient between [0,1].
         
         Alternatively this data can be passed directly. If filename is not
-        provided, `lam=` and `val=` must be passed
+        provided, ``lam=`` and ``val=`` must be passed
     lam : array, optional
         [um] Wavelength bins in a 1D numpy array of length n
     val : array, optional
@@ -101,7 +102,7 @@ class TransmissionCurve(object):
         Default is [0.3 .. 3.0] um. A default wavelength range to avoid excessive
         resampling operations.
     airmass : float
-        If transmission coefficients for more than one airmass are in `filename`
+        If transmission coefficients for more than one airmass are in ``filename``
     
     Returns
     -------
@@ -228,7 +229,7 @@ class TransmissionCurve(object):
         min_step : float, optional
             [um] default=1E-4, the step size for the down-sample
         use_default_lam : bool, optional
-            Default is True. If True, `bins` is ignored and the default 
+            Default is True. If True, ``bins`` is ignored and the default 
             wavelength range is used as the resampling grid.
         """
 

@@ -1,8 +1,10 @@
+"""
 ###############################################################################
 #                       NGHXRG by Bernard Rauscher                            #
 #             see the paper: http://arxiv.org/abs/1509.06264                  #
 #           downloaded from: http://jwst.nasa.gov/publications.html           #
 ###############################################################################
+"""
 
 # dependencies include: astropy, numpy, scipy [, datetime, warnings, os]
 import os

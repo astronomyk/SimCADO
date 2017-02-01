@@ -5,6 +5,11 @@ The data files used by SimCADO are continually being updated to reflect the newe
 
 To update your version of SimCADO, use the `simcado.get_extras()` command.
 
+### 2017-01-31
+
+** New stable version available: SimCADO 0.4** 
+
+
 ### 2017-01-18
 * Added E-ELT mirror transmission curve
         TC_mirror_EELT.dat
@@ -31,7 +36,7 @@ To update your version of SimCADO, use the `simcado.get_extras()` command.
 
 
 ## Source Code updates
-The current stable version is SimCADO v0.3. The current development version is SimCADO v0.4dev
+The current stable version is SimCADO v0.4. The current development version is SimCADO v0.5dev
 
 ### Development version
 2017-01-05

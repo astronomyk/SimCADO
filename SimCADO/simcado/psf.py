@@ -106,10 +106,7 @@ from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
 
-try:
-    import simcado.utils as utils
-except ImportError:
-    import utils
+from . import utils
 
 try:
     import poppy
@@ -1342,10 +1339,15 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
     fnames : list
         List of path names to the FITS files
     out_name : str, optional
+<<<<<<< HEAD
         If out_name is not `None`, the resulting FITS file is saved under the
         name `out_name`
+=======
+        If out_name is not ``None``, the resulting FITS file is saved under the
+        name ``out_name``
+>>>>>>> master
     window : int, list, tuple, optional
-        If window is not `None`, a windowed section of the PSFs are extracted
+        If window is not ``None``, a windowed section of the PSFs are extracted
         window = (left, right, top, bottom)
         window = square radius
 
@@ -1634,8 +1636,13 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     size : int, optional
         [pixels] Default = 1024
     segments : list, optional
+<<<<<<< HEAD
         Default = None. A list of which segments to use for generating the E-ELT
         mirror. See `get_eelt_segments()`
+=======
+        Default = None. A list of which segments to use for generating the E-ELT
+        mirror. See ``get_eelt_segments()``
+>>>>>>> master
     filename : str, optional
         Default = None. If filename is not None, the resulting FITS object will
         be saved to disk
@@ -1659,14 +1666,23 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
 
     Returns
     -------
+<<<<<<< HEAD
     `astropy.HDUList` : an astropy FITS object with the PSF in the data
+=======
+    ``astropy.HDUList`` : an astropy FITS object with the PSF in the data
+>>>>>>> master
     extensions
 
 
     See also
     --------
+<<<<<<< HEAD
     `get_eelt_segments()`
 
+=======
+    ``get_eelt_segments()``
+
+>>>>>>> master
     """
 
     try:
@@ -1761,8 +1777,13 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         * Plan B has the inner 5 rings missing (588 segments) and a further
         5 random segments missing (583 segments)
     missing : int, list, optional
+<<<<<<< HEAD
         Default = None. If an integer is passed, this many random segments are
         removed. If `missing` is a list, entries refer to specific segment IDs
+=======
+        Default = None. If an integer is passed, this many random segments are
+        removed. If ``missing`` is a list, entries refer to specific segment IDs
+>>>>>>> master
     return_missing_segs : bool, optional
         Defualt is False. Returns the missing segment numbers
     inner_diam : float, optional
@@ -1776,9 +1797,15 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
     segs : list
         A list of segment IDs for the mirror segments.
     missing : list, conditional
+<<<<<<< HEAD
         Only returned if `return_missing_segs == True`. A list of segment IDS
         for the segments which are missing.
 
+=======
+        Only returned if ``return_missing_segs == True``. A list of segment IDS
+        for the segments which are missing.
+
+>>>>>>> master
     """
 
     try:

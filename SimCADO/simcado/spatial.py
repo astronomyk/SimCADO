@@ -44,7 +44,6 @@
 #from copy import deepcopy   ## Not used (OC)
 
 import os
-from .utils import __pkg_dir__
 
 import warnings, logging
 
@@ -54,11 +53,8 @@ from scipy.signal import fftconvolve
 
 from astropy.convolution import convolve_fft, Gaussian2DKernel
 
-try:
-    import simcado.utils as utils
-except ImportError:
-    import utils
-
+from . import utils
+from .utils import __pkg_dir__
 
 __all__ = ["tracking", "derotator", "wind_jitter", "adc_shift"]
 

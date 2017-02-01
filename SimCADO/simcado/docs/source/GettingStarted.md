@@ -86,12 +86,15 @@ Lets pull this function call apart in order of importance to the simulation:
 
 1. `src`: Obviously the more important aspect is the `Source` object. Without a `Source` these is nothing to observe
 1. `filename`: Where to save the output FITS file. If `None` is provided (or the parameter is ignored), the output is returned to the user. This comes in handy if you are working in a `Jupyter Notebook` and wand to play with the output data immediately. Or if you are scripting with SimCADO and don't want to be slowed down by writing all images to disk
-1. `mode` and `detector_layout`:  These two define the MICADO observing modes. Currently `mode` can be either `="wide"` (4mas/pixel) or `="zoom"` (1.5mas/pixel). The `detector_layout` can also be changed to speed up simulations of single objects. For example if the galaxy you're interested in is at z=5, you don't need to read out all 9 MICADO chips for each observation. In fact, a 1024x1024 window at the centre of the middle chip will probably be enough. Therefore SimCADO offers the following "layouts" for the detector - `"small", "wide", "zoom", "centre", "default"`. The default is `"small"`.
+1. Two important parameters here are ``mode`` and ``detector_layout``: These two define the MICADO observing modes. 
 
-    * `"small"`   - 1x 1k-detector centred in the FoV
-    * `"centre"`  - 1x 4k-detector centred in the FoV
-    * `"full"`    - 9x 4k-detector as per MICADO imaging mode (either 4mas or 1.5mas)
-    * `"default"` - depends on "mode" keyword. Full MICADO 9 chip detector array for either 4mas or 1.5mas modes
+  Currently ``mode`` can be either ``="wide"`` (4mas/pixel) or ``="zoom"`` (1.5mas/pixel). 
+
+  The ``detector_layout`` can also be changed to speed up simulations of single objects. For example if the galaxy you're interested in is at z=5, you don't need to read out all 9 MICADO chips for each observation. In fact, a 1024x1024 window at the centre of the middle chip will probably be enough. Therefore SimCADO offers the following "layouts" for the detector - "small", "wide", "full". The default is "small".
+
+  * ``small`` - 1x 1k-detector centred in the FoV  
+  * ``centre`` - 1x 4k-detector centred in the FoV  
+  * ``full`` - 9x 4k-detector as described by the keyword FPA_CHIP_LAYOUT
 
 1. `cmds, opt_train, fpa` are all parameters that allow you to provide custom built parts of the machinary. Say you have a set of commands saved from a previous simulation run which differ from the default values, then you can use these by passing a `UserCommands` object via the `cmd` parameter. The same goes for passing an custom `OpticalTrain` object to `opt_train` and a custom `Detector` object to `fpa`. For more information see the relevant examples sections - [`UserCommands` examples](examples/UserCommands), [`OpticalTrain` examples](examples/OpticalTrain), [`Detector` examples](examples/Detector).
 
