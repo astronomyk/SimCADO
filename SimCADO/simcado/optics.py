@@ -193,7 +193,7 @@ class OpticalTrain(object):
         pass
 
 
-    def update_filter(self, trans=None, lam=None, filter_name=None, ):
+    def update_filter(self, trans=None, lam=None, filter_name=None):
         """
         Update the filter curve without recreating the full OpticalTrain object
 

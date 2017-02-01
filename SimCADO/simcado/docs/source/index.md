@@ -28,7 +28,7 @@ It is hightly recommended to use Python 3, however the basics of generating imag
 
 The quick way:
 
-    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.zip
+    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
 
 The **first time** in python 
 
@@ -53,9 +53,9 @@ To begin, we will import the simcado module (assuming it is already installed).
 
     >>> import simcado
 
-At the very least, we need to create a `Source` object which contains both spatial and spectral information on our object of interest. Here we use the built-in command `.source.source_1E4_Msun_cluster()` to create a `Source`-object for a 10000-Msun stellar cluster. (See [Creating Sources](examples/Source.md) for more information).
+At the very least, we need to create a `Source` object which contains both spatial and spectral information on our object of interest. Here we use the built-in command `.source.cluster()` to create a `Source`-object for a 10000-Msun stellar cluster. (See [Creating Sources](examples/Source.md) for more information).
 
-    >>> src = simcado.source.source_1E4_Msun_cluster()
+    >>> src = simcado.source.cluster()
 
 We now pass the `source` object through SimCADO. This is as easy as calling `.run()`. If we specify a `filename`, SimCADO will write the output to disk in the form of a FITS file. If no `filename` is given, then SimCADO returns an `astropy.io.fits` object to the console/notebook.
 

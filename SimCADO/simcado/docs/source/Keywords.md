@@ -16,12 +16,12 @@ OBS_ZENITH_DIST         0           # [deg] from zenith
 OBS_PARALLACTIC_ANGLE   0           # [deg] rotation of the source relative to the zenith
 OBS_SEEING              0.6         # [arcsec]
 
-OBS_BG_STAR_DENSITY     GalNP       # ["none", "2MASS", "GalNP", "GalCen", "GalAntiCen"] 
+OBS_BG_STAR_DENSITY     GalNP       # ["none", "2MASS", "GalNP", "GalCen", "GalAntiCen"]
 
 OBS_EXPTIME             60          # [sec] simulated exposure time
 OBS_NDIT                1           # [#] number of exposures taken
 OBS_NONDESTRUCT_TRO     2.6         # [sec] time between non-destructive readouts in the detector
-OBS_REMOVE_CONST_BG     yes         # remove the minimum background value
+OBS_REMOVE_CONST_BG     no          # remove the median background value
 OBS_READ_MODE           single      # [single, fowler, ramp] Only single is implemented at the moment
 OBS_SAVE_ALL_FRAMES     no          # yes/no to saving all DITs in an NDIT sequence
 
@@ -78,11 +78,11 @@ SIM_NUM_CPUS           -1           # Number of CPUs to use for multicore comput
 Keyword                 Default     [units] Explanation
 -----------------------------------------------------------------------------------------------
 
-ATMO_USE_ATMO_BG        yes         # [yes/no] 
+ATMO_USE_ATMO_BG        yes         # [yes/no]
 
 ATMO_TC                 default     # [<filename>, "default"] for atmospheric transmission curve. If "default": <pkg_dir>/data/skytable.fits
 ATMO_EC                 default     # [<filename>, "default", "none"] for atmospheric emission curve. If "default": <pkg_dir>/data/skytable.fits
-# If ATMO_EC is "none": set ATMO_BG_MAGNITUDE for the simulation filter. 
+# If ATMO_EC is "none": set ATMO_BG_MAGNITUDE for the simulation filter.
 ATMO_BG_MAGNITUDE       default     # [ph/s] background photons for the bandpass if ATMO_EC = None
 
 ATMO_TEMPERATURE        0           # deg Celcius

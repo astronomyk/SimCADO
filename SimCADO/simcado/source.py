@@ -166,7 +166,7 @@ class Source(object):
         if isinstance(x, (tuple, list)):
             x = np.array(x)
         if isinstance(y, (tuple, list)):
-            y = np.array(x)
+            y = np.array(y)
 
         self.info = dict([])
         self.info['created'] = 'yes'
@@ -1541,7 +1541,7 @@ def stars(spec_types=["A0V"], mags=[0], filter_name="Ks", x=None, y=None, area=1
         units = "ph/s/m2"
     else:
         units = "ph/s"
-
+    
     src = Source(lam=lam, spectra=spec,
                  x=x, y=y,
                  ref=ref, weight=weight,
@@ -1988,8 +1988,9 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004, filter_name="Ks"
         [mag/arcsec2] surface brightness of the source
     pix_res : float
         [arcsec] the pixel resolution
-    filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
+    filter_name : str, TransmissionCurve, optional
+        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
+        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -2024,8 +2025,9 @@ def flat_spectrum(mag, filter_name="Ks", return_ec=False):
     ----------
     mag : float
         [mag] magnitude of the source
-    filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
+    filter_name : str, TransmissionCurve, optional
+        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
+        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
     return_ec : bool, optional
         If True, a simcado.spectral.EmissionCurve object is returned.
         Default is False
@@ -2060,8 +2062,9 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
     ----------
     mag_per_arcsec : float
         [mag/arcsec2] surface brightness of the source
-    filter_name : str, optional
-        broadband filter in the Vis/NIR range UBVRIzYJHKKs. Default is "Ks"
+    filter_name : str, TransmissionCurve, optional
+        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
+        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
     pix_res : float
         [arcsec] the pixel resolution. Default is 4mas (i.e. 0.004)
     return_ec : bool, optional

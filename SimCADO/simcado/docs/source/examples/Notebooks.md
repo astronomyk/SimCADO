@@ -21,7 +21,8 @@ Here are a list of notebooks detailing how to use SimCADO. If you would like to 
 ## Workshop notebooks
 1. [Setting up SimCADO](http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/1_Setting_up_SimCADO.ipynb)  
    Some basics about running SimCADO
-* [Working with point sources]()
+2. [Working with point sources](http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/2_Working_with_Point_Sources.ipynb)  
+   The basics for making and combining point source objects
 * [Working with extended sources]()
 * [Working with multiple sources]()
 * [Running simulations]()
