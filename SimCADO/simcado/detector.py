@@ -5,14 +5,14 @@ Summary
 -------
 This module holds three classes: ``Detector``, ``Chip`` and ``HXRGNoise``.
 
-``Chip``  
+``Chip``
 Everything to do with photons and electrons happens in the ``Chip`` class. Each
 ``Chip`` is initialised with a position relative to the centre of the detector
 array, a size [in pixels] and a resolution [in arcsec]. Photons fall onto the
 ``Chip`` s and are read out together with the read noise characteristics of the
 ``Chip``.
 
-``Detector``  
+``Detector``
 The ``Detector`` holds the information on where the ``Chip`` s are placed on the
 focal plane. Focal plane coordinates are in [arcsec]. These coordinates are
 either read in from a default file or determined by the user. The ``Detector``
@@ -20,7 +20,7 @@ object is an intermediary - it only passes photons information on the photons
 to the ``Chip`` s. It is mainly a convenience class so that the user can read out
 all ``Chip`` s at the same time.
 
-``HXRGNoise``  
+``HXRGNoise``
 This class is borrowed from Berhand Rauscher's script which generates realistic
 noise frames for the JWST NIRSpec instrument. NIRSpec uses Hawaii 2RG detectors
 but the noise properties scale well up to the H4RG chips that MICADO will use.
@@ -185,17 +185,17 @@ class Detector(object):
     Examples
     --------
     Create a ``Detector`` object
-    
+
         >>> import simcado
         >>> my_cmds = simcado.UserCommands()
         >>> my_detector = simcado.Detector(my_cmds)
-        
+
 
     Read out only the first `Chip`
-    
+
         >>> my_detector.readout(filename=image.fits, chips=[0])
-    
-    
+
+
     """
 
 
@@ -257,21 +257,17 @@ class Detector(object):
             where the file is to be saved. If ``None`` the current directory is
             used. Default is ``None``
         to_disk : bool
-            a flag for where the output should go. If ``False`` the  ``Chip`` images
-            will be returned to the user (i.e. in an iPython session) as an
-            ``astropy.fits.HDUList`` object. If ``True`` the ``Chip`` images will be
-            written to a ``.fits`` file on disk. If no ``filename`` is specified,
-            the output is be called "output.fits". The default is ``False``
+            a flag for where the output should go. If ``True`` the ``Chip``
+            images will be written to a ``.fits`` file on disk. If no
+            ``filename`` is specified, the output is be called "output.fits".
+            The default is ``False``
         chips : int, array-like, optional
             The chip or chips to be read out, based on the detector_layout.dat
             file. Default is the first ``Chip`` specified in the list, i.e. [0]
 
         Returns
         -------
-        ``if to_disk == False:``
-            astropy.io.fits.HDUList
-        ``else:``
-            <filename>.fits file
+        astropy.io.fits.HDUList
 
         Keyword Arguments (**kwargs)
         ----------------------------
@@ -396,10 +392,10 @@ class Detector(object):
             hdulist.append(thishdu)
             # hdulist = fits.HDUList(hdus)
 
-        if not to_disk:
-            return hdulist
-        else:
+        if to_disk:
             hdulist.writeto(filename, clobber=True, checksum=True)
+
+        return hdulist
 
 
     def write(self, filename=None, **kwargs):

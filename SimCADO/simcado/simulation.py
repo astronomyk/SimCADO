@@ -74,27 +74,28 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         opt_train = sim.OpticalTrain(cmds)
     if fpa is None:
         fpa = sim.Detector(cmds, small_fov=False)
-        
+
     print("Detector layout")
     print(fpa.layout)
     print("Creating", len(cmds.lam_bin_centers), "layer(s) per chip")
     print(len(fpa.chips), "chip(s) will be simulated")
-    
+
     src.apply_optical_train(opt_train, fpa)
 
     if filename is not None:
         if cmds["OBS_SAVE_ALL_FRAMES"] == "yes":
             for n in cmds["OBS_NDIT"]:
                 fname = filename.replace(".",str(n)+".")
-                fpa.read_out(filename=fname, to_disk=True, OBS_NDIT=1)
+                hdu = fpa.read_out(filename=fname, to_disk=True, OBS_NDIT=1)
         else:
-            fpa.read_out(filename=filename, to_disk=True)
+            hdu = fpa.read_out(filename=filename, to_disk=True)
     else:
         hdu = fpa.read_out()
-        if return_internals:
-            return hdu, (cmds, opt_train, fpa)
-        else:
-            return hdu
+
+    if return_internals:
+        return hdu, (cmds, opt_train, fpa)
+    else:
+        return hdu
 
 
 def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
@@ -140,7 +141,7 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
 
     if type(mags) not in (list, tuple, np.adarray):
         mags = [mags]
-    
+
     sn = []
     for mag in mags:
         src = sim.source.star(mag)
