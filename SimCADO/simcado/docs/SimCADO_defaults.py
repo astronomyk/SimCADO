@@ -18,6 +18,12 @@ data_ext_dir = "../../data_ext/"
 data = openpyxl.load_workbook(home_dir + "SimCADO_defaults.xlsx").worksheets[0]
 
 text = """
+# ELT-ICD-MCD-56306-0050
+
+<IMG SRC="../Logo_3x3_MICADO.png" width=300px> \n\n
+
+# SimCADO Interface Control Document
+
 # SimCADO configuration for MICADO
 
 SimCADO's main purpose is to simulate the optical train comprising of the E-ELT and MICADO. As such the base configuration is for this instrument/telescope combination.
