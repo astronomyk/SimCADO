@@ -14,7 +14,13 @@ Here are a list of notebooks detailing how to use SimCADO. If you would like to 
 
 ## MICADO experiments  
 * [E-ELT_2-Phase_Mirror.ipynb](http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/POPPY_EELT.ipynb)  
-  As the primary mirror of the E-ELT may be built in 2 phases, this notebook uses SimCADO to have a look at what that means for the resulting E-ELT PSF. **Note** the PSFs generated here are only approximations based on a diffraction limited core combined with a Seeing Halo. These are meant only as a guide.
+  As the primary mirror of the E-ELT may be built in 2 phases, this notebook uses SimCADO to have a look at what that means for the resulting E-ELT PSF. 
+  
+!!! Note
+
+    the PSFs generated here are only approximations based on a diffraction limited core combined with a Seeing Halo. These are meant only as a guide.
+    
+    
 * [Filter_Wings.ipynb](http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/Filter_Wings.ipynb)  
   A experiment to investigate the transmission coefficients that the filters in MICADO will need to have in order to restrict flux leakage through the filter wings to less than 1% of the flux coming through the filter. 
   

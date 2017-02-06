@@ -27,7 +27,9 @@ Alternatively give the full URL to pip and let it do the downloading for you
 
 `$ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz`
 
-**Note** that SimCADO will need to download several hundreds of MBs of instrument data into the install directory. Hence why we use the `--user` flag when installing via `pip`. If you want to keep SimCADO in your normal packages directory, then you will need to give python root access while updating SimCADO's data files.
+!!! Note
+
+    SimCADO will need to download several hundreds of MBs of instrument data into the install directory. Hence why we use the `--user` flag when installing via `pip`. If you want to keep SimCADO in your normal packages directory, then you will need to give python root access while updating SimCADO's data files.
 
 ## Dependencies
  

@@ -8,7 +8,7 @@ Basically a `Source` object represents photon sources using lists of positions (
 To begin with it is probably easiest to let SimCADO generate a `Source` object. The convenience function `simcado.source.star()` will generate a `Source` object containing a single star. In this case, we'll choose an G2V star with a K-band magnitude of 20, placed 5 arcsec above the centre of the focal plane:
 
 
-    >>> star_1 = simcado.source.star(mag=20, filter_name="K", spec_type="G2V", position=(5,0))
+    >>> star_1 = simcado.source.star(mag=20, filter_name="K", spec_type="G2V", x=5, y=0))
 
     
 `star_1` the coordinates of the star are held in the arrays `.x` and `.y`, and the G2V spectrum in `.spectra´.
@@ -25,20 +25,28 @@ The spectrum for `star_1` is held in `.spectra` and the central wavelength of ea
     <insert output here>
 
     
-**Note** that `.lam` is a (1,n) array where as `.spectra` is a (m,n) array where n is the number of bins in the spectra and m is the number of unique spectra in the `Source` object. If the `Source` only contains a single unique spectrum, then `.spectra` will be a (1,n) array too.
+!!! Note
+    
+    `.lam` is a (1,n) array where as `.spectra` is a (m,n) array where n is the number of bins in the spectra and m is the number of unique spectra in the `Source` object. If the `Source` only contains a single unique spectrum, then `.spectra` will be a (1,n) array too.
 
 
 ### Combining `Source` objects
 Because a `Source` object is just a collection of arrays, it is easy to add many together with the `+` operator:
 
 
-    >>> star_2 = simcado.source.star(mag=22, filter_name="K", spec_type="A0V", position=(2,-2))
+    >>> star_2 = simcado.source.star(mag=22, filter_name="K", spec_type="A0V", x=2, y=-2)
     >>> two_stars = star_1 + star_2
     >>> two_stars.x, two_stars.y
     ((5, 2), (0, -2))
 
     
-**Note** this a very trivial example (for which SimCADO has a more elegant function: `simcado.source.stars()`), but it serves to illustrate the main idea. The overloaded `+` operator is very useful for combining objects, e.g. forground stars and background galaxies, in order to get a better representation of the sky.
+!!! Note
+
+    this is a very trivial example (for which SimCADO has a more elegant function: `simcado.source.stars()`), but it serves to illustrate the main idea. The overloaded `+` operator is very useful for combining objects, e.g. forground stars and background galaxies, in order to get a better representation of the sky.
+
+!!! Note
+
+    if you are planning on creating sources for large numbers of stars (e.g. >>10 stars), using the plural function ``stars()`` will save you a lot of time.
 
 
 ### Point sources
@@ -47,7 +55,7 @@ For generating a field of stars, SimCADO offers a series of convenience function
 * `simcado.source.star()`
 * `simcado.source.stars()`
 * `simcado.source.star_grid()`
-* `simcado.source.source_1E4_cluster()`
+* `simcado.source.cluster()`
 
 
 ### SimCADO's in-built example spectra
@@ -74,7 +82,12 @@ If we have an extended source that we wish to simulate, e.g. a galaxy, a nebula,
            ... ,
            [0.0, ... 0.0]])
 
-Here SimCADO takes a the pixel coordinates of the image and converts them to positions on the focal plane. **Note** the user must specify a plate-scale in arcseconds (`pix_res=`) for the image. Each pixel with a value above a certain threshold (default `flux_threshold=0`) will be used in the `Source` object. The coordinates of these pixels are added to the arrays `.x` and `.y`. 
+Here SimCADO takes a the pixel coordinates of the image and converts them to positions on the focal plane. 
+
+!!!Note
+
+    the user must specify a plate-scale in arcseconds (`pix_res=`) for the image. Each pixel with a value above a certain threshold (default `flux_threshold=0`) will be used in the `Source` object. The coordinates of these pixels are added to the arrays `.x` and `.y`. 
+    
 
 We also need to provide a spectrum for the image. This spectrum is assumed to be the only spectrum for each pixel in the image. The pixel values are then the intensity assigned to that spectrum at that pixel position. 
 
@@ -145,8 +158,8 @@ Optional keywords can be specified:
 
 ```
 >>> # ... create a A0V star at (0,0) and a G2V star at (5,-5)
->>> star_A0V = sim.source.star(20, position=(0,0), spec_type="A0V")
->>> star_G2V = sim.source.star(20, position=(5,-5), spec_type="G2V")
+>>> star_A0V = sim.source.star(20, spec_type="A0V", x=0, y=0)
+>>> star_G2V = sim.source.star(20, spec_type="G2V", x=5, y=-5)
 >>> 
 >>> src_combi = star_A0V + star_G2V
 >>> 

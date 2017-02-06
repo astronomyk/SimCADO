@@ -104,3 +104,4 @@ To register, or just to show interest, please send an email to:
 * Michele Perna
 * Michael Wegner
 * Natascha Förster Schreiber
+* Giuliana Fiorentino

@@ -44,7 +44,10 @@ The 3rd option is probably the least favourable as there are no options availabl
 
 SimCADO is controlled with a series of keyword-value pairs contained in a configuration file. **The defaults are the best approximation to MICADO** so changing them is *not* recommended if you want to simulate *MICADO* images. There are however some which are useful to play around with.
 
-**NOTE - SimCADO is CAsE sEnsiTIve**. All KEYWORDS are writen with capital letters.
+!!! Note 
+
+    SimCADO is CAsE sEnsiTIve**. All KEYWORDS are writen with capital letters.
+    
 
 Similar to SExtractor, SimCADO provides a way to dump both commonly used and less-common keywords to a file with command `sim.commands.dump_defaults()`:
 

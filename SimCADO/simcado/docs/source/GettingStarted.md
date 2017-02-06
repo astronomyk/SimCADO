@@ -5,12 +5,23 @@ SimCADO can be super easy to use, or super complicated. The level of complexity 
 + [Simulations](#simulating-with-simcado)
 + [UserCommands object](#saving-and-reusing-commands)
 
+!!! Note
+    
+    Even though this documentation is not yet complete (it is a very big job), lots **more information is included in the docstrings** of every SimCADO function and class. These can be easily viewed in the interactive python interface (iPython, or Jupyter Notebook) with either the question mark operator or by using ``SHIFT+TAB`` with the cursor over the function name.
+
+Doing this in iPython will call up the docstring:
+
+    >>> simcado.Source?
+
+
 ## Source
 For full details, please see the [API](API) and examples of [Source Objects](examples/Source)
 
 The `Source` class is probably the most important class for testing science cases. Therefore spending time on creating accurate `Source` representations of the object of interest is key to getting good results with SimCADO. `Source` objects can be created from scratch, with functions provided by SimCADO, or by loading in a pre-existing `Source`-FITS file.
 
-**Note: SimCADO is CaSe SensITIVe!** SimCADO has the class `simcado.Source()` and the module `simcado.source`. These should not be confused. `simcado.source` is the module which contains the class `Source` and all the helper functions for creating various types of `Source` objects. In fact the source code for the  class `Source` is actually at `simcado.source.Source`, however to make things easy, `Source` is available directly as`simcado.Source()`. Be careful and remember `simcado.Source != simcado.source`.
+!!! Note
+
+    SimCADO is CaSe SensITIVe!** SimCADO has the class `simcado.Source()` and the module `simcado.source`. These should not be confused. `simcado.source` is the module which contains the class `Source` and all the helper functions for creating various types of `Source` objects. In fact the source code for the  class `Source` is actually at `simcado.source.Source`, however to make things easy, `Source` is available directly as`simcado.Source()`. Be careful and remember `simcado.Source != simcado.source`.
 
 For a description of the `Source` object, and the `source` module, see [How SimCADO works](deep_stuff/SimCADO/#source).
 
