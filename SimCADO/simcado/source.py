@@ -267,7 +267,8 @@ class Source(object):
         self._apply_transmission_curve(opt_train.tc_source)
 
         for chip_i in chips:
-
+            print("Generating image for chip", detector.chips[chip_i].id)
+        
             # 1.5
             image = None
 
@@ -580,7 +581,7 @@ class Source(object):
         return slice_photons
 
         
-    def scale_spectum(self, idx=0, mag=20, filter_name="Ks"):
+    def scale_spectrum(self, idx=0, mag=20, filter_name="Ks"):
         """
         Scale a certain spectrum to a certain magnitude
 
