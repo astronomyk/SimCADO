@@ -439,7 +439,7 @@ class UserCommands(object):
         elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
-        else: 
+        elif not os.path.exists(self.cmds["SCOPE_PSF_FILE"]): 
             raise ValueError("Cannot recognise PSF file name: " + \
                                                     self.cmds["SCOPE_PSF_FILE"])
                 
