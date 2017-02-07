@@ -1490,13 +1490,13 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
 
     if isinstance(spec_types, str):
         spec_types = [spec_types]
-    
+
     if isinstance(mags, (int, float)):
         mags = [mags] * len(spec_types)
-    
+
     if len(mags) > 1  and len(spec_types) == 1:
         spec_types *= len(mags)
-    elif len(mags) != len(spec_types))
+    elif len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")
 
     mags = np.array(mags)
