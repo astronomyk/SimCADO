@@ -439,7 +439,9 @@ class UserCommands(object):
         elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
-
+        else: 
+            raise ValueError("Cannot recognise PSF file name: " + \
+                                                    self.cmds["SCOPE_PSF_FILE"])
                 
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
