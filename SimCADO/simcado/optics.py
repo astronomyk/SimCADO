@@ -255,8 +255,7 @@ class OpticalTrain(object):
     def _load_all_tc(self, tc_list=["ATMO_TC", "SCOPE_M1_TC", "INST_MIRROR_AO_TC", 
                                     "INST_ENTR_WINDOW_TC", "INST_DICHROIC_TC",
                                     "INST_MIRROR_TC", "INST_ADC_TC", 
-                                    "INST_PUPIL_TC", "INST_FILTER_TC", 
-                                    "INST_SURFACE_FACTOR", "FPA_QE"]):
+                                    "INST_PUPIL_TC", "INST_FILTER_TC", "FPA_QE"]):
         """
         Pre-loads all the transmission curves
         """
@@ -265,9 +264,15 @@ class OpticalTrain(object):
                 airmass = self.cmds["ATMO_AIRMASS"] if tc == "ATMO_TC" else None
                 self.cmds[tc] = sc.TransmissionCurve(filename=self.cmds[tc],
                                                      airmass=airmass)
-                
-                
-        
+
+        # see Rics email from 22.11.2016
+        wfe = self.cmds["INST_TOTAL_WFE"]
+        lam = np.arange(0.3,3.0)
+        val = np.exp( -(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2 )
+        self.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam, val=val)
+
+
+
     def _gen_all_tc(self):
 
         ############## AO INSTRUMENT PHOTONS #########################
