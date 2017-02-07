@@ -269,8 +269,8 @@ class OpticalTrain(object):
         wfe = self.cmds["INST_TOTAL_WFE"]
         lam = np.arange(0.3,3.0)
         val = np.exp( -(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2 )
-        self.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam, val=val)
-
+        self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam, 
+                                                                     val=val)
 
 
     def _gen_all_tc(self):

@@ -424,23 +424,6 @@ class UserCommands(object):
         Input system-specific path names for the default package data files
         """
 
-        if self.cmds["OBS_OUTPUT_DIR"] in (None, "none", "default"):
-            self.cmds["OBS_OUTPUT_DIR"] = "./output.fits"
-
-        if self.cmds["SIM_OPT_TRAIN_OUT_PATH"] in (None, "none", "default"):
-            self.cmds["SIM_OPT_TRAIN_OUT_PATH"] = "./"
-
-        if self.cmds["SIM_DETECTOR_OUT_PATH"] in (None, "none", "default"):
-            self.cmds["SIM_DETECTOR_OUT_PATH"] = "./"
-
-        if self.cmds["ATMO_TC"] == "default":
-            self.cmds["ATMO_TC"] = \
-                os.path.join(self.pkg_dir, "data", "TC_sky_25.tbl")
-
-        if self.cmds["ATMO_EC"] == "default":
-            self.cmds["ATMO_EC"] = \
-                os.path.join(self.pkg_dir, "data", "EC_sky_25.tbl")
-
         if self.cmds["SCOPE_PSF_FILE"].lower() in ("ltao"):
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_LTAO.fits")
@@ -457,64 +440,16 @@ class UserCommands(object):
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
 
-        if self.cmds["SCOPE_M1_TC"] == "default":
-            self.cmds["SCOPE_M1_TC"] = \
-                os.path.join(self.pkg_dir, "data", "TC_mirror_mgf2agal.dat")
-
-        if self.cmds["SCOPE_MIRROR_LIST"] == "default":
-            self.cmds["SCOPE_MIRROR_LIST"] = \
-                os.path.join(self.pkg_dir, "data", "EC_mirrors_scope.tbl")
-
-        if self.cmds["INST_MIRROR_AO_LIST"] == "default":
-            self.cmds["INST_MIRROR_AO_LIST"] = \
-                os.path.join(self.pkg_dir, "data", "EC_mirrors_ao.tbl")
-
+                
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
         if self.cmds["INST_MIRROR_AO_TC"] == "default":
-            self.cmds["INST_MIRROR_AO_TC"] = self.cmds["SCOPE_M1_TC"]
+            self.cmds["INST_MIRROR_AO_TC"] = self.cmds["INST_MIRROR_TC"]
 
-        if self.cmds["INST_PUPIL_TC"] == "default":
-            self.cmds["INST_PUPIL_TC"] = \
-                os.path.join(self.pkg_dir, "data", "TC_pupil.dat")
-
-        if self.cmds["INST_ENTR_WINDOW_TC"] == "default":
-            self.cmds["INST_ENTR_WINDOW_TC"] = \
-                os.path.join(self.pkg_dir, "data", "TC_window.dat")
-
-        if self.cmds["INST_DICHROIC_TC"] == "default":
-            self.cmds["INST_DICHROIC_TC"] = \
-                os.path.join(self.pkg_dir, "data", "TC_dichroic.dat")
-
-        if self.cmds["INST_ADC_TC"] == "default":
-            self.cmds["INST_ADC_TC"] = \
-                os.path.join(self.pkg_dir, "data", "TC_ADC.dat")
-
-        if self.cmds["INST_DISTORTION_MAP"] == "default":
-            self.cmds["INST_DISTORTION_MAP"] = None
-
-        if self.cmds["INST_SURFACE_FACTOR"] == "default":
-            self.cmds["INST_SURFACE_FACTOR"] = \
-                os.path.join(self.pkg_dir, "data", "TC_surface.dat")
-
-        if self.cmds["FPA_QE"] == "default":
-            self.cmds["FPA_QE"] = \
-                os.path.join(self.pkg_dir, "data", "TC_detector_H4RG.dat")
-
-        if self.cmds["FPA_NOISE_PATH"] == "default":
-            self.cmds["FPA_NOISE_PATH"] = \
-                os.path.join(self.pkg_dir, "data", "FPA_noise.fits")
-
-        if self.cmds["FPA_LINEARITY_CURVE"] == "default":
-            self.cmds["FPA_LINEARITY_CURVE"] = \
-                os.path.join(self.pkg_dir, "data", "FPA_linearity.dat")
-
-        if self.cmds["FPA_PIXEL_MAP"] == "default":
-            self.cmds["FPA_PIXEL_MAP"] = None
 
         # which detector chip to use
-        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide", "full"):
+        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("zoom", "narrow"):
@@ -528,10 +463,6 @@ class UserCommands(object):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_centre.dat")
 
-
-        if self.cmds["HXRG_PCA0_FILENAME"] in (None, "none", "default"):
-            self.cmds["HXRG_PCA0_FILENAME"] = \
-                os.path.join(self.pkg_dir, "data", "FPA_nirspec_pca0.fits")
 
 
     def _update_attributes(self):
@@ -607,9 +538,27 @@ class UserCommands(object):
         self._convert_none()
 
         self.verbose = (self.cmds["SIM_VERBOSE"] == "yes")
-
+        self._get_total_wfe()
+        
         self._split_categories()
 
+    
+    def _get_total_wfe(self):
+        """
+        Gets the total wave front error from the table in INST_WFE_LIST
+        """
+        
+        if self.cmds["INST_WFE"] is not None:
+            if isinstance(self.cmds["INST_WFE"], str):
+                wfe_list = ioascii.read(self.cmds["INST_WFE"])
+                wfe = wfe_list[wfe_list.colnames[0]]
+                num = wfe_list[wfe_list.colnames[1]]
+            elif isinstance(self.cmds["INST_WFE"], (float, int)):
+                wfe, num = self.cmds["INST_WFE"], 1
+        
+        tot_wfe = np.sqrt(np.sum(num * wfe**2))                
+        self.cmds["INST_TOTAL_WFE"] = tot_wfe
+    
 
     def _get_lam_bin_edges(self, lam_min, lam_max):
         """
@@ -808,6 +757,7 @@ def dump_mirror_config(path=None, what="scope"):
         ["scope", "ao"] dump the mirror configuration for either the telescope
         or the AO module
     """
+    
     if what.lower() == "scope":
         print("Dumping telescope mirror configuration.")
         fname = os.path.join(__pkg_dir__, "data", "EC_mirrors_scope.tbl")
