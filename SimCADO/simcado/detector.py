@@ -774,29 +774,6 @@ class Chip(object):
                 raise ValueError("Couldn't apply pixel_map")
 
 
-    def _apply_saturation(self, arr):
-        """
-        Cap all pixels that are above the well depth.
-
-        Parameters
-        ----------
-        x : type [, optional [, {set values} ]]
-            Description of ``x``. [(Default value)]
-
-        Returns
-        -------
-
-        Examples
-        --------
-        """
-        # TODO: apply a linearity curve and shift excess light into !!
-        # neighbouring pixels !!
-
-        max_val = self.params["FPA_WELL_DEPTH"]
-        arr[arr > max_val] = max_val
-        return arr
-
-
     def reset(self):
         """
         <One-line summary goes here>
