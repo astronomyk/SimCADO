@@ -1,8 +1,17 @@
 import numpy as np
 import simcado as sim
 
+def test_stars_params():
+    # Test combinations of input parameters
+    assert sim.source.stars()
+    assert sim.source.stars("G2V", 15)
+    assert sim.source.stars("G2V", [15, 12])
+    assert sim.source.stars(['G2V', 'F2V'], 15)
+    assert sim.source.stars(["G2V", "F2V"], [15, 12])
+
+
 def test_source_resample_equivalency():
-    
+
     n=8
 
     im = np.ones((100,100))
@@ -17,24 +26,22 @@ def test_source_resample_equivalency():
 
     diff = np.sum(np.abs(fpa2.chips[0].array) - np.abs(fpa.chips[0].array)) / \
                                                     np.sum(fpa.chips[0].array)
-    
+
     assert diff < 1E-4
-    
-    
-def test_stars_devlivers_the_same_as_SED():
-    
-    sim.source.stars([])
-    
+
+
+def test_stars_delivers_the_same_as_SED():
+
+    #sim.source.stars([])
+
     spec_types = ["A0V", "A0V", "M5V"]
-    lam, spec = sim.source.SED(spec_type=spec_type[0], 
-                               filter_name="Ks", 
+    lam, spec = sim.source.SED(spec_type=spec_types[0],
+                               filter_name="Ks",
                                magnitude=20.)
-    vega_SED  = sim.spectral.EmissionCurve(lam, spec)
-    vega_star = sim.source.stars(spec_types=spec_type[0], 
-                                 filter_name="Ks", 
+    vega_SED  = sim.spectral.EmissionCurve(lam=lam, val=spec)
+    vega_star = sim.source.stars(spec_types=spec_types[0],
+                                 filter_name="Ks",
                                  mags=20)
-    
+
     assert np.sum(vega_SED.val) == np.sum(vega_star.spectra[0] * \
                                                             vega_star.weight[0])
-    
-    
