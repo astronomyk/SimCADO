@@ -1,9 +1,7 @@
 """
-###############################################################################
-#                       NGHXRG by Bernard Rauscher                            #
-#             see the paper: http://arxiv.org/abs/1509.06264                  #
-#           downloaded from: http://jwst.nasa.gov/publications.html           #
-###############################################################################
+NGHXRG by Bernard Rauscher  
+see the paper: http://arxiv.org/abs/1509.06264  
+downloaded from: http://jwst.nasa.gov/publications.html
 """
 
 # dependencies include: astropy, numpy, scipy [, datetime, warnings, os]
@@ -22,6 +20,8 @@ from astropy.stats.funcs import median_absolute_deviation as mad
 
 class HXRGNoise:
     """
+    A class to generate HxRG noise frames
+    
     HXRGNoise is a class for making realistic Teledyne HxRG system
     noise. The noise model includes correlated, uncorrelated,
     stationary, and non-stationary components. The default parameters
@@ -40,30 +40,35 @@ class HXRGNoise:
         """
         Simulate Teledyne HxRG+SIDECAR ASIC system noise.
 
-        Parameters:
-            naxis1      - X-dimension of the FITS cube
-            naxis2      - Y-dimension of the FITS cube
-            naxis3      - Z-dimension of the FITS cube
-                          (number of up-the-ramp samples)
-            n_out       - Number of detector outputs
-            nfoh        - New frame overhead in rows. This allows for a short
-                          wait at the end of a frame before starting the next
-                          one.
-            nroh        - New row overhead in pixels. This allows for a short
-                          wait at the end of a row before starting the next one.
-            dt          - Pixel dwell time in seconds
-            pca0_file   - Name of a FITS file that contains PCA-zero
-            verbose     - Enable this to provide status reporting
-            reference_pixel_border_width - Width of reference pixel border
-                                           around image area
-            reverse_scan_direction - Enable this to reverse the fast scanner
-                                     readout directions. This
-                                     capability was added to support
-                                     Teledyne's programmable fast scan
-                                     readout directions. The default
-                                     setting =False corresponds to
-                                     what HxRG detectors default to
-                                     upon power up.
+        Parameters
+        ----------
+        naxis1 : int
+            X-dimension of the FITS cube
+        naxis2 : int
+            Y-dimension of the FITS cube
+        naxis3 : int
+            Z-dimension of the FITS cube (number of up-the-ramp samples)
+        n_out : int
+            Number of detector outputs
+        nfoh : int
+            New frame overhead in rows. This allows for a short wait at the end 
+            of a frame before starting the next one.
+        nroh : int
+            New row overhead in pixels. This allows for a short
+            wait at the end of a row before starting the next one.
+        dt : int
+            Pixel dwell time in seconds
+        pca0_file : str
+            Name of a FITS file that contains PCA-zero
+        verbose : bool
+            Enable this to provide status reporting
+        reference_pixel_border_width : int 
+            Width of reference pixel border around image area
+        reverse_scan_direction : bool
+            Enable this to reverse the fast scanner readout directions. This
+            capability was added to support Teledyne's programmable fast scan
+            readout directions. The default setting =False corresponds to
+            what HxRG detectors default to upon power up.
         """
 
         # ======================================================================
@@ -176,8 +181,10 @@ class HXRGNoise:
         Generate white noise for an HxRG including all time steps
         (actual pixels and overheads).
 
-        Parameters:
-            nstep - Length of vector returned
+        Parameters
+        ----------
+        nstep : int
+            Length of vector returned
         """
         return(np.random.standard_normal(nstep))
 
@@ -185,8 +192,10 @@ class HXRGNoise:
         """
         Generate a vector of non-periodic pink noise.
 
-        Parameters:
-            mode - Selected from {'pink', 'acn'}
+        Parameters
+        ----------
+        mode : str
+            Selected from {'pink', 'acn'}
         """
 
         # Configure depending on mode setting
@@ -231,42 +240,53 @@ class HXRGNoise:
         """
         Generate a FITS cube containing only noise.
 
-        Parameters:
-            o_file   - Output filename
-            pedestal - Magnitude of pedestal drift in electrons
-            rd_noise - Standard deviation of read noise in electrons
-            c_pink   - Standard deviation of correlated pink noise in electrons
-            u_pink   - Standard deviation of uncorrelated pink noise in
-                       electrons
-            acn      - Standard deviation of alterating column noise in
-                       electrons
-            pca0     - Standard deviation of pca0 in electrons
-            reference_pixel_noise_ratio - Ratio of the standard deviation of
-                                          the reference pixels to the regular
-                                          pixels. Reference pixels are usually
-                                          a little lower noise.
-            ktc_noise   - kTC noise in electrons. Set this equal to
-                          sqrt(k*T*C_pixel)/q_e, where k is Boltzmann's
-                          constant, T is detector temperature, and C_pixel is
-                          pixel capacitance. For an H2RG, the pixel capacitance
-                          is typically about 40 fF.
-            bias_offset - On average, integrations stare here in electrons. Set
-                          this so that all pixels are in range.
-            bias_amp    - A multiplicative factor that we multiply PCA-zero by
-                          to simulate a bias pattern. This is completely
-                          independent from adding in "picture frame" noise.
+        Parameters
+        ----------
+        o_file : str
+            Output filename
+        pedestal : float
+            Magnitude of pedestal drift in electrons
+        rd_noise : float
+            Standard deviation of read noise in electrons
+        c_pink : float
+            Standard deviation of correlated pink noise in electrons
+        u_pink : float
+            Standard deviation of uncorrelated pink noise in electrons
+        acn: float
+            Standard deviation of alterating column noise in electrons
+        pca0 : float
+            Standard deviation of pca0 in electrons
+        reference_pixel_noise_ratio : float
+            Ratio of the standard deviation of
+            the reference pixels to the regular
+            pixels. Reference pixels are usually
+            a little lower noise.
+        ktc_noise : float
+            kTC noise in electrons. Set this equal to
+            sqrt(k*T*C_pixel)/q_e, where k is Boltzmann's
+            constant, T is detector temperature, and C_pixel is
+            pixel capacitance. For an H2RG, the pixel capacitance
+            is typically about 40 fF.
+        bias_offset : float
+            On average, integrations stare here in electrons. Set this so that 
+            all pixels are in range.
+        bias_amp : float
+            A multiplicative factor that we multiply PCA-zero by
+            to simulate a bias pattern. This is completely
+            independent from adding in "picture frame" noise.
 
-        Note1:
+        Notes
+        -----
         Because of the noise correlations, there is no simple way to
         predict the noise of the simulated images. However, to a
         crude first approximation, these components add in
         quadrature.
 
-        Note2:
         The units in the above are mostly "electrons". This follows convention
         in the astronomical community. From a physics perspective, holes are
         actually the physical entity that is collected in Teledyne's p-on-n
         (p-type implants in n-type bulk) HgCdTe architecture.
+
         """
 
         self.message('Starting mknoise()')

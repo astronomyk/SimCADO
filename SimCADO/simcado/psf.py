@@ -149,12 +149,11 @@ __all__ = ["PSF", "PSFCube",
 class PSF(object):
     """Point spread function (single layer) base class
 
-
     Parameters
-    ==========
-    - size : int
+    ----------
+    size : int
         [pixel] the side length of the array
-    - pix_res : float
+    pix_res : float
         [arcsec] the pixel scale of the array
     """
 
@@ -172,13 +171,18 @@ class PSF(object):
 
     def set_array(self, array, threshold=1e-15):
         """
-        Renormalise the array and make sure there aren't any negative values
-        that will screw up the flux later on
+        Set the spatial flux distribution array for the PSF
+        
+        Renormalise the array make sure there aren't any negative values that
+        will screw up the flux
 
         Parameters
-        ==========
-        - array: [ndarray] the array representing the PSF
-        - threshold: by default set to 1E-15
+        ----------
+        array : np.ndarray
+            the array representing the PSF
+        threshold : float
+            by default set to 1E-15. Below this, the array is set to 0
+            
         """
         self.array = array.astype(np.float32)
         self.array[self.array <= 0] = threshold
@@ -187,10 +191,13 @@ class PSF(object):
         self.shape = self.array.shape
 
     def resize(self, new_size):
-        """Resize the PSF. The target shape is (new_size, new_size).
+        """
+        Resize the PSF. The target shape is (new_size, new_size).
 
-        Keywords:
-        - new_size: [int] the new size of the PSF array in pixels
+        Parameters
+        ----------
+        new_size : int
+            the new square dimensions of the PSF array in pixels
         """
 
          # make sure the new size is always an odd number
@@ -204,12 +211,26 @@ class PSF(object):
 
     def resample(self, new_pix_res):
         """
-        Resample the PSF array onto a new grid - Not perfect, but conserves flux
-        Example: new_PSF = old_PSF.resample(new_pix_res)
-
-        Keywords:
-        - new_pix_res: [arcsec] the pixel resolution of the returned array
+        Resample the PSF array onto a new grid
+        
+        Not perfect, but conserves flux
+        
+        Parameters
+        ----------
+        new_pix_res : float
+            [arcsec] the pixel resolution of the returned array
+        
+        Returns
+        -------
+        psf_new : PSF
+        
+        Examples
+        --------
+        
+            >>> new_PSF = old_PSF.resample(new_pix_res)
+        
         """
+        
         scale_factor = self.pix_res / np.float(new_pix_res)
         new_arr = spi.zoom(self.array, scale_factor, order=1)
         new_arr *= np.sum(self.array) / np.sum(new_arr)
@@ -224,16 +245,23 @@ class PSF(object):
         # Not happy with the way the returned type is not the same #
         # as the original type. The new object is a plain PSF      #
         ############################################################
-        new_psf = PSF(size=new_arr.shape[0], pix_res=new_pix_res)
-        new_psf.set_array(new_arr)
-        return new_psf
+        psf_new = PSF(size=new_arr.shape[0], pix_res=new_pix_res)
+        psf_new.set_array(new_arr)
+        return psf_new
 
     def convolve(self, kernel):
         """
         Convolve the PSF with another kernel. The PSF keeps its shape
 
-        Keywords:
-        - kernel: [PSF/ndarray] either a numpy.ndarray or a PSF (sub)class
+        Parameters
+        ----------
+        kernel : np.array, PSF
+            Either a numpy.ndarray or a PSF (sub)class
+        
+        Returns
+        -------
+        psf_new : PSF
+        
         """
         psf_new = deepcopy(self)
 
@@ -286,13 +314,16 @@ class DeltaPSF(PSF):
     """
     Generate a PSF with a delta function at position (x,y)
 
-    Needed keywords arguments:
-
-    Optional keywords
-    - position: [(x,y,)] where (x,y) on the array will the delta function go,
-                default is (x,y) = (0,0) and is the centre of the array
-    - size: [int] the side length of the array in pixels
-    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
+    Parameters
+    ----------
+    position : tuple 
+        [pixel] where (x,y) on the array is where the delta function goes
+        default is (x,y) = (0,0) and is the centre of the array
+    size : int
+        [pixel] the side length of the array
+    pix_res : float
+        [arcsec] the pixel scale used in the array, default is 0.004
+        
     """
 
     def __init__(self, **kwargs):
@@ -341,15 +372,19 @@ class AiryPSF(PSF):
     """
     Generate a PSF for an Airy function with an equivalent FWHM
 
-    Needed keywords arguments:
-    - fwhm: [arcsec] the equivalent FWHM of the Airy disk core.
-
-    Optional keywords
-    - size [int] the side length of the array in pixels
-    - pix_res [arcsec] the pixel scale used in the array, default is 0.004
-    - obscuration [0..1]: radius of inner obscuration as fraction of aperture
-      radius
-    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+    Parameters
+    ----------
+    fwhm : float
+        [arcsec] the equivalent FWHM of the Airy disk core.
+    size : int
+        [pixel] the side length of the array
+    pix_res : float
+        [arcsec] the pixel scale used in the array, default is 0.004
+    obscuration : float
+        [0..1] radius of inner obscuration as fraction of aperture radius
+    mode : str
+        ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+        
     """
 
     def __init__(self, fwhm, obscuration=0., size=255, pix_res=0.004,
@@ -411,13 +446,17 @@ class GaussianPSF(PSF):
     """
     Generate a PSF for an Gaussian function
 
-    Needed keywords arguments:
-    - fwhm: [arcsec] the FWHM of the PSF.
-
-    Optional keywords
-    - size: [int] the side length of the array in pixels
-    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
-    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+    Parameters
+    ----------
+    fwhm : float
+        [arcsec] the equivalent FWHM of the Airy disk core.
+    size : int
+        [pixel] the side length of the array
+    pix_res : float
+        [arcsec] the pixel scale used in the array, default is 0.004
+    mode : str
+        ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+        
     """
 
     def __init__(self, fwhm, **kwargs):
@@ -466,15 +505,18 @@ class MoffatPSF(PSF):
     Generate a PSF for a Moffat function. Alpha is generated from the FWHM and
     Beta = 4.765 (from Trujillo et al. 2001)
 
-    Needed keywords arguments:
-    - fwhm: [arcsec] the FWHM of the PSF.
-
-    Optional keywords
-    - size: [int] the side length of the array in pixels
-    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
-    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+    Parameters
+    ----------
+    fwhm : float
+        [arcsec] the equivalent FWHM of the Airy disk core.
+    size : int
+        [pixel] the side length of the array
+    pix_res : float
+        [arcsec] the pixel scale used in the array, default is 0.004
+    mode : str
+        ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+        
     """
-
     def __init__(self, fwhm, **kwargs):
 
         self.fwhm = fwhm
@@ -517,11 +559,13 @@ class CombinedPSF(PSF):
     """
     Generate a PSF from a collection of several PSFs.
 
-    Keywords:
-    - psf_list: [list] A list of PSF objects
-
-    Optional keywords:
-    - size: [int] the side length in pixels of the array
+    Parameters
+    ----------
+    psf_list : list
+        A list of PSF objects
+    size : int 
+        [pixel] the side length in pixels of the array
+        
     """
 
     def __init__(self, psf_list, **kwargs):
@@ -567,12 +611,15 @@ class UserPSF(PSF):
     """
     Import a PSF from a FITS file.
 
-    Keywords:
-    - filename: [str] path to the FITS file to be read in
-
-    Optional keywords
-    - fits_ext: [int] the FITS extension number (default 0) for the data
-    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
+    Parameters
+    ----------
+    filename : str
+        path to the FITS file to be read in
+    fits_ext : int, optional
+        the FITS extension number (default 0) for the data
+    pix_res : float, optional
+        [arcsec] the pixel scale used in the array, default is 0.004
+        
     """
 
     def __init__(self, filename, **kwargs):
@@ -648,16 +695,23 @@ class UserPSF(PSF):
 
 
 class PSFCube(object):
-    """Class holding wavelength dependent point spread function.
-    Special functions:
+    """
+    Class holding wavelength dependent point spread function.
+    
+    Parameters
+    ----------
+    lam_bin_centers : array
+        [um] the centre of each wavelength slice
+        
+    Notes
+    -----
     - len(self) return the number of layers in the psf
     - self[i] returns the PSF object for layer i. If the __array__ function
       is called, self[i] will return the array associated with the instance
       e.g plt.imshow(self[i]) will plot PSF.array from self.psf_slices[i]
-    - Maths operators *,+,- act equally on all PSF.arrays in self.psf_slices
+    - Maths operators \*,\+,\- act equally on all PSF.arrays in self.psf_slices
 
-    Keywords:
-    - lam_bin_centers: [um] the centre of each wavelength slice
+        
     """
 
     def __init__(self, lam_bin_centers):
@@ -671,35 +725,55 @@ class PSFCube(object):
 
 
     def resize(self, new_size):
-        """Resize the list of PSFs. The target shape is (new_size, new_size).
+        """
+        Resize the list of PSFs. The target shape is (new_size, new_size).
 
-        Keywords:
-        - new_size: [int] the new size of the PSF array in pixels
+        Parameters
+        ----------
+        new_size : int
+            [pixel] the new size of the PSF array in pixels
+            
         """
         for psf in self.psf_slices:
             psf.resize(new_size)
 
     def resample(self, new_pix_res):
         """
-        Resample the the list of PSF array onto a new grid and return the new
-        grid - Not perfect, but conserves flux
-        Example: new_PSF = old_PSF.resample(new_pix_res)
-
-        Keywords:
-        - new_pix_res: [arcsec] the pixel resolution of the returned array
+        Resample the the list of PSF array onto a new grid 
+        
+        Not perfect, but conserves flux
+        
+        Parameters
+        ----------
+        new_pix_res : float
+            [arcsec] the pixel resolution of the returned array
+        
+        Returns
+        -------
+        psf_new : PSF
+        
+        Examples
+        --------
+        
+            >>> new_PSF = old_PSF.resample(new_pix_res)
+        
         """
+        
         ## TODO: Check whether this makes sense
         self.psf_slices = [psf.resample(new_pix_res) for psf in self.psf_slices]
 
-    def export_to_fits(self, filename, clobber=True, **header_info):
+    def export_to_fits(self, filename, clobber=True):
         """
         Export the psf to a FITS file for later use
 
-        Keywords:
-        - filename
-        - **header_info: A dict with extra header keys and values
+        Parameters
+        ----------
+        filename : str
+        
         """
+        
         ## TODO: use header_info or drop it (OC)
+        ## KL: done
 
         ext_list = fits.HDUList()
 
@@ -726,7 +800,15 @@ class PSFCube(object):
 
 
     def convolve(self, kernel_list):
-        """Convolve a list of PSFs with a list of kernels"""
+        """
+        Convolve a list of PSFs with a list of kernels
+        
+        Parameters
+        ----------
+        kernel_list : list
+            list of PSF objects of 2D arrays
+        
+        """
         if len(self.psf_slices) != len(kernel_list):
             print("len(PSF_slices):", len(self.psf_slices),
                   "len(kernel_list):", len(kernel_list))
@@ -739,7 +821,20 @@ class PSFCube(object):
 
 
     def nearest(self, lam):
-        """Returns the PSF closest to the desired wavelength, lam [um] """
+        """
+        Returns the PSF closest to the desired wavelength, lam [um] 
+        
+        Parameters
+        ----------
+        lam : float
+            [um] desired wavelength 
+        
+        Returns
+        -------
+        psf_slice : PSF
+        
+        """
+        
         i = utils.nearest(self.lam_bin_centers, lam)
         return self.psf_slices[i]
 
@@ -825,16 +920,18 @@ class DeltaPSFCube(PSFCube):
     """
     Generate a list of DeltaPSFs for wavelengths defined in lam_bin_centers
 
-    Parameters:
-    ===========
-    - lam_bin_centers: [um] the centre of each wavelength slice
-
-    Optional Parameters:
-    ====================
-    - positions: [(x,y)] either a tuple, or a list of tuples denoting the
+    Parameters
+    ----------
+    lam_bin_centers : array
+        [um] the centre of each wavelength slice
+    positions : tuple, list
+        (x,y) either a tuple, or a list of tuples denoting the
                  position of the delta function
-    - pix_res: [arcsec], pixel scale of the PSF. Default is 0.004 arcsec
-    - size: [int], side length of the PSF array
+    pix_res : float
+        [arcsec], pixel scale of the PSF. Default is 0.004 arcsec
+    size : int
+        [pixel] side length of the PSF array
+        
     """
 
     def __init__(self, lam_bin_centers, positions=(0, 0), **kwargs):
@@ -854,13 +951,17 @@ class AiryPSFCube(PSFCube):
     """
     Generate a list of AiryPSFs for wavelengths defined in lam_bin_centers
 
-    Keywords:
-    - lam_bin_centers: [um] a list with the centres of each wavelength slice
-
-    Optional keywords:
-    - fwhm: [arcsec] the equivalent FWHM of the PSF.
-    - diameter: [m] diamter of primary mirror. Default is 39.3m.
-    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+    Parameters
+    ----------
+    lam_bin_centers : array, list
+        [um] a list with the centres of each wavelength slice
+    fwhm : array, list
+        [arcsec] the equivalent FWHM of the PSF.
+    diameter : float
+        [m] diamter of primary mirror. Default is 39.3m.
+    mode : str
+        ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+        
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
@@ -896,13 +997,17 @@ class GaussianPSFCube(PSFCube):
     """
     Generate a list of GaussianPSFs for wavelengths defined in lam_bin_centers
 
-    Keywords:
-    - lam_bin_centers: [um] a list with the centres of each wavelength slice
-
-    Optional keywords:
-    - fwhm: [arcsec] the FWHM of the PSF.
-    - diameter: [m] diamter of primary mirror. Default is 39.3m.
-    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+    Parameters
+    ----------
+    lam_bin_centers : array, list
+        [um] a list with the centres of each wavelength slice
+    fwhm : array, list
+        [arcsec] the equivalent FWHM of the PSF.
+    diameter : float
+        [m] diamter of primary mirror. Default is 39.3m.
+    mode : str
+        ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+        
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
@@ -930,13 +1035,17 @@ class MoffatPSFCube(PSFCube):
     """
     Generate a list of MoffatPSFs for wavelengths defined in lam_bin_centers
 
-    Keywords:
-    - lam_bin_centers: [um] a list with the centres of each wavelength slice
-
-    Optional keywords:
-    - fwhm: [arcsec] the FWHM of the PSF.
-    - diameter: [m] diamter of primary mirror. Default is 39.3m.
-    - mode: ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+    Parameters
+    ----------
+    lam_bin_centers : array, list
+        [um] a list with the centres of each wavelength slice
+    fwhm : array, list
+        [arcsec] the equivalent FWHM of the PSF.
+    diameter : float
+        [m] diamter of primary mirror. Default is 39.3m.
+    mode : str
+        ['oversample','linear_interp'] see Kernel2D (scipy.convolution.core)
+        
     """
 
     def __init__(self, lam_bin_centers, fwhm=None, **kwargs):
@@ -964,12 +1073,15 @@ class CombinedPSFCube(PSFCube):
     """
     Generate a list of CombinedPSFCubes from the list of psfs in psf_list
 
-    Keywords:
-    - lam_bin_centers: [um] a list with the centres of each wavelength slice
-
-    Optional keywords:
-    - fwhm: [arcsec] the FWHM of the PSF.
-    - diameter: [m] diamter of primary mirror. Default is 39.3m.
+    Parameters
+    ----------
+    lam_bin_centers : array, list
+        [um] a list with the centres of each wavelength slice
+    fwhm : array, list
+        [arcsec] the equivalent FWHM of the PSF.
+    diameter : float
+        [m] diamter of primary mirror. Default is 39.3m.
+        
     """
 
     def __init__(self, psf_list, **kwargs):
@@ -1000,14 +1112,24 @@ class CombinedPSFCube(PSFCube):
 class UserPSFCube(PSFCube):
     """
     Read in a psf previously saved as a FITS file
+
     Keywords needed for a psf to be read in:
     NSLICES, WAVECENT, NAXIS1, CDELT1, PSF_TYPE, DESCRIPT
 
-    N.B. A separate function will exist to convert foreign PSF FITS files into
-    psf readable FITS files
-
-    Keywords:
-    - filename: the path to the FITS file holding the cube
+    Parameters
+    ----------
+    filename : str
+        the path to the FITS file holding the cube
+    
+    Notes
+    -----
+    A separate function will exist to convert foreign PSF FITS files into
+    ``simcado.psf`` readable FITS files
+    
+    See Also
+    --------
+    :func:`.make_foreign_PSF_cube`
+    
     """
 
     def __init__(self, filename, lam_bin_centers):
@@ -1086,23 +1208,31 @@ class UserPSFCube(PSFCube):
 
 class ADC_PSFCube(DeltaPSFCube):
     """
-    Generates a Deltapsf with the shifts required to mimic the ADC at a
-    certain efficiency
+    Generates a DeltaPSFCube with the shifts required to mimic the ADC
 
-    Keywords:
-    - lam_bin_centers: [um] a list with the centres of each wavelength slice
+    Parameters
+    lam_bin_centers : array, list
+        [um] a list with the centres of each wavelength slice
 
-    Optional Keywords:
-    - pix_res: [arcsec] the pixel scale used in the array, default is 0.004
-    - OBS_PARALLACTIC_ANGLE: [deg] the orientation of the input cube relative to
-      the zenith
-    - INST_ADC_EFFICIENCY: [%] efficiency of the ADC
-    - SCOPE_LATITUDE: [deg] latitude of the telescope site
-    - SCOPE_ALTITUDE: [m] hight above sea level of the telescope site
-    - ATMO_REL_HUMIDITY: [%] relative humidity in percent
-    - OBS_ZENITH_DIST: [deg] zenith distance of the object
-    - ATMO_TEMPERATURE: [deg C] air temperature of the observing site in Celsius
-    - ATMO_PRESSURE: [mbar] air pressure of the observing site in millibar
+    Other Parameters:
+    pix_res : flaot 
+        [arcsec] the pixel scale used in the array, default is 0.004
+    OBS_PARALLACTIC_ANGLE : float 
+        [deg] the orientation of the input cube relative to the zenith
+    INST_ADC_EFFICIENCY : float
+        [%] efficiency of the ADC
+    SCOPE_LATITUDE : float
+        [deg] latitude of the telescope site in decimal degrees
+    SCOPE_ALTITUDE : float
+        [m] height above sea level of the telescope site
+    ATMO_REL_HUMIDITY : float
+        [%] relative humidity in percent
+    OBS_ZENITH_DIST : float
+        [deg] zenith distance of the object
+    ATMO_TEMPERATURE : float
+        [deg C] air temperature of the observing site in Celsius
+    ATMO_PRESSURE : float
+        [mbar] air pressure of the observing site in millibar
 
     The default values for the above mentioned keywords are:
     0.004 arcsec, 0 deg, 100%, -24.5 deg, 3064m, 60%, 60 deg, 0 C, 750mbar
@@ -1211,13 +1341,14 @@ class AiryDiskDiff2DKernel(Kernel2D):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from SimCADO.psf import AiryDiskDiff2DKernel
+        from simcado.psf import AiryDiskDiff2DKernel
         airydiskdiff_2D_kernel = AiryDiskDiff2DKernel(10)
         plt.imshow(airydiskdiff_2D_kernel, interpolation='none', origin='lower')
         plt.xlabel('x [pixels]')
         plt.ylabel('y [pixels]')
         plt.colorbar()
         plt.show()
+        
     """
     _is_bool = False
 
@@ -1339,13 +1470,8 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
     fnames : list
         List of path names to the FITS files
     out_name : str, optional
-<<<<<<< HEAD
-        If out_name is not `None`, the resulting FITS file is saved under the
-        name `out_name`
-=======
         If out_name is not ``None``, the resulting FITS file is saved under the
         name ``out_name``
->>>>>>> master
     window : int, list, tuple, optional
         If window is not ``None``, a windowed section of the PSFs are extracted
         window = (left, right, top, bottom)
@@ -1447,8 +1573,8 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
         be saved to disk
 
 
-    Kwargs
-    ------
+    Other Parameters
+    ----------------
     "fwhm"                 : 0.8,   # [arcsec]
     "psf_type"             : "moffat",
     "wavelength"           : 2.2,   # [um]
@@ -1464,12 +1590,11 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     "pupil_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
     "pupil_outer_radius"    : 19     # [m]
 
+    
     Returns
     -------
-    hdu_list : astropy.HDUList - an astropy FITS object containing the PSFs for
-    the given wavelengths
-
-
+    hdu_list : astropy.HDUList 
+        an astropy FITS object containing the PSFs for the given wavelengths
 
     """
     params = {"strehl"               : strehl,
@@ -1562,11 +1687,9 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
         Default = None. If filename is not None, the resulting FITS object will
         be saved to disk
 
-
     Returns
     -------
     seeing_psf : 2D-array
-
 
     Notes
     -----
@@ -1575,9 +1698,8 @@ def seeing_psf(fwhm=0.8, psf_type="moffat", size=1024, pix_res=0.004,
     #
     # Approximate parameters - Bendinelli 1988
     # beta = 4.765 - Trujillo et al. 2001
+
     """
-
-
 
     if fwhm > 5:
         warnings.warn("FWHM is rather large: [arcsec]"+str(fwhm))
@@ -1636,21 +1758,16 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     size : int, optional
         [pixels] Default = 1024
     segments : list, optional
-<<<<<<< HEAD
-        Default = None. A list of which segments to use for generating the E-ELT
-        mirror. See `get_eelt_segments()`
-=======
         Default = None. A list of which segments to use for generating the E-ELT
         mirror. See ``get_eelt_segments()``
->>>>>>> master
     filename : str, optional
         Default = None. If filename is not None, the resulting FITS object will
         be saved to disk
     use_pupil_mask : str, optional
         Default = True.
 
-    Kwargs
-    ------
+    Other Parameters
+    ----------------
     Values to pass to the POPPY functions
 
     "flattoflat"           : 1.256 [m]
@@ -1666,23 +1783,14 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
 
     Returns
     -------
-<<<<<<< HEAD
-    `astropy.HDUList` : an astropy FITS object with the PSF in the data
-=======
     ``astropy.HDUList`` : an astropy FITS object with the PSF in the data
->>>>>>> master
     extensions
 
 
     See also
     --------
-<<<<<<< HEAD
-    `get_eelt_segments()`
-
-=======
     ``get_eelt_segments()``
 
->>>>>>> master
     """
 
     try:
@@ -1777,13 +1885,8 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         * Plan B has the inner 5 rings missing (588 segments) and a further
         5 random segments missing (583 segments)
     missing : int, list, optional
-<<<<<<< HEAD
-        Default = None. If an integer is passed, this many random segments are
-        removed. If `missing` is a list, entries refer to specific segment IDs
-=======
         Default = None. If an integer is passed, this many random segments are
         removed. If ``missing`` is a list, entries refer to specific segment IDs
->>>>>>> master
     return_missing_segs : bool, optional
         Defualt is False. Returns the missing segment numbers
     inner_diam : float, optional
@@ -1797,15 +1900,9 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
     segs : list
         A list of segment IDs for the mirror segments.
     missing : list, conditional
-<<<<<<< HEAD
-        Only returned if `return_missing_segs == True`. A list of segment IDS
-        for the segments which are missing.
-
-=======
         Only returned if ``return_missing_segs == True``. A list of segment IDS
         for the segments which are missing.
 
->>>>>>> master
     """
 
     try:

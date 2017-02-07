@@ -16,22 +16,17 @@ array, a size [in pixels] and a resolution [in arcsec]. Photons fall onto the
 The ``Detector`` holds the information on where the ``Chip`` s are placed on the
 focal plane. Focal plane coordinates are in [arcsec]. These coordinates are
 either read in from a default file or determined by the user. The ``Detector``
-object is an intermediary - it only passes information on the photons to the ``Chip`` s.
-It is mainly a convenience class so that the user can read out all ``Chip`` s at the same time.
+object is an intermediary - it only passes information on the photons to the 
+``Chip`` s. It is mainly a convenience class so that the user can read out all 
+``Chip`` s at the same time.
 
-``HXRGNoise``
-This class is borrowed from Bernhard Rauscher's package, which generates realistic
-noise frames for the JWST NIRSpec instrument. NIRSpec uses Hawaii 2RG detectors
-but the noise properties scale well up to the H4RG chips that MICADO will use.
 
-Routines
---------
-Detector(cmds)
-    builds an array of ``Chip`` s based on a ``UserCommands`` object
-Chip(**kwargs)
+Classes
+-------
+Detector
+    builds an array of ``Chip`` objects based on a ``UserCommands`` object
+Chip
     converts incoming photons into ADUs and adds in read-out noise
-HXRGNoise(**kwargs)
-    generates realistic detector noise frames
 
 See Also
 --------
@@ -47,19 +42,20 @@ References
 
 Examples
 --------
-The ``Detector`` can be used in stand-alone mode. In this case it outputs
+The :class:`.Detector` can be used in stand-alone mode. In this case it outputs
 only the noise that a sealed-off detector would generate:
 
     >>> import simcado
     >>> fpa = simcado.Detector(simcado.UserCommands())
     >>> fpa.read_out(output=True, chips=[0])
 
-The ``Detector`` is more useful if we combine it with a ``Source`` object and an
-``OpticalTrain``. Here we create a ``Source`` object for an open cluster in the LMC
-and pass the photons arriving from it through the E-ELT and MICADO. The photons
-are then cast onto the detector array. Each ``Chip`` converts the photons to ADUs
-and adds the resulting image to an Astropy ``HDUList``. The ``HDUList`` is then
-written to disk.
+    
+The :class:`.Detector` is more useful if we combine it with a :class:`.Source` 
+object and an :class:`.OpticalTrain`. Here we create a :class:`.Source` object 
+for an open cluster in the LMC and pass the photons arriving from it through the 
+E-ELT and MICADO. The photons are then cast onto the detector array. Each 
+:class:`.Chip` converts the photons to ADUs and adds the resulting image to an 
+Astropy ``HDUList``. The ``HDUList`` is then written to disk.
 
     >>> # Create a set of commands, optical train and detector
     >>>
@@ -116,15 +112,16 @@ __all__ = ["Detector", "Chip"]
 
 class Detector(object):
     """
-    Generate a series of ``Chip`` objects for a focal plane array
+    Generate a series of :class:`.Chip` objects for a focal plane array
 
 
     Summary
     -------
-    The ``Detector`` is a holder for the series of ``Chip`` objects which make up
-    the detector array. The main advantage of the ``Detector`` object is that the
-    user can read out all chips in the whole detector array at once. A
-    ``Detector`` is a parameter in the ``Source.apply_optical_train()`` method.
+    The :class:`.Detector` is a holder for the series of :class:`.Chip` 
+    objects which make up the detector array. The main advantage of the 
+    :class:`.Detector` object is that the  user can read out all chips in the 
+    whole detector array at once. A :class:`.Detector` is a parameter in the 
+    :meth:`.Source.apply_optical_train()` method.
 
 
     Parameters
@@ -156,42 +153,37 @@ class Detector(object):
 
     Methods
     -------
-    read_out(output, filename, chips, **kwargs)
+    read_out()
         for reading out the detector array into a FITS file
-    open(filename, **kwargs)
-        ** not yet implemented **
-        Should be moved into a general function for detector.py which returns a
-        Detector object after reading in a saved detector file
-
-    write(filename, **kwargs)
-        ** not yet implemented **
+    open()
+        not yet implemented
+    write()
+        not yet implemented
         Save the Detector object into a FITS file
 
-    Raises
-    ------
-
-
+    .. todo:: Open should be moved into a general function for detector.py which 
+        returns a :class:`.Detector` object after reading in a saved detector 
+        file
+        
+        
     See Also
     --------
-    Chip, Source, OpticalTrain, UserCommands
-
-    Notes
-    -----
-
-    References
-    ----------
+    :class:`.Chip`, :class:`.Source`, 
+    :class:`.OpticalTrain`, :class:`.UserCommands`
 
     Examples
     --------
-    Create a ``Detector`` object
+    Create a :class:`Detector` object
+    ::
 
         >>> import simcado
         >>> my_cmds = simcado.UserCommands()
         >>> my_detector = simcado.Detector(my_cmds)
 
 
-    Read out only the first `Chip`
-
+    Read out only the first :class:`.Chip`
+    ::
+    
         >>> my_detector.readout(filename=image.fits, chips=[0])
 
 
@@ -240,6 +232,7 @@ class Detector(object):
         self._n_ph_ao     = 0
         self.array = None        # defined in method
 
+        
     def read_out(self, filename=None, to_disk=False, chips=None, **kwargs):
         """
         Simulate the read-out process of the detector array
@@ -391,7 +384,7 @@ class Detector(object):
             hdulist.append(thishdu)
 
         if to_disk:
-            hdulist.writeto(filename, overwrite=True, checksum=True)
+            hdulist.writeto(filename, clobber=True, checksum=True)
 
         return hdulist
 
@@ -444,103 +437,6 @@ class Detector(object):
             hdu.writeto(filename, clobber=True, checksum=True)
         except OSError:
             warnings.warn(filename+" exists and is busy. OS won't let me write")
-
-
-def open(self, filename):
-    """
-    Opens a saved ``Detector`` file.
-
-
-    Summary
-    -------
-    ** Not yet implemented **
-    ** Should be moved outside of ``Detector`` and called with
-    ``detector.open()`` **
-
-    Detector objects can be saved to FITS file and read back in for later
-    simulations.
-
-    Parameters
-    ----------
-    filename : str
-        path to the FITS file where the ``Detector`` object is stored
-
-    Returns
-    -------
-    ``simcado.Detector`` object
-
-    Examples
-    --------
-    """
-
-    if not os.path.exists(filename):
-        raise FileNotFoundError(filename + " doesn't exist")
-
-    with fits.open(filename) as fp1:
-        self.params.update(fp1[0].header)
-        self.array = fp1[0].data
-
-
-
-
-def plot_detector_layout(detector):
-    """Plot the detector layout. NOT FINISHED """
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        raise ImportError("matplotlib can't be found")
-
-    plt.figure(figsize=(10, 10))
-    clr = ["g"]
-
-    for i, chip in enumerate(detector.chips):
-        plt.plot((chip.x_min, chip.x_max), (chip.y_min, chip.y_min),
-                 c=clr[i%len(clr)])
-        plt.plot((chip.x_min, chip.x_max), (chip.y_max, chip.y_max),
-                 c=clr[i%len(clr)])
-        plt.plot((chip.x_min, chip.x_min), (chip.y_min, chip.y_max),
-                 c=clr[i%len(clr)])
-        plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max),
-                 c=clr[i%len(clr)])
-        plt.text(chip.x_cen, chip.y_cen, chip.id, fontsize=14)
-        plt.xlabel("Distance [arcsec]", fontsize=14)
-        plt.ylabel("Distance [arcsec]", fontsize=14)
-
-    plt.show()
-
-
-def plot_detector(detector):
-    """
-    Plot the contents of a detector array
-
-    Parameters
-    ----------
-    detector : simcado.Detector
-        The detector object to be shown
-    """
-
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LogNorm
-
-    plt.figure(figsize=(15*2, 13.75*2))
-
-    x0 = np.min([i.x_min for i in detector.chips])
-    x1 = np.max([i.x_max for i in detector.chips])
-    y0 = np.min([i.y_min for i in detector.chips])
-    y1 = np.max([i.y_max for i in detector.chips])
-    w = (detector.chips[0].x_max - detector.chips[0].x_min)/(x1 - x0)
-    h = (detector.chips[0].y_max - detector.chips[0].y_min)/(y1 - y0)
-
-    for chip in detector.chips:
-        ax1 = plt.axes([(chip.x_min - x0)/(x1 - x0), (chip.y_min - y0)/(y1 - y0),
-                      w, h])
-        ax1.set_xticks([])
-        ax1.set_yticks([])
-        if chip.array is not None:
-            ax1.imshow(np.rot90(chip.array - np.min(chip.array)), norm=LogNorm(),
-                       cmap="Greys", vmin=1)
-
-    plt.show()
 
 
 ################################################################################
@@ -1111,6 +1007,107 @@ class Chip(object):
     def __isub__(self, x):
         return self.__sub__(x)
 
+        
+
+
+def open(self, filename):
+    """
+    Opens a saved ``Detector`` file.
+
+
+    Summary
+    -------
+    ** Not yet implemented **
+    ** Should be moved outside of ``Detector`` and called with
+    ``detector.open()`` **
+
+    Detector objects can be saved to FITS file and read back in for later
+    simulations.
+
+    Parameters
+    ----------
+    filename : str
+        path to the FITS file where the ``Detector`` object is stored
+
+    Returns
+    -------
+    ``simcado.Detector`` object
+
+    Examples
+    --------
+    """
+
+    if not os.path.exists(filename):
+        raise FileNotFoundError(filename + " doesn't exist")
+
+    with fits.open(filename) as fp1:
+        self.params.update(fp1[0].header)
+        self.array = fp1[0].data
+
+    raise ValueError("Function not finished")
+
+
+def plot_detector_layout(detector):
+    """Plot the detector layout. NOT FINISHED """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError("matplotlib can't be found")
+
+    plt.figure(figsize=(10, 10))
+    clr = ["g"]
+
+    for i, chip in enumerate(detector.chips):
+        plt.plot((chip.x_min, chip.x_max), (chip.y_min, chip.y_min),
+                 c=clr[i%len(clr)])
+        plt.plot((chip.x_min, chip.x_max), (chip.y_max, chip.y_max),
+                 c=clr[i%len(clr)])
+        plt.plot((chip.x_min, chip.x_min), (chip.y_min, chip.y_max),
+                 c=clr[i%len(clr)])
+        plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max),
+                 c=clr[i%len(clr)])
+        plt.text(chip.x_cen, chip.y_cen, chip.id, fontsize=14)
+        plt.xlabel("Distance [arcsec]", fontsize=14)
+        plt.ylabel("Distance [arcsec]", fontsize=14)
+
+    plt.show()
+
+
+def plot_detector(detector):
+    """
+    Plot the contents of a detector array
+
+    Parameters
+    ----------
+    detector : simcado.Detector
+        The detector object to be shown
+    """
+
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+
+    plt.figure(figsize=(15*2, 13.75*2))
+
+    x0 = np.min([i.x_min for i in detector.chips])
+    x1 = np.max([i.x_max for i in detector.chips])
+    y0 = np.min([i.y_min for i in detector.chips])
+    y1 = np.max([i.y_max for i in detector.chips])
+    w = (detector.chips[0].x_max - detector.chips[0].x_min)/(x1 - x0)
+    h = (detector.chips[0].y_max - detector.chips[0].y_min)/(y1 - y0)
+
+    for chip in detector.chips:
+        ax1 = plt.axes([(chip.x_min - x0)/(x1 - x0), (chip.y_min - y0)/(y1 - y0),
+                      w, h])
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+        if chip.array is not None:
+            ax1.imshow(np.rot90(chip.array - np.min(chip.array)), norm=LogNorm(),
+                       cmap="Greys", vmin=1)
+
+    plt.show()
+       
+        
+        
 
 def _generate_hxrg_noise(cmds):
 #def _generate_hxrg_noise(naxis1, naxis2, cmds):
@@ -1123,11 +1120,6 @@ def _generate_hxrg_noise(cmds):
     ----------
     cmds : simcado.UserCommands
 
-    Returns
-    -------
-
-    Examples
-    --------
     """
 
     #if len(kwargs) > 0 and self.verbose: print("updating ",kwargs)

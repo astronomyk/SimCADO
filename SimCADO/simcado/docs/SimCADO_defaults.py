@@ -18,13 +18,19 @@ data_ext_dir = "../../data_ext/"
 data = openpyxl.load_workbook(home_dir + "SimCADO_defaults.xlsx").worksheets[0]
 
 text = """
-# ELT-ICD-MCD-56306-0050
+MICADO default configuration
+============================
 
-<IMG SRC="../Logo_3x3_MICADO.png" width=300px> \n\n
+.. figure::
 
-# SimCADO Interface Control Document
+    ELT-ICD-MCD-56306-0050
+    ======================
 
-# SimCADO configuration for MICADO
+    .. image:: "../Logo_3x3_MICADO.png" 
+        :width: 300px
+
+    SimCADO Interface Control Document
+    ==================================
 
 SimCADO's main purpose is to simulate the optical train comprising of the E-ELT and MICADO. As such the base configuration is for this instrument/telescope combination.
 
@@ -32,7 +38,8 @@ Although SimCADO allows the user to configure the optical train as they like, it
 
 This document lists the current configuration which best describes MICADO. Each section describes a physical effect included by SimCADO and **gives the Keyword/Value pair** contained in the default configuration file **for MICADO**.
 
-**Data Source**
+Data Source
+-----------
 
 The data for this table is generated from this [Excel sheet](https://github.com/gastronomyk/SimCADO/blob/master/SimCADO/simcado/docs/SimCADO_defaults.xlsx)
 

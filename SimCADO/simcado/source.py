@@ -3,7 +3,12 @@
 The module which contains the functionality to create Source objects
 
 Summary
-
+The source is essentially a list of spectra and a list of positions. The
+list of positions contains a reference to the relevant spectra. The advantage
+here is that if there are repeated spectra in a data cube, we can reduce the
+amount of calculations needed. Furthermore, if the input is originally a list
+of stars, etc where the position of a star is not always and integer multiple
+of the plate scale, we can keep the information until the PSFs are needed.
 
 Classes
 -------
@@ -12,11 +17,12 @@ Source
 Functions
 ---------
 Functions to create ``Source`` objects
+::
 
     empty_sky()
-    star(mag, filter_name="Ks", spec_type="A0V", position=(0,0))
-    stars(mags, x, y, filter_name="Ks", spec_types="A0V")
-    star_grid(n, mag_min, mag_max, filter_name="Ks",0 seperation=1,
+    star(mag, filter_name="Ks", spec_type="A0V", x=0, y=0)
+    stars(mags, filter_name="Ks", spec_types=["A0V"], x=[0] y=[0])
+    star_grid(n, mag_min, mag_max, filter_name="Ks", seperation=1, area=1,
               spec_type="A0V")
     source_from_image(images, lam, spectra, pix_res, oversample=1,
                       units="ph/s/m2", flux_threshold=0,
@@ -25,6 +31,7 @@ Functions to create ``Source`` objects
 
 
 Functions for manipulating spectra for a `Source` object
+::
 
     scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False)
     scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,
@@ -35,6 +42,7 @@ Functions for manipulating spectra for a `Source` object
 
 
 Functions regarding photon flux and magnitudes
+::
 
     zero_magnitude_photon_flux(filter_name)
     _get_stellar_properties(spec_type, cat=None, verbose=False)
@@ -44,29 +52,17 @@ Functions regarding photon flux and magnitudes
 
 
 Helper functions
+::
 
     value_at_lambda(lam_i, lam, val, return_index=False)
     SED(spec_type, filter_name="V", magnitude=0.)
-
-
-See also
---------
-
-Examples
---------
-
 
 """
 ###############################################################################
 # source
 #
 # DESCRIPTION
-# The source is essentially a list of spectra and a list of positions. The
-# list of positions contains a reference to the relevant spectra. The advantage
-# here is that if there are repeated spectra in a data cube, we can reduce the
-# amount of calculations needed. Furthermore, if the input is originally a list
-# of stars, etc where the position of a star is not always and integer multiple
-# of the plate scale, we can keep the information until the PSFs are needed.
+
 #
 # The source contains two arrays:
 #  - PositionArray:
@@ -1959,10 +1955,8 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
         else:
             return curves[0]
     else:
-        if len(curves) > 1:
-            return curves[0].lam, np.asarray([curve.val for curve in curves])
-        else:
-            return curves[0].lam, curves[0].val
+        if len(curves) > 1: return curves[0].lam, np.array([curve.val for curve in curves])
+        else: return curves[0].lam, curves[0].val
 
 
 def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,

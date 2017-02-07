@@ -17,7 +17,6 @@ Contents:
     Download
     Updates
     Keywords
-    SIMCADO_defaults
     deep_stuff/SimCADO
     deep_stuff/FAQs
     API <API/simcado>
