@@ -1434,7 +1434,7 @@ def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0):
     return thestar
 
 
-def stars(spec_types=None, mags=None, filter_name="Ks",
+def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
           x=None, y=None):
     """
     Creates a simcado.Source object for a bunch of stars.
@@ -1487,20 +1487,18 @@ def stars(spec_types=None, mags=None, filter_name="Ks",
 
 
     """
-    # Default values (lists are mutable objects and should not be default
-    #    parameters in the declaration)
-    if spec_types is None:
-        spec_types = ["A0V"]
 
-    if mags is None:
-        mags = [0]
-
-    if (isinstance(spec_types, (tuple, list, np.ndarray)) and
-            len(mags) != len(spec_types)):
+    if isinstance(spec_types, str):
+        spec_types = [spec_types]
+    
+    if isinstance(mags, (int, float)):
+        mags = [mags] * len(spec_types)
+    
+    if len(mags) > 1  and len(spec_types) == 1:
+        spec_types *= len(mags)
+    elif len(mags) != len(spec_types))
         raise ValueError("len(mags) != len(spec_types)")
 
-    if isinstance(mags, (int, float)):
-        mags = [mags]*len(spec_types)
     mags = np.array(mags)
 
     if x is None:
