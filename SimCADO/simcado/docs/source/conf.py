@@ -22,20 +22,6 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 
-#-----------------SIMCADO ADDED-------------------------
-# From the recommonmark readthedocs page
-# You need to pip install recommonmark to get this to work
-from recommonmark.parser import CommonMarkParser
-
-# now add the autostructify stuffimport recommonmark
-import recommonmark
-from recommonmark.transform import AutoStructify
-
-# from the original recommonmark command
-source_parsers = {'.md': CommonMarkParser,}
-source_suffix = ['.rst', '.md']
-
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
