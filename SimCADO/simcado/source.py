@@ -1123,8 +1123,10 @@ def _scale_pickles_to_photons(spec_type, mag=0):
 
     # 5 Ang/bin * ~962 ph/s * (abs mag + apparent mag)
 
+    ph_factor = []
     for i in range(len(mag)):
-        ph_factor = dlam * ph0 * 10**(-0.4*(Mv + mag))
+        tmp = dlam * ph0 * 10**(-0.4*(Mv[i] + mag[i]))
+        ph_factor += [tmp]
 
     # take care of the conversion to ph/s/m2 by multiplying by 1E4
     # TODO: The original type(ec) == (list, tuple) is wrong (should be 'in')
