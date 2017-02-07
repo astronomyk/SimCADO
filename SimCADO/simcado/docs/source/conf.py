@@ -22,6 +22,23 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 
+def run_apidoc(_):
+    from sphinx.apidoc import main
+    import os
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    cur_dir = os.path.abspath(os.path.dirname(__file__))
+    module = '.'
+    output_path = os.path.join(cur_dir, 'source')
+    print("got this far")
+    # main(['-e', '-o', output_path, module, '--force'])
+
+def setup(app):
+    app.connect('builder-inited', run_apidoc)
+
+
+
+
 
 # -- General configuration ------------------------------------------------
 
