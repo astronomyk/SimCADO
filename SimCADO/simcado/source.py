@@ -112,12 +112,20 @@ from . import psf as sim_psf
 from . import utils
 from .utils import __pkg_dir__
 
-__all__ = ["Source", "star", "stars", "cluster", "source_from_image",
-           "star_grid", "empty_sky", "SED", "get_SED_names", "scale_spectrum", 
-           "scale_spectrum_sb", "flat_spectrum", "flat_spectrum_sb", 
-           "value_at_lambda", "zero_magnitude_photon_flux", "mag_to_photons",
-           "photons_to_mag", "_get_pickles_curve",
-           "_get_stellar_properties", "_get_stellar_Mv", "_get_stellar_mass"]
+
+__all__ = ["Source", 
+           "star", "stars", "cluster", 
+           "galaxy", "source_from_image", 
+           "star_grid", "empty_sky", "sersic_profile", "SED", 
+           "get_SED_names", 
+           "scale_spectrum", "scale_spectrum_sb", 
+           "flat_spectrum", "flat_spectrum_sb", 
+           "value_at_lambda", 
+           "BV_to_spec_type", 
+           "zero_magnitude_photon_flux", "mag_to_photons", "photons_to_mag", 
+           "_get_pickles_curve", "_get_stellar_properties", 
+           "_get_stellar_Mv", "_get_stellar_mass",
+           ]
 
 
 # add_uniform_background() moved to detector
@@ -597,9 +605,10 @@ class Source(object):
             Default is <Source>.spectra[0]
         mag : float
             [mag] new magnitude of spectrum
-        filter_name : str
-           Any filter name from SimCADO (see :func:`.optics.get_filter_set`) or
-           :class:`.spectral.TransmissionCurve object`
+        filter_name : str, TransmissionCurve
+           Any filter name from SimCADO or a
+           :class:`~.simcado.spectral.TransmissionCurve` object
+           (see :func:`~.simcado.optics.get_filter_set`)
         """
 
         self.lam, self.spectra[idx] = scale_spectrum(lam=self.lam,
@@ -608,7 +617,46 @@ class Source(object):
                                                      filter_name=filter_name,
                                                      return_ec=False)
 
-
+                                                     
+    def scale_with_distance(self, distance_factor):
+        """
+        Scale the source for a new distance
+        
+        Scales the positions and brightnesses of the :class:`.Source` object
+        according to the ratio of the new and old distances
+        
+        i.e. distance_factor = new_distance / current_distance
+        
+        .. warning::
+            This does not yet take into accout redshift
+        
+        .. todo::
+            Implement redshift
+        
+        Parameters
+        ----------
+        distance_factor : float
+            The ratio of the new distance to the current distance
+            i.e. distance_factor = new_distance / current_distance
+        
+        Examples
+        --------
+        ::
+        
+            >>> from simcado.source import cluster
+            >>>
+            >>> curr_dist = 50000  # pc, i.e. LMC
+            >>> new_dist = 770000  # pc, i.e. M31
+            >>> src = cluster(distance=curr_dist)
+            >>> src.scale_with_distance( new_dist/curr_dist )
+        
+        """
+                  
+        self.x /= distance_factor
+        self.y /= distance_factor
+        self.weight /= distance_factor**2
+                                                     
+                                                     
     def rotate(self, angle, unit="arcsec"):
         """
         Rotates the ``x`` and ``y`` coordinates by ``angle`` [degrees]
@@ -619,7 +667,7 @@ class Source(object):
             Default is in degrees, this can set with ``unit``
         unit : str, astropy.Unit
             Either a string with the unit name, or an 
-            :class:`astropy.unit.Unit` object
+            ``astropy.unit.Unit`` object
         """
 
         ang = (angle * u.Unit(unit)).to(u.rad)
@@ -1228,6 +1276,45 @@ def _scale_pickles_to_photons(spec_type, mag=0):
 
     return lam, ec
 
+    
+def BV_to_spec_type(B_V):
+    """
+    Returns the latest main sequence spectral type(s) for (a) B-V colour
+    
+    Parameters
+    ----------
+    B_V : float, array
+        [mag] B-V colour
+    
+    Returns
+    -------
+    spec_types : list
+        A list of the spectral types corresponding to the B-V colours
+    
+    Examples
+    --------
+    ::
+    
+        >>> BV = np.arange(-0.3, 2.5, 0.5)
+        >>> spec_types = BV_to_spec_type(BV)
+        >>> print(BV)
+        >>> print(spec_types)
+        [-0.3  0.2  0.7  1.2  1.7  2.2]
+        ['O9V', 'A8V', 'G2V', 'K5V', 'M3V', 'M8V']
+    
+    """
+    
+    #from simcado.source import _get_stellar_properties
+
+    spec_type = [spt+str(i)+"V" for spt in "OBAFGKM" for i in range(10) ]
+    B_V_int = np.array([spt["B-V"] for spt in _get_stellar_properties(spec_type)])
+
+    idx = np.round(np.interp(B_V, B_V_int, np.arange(len(B_V_int)))).astype(int)
+    if np.isscalar(idx): idx = np.array([idx])
+    spec_types = [spec_type[i] for i in idx]
+
+    return spec_types    
+    
 
 def mag_to_photons(filter_name, magnitude=0):
     """
@@ -2034,10 +2121,11 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     mag : float
         magnitude of the source
     filter_name : str, TransmissionCurve, optional
-        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
-        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
+           Any filter name from SimCADO or a
+           :class:`~.simcado.spectral.TransmissionCurve` object
+           (see :func:`~.simcado.optics.get_filter_set`)
     return_ec : bool, optional
-        If True, a simcado.spectral.EmissionCurve object is returned.
+        If True, a :class:`simcado.spectral.EmissionCurve` object is returned.
         Default is False
 
     Returns
@@ -2047,13 +2135,15 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     spec : np.array
         [ph/s/m2] The spectrum scaled to the specified magnitude
 
-    if return_ec == True, a simcado.spectral.EmissionCurve is returned
+    if return_ec == True, a :class:`simcado.spectral.EmissionCurve` is returned
 
     See Also
     --------
-    .spectral.TransmissionCurve, .spectral.TransmissionCurve
-    .optics.get_filter_curve(), .optics.get_filter_set()
-    .source.SED(), .source.stars()
+    :class:`simcado.spectral.TransmissionCurve`, 
+    :func:`simcado.optics.get_filter_curve`, 
+    :func:`simcado.optics.get_filter_set`,
+    :func:`simcado.source.SED`, 
+    :func:`simcado.source.stars`
 
     Examples
     --------
@@ -2149,11 +2239,12 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,
         [mag/arcsec2] surface brightness of the source
     pix_res : float
         [arcsec] the pixel resolution
-    filter_name : str, TransmissionCurve, optional
-        str - filter name. See ``simcado.optics.get_filter_set()``. Default: "Ks"
-        TransmissionCurve - output of ``simcado.optics.get_filter_curve()``
+    filter_name : str, TransmissionCurve
+           Any filter name from SimCADO or a
+           :class:`~.simcado.spectral.TransmissionCurve` object
+           (see :func:`~.simcado.optics.get_filter_set`)
     return_ec : bool, optional
-        If True, a simcado.spectral.EmissionCurve object is returned.
+        If True, a :class:`simcado.spectral.EmissionCurve` object is returned.
         Default is False
 
     Returns
@@ -2163,6 +2254,9 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,
     spec : np.array
         [ph/s/m2/pixel] The spectrum scaled to the specified magnitude
 
+    See Also
+    --------
+        
     """
 
     if return_ec:
@@ -2251,3 +2345,162 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
         lam, spec = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res,
                                       filter_name, return_ec)
         return lam, spec
+        
+        
+def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks",
+           normalization="total", spectrum="elliptical", n=4, **kwargs):
+    """
+    Create a extended :class:`.Source` object for a "Galaxy"
+    
+    Parameters
+    ----------
+    distance : float
+        [pc]
+    half_light_radius : float
+        [pc]
+    plate_scale : float
+        [arcsec]
+    magnitude : float
+        [mag, mag/arcsec2]
+    filter_name : str, TransmissionCurve, optional
+        Default is "Ks". Values can be either:
+        - the name of a SimCADO filter : see optics.get_filter_set()
+        - or a TransmissionCurve containing a user-defined filter
+    normalization : str, optional
+        ["half-light", "centre", "total"] Where in the profile the unity values are.
+        If normalization equals:
+        - "half-light" : the pixels at the half-light radius have a surface brightness of ``magnitude`` [mag/arcsec2]
+        - "centre" : the maximum pixels have a surface brightness of ``magnitude`` [mag/arcsec2]
+        - "total" : the whole image has a brightness of ``magnitude`` [mag]
+    spectrum : str, EmissionCurve, optional
+        The spectrum to be associated with the galaxy. Values can either be:
+        - the name of a SimCADO SED spectrum : see get_SED_names()
+        - an EmissionCurve with a user defined spectrum
+    n : float, optional
+        Power law index. Default = 4
+        - n=1 for exponential (spiral), 
+        - n=4 for de Vaucouleurs (elliptical)
+    
+    
+    Optional Parameters (passed to ``sersic_profile``)
+    --------------------------------------------------
+
+    ellipticity : float
+        Default = 0.5
+    angle : float
+        [deg] Default = 30. Rotation anti-clockwise from the x-axis
+    width, height : int
+        [arcsec] Dimensions of the image. Default: 512*plate_scale
+    x_offset, y_offset : float
+        [arcsec] The distance between the centre of the profile and the centre
+        of the image. Default: (dx,dy) = (0,0)
+    
+    
+    Returns
+    -------
+    galaxy_src : simcado.Source
+        
+    
+    See Also
+    --------
+    source.sersic_profile()
+    optics.get_filter_set(), source.get_SED_names()
+    spectral.TransmissionCurve, spectral.EmissionCurve
+    
+    
+    """
+    
+    params = {"n"           : n,
+              "ellipticity" : 0.5,
+              "angle"       : 30,
+              "width"       : plate_scale * 512,
+              "height"      : plate_scale * 512,
+              "x_offset"    : 0,
+              "y_offset"    : 0 }
+    params.update(kwargs)
+    
+    angular_hlr = np.rad2deg(half_light_radius/distance) * 3600
+    pixular_hlr = angular_hlr / plate_scale
+    
+    im = sersic_profile(r_eff        =pixular_hlr,
+                        n            =params["n"], 
+                        ellipticity  =params["ellipticity"], 
+                        angle        =params["angle"],
+                        normalization=normalization,
+                        width        =params["width"] /plate_scale,
+                        height       =params["height"]/plate_scale, 
+                        x_offset     =params["x_offset"], 
+                        y_offset     =params["y_offset"])
+    
+    if isinstance(spectrum, sc.EmissionCurve):
+        lam, spec = spectrum.lam, spectrum.val
+        lam, spec = scale_spectrum(lam=lam, spec=spec, mag=magnitude, filter_name=filter_name)
+    elif spectrum in get_SED_names():
+        lam, spec = SED(spec_type=spectrum, filter_name=filter_name, magnitude=magnitude)
+    else:
+        print(spectrum)
+        raise ValueError("Cannot understand ``spectrum``")
+    
+    galaxy_src = source_from_image(images=im, lam=lam, spectra=spec, plate_scale=plate_scale)
+    
+    return galaxy_src
+        
+    
+def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30, normalization="half-light",
+                   width=1024, height=1024, x_offset=0, y_offset=0):
+    """
+    Returns a 2D array with a normailised sersic profile
+    
+    Parameters
+    ----------
+    r_eff : float
+        [pixel] Effective (half-light) radius
+    n : float
+        Power law index. 
+        - n=1 for exponential (spiral), 
+        - n=4 for de Vaucouleurs (elliptical)
+    normalization : str, optional
+        ["half-light", "centre", "total"] Where in the profile the unity values are.
+        If normalization equals:
+        - "half-light" : the pixels at the half-light radius are set to 1
+        - "centre" : the maximum values are set to 1
+        - "total" : the image sums to 1
+    ellipticity : float
+        Default = 0.5
+    angle : float
+        [deg] Default = 30. Rotation anti-clockwise from the x-axis
+    width, height : int
+        [pixel] Dimensions of the image
+    x_offset, y_offset : float
+        [pixel] The distance between the centre of the profile and the centre
+        of the image
+
+    Returns
+    -------
+    img : 2D array
+    
+
+    Notes
+    -----
+    Most units are in [pixel] in this function. This differs from :func:`.galaxy` 
+    where parameter units are in [arcsec] or [pc]
+        
+    """
+    
+    from astropy.modeling.models import Sersic2D
+    
+    x,y = np.meshgrid(np.arange(width), np.arange(height))
+    
+    dx = 0.5 * width  + x_offset
+    dy = 0.5 * height + y_offset
+        
+    mod = Sersic2D(amplitude=1, r_eff=r_eff, n=n, x_0=dx, y_0=dy,
+                   ellip=ellipticity, theta=np.deg2rad(angle))
+    img = mod(x, y)
+    
+    if "cen" in normalization.lower():
+        img /= np.max(img)
+    elif "tot" in normalization.lower():
+        img /= np.sum(img)
+    
+    return img
