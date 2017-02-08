@@ -74,8 +74,9 @@ import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
 from . import spectral as sc
 from .utils import __pkg_dir__, atmospheric_refraction
 
-__all__ = ["UserCommands", "dump_chip_layout", "dump_mirror_config", 
-           "dump_mirror_config"]
+#__all__ = []
+__all__ = ["UserCommands", "dump_defaults", "dump_chip_layout",
+           "dump_mirror_config", "read_config", "update_config"]
 
 
 class UserCommands(object):
@@ -84,7 +85,7 @@ class UserCommands(object):
 
     Summary
     -------
-    A ``UserCommands`` object contains a dictionary which holds all the keywords
+    A :class:`.UserCommands` object contains a dictionary which holds all the keywords
     from the ``default.config`` file. It also has attributes which represent the
     frequently used variables, i.e. ``pix_res``, ``lam_bin_edges``, ``exptime``,
     etc
@@ -838,7 +839,10 @@ def update_config(config_file, config_dict):
     Update a SimCADO configuration dictionary
 
     A configuration file in the SExtractor format:
-         'PARAMETER    Value    # Comment'
+    ::
+    
+      'PARAMETER    Value    # Comment'
+    
     an existing configuration dictionary.
 
     Parameters
@@ -851,16 +855,13 @@ def update_config(config_file, config_dict):
     config_dict : dict
         A dictionary with keys 'PARAMETER' and values 'Value'.
 
-    Returns:
-    -------
-    config_dict : dict
-        A dictionary with keys 'PARAMETER' and values 'Value'.
-
     Notes
     -----
     the values of the dictionary are strings and will have
     to be converted to the appropriate data type as they are needed.
+    
     """
+    
     config_dict.update(read_config(config_file))
 
     return config_dict

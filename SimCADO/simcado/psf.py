@@ -1,92 +1,96 @@
-"""psf.py"""
-###############################################################################
-# PSFs and PSFCubes
-#
-# DESCRIPTION
-#
-# "If you want to bake an apple pie from scratch,
-#     first you must create the universe" - Carl Sagan
-#
-# === SINGLE PSFS ===
-#
-# We need to start by generating a single PSF in order to generate a PSFCube.
-# We need to know the spatial characteristics of the PSF:
-# The commonalities of all PSFs are:
-#   - pix_width
-#   - pix_height
-#   - pix_res
-#   - type
-#
-# The types of PSF offered: Moffat, Gaussian2D, Airy, Delta, Line, User
-# For each of the PSF types we need to create a subclass of PSF. Each subclass
-# takes its own list of parameters:
-#   - MoffatPSF      (alpha, beta)
-#   - GaussianPSF    (fwhm, eccentricity=0, angle=0)
-#   - AiryPSF        (first_zero, eccentricity=0, angle=0)
-#   - DeltaPSF       (x=0, y=0)
-#   - LinePSF        (x0, x1, y0, y1, angle=0)
-#   - UserPSFCube        (filename, ext_no=0)
-#
-#
-# === MULTIPLE PSFS IN A CUBE ===
-#
-# To generate a PSF cube we need to know the spectral bins and the type of PSF.
-# The bins are defined by a central wavelength, however a cube should also
-# contain the edges of each bin so that transmission and emission can be
-# re-binned properly.
-#   - lam_bin_centers
-#   - lam_bin_edges
-#   - lam_res
-#
-#
-# A PSF instance will have these additional arguments:
-#   - array ... a 2D array to hold the PSF image
-# A psf instance will have these additional arguments:
-#   - cube ... a (l,x,y) 3D array to hold the PSF cube
-#
-# As far as input goes, psf should be able to accept a dictionary with the
-# keywords necessary to build the cube.
-#
-# NOTES:
-# All wavelength values are given in [um]
-# All pixel dimensions are given in [arcsec]
-# All angles are given in [deg]
-#
-#
-# CLASSES:
-#  PSF(object)
-#  psf(object)
-#
-#
-# SUBCLASSES:
-#  MoffatPSF(PSF)
-#  GaussianPSF(PSF)
-#  AiryPSF(PSF)
-#  DeltaPSF(PSF)
-#  LinePSF(PSF)
-#  UserPSFCube(PSF)
-#
-#  Deltapsf(psf)
-#  Airypsf(psf)
-#  Gaussianpsf(psf)
-#  Moffatpsf(psf)
-#  CombinedPSFCube(psf)
-#  UserPSFCube(psf)
-#  ADC_psf(psf)
-#
-#
-# METHODS:
-#
+"""
+PSFs and PSFCubes
+
+.. contents::
 
 
-# There are two types of psf object here:
-#     - a cube
-#     - a single psf image
-# The cube is essentially a list of psf images, homogenized in size
-# Should we have separate classes for these?
-#
-# Both PSF and psf can be created from a single model or through
-# convolution of a list of PSF components
+DESCRIPTION
+
+"If you want to bake an apple pie from scratch,
+    first you must create the universe" - Carl Sagan
+
+=== SINGLE PSFS ===
+
+We need to start by generating a single PSF in order to generate a PSFCube.
+We need to know the spatial characteristics of the PSF:
+The commonalities of all PSFs are:
+  - pix_width
+  - pix_height
+  - pix_res
+  - type
+
+The types of PSF offered: Moffat, Gaussian2D, Airy, Delta, Line, User
+For each of the PSF types we need to create a subclass of PSF. Each subclass
+takes its own list of parameters:
+  - MoffatPSF      (alpha, beta)
+  - GaussianPSF    (fwhm, eccentricity=0, angle=0)
+  - AiryPSF        (first_zero, eccentricity=0, angle=0)
+  - DeltaPSF       (x=0, y=0)
+  - LinePSF        (x0, x1, y0, y1, angle=0)
+  - UserPSFCube        (filename, ext_no=0)
+
+
+=== MULTIPLE PSFS IN A CUBE ===
+
+To generate a PSF cube we need to know the spectral bins and the type of PSF.
+The bins are defined by a central wavelength, however a cube should also
+contain the edges of each bin so that transmission and emission can be
+re-binned properly.
+  - lam_bin_centers
+  - lam_bin_edges
+  - lam_res
+
+
+A PSF instance will have these additional arguments:
+  - array ... a 2D array to hold the PSF image
+A psf instance will have these additional arguments:
+  - cube ... a (l,x,y) 3D array to hold the PSF cube
+
+As far as input goes, psf should be able to accept a dictionary with the
+keywords necessary to build the cube.
+
+NOTES:
+All wavelength values are given in [um]
+All pixel dimensions are given in [arcsec]
+All angles are given in [deg]
+
+
+CLASSES:
+ PSF(object)
+ psf(object)
+
+
+SUBCLASSES:
+ MoffatPSF(PSF)
+ GaussianPSF(PSF)
+ AiryPSF(PSF)
+ DeltaPSF(PSF)
+ LinePSF(PSF)
+ UserPSFCube(PSF)
+
+ Deltapsf(psf)
+ Airypsf(psf)
+ Gaussianpsf(psf)
+ Moffatpsf(psf)
+ CombinedPSFCube(psf)
+ UserPSFCube(psf)
+ ADC_psf(psf)
+
+
+METHODS:
+
+
+
+There are two types of psf object here:
+    - a cube
+    - a single psf image
+The cube is essentially a list of psf images, homogenized in size
+Should we have separate classes for these?
+
+Both PSF and psf can be created from a single model or through
+convolution of a list of PSF components
+
+"""
 
 import os
 from .utils import __pkg_dir__
@@ -119,16 +123,18 @@ except:
 # - Add a ellipticity to the GaussianPSF
 # - Make sure MoffatPSF works
 
-
-
-## These classes and functions are exported to the package
+#__all__ = []
 __all__ = ["PSF", "PSFCube",
            "MoffatPSF", "MoffatPSFCube",
            "AiryPSF", "AiryPSFCube",
            "GaussianPSF", "GaussianPSFCube",
            "DeltaPSF", "DeltaPSFCube",
            "CombinedPSF", "CombinedPSFCube",
-           "UserPSF", "UserPSFCube"]
+           "UserPSF", "UserPSFCube",
+           #"poppy_eelt_psf", "poppy_ao_psf", "seeing_psf",
+           "get_eelt_segments", "make_foreign_PSF_cube"
+           ]
+           
 
 
 ###############################################################################
@@ -1480,6 +1486,8 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
 
     Examples
     --------
+    ::
+    
         >>> from glob import glob
         >>> import simcado as sim
         >>> fnames = glob("D:\Share_VW\Data_for_SimCADO\PSFs\yann_2016_11_10\*.fits")
@@ -1575,20 +1583,33 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
 
     Other Parameters
     ----------------
-    "fwhm"                 : 0.8,   # [arcsec]
-    "psf_type"             : "moffat",
-    "wavelength"           : 2.2,   # [um]
-    "segments"             : None,
-    "flattoflat"           : 1.256, # [m]
-    "gap"                  : 0.004, # [arcsec]
-    "secondary_radius"     : 5,     # [m]
-    "n_supports"           : 6,
-    "support_width"        : 0.2,   # [m]
-    "support_angle_offset" : 0,     # [deg]
-    "n_missing"            : None
-    "use_pupil_mask"        : True
-    "pupil_inner_radius"    : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
-    "pupil_outer_radius"    : 19     # [m]
+    fwhm : float
+        [arcsec] Default : 0.8
+    psf_type : str
+        Default : "moffat"
+    wavelength : float
+        [um] Default  : 2.2
+    segments : list
+        Default : None. A list of which hexagonal poppy segments to use
+        See :func:`.get_eelt_segments`
+    flattoflat : float
+        [m] Default : 1.256 
+    gap  : float
+        [m] Default  : 0.004
+    secondary_radius  : float
+        [m] Default : 5
+    n_supports : int
+        Default : 6
+    support_width : float
+        [m] Default : 0.2
+    support_angle_offset  : float
+        [deg] Default : 0
+    n_missing : int
+        Default : None. Number of segments missing
+    pupil_inner_radius  : float
+        [m] Default : None  # Plan A: 5.6m, Plan B: 11.5m
+    pupil_outer_radius  : float
+        [m] Default : 19
 
     
     Returns
@@ -1596,6 +1617,10 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     hdu_list : astropy.HDUList 
         an astropy FITS object containing the PSFs for the given wavelengths
 
+    See Also
+    --------
+    :func:`.get_eelt_segments`
+        
     """
     params = {"strehl"               : strehl,
               "mode"                 : mode,
@@ -1770,15 +1795,24 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     ----------------
     Values to pass to the POPPY functions
 
-    "flattoflat"           : 1.256 [m]
-    "gap"                  : 0.004 [m]
-    "secondary_radius"     : 5 [m]
-    "n_supports"           : 6
-    "support_width"        : 0.2 [m]
-    "support_angle_offset" : 0 [deg]
-    "n_missing"            : None
-    "pupil_inner_radius"   : None,  # [m] Plan A: 5.6m, Plan B: 11.5m
-    "pupil_outer_radius"   : 19     # [m]
+    flattoflat : float
+        [m] Default : 1.256 
+    gap  : float
+        [m] Default  : 0.004
+    secondary_radius  : float
+        [m] Default : 5
+    n_supports : int
+        Default : 6
+    support_width : float
+        [m] Default : 0.2
+    support_angle_offset  : float
+        [deg] Default : 0
+    n_missing : int
+        Default : None. Number of segments missing
+    pupil_inner_radius  : float
+        [m] Default : None  # Plan A: 5.6m, Plan B: 11.5m
+    pupil_outer_radius  : float
+        [m] Default : 19
 
 
     Returns
@@ -1789,7 +1823,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
 
     See also
     --------
-    ``get_eelt_segments()``
+    :func:`.get_eelt_segments`
 
     """
 

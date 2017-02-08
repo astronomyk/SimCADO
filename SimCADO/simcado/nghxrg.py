@@ -18,6 +18,8 @@ from astropy.stats.funcs import median_absolute_deviation as mad
 
 #warnings.filterwarnings('ignore')
 
+__all__ = []
+
 class HXRGNoise:
     """
     A class to generate HxRG noise frames

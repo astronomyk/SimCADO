@@ -102,8 +102,8 @@ from . import spectral as sc
 from . import commands
 from .nghxrg import HXRGNoise
 
-__all__ = ["Detector", "Chip"]
-
+__all__ = ["Detector", "Chip", "open", "plot_detector", "plot_detector_layout",
+           "make_noise_cube", "install_noise_cube"]
 
 
 ################################################################################

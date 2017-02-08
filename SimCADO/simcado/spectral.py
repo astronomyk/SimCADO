@@ -65,7 +65,9 @@ from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
 
 from .utils import __pkg_dir__
 
-__all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve"]
+__all__ = []
+__all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve",
+           "get_sky_spectrum"]
 
 
 class TransmissionCurve(object):
