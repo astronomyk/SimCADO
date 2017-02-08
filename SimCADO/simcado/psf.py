@@ -1,89 +1,98 @@
 """
 PSFs and PSFCubes
+=================
 
-.. contents::
+.. todo:: 
+    revise this opening text
 
+Description
+-----------
 
-DESCRIPTION
+.. admonition:: Car Sagan said
 
-"If you want to bake an apple pie from scratch,
-    first you must create the universe" - Carl Sagan
+    "If you want to bake an apple pie from scratch,
+        first you must create the universe"
 
-=== SINGLE PSFS ===
+Single PSFs
+-----------
 
 We need to start by generating a single PSF in order to generate a PSFCube.
 We need to know the spatial characteristics of the PSF:
 The commonalities of all PSFs are:
-  - pix_width
-  - pix_height
-  - pix_res
-  - type
+
+- pix_width
+- pix_height
+- pix_res
+- type
 
 The types of PSF offered: Moffat, Gaussian2D, Airy, Delta, Line, User
 For each of the PSF types we need to create a subclass of PSF. Each subclass
 takes its own list of parameters:
-  - MoffatPSF      (alpha, beta)
-  - GaussianPSF    (fwhm, eccentricity=0, angle=0)
-  - AiryPSF        (first_zero, eccentricity=0, angle=0)
-  - DeltaPSF       (x=0, y=0)
-  - LinePSF        (x0, x1, y0, y1, angle=0)
-  - UserPSFCube        (filename, ext_no=0)
+
+- MoffatPSF      (alpha, beta)
+- GaussianPSF    (fwhm, eccentricity=0, angle=0)
+- AiryPSF        (first_zero, eccentricity=0, angle=0)
+- DeltaPSF       (x=0, y=0)
+- LinePSF        (x0, x1, y0, y1, angle=0)
+- UserPSFCube        (filename, ext_no=0)
 
 
-=== MULTIPLE PSFS IN A CUBE ===
+Multiple PSFs in a Cube
+-----------------------
 
 To generate a PSF cube we need to know the spectral bins and the type of PSF.
 The bins are defined by a central wavelength, however a cube should also
 contain the edges of each bin so that transmission and emission can be
 re-binned properly.
-  - lam_bin_centers
-  - lam_bin_edges
-  - lam_res
+- lam_bin_centers
+- lam_bin_edges
+- lam_res
 
 
 A PSF instance will have these additional arguments:
-  - array ... a 2D array to hold the PSF image
+- array ... a 2D array to hold the PSF image
+
 A psf instance will have these additional arguments:
-  - cube ... a (l,x,y) 3D array to hold the PSF cube
+- cube ... a (l,x,y) 3D array to hold the PSF cube
 
 As far as input goes, psf should be able to accept a dictionary with the
 keywords necessary to build the cube.
 
-NOTES:
+Notes
+-----
 All wavelength values are given in [um]
 All pixel dimensions are given in [arcsec]
 All angles are given in [deg]
 
 
-CLASSES:
- PSF(object)
- psf(object)
+Classes
+-------
+PSF(object)
+psf(object)
 
 
-SUBCLASSES:
- MoffatPSF(PSF)
- GaussianPSF(PSF)
- AiryPSF(PSF)
- DeltaPSF(PSF)
- LinePSF(PSF)
- UserPSFCube(PSF)
+Subclasses
+----------
+MoffatPSF(PSF)  
+GaussianPSF(PSF)  
+AiryPSF(PSF)  
+DeltaPSF(PSF)  
+LinePSF(PSF)  
+UserPSFCube(PSF)  
 
- Deltapsf(psf)
- Airypsf(psf)
- Gaussianpsf(psf)
- Moffatpsf(psf)
- CombinedPSFCube(psf)
- UserPSFCube(psf)
- ADC_psf(psf)
-
-
-METHODS:
-
+Deltapsf(psf)  
+Airypsf(psf)  
+Gaussianpsf(psf)  
+Moffatpsf(psf)  
+CombinedPSFCube(psf)  
+UserPSFCube(psf)  
+ADC_psf(psf)  
 
 
 There are two types of psf object here:
-    - a cube
-    - a single psf image
+- a cube
+- a single psf image
+
 The cube is essentially a list of psf images, homogenized in size
 Should we have separate classes for these?
 

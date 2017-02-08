@@ -229,8 +229,6 @@ class UserCommands(object):
         filename : str, optional
             path to the user's .config file
 
-
-
         """
 
         logging.info("UserCommands object created")
@@ -283,8 +281,6 @@ class UserCommands(object):
         """
         Update multiple entries of a ``UserCommands`` dictionary
 
-        Summary
-        -------
         ``update(new_dict)`` takes either a normal python ``dict`` object or a
         ``UserCommands`` object. Only keywords that match those in the
         ``UserCommands`` object will be updated. Misspelled keywords raise an
