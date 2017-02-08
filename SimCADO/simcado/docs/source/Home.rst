@@ -79,7 +79,7 @@ Running a simulation in 3 lines
 -------------------------------
 
 The easiest way to run a simulation is to create, or load, a Source
-object and then call the ``.run()`` command. If you specify a filename,
+object and then call the :func:`.run` command. If you specify a filename,
 the resulting image will be output to a FITS file under that name. If
 you do not specify a filename, the output will be returned to the
 console/notebook as an ``astropy.io.fits.HDUList`` object.
@@ -91,18 +91,18 @@ installed).
 
     >>> import simcado
 
-At the very least, we need to create a ``Source`` object which contains
+At the very least, we need to create a :class:`.Source` object which contains
 both spatial and spectral information on our object of interest. Here we
 use the built-in command ``.source.cluster()`` to create a
-``Source``-object for a 10000-Msun stellar cluster. (See `Creating
+:class:`.Source`-object for a 10000-Msun stellar cluster. (See `Creating
 Sources`_ for more information).
 
 ::
 
     >>> src = simcado.source.cluster()
 
-We now pass the ``source`` object through SimCADO. This is as easy as
-calling ``.run()``. If we specify a ``filename``, SimCADO
+We now pass the :class:`.Source` object through SimCADO. This is as easy as
+calling :func:`.run`. If we specify a ``filename``, SimCADO
 
 .. _here in the Notebooks section: examples/Notebooks.md
 .. _Leschinski et al. (2016): https://arxiv.org/pdf/1609.01480v1.pdf

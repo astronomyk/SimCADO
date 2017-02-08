@@ -51,7 +51,7 @@ For a description of the :class:`~.Source` object, and the :mod:`.source` module
 see `How SimCADO works <deep_stuff/SimCADO/#source>`__.
 
 Loading a pre-existing :class:`.Source` object
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To load in a pre-existing :class:`.Source` (i.e. one that you saved earlier),
 specify the keyword ``filename=`` when initialising the :class:`.Source`
@@ -69,21 +69,21 @@ the file format for saved :class:`.Source` objects, see `“File Format of saved
 Source objects” <deep_stuff/SimCADO/#source>`__.
 
 Making a :class:`.Source` with SimCADO’s in-built functions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``simcado.source`` module provides an ever-increasing series of
+The :mod:`simcado.source` module provides an ever-increasing series of
 functions to create :class:`.Source` objects in memory. These include, (from
-``simcado.source``)
+:mod:`simcado.source`)
 
--  ``.empty_sky()``
--  ``.star(mag, filter_name="K", ...)``
--  ``.stars(mags, x, y, ...)``
--  ``.source_1E4_Msun_cluster(distance=50000, ...)``
--  ``.source_from_image(images, lam, spectra, pix_res, ...)``
+-  :func:`.empty_sky()`
+-  :func:`.star(mag, filter_name="K", ...)`
+-  :func:`.stars(mags, x, y, ...)`
+-  :func:`.source_1E4_Msun_cluster(distance=50000, ...)`
+-  :func:`.source_from_image(images, lam, spectra, pix_res, ...)`
 
-Two useful functions here are ``.stars()`` and ``.source_from_image()``
+Two useful functions here are :func:`.stars()` and :func:`.source_from_image()`
 
--  ``stars()`` takes a list of magnitudes (and optionally spectral
+-  :func:`.stars`` takes a list of magnitudes (and optionally spectral
    types) and positions for a common broad-band filter (default is “K”)
    and generates a :class:`.Source` object with those stars in the field.
 
@@ -96,7 +96,7 @@ Two useful functions here are ``.stars()`` and ``.source_from_image()``
         >>> my_src = sim.source.stars(mags=mags, x=x, y=y, filter_name=filt, 
                                                         spec_types=spec_types)
 
--  ``source_from_image()`` creates a :class:`.Source` based on a 2D numpy
+-  :func:`.source_from_image` creates a :class:`.Source` based on a 2D numpy
    array provided by the user. The 2D array can come from anywhere,
    e.g. the data from a FITS image, a BITMAP image, from memory, etc.
    Alongside the image, the user must provide a spectrum (plus a vector
@@ -142,7 +142,7 @@ lines of code:
     >>> src = simcado.Source(filename="my_source.fits")
     >>> simcado.run(src, filename="my_image.fits")   
 
-The ``.run()`` function is quite powerful. Many users may find that they
+The :func:`.run` function is quite powerful. Many users may find that they
 don’t need anything else to run the simulations they need. The full
 function call looks like this:
 
@@ -163,13 +163,13 @@ simulation:
 2. ``filename``: Where to save the output FITS file. If ``None`` is
    provided (or the parameter is ignored), the output is returned to the
    user. This comes in handy if you are working in a
-   ``Jupyter Notebook`` and wand to play with the output data
+   Jupyter Notebook and wand to play with the output data
    immediately. Or if you are scripting with SimCADO and don’t want to
    be slowed down by writing all images to disk
 3. Two important parameters here are ``mode`` and ``detector_layout``:
    These two define the MICADO observing modes.
 
-Currently ``mode`` can be either ``="wide"`` (4mas/pixel) or ``="zoom"``
+Currently ``mode`` can be either ``"wide"`` (4mas/pixel) or ``"zoom"``
 (1.5mas/pixel).
 
 The ``detector_layout`` can also be changed to speed up simulations of
@@ -181,8 +181,7 @@ the detector - “small”, “wide”, “full”. The default is “small”.
 
 -  ``small`` - 1x 1k-detector centred in the FoV
 -  ``centre`` - 1x 4k-detector centred in the FoV
--  ``full`` - 9x 4k-detector as described by the keyword
-   FPA\_CHIP\_LAYOUT
+-  ``full`` - 9x 4k-detector as described by the keyword ``FPA_CHIP_LAYOUT``
 
 1. ``cmds, opt_train, fpa`` are all parameters that allow you to provide
    custom built parts of the machinary. Say you have a set of commands
@@ -206,11 +205,11 @@ the detector - “small”, “wide”, “full”. The default is “small”.
    allows you to control every aspect of the simulation. ``kwargs``
    takes any keyword-value pair that exist in the SimCADO configuration
    file, and so you can control single aspects of the simulation by
-   passing these keyword-value pairs to ``.run()``. For example, you can
+   passing these keyword-value pairs to :func:`.run`. For example, you can
    increase the exposure time of the image by passing
+   ::
 
-               simcado.run(src, … , OBS\_EXPTIME=600,
-               INST\_FILTER\_TC=“J”, …)
+        simcado.run(src, … , OBS_EXPTIME=600, INST_FILTER_TC=“J”, …)
 
 A list of all the available keyword-value pairs can be found in the
 `Keywords section <Keywords>`__ and a description of the default values
@@ -225,7 +224,7 @@ Changing Filters
 
 The keyword ``INST_FILTER_TC`` allows you to supply either the name of a
 filter (i.e. “Ks”, “PaBeta”) or a path to an ASCII file containing a
-filter curve. ``INST_FILTER_TC`` can be passed to ``.run()`` just like
+filter curve. ``INST_FILTER_TC`` can be passed to :func:`.run` just like
 any other SimCADO configuration keyword.
 
 ::

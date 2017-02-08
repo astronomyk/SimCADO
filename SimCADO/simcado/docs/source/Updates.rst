@@ -13,7 +13,7 @@ command.
 2017-01-31
 ~~~~~~~~~~
 
-\*\* New stable version available: SimCADO 0.4\*\*
+**New stable version available: SimCADO 0.4**
 
 2017-01-18
 ~~~~~~~~~~

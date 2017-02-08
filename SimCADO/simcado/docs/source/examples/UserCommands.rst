@@ -8,7 +8,7 @@ the `section on the UserCommands object <the-usercommands-object>`__.
 Simulating the quick way
 ------------------------
 
-The function ``sim.run()`` runs a simulation with all the default
+The function `:func:`.run()` runs a simulation with all the default
 parameters. That said, SimCADO has a safety switch to stop you wasting
 10 minutes on a ``Source`` that will be invisible, or so bright that it
 saturates the detector completely.
@@ -121,7 +121,7 @@ To list all keyword-value pairs, use:
 
     >>>  sim.commands.dump_defaults(filename, type="all")
 
-Any of the KEYWORD=VALUE pairs can be passed as extras to ``sim.run()``.
+Any of the KEYWORD=VALUE pairs can be passed as extras to `:func:`.run`.
 For example if we wanted to observe in J-band for 60 minutes, we would
 pass:
 
@@ -294,7 +294,7 @@ To pass a detector array description to SimCADO, use the
     >>> cmd = sim.UserCommands()
     >>> cmd["FPA_CHIP_LAYOUT"] = "hawki_chip_layout.txt"
 
-or pass is directly to the ``sim.run()`` command:
+or pass is directly to the `:func:`.run` command:
 
 ::
 

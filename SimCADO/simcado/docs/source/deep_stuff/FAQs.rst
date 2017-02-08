@@ -3,8 +3,8 @@ SimCADO FAQs
 
 Here are some answers to known issues with SimCADO.
 
-Work around for failing ``simcado.install_noise_cube`` with Python 2.7
-----------------------------------------------------------------------
+Work around for failing :func:`simcado.install_noise_cube` with Python 2.7
+---------------------------------------------------------------------------
 
 The problem lies with Python 2.7. The noise cube code is 3rd party code
 that only works on Python 3 and I haven’t had a chance to dig into that
@@ -13,8 +13,13 @@ code yet to find the problem
 Option 1
 ~~~~~~~~
 
-Generate a noise cube in Python 3 $ pip3 install <path-to-simcado.zip> $
-python3
+Generate a noise cube in Python 3. First install python3
+::
+
+    $ pip3 install <path-to-simcado.zip> 
+    $ python3
+    
+Then create the noise cube
 
 ::
 
@@ -25,11 +30,16 @@ Option 2
 ~~~~~~~~
 
 Download a 15 slice noise cube from my Google Drive folder and save it
-in the simcado/data folder
-https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing
+in the simcado/data folder.
+`https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing 
+<https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing>`__
 
-Your simcado/data folder can be found by printing the ``__pkg_dir__``
-variable: >>> simcado.utils.\ **pkg\_dir**
+.. note::
+    Your simcado/data folder can be found by printing the ``__pkg_dir__``
+    variable: 
+    ::
+    
+        >>> simcado.utils.__pkg_dir__
 
 Copy the new noise cube into the Python 2.7 simcado/data folder.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,23 +60,25 @@ running a simulation to point simcado to the new noise cube file
 
 ::
 
-    >>> simcado.run(my_source, ..... , FPA_NOISE_PATH=<path/to/new/>"FPA_noise.fits")
+    >>> simcado.run(my_source, ..... , FPA_NOISE_PATH="<path/to/new>/FPA_noise.fits")
 
 or if you’re using a UserCommands object to control the simulation:
 
 ::
 
     >>> cmds = simcado.UserCommands()
-    >>> cmds["FPA_NOISE_PATH"] = <path/to/new/>"FPA_noise.fits"
+    >>> cmds["FPA_NOISE_PATH"] = "<path/to/new>/FPA_noise.fits"
 
 Surface brightness scaling in SimCADO
 -------------------------------------
 
-Is it true that if the array that I pass to simcado has a value of 1,
-then simcado will simulate exactly a SB = ``m`` mag/sq.arcsec pixel?
-What happens if the passed numpy array has a different pixel size. Are
-the counts in each pixel then scaled according to their different
-surface area?
+.. admonition:: Question
+
+    Is it true that if the array that I pass to simcado has a value of 1,
+    then simcado will simulate exactly a SB = ``m`` mag/sq.arcsec pixel?
+    What happens if the passed numpy array has a different pixel size. Are
+    the counts in each pixel then scaled according to their different
+    surface area?
 
 To answer the question on scaling we need look at docstring for
 ``source_from_image``:
