@@ -15,5 +15,7 @@ echo !params!
 
 pip install -I !params!
 
+create_docs.bat
+
 echo apple is not the hammer 
 pause
