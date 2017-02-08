@@ -27,7 +27,7 @@ Doing this in iPython will call up the docstring:
 Source
 ------
 
-For full details, please see the `API <API>`__ and examples of `Source
+For full details, please see the :doc:API and examples of `Source
 Objects <examples/Source>`__
 
 The :class:`~.Source` class is probably the most important class for testing
@@ -38,13 +38,13 @@ functions provided by SimCADO, or by loading in a pre-existing
 :class:`~.Source`-FITS file.
 
 .. note:: 
-    **SimCADO is CaSe SensITIVe!** SimCADO has the class :class:`simcado.Source()`
+    **SimCADO is CaSe SensITIVe!** SimCADO has the class ``simcado.Source()``
     and the module :mod:`simcado.source`. These should not be confused. 
-    :mod:`simcado.source` is the module which contains the class :class:`.Source` and all 
-    the helper functions for creating various types of :class:`.Source` objects. In 
-    fact the source code for the  class :class:`.Source` is actually in
-    :class:`simcado.source.Source`, however to make things easy, :class:`.Source` is 
-    available directly as :class:`simcado.Source()`. Be careful and remember 
+    :mod:`simcado.source` is the module which contains the class :class:`.Source` 
+    and all the helper functions for creating various types of :class:`.Source` 
+    objects. The source code for the  class :class:`.Source` is actually in
+    :class:`simcado.source.Source`, however to make things easy, :class:`.Source`
+    is available directly as ``simcado.Source()``. Be careful and remember 
     ``simcado.Source != simcado.source``.
 
 For a description of the :class:`~.Source` object, and the :mod:`.source` module,
@@ -75,19 +75,17 @@ The :mod:`simcado.source` module provides an ever-increasing series of
 functions to create :class:`.Source` objects in memory. These include, (from
 :mod:`simcado.source`)
 
--  :func:`.empty_sky()`
--  :func:`.star(mag, filter_name="K", ...)`
--  :func:`.stars(mags, x, y, ...)`
--  :func:`.source_1E4_Msun_cluster(distance=50000, ...)`
--  :func:`.source_from_image(images, lam, spectra, pix_res, ...)`
+-  :func:`empty_sky() <.empty_sky>`
+-  :func:`star(mag, filter_name="K", ...) <.star>`
+-  :func:`stars(mags, x, y, ...) <.stars>`
+-  :func:`cluster(mass=1E4, distance=50000, ...) <.cluster>`
+-  :func:`source_from_image(images, lam, spectra, pix_res, ...) <.source_from_image>`
 
 Two useful functions here are :func:`.stars()` and :func:`.source_from_image()`
 
--  :func:`.stars`` takes a list of magnitudes (and optionally spectral
+-  :func:`.stars` takes a list of magnitudes (and optionally spectral
    types) and positions for a common broad-band filter (default is “K”)
-   and generates a :class:`.Source` object with those stars in the field.
-
-::
+   and generates a :class:`.Source` object with those stars in the field. ::
 
         >>> x, y = [-2.5, 0.7, 16.3], [3.3, -0.2, 25.1]
         >>> mags, spec_types = [25,21,28], ["K0V", "A0III", "G2V"]
@@ -104,9 +102,7 @@ Two useful functions here are :func:`.stars()` and :func:`.source_from_image()`
    for MICADO). SimCADO then extracts all pixels from the image which
    have values above ``flux_threshold`` (defualt is 0) and saves these
    pixel coordinates. The spectrum provided is then connected to these
-   pixel, and scaled by the pixel value.
-
-::
+   pixel, and scaled by the pixel value. ::
 
         >>> # ... Create an image - a circle with a radius of 20 pixels on a 
         >>> # ... grid 200 pixel wide

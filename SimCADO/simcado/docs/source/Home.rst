@@ -2,6 +2,7 @@ Welcome to SimCADocs
 ====================
 
 The (slowly expanding) documentation base for SimCADO
+:mod:`astropy.io`
 
 .. figure:: images/Omega_Cen_Fabricius.png
     :figwidth: 600 px
@@ -26,7 +27,7 @@ iPython/Jupyter notebooks
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A (continualy expanding) series of iPython Notebooks detailing how to
-use SimCADO are available `here in the Notebooks section`_.
+use SimCADO are available :doc:`here in the Notebooks <examples/Notebooks>` section.
 
 Reference Material
 ~~~~~~~~~~~~~~~~~~
@@ -39,7 +40,7 @@ Reference Material
 Downloading and Installing
 --------------------------
 
-For more information, see the `Downloads`_ section
+For more information, see the :doc:Downloads section
 
 **SimCADO has only been tested in Python 3.x**.
 
@@ -54,7 +55,8 @@ The quick way:
 
     $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
 
-The **first time** in python
+The **first time** in python you should update the SimCADO data directory with
+:func:`~.simcado.utils.get_extras`:
 
 ::
 
@@ -64,12 +66,16 @@ The **first time** in python
     >>> # !! Only works in Python 3 - See Downloads section
     >>> simcado.install_noise_cube()
 
+If you running Python 3, it would be helpful to expand the internal detector 
+noise cube with :func:`.install_noise_cube`. 
+
+    
 Keeping SimCADO updated
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 As MICADO developes, the data files that SimCADO uses will also be
-updated. Therefore before you do any major work with SimCADO we *HIGHLY*
-recommend calling:
+updated. Therefore before you do any major work with SimCADO we **HIGHLY**
+recommend calling :func:`~.simcado.utils.get_extras`:
 
 ::
 
@@ -82,31 +88,74 @@ The easiest way to run a simulation is to create, or load, a Source
 object and then call the :func:`.run` command. If you specify a filename,
 the resulting image will be output to a FITS file under that name. If
 you do not specify a filename, the output will be returned to the
-console/notebook as an ``astropy.io.fits.HDUList`` object.
+console/notebook as an :class:`~.astropy.io.fits.hdu.hdulist.HDUList` object.
 
 To begin, we will import the simcado module (assuming it is already
 installed).
-
 ::
 
     >>> import simcado
 
 At the very least, we need to create a :class:`.Source` object which contains
 both spatial and spectral information on our object of interest. Here we
-use the built-in command ``.source.cluster()`` to create a
+use the built-in command :func:`simcado.source.cluster()` to create a
 :class:`.Source`-object for a 10000-Msun stellar cluster. (See `Creating
 Sources`_ for more information).
-
 ::
 
     >>> src = simcado.source.cluster()
 
 We now pass the :class:`.Source` object through SimCADO. This is as easy as
-calling :func:`.run`. If we specify a ``filename``, SimCADO
+calling :func:`.run`. If we specify a ``filename``, SimCADO will write the 
+output to disk in the form of a FITS file. If no ``filename`` is given, then 
+SimCADO returns an astropy :mod:`~.astropy.io.fits` object to the console or 
+notebook.
+::
 
-.. _here in the Notebooks section: examples/Notebooks.md
+    >>> simcado.run(src, filename="my_first_sim.fits")
+
+    
+Changing simulation parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :func:`.run` also takes any `configuration keywords`_ as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
+
+    >>> simcado.run(src, filename="my_first_sim.fits", OBS_EXPTIME=600, OBS_NDIT=6)
+    
+That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the [API](API/_build/index.html) documentation
+
+SimCADO building blocks
+-----------------------
+For a brief explanation of how SimCADO works and which classes are relevant, please see either the [Getting Started](GettingStarted.md) or [SimCADO in depth](deep_stuff/SimCADO.md) section.
+
+Bugs and Issues
+---------------
+
+We freely admit that there may still be several bugs that we have not found. If you come across an buggy part of SimCADO, *please please* tell us. We can't make SimCADO better if we don't know about things.
+
+The preferable option is to open an issue on our Github page: `gastronomyk/SimCADO/issues`_, or you can contact either one of us directly.
+
+Contact
+-------
+
+For questions and complaints alike, please contact the authors:
+
+* kieran.leschinski@univie.ac.at
+* oliver.czoske@univie.ac.at
+
+**Developers (Vienna):** Kieran Leschinski, Oliver Czoske
+
+**Data Flow Team Leader (Gronigen):** Gijs Verdoes Kleijn
+
+**MICADO home office (MPE):** http://www.mpe.mpg.de/ir/micado
+
+
+
+
 .. _Leschinski et al. (2016): https://arxiv.org/pdf/1609.01480v1.pdf
 .. _Davies et al. (2016): https://arxiv.org/pdf/1607.01954.pdf
 .. _Downloads: Download.md
 .. _Features: Features.md
 .. _Creating Sources: examples/Source.md
+.. _configuration keywords: Keywords.md
+.. _gastronomyk/SimCADO/issues: https://github.com/gastronomyk/SimCADO/issues,

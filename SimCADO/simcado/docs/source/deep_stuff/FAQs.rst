@@ -3,7 +3,7 @@ SimCADO FAQs
 
 Here are some answers to known issues with SimCADO.
 
-Work around for failing :func:`simcado.install_noise_cube` with Python 2.7
+Work around for failing :func:`~simcado.detector.install_noise_cube` with Python 2.7
 ---------------------------------------------------------------------------
 
 The problem lies with Python 2.7. The noise cube code is 3rd party code
@@ -80,6 +80,7 @@ Surface brightness scaling in SimCADO
     the counts in each pixel then scaled according to their different
     surface area?
 
+    
 To answer the question on scaling we need look at docstring for
 ``source_from_image``:
 
