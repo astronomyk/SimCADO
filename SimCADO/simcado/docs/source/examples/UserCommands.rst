@@ -8,7 +8,7 @@ the `section on the UserCommands object <the-usercommands-object>`__.
 Simulating the quick way
 ------------------------
 
-The function `:func:`.run()` runs a simulation with all the default
+The function :func:`.run()` runs a simulation with all the default
 parameters. That said, SimCADO has a safety switch to stop you wasting
 10 minutes on a ``Source`` that will be invisible, or so bright that it
 saturates the detector completely.

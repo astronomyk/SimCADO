@@ -96,7 +96,7 @@ Add a section on this
 Each of these functions returns two arrays: ``lam`` and ``spec``
 
 Using an image as a template for a :class:`.Source` object
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If we have an extended source that we wish to simulate, e.g. a galaxy, a
 nebula, etc. we can use the function

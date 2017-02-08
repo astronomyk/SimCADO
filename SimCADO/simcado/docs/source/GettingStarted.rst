@@ -295,7 +295,7 @@ Saving and reusing commands
 ---------------------------
 
 The :class:`~.UserCommands` object
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Passing more than a few keyword-value pairs to the ``simcado.run()``
 becomes tedious. SimCADO therefore provides a dictionary of commands so
