@@ -43,6 +43,7 @@ logging.basicConfig(filename='simcado.log', filemode='w', level=logging.DEBUG,
                     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.info("SimCADO imported")
 
-warnings.simplefilter('ignore', UserWarning)
+#warnings.simplefilter('ignore', UserWarning)   # user should see UserWarnings
 warnings.simplefilter('ignore', FutureWarning)
+warnings.simplefilter('ignore', RuntimeWarning)  # warnings for the developer
 warnings.simplefilter('ignore', category=AstropyWarning)
