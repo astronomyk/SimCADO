@@ -64,7 +64,8 @@ keywords - e.g. for the keywords for the instrument:
 
 
 import os, shutil
-import warnings, logging
+import warnings
+import logging
 
 from collections import OrderedDict
 
@@ -189,7 +190,7 @@ class UserCommands(object):
     --------
     By default ``UserCommands`` contains the parameters needed to generate the
     MICADO optical train:
-    
+
         >>> import simcado
         >>> my_cmds = simcado.UserCommands()
         >>> my_cmds["SCOPE_NUM_MIRRORS"]
@@ -201,20 +202,20 @@ class UserCommands(object):
         >>> my_cmds["SCOPE_NUM_MIRRORS"] = 8
         >>> my_cmds["SCOPE_NUM_MIRRORS"]
         8
-    
+
 
     To list the keywords that are available:
-    
+
         >>> my_cmds.keys()
         ...
-        
+
 
     The ``UserCommands`` object also contains smaller dictionaries for each category
     of keywords - e.g. for the keywords describing the instrument:
-    
+
         >>> my_cmds.inst
         ...
-        
+
 
     """
 
@@ -309,7 +310,7 @@ class UserCommands(object):
         Examples
         --------
         View the default commands
-        
+
             >>> import simcado
             >>> my_cmds = simcado.UserCommands()
             >>> print(my_cmds.cmds)
@@ -318,14 +319,14 @@ class UserCommands(object):
         Change a single command
 
             >>> my_cmds["OBS_EXPTIME"] = 60
-        
+
 
         Change a series of commands at once
-        
+
             >>> new_cmds = {"OBS_EXPTIME" : 60 , "OBS_NDIT" : 10}
             >>> my_cmds.update(new_cmds)
 
-            
+
         """
 
         if isinstance(new_dict, UserCommands):
@@ -399,6 +400,8 @@ class UserCommands(object):
         """
 
         for key in self.cmds:
+            if key == "OBS_OUTPUT_DIR":       # need not exist
+                continue
             fname = self.cmds[key]
             if isinstance(fname, str) and \
                "." in fname and \
@@ -411,7 +414,7 @@ class UserCommands(object):
                                                     os.path.split(fname)[-1])
                 if not os.path.exists(fname):
                     fname = self.cmds[key]
-                    warnings.warn("Keyword "+key+" path doesn't exist: "+fname)
+                    warnings.warn("Keyword "+key+" path doesn't exist: "+fname, )
 
                 self.cmds[key] = fname
 
@@ -436,10 +439,10 @@ class UserCommands(object):
         elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
             self.cmds["SCOPE_PSF_FILE"] = \
                 os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
-        elif not os.path.exists(self.cmds["SCOPE_PSF_FILE"]): 
+        elif not os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
             raise ValueError("Cannot recognise PSF file name: " + \
                                                     self.cmds["SCOPE_PSF_FILE"])
-                
+
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
@@ -538,15 +541,15 @@ class UserCommands(object):
 
         self.verbose = (self.cmds["SIM_VERBOSE"] == "yes")
         self._get_total_wfe()
-        
+
         self._split_categories()
 
-    
+
     def _get_total_wfe(self):
         """
         Gets the total wave front error from the table in INST_WFE_LIST
         """
-        
+
         if self.cmds["INST_WFE"] is not None:
             if isinstance(self.cmds["INST_WFE"], str):
                 wfe_list = ioascii.read(self.cmds["INST_WFE"])
@@ -554,10 +557,10 @@ class UserCommands(object):
                 num = wfe_list[wfe_list.colnames[1]]
             elif isinstance(self.cmds["INST_WFE"], (float, int)):
                 wfe, num = self.cmds["INST_WFE"], 1
-        
-        tot_wfe = np.sqrt(np.sum(num * wfe**2))                
+
+        tot_wfe = np.sqrt(np.sum(num * wfe**2))
         self.cmds["INST_TOTAL_WFE"] = tot_wfe
-    
+
 
     def _get_lam_bin_edges(self, lam_min, lam_max):
         """
@@ -756,7 +759,7 @@ def dump_mirror_config(path=None, what="scope"):
         ["scope", "ao"] dump the mirror configuration for either the telescope
         or the AO module
     """
-    
+
     if what.lower() == "scope":
         print("Dumping telescope mirror configuration.")
         fname = os.path.join(__pkg_dir__, "data", "EC_mirrors_scope.tbl")
@@ -836,9 +839,9 @@ def update_config(config_file, config_dict):
 
     A configuration file in the SExtractor format:
     ::
-    
+
       'PARAMETER    Value    # Comment'
-    
+
     an existing configuration dictionary.
 
     Parameters
@@ -855,9 +858,9 @@ def update_config(config_file, config_dict):
     -----
     the values of the dictionary are strings and will have
     to be converted to the appropriate data type as they are needed.
-    
+
     """
-    
+
     config_dict.update(read_config(config_file))
 
     return config_dict
