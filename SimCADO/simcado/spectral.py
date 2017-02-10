@@ -55,7 +55,8 @@
 import os
 
 from copy import deepcopy
-import warnings, logging
+import warnings
+import logging
 
 import numpy as np
 from astropy import units as u
@@ -81,14 +82,14 @@ class TransmissionCurve(object):
         The path to the file containing wavelength and transmission data
         where the first column is wavelength in [um] and the second is the
         transmission coefficient between [0,1].
-        
+
         Alternatively this data can be passed directly. If filename is not
         provided, ``lam=`` and ``val=`` must be passed
     lam : array, optional
         [um] Wavelength bins in a 1D numpy array of length n
     val : array, optional
         [0 .. 1] The transmission coefficients
-    
+
     Optional Parameters (**kwargs)
     ------------------------------
     lam_res : float
@@ -105,11 +106,11 @@ class TransmissionCurve(object):
         resampling operations.
     airmass : float
         If transmission coefficients for more than one airmass are in ``filename``
-    
+
     Returns
     -------
     TransmissionCurve object
-              
+
     """
     def __init__(self, filename=None, lam=None, val=None, **kwargs):
         # TODO: remove automatic resampling to lam_res. This should
@@ -127,7 +128,7 @@ class TransmissionCurve(object):
                        "on_default_lam" : False,
                        "default_lam" : np.arange(0.3, 3, 0.001),
                        "airmass"      : None}
-        
+
         self.params.update(kwargs)
 
         self.info = dict([])
@@ -164,7 +165,7 @@ class TransmissionCurve(object):
     def _get_data(self):
         """
         Get the wavelength and value vectors from the input parameters
-        
+
         Returns
         -------
         lam, val : 1D array
@@ -177,9 +178,9 @@ class TransmissionCurve(object):
         # test if it is a skycalc file
         elif self.params["filename"] is not None:
             filename = self.params["filename"]
-            
+
             if self.params["airmass"] is not None:
-                lam, val = get_sky_spectrum(filename, 
+                lam, val = get_sky_spectrum(filename,
                                                 airmass=self.params["airmass"])
             elif ".fits" in filename:
                 hdr = fits.getheader(filename)
@@ -216,11 +217,11 @@ class TransmissionCurve(object):
 
         Parameters
         ----------
-        bins : float or array of floats  
+        bins : float or array of floats
             [um]: float - taken to mean the width of bins on an even grid
                   array - the centres of the spectral bins
                         - the edges of the spectral bins if use_edges = True
-        action : str, optional 
+        action : str, optional
             ['average','sum'] How to rebin the spectral curve. If 'sum',
             then the curve is normalised against the integrated value of
             the original curve. If 'average', the average value per bin
@@ -231,24 +232,24 @@ class TransmissionCurve(object):
         min_step : float, optional
             [um] default=1E-4, the step size for the down-sample
         use_default_lam : bool, optional
-            Default is True. If True, ``bins`` is ignored and the default 
+            Default is True. If True, ``bins`` is ignored and the default
             wavelength range is used as the resampling grid.
         """
 
         self.params["use_default_lam"] = use_default_lam
         if min_step is not None:
             self.params["min_step"] = min_step
-        
-        
+
+
         # No need to resample if the curve is already on the default grid
         if self.params["on_default_lam"] and self.params["use_default_lam"]:
-            return 
-        
+            return
+
         #####################################################
         # Work out the irregular grid problem while summing #
         #####################################################
-        
-        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1], 
+
+        tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1],
                                                         self.params["min_step"])
         tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
 
@@ -265,7 +266,7 @@ class TransmissionCurve(object):
                 lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1]+1E-7, bins)
             else:
                 lam_tmp = bins
-                
+
 
         lam_res = lam_tmp[1] - lam_tmp[0]
         if self.params["min_step"] >= lam_res:
@@ -474,8 +475,9 @@ class EmissionCurve(TransmissionCurve):
                           "area"    :978,
                           "units"   :"ph/(s m2 micron arcsec2)"}
         if "units" not in kwargs.keys():
-            warnings.warn("""No 'units' specified in EmissionCurve.
-                          Assuming ph/(s m2 micron arcsec2)""")
+            warnings.warn("""
+            No 'units' specified in EmissionCurve.
+            Assuming ph/(s m2 micron arcsec2)""", RuntimeWarning)
         default_params.update(kwargs)
 
         if filename is not None:
@@ -552,13 +554,13 @@ class BlackbodyCurve(EmissionCurve):
 
     Parameters
     ----------
-    lam : 1D np.ndarray 
+    lam : 1D np.ndarray
         [um] the centres of the wavelength bins
     temp : float
         [deg C] float for the average temperature of the blackbody
     pix_res : float, optional
         [arcsec] Default is 0.004. Field of view for each pixel
-    area : float, optional 
+    area : float, optional
         [m2] Default is 978m2. Area of the emitting surface
 
     Returns
@@ -605,12 +607,12 @@ class UnityCurve(TransmissionCurve):
         val = np.asarray([val]*len(lam))
         super(UnityCurve, self).__init__(lam=lam, val=val, **kwargs)
 
-        
-        
+
+
 def get_sky_spectrum(fname, airmass, return_type=None, **kwargs):
     """
     Return a spectral curve for the sky for a certain airmass
-    
+
     Parameters
     ----------
     fname : str
@@ -618,34 +620,34 @@ def get_sky_spectrum(fname, airmass, return_type=None, **kwargs):
     airmass : float, optinal
         Default is 1.0. Acceptable values are between 1.0 and 3.0
     return_type : str, optional
-        ["transmission", "emission", None] Default is None. A TransmissionCurve 
-        or EmissionCurve object will be returned if desired. If None two array 
+        ["transmission", "emission", None] Default is None. A TransmissionCurve
+        or EmissionCurve object will be returned if desired. If None two array
         are returned: (lam, val)
     **kwargs : optional
-        kwargs are passed directly onto the TransmissionCurve or EmissionCurve 
+        kwargs are passed directly onto the TransmissionCurve or EmissionCurve
         classes
 
     Returns
     -------
     TransmissionCurve or EmissionCurve or (lam, val)
-        Be default lam is in [um] and val [ph/s/m2/um/arcsec2] if val is an 
+        Be default lam is in [um] and val [ph/s/m2/um/arcsec2] if val is an
         emission spectrum
-    
+
     Notes
     -----
     This function is designed to work with a table of values produced by SkyCalc
-    The column names must begin with lambda and then columns must be named 
+    The column names must begin with lambda and then columns must be named
     according to the airmass following this pattern: "X1.5" for an airmass of 1.5
     """
-    
+
     if not os.path.exists(fname):
         raise OSError("File doesn't exist: "+fname)
-    
+
     data = ioascii.read(fname)
     tbl_airmass = np.array([float(i[1:]) for i in data.colnames[2:]])
-    
+
     lam = data[data.colnames[0]]
-    
+
     if "X"+str(float(airmass)) in data.colnames:
         val = data["X"+str(float(airmass))]
 
@@ -669,4 +671,3 @@ def get_sky_spectrum(fname, airmass, return_type=None, **kwargs):
             return EmissionCurve(lam=lam, val=val, **kwargs)
     else:
         return lam, val
-    
