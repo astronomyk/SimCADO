@@ -15,7 +15,8 @@
 import os
 
 import glob
-import warnings, logging
+import warnings
+import logging
 from datetime import datetime as dt
 from copy import deepcopy
 
@@ -44,7 +45,7 @@ class OpticalTrain(object):
     cmds : UserCommands, optional
         Holds the commands needed to generate a model of the optical train
 
-    
+
     Optional Parameters
     -------------------
     Any keyword-value pair contained in the default configuration file
@@ -53,8 +54,8 @@ class OpticalTrain(object):
     See Also
     --------
     .commands.dump_defaults(), .commands.UserCommands
-    
-    
+
+
     General Attributes
     ------------------
     - cmds : commands, optional
@@ -112,7 +113,7 @@ class OpticalTrain(object):
 
 
     """
-    
+
     def __init__(self, cmds, **kwargs):
         self.info = dict([])
 
@@ -120,7 +121,7 @@ class OpticalTrain(object):
             cmds = UserCommands()
         self.cmds = deepcopy(cmds)
         self.cmds.update(kwargs)
-        
+
         self.tc_master = None   # set in separate method
         self.psf_size = None   # set in separate method
 
@@ -173,7 +174,7 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating an optical train")
         logging.debug("[OpticalTrain] Generating an optical train")
-        
+
         if cmds is not None:
             self.cmds.update(cmds)
         self._load_all_tc()
@@ -204,17 +205,17 @@ class OpticalTrain(object):
             object can be passed (in which case omit ``lam``) or an array/list can
             be passed (in which case specify ``lam``)
         lam : np.array, list, optional
-            [um] an array for the spectral bin centres, if ``trans`` is not a 
+            [um] an array for the spectral bin centres, if ``trans`` is not a
             TransmissionCurve object
         filter_name : str, optional
             The name of a filter curve contained in the package_dir. User
             get_filter_set() to find which filter curves are installed.
-        
+
         See also
         --------
         :class:`simcado.spectral.TransmissionCurve`
         :func:`simcado.optics.get_filter_set`
-        
+
         """
         if filter_name == lam == trans == None:
             raise ValueError("At least one parameter must be specified")
@@ -229,7 +230,7 @@ class OpticalTrain(object):
                 filt = trans
             elif isinstance(trans, (np.ndarray, list, tuple)) and \
                  isinstance(lam  , (np.ndarray, list, tuple)):
-                filt = sc.TransmissionCurve(lam=lam, val=trans, 
+                filt = sc.TransmissionCurve(lam=lam, val=trans,
                                             lam_res=self.lam_res)
 
         self.cmds["INST_FILTER_TC"] = filt
@@ -252,9 +253,9 @@ class OpticalTrain(object):
     def apply_wind_jitter(self, arr):
         return pe.wind_jitter(arr, self.cmds)
 
-    def _load_all_tc(self, tc_list=["ATMO_TC", "SCOPE_M1_TC", "INST_MIRROR_AO_TC", 
+    def _load_all_tc(self, tc_list=["ATMO_TC", "SCOPE_M1_TC", "INST_MIRROR_AO_TC",
                                     "INST_ENTR_WINDOW_TC", "INST_DICHROIC_TC",
-                                    "INST_MIRROR_TC", "INST_ADC_TC", 
+                                    "INST_MIRROR_TC", "INST_ADC_TC",
                                     "INST_PUPIL_TC", "INST_FILTER_TC", "FPA_QE"]):
         """
         Pre-loads all the transmission curves
@@ -269,7 +270,7 @@ class OpticalTrain(object):
         wfe = self.cmds["INST_TOTAL_WFE"]
         lam = np.arange(0.3,3.0)
         val = np.exp( -(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2 )
-        self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam, 
+        self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam,
                                                                      val=val)
 
 
@@ -279,7 +280,7 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating AO module mirror emission photons")
         logging.debug("[_gen_all_tc] Generating AO module mirror emission photons")
-        
+
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
         mirr_list = self.cmds.mirrors_ao
@@ -310,7 +311,7 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating telescope mirror emission photons")
         logging.debug("[_gen_all_tc] Generating telescope mirror emission photons")
-        
+
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
         mirr_list = self.cmds.mirrors_telescope
@@ -338,7 +339,7 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating atmospheric emission photons")
         logging.debug("[_gen_all_tc] Generating atmospheric emission photons")
-            
+
         # Make the spectral curves for the atmospheric background photons
         self.tc_atmo = self._gen_master_tc(preset="atmosphere")
 
@@ -390,7 +391,7 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Generating optical path for source photons")
         logging.debug("[_gen_all_tc] GGenerating optical path for source photons")
-        
+
         # Make the transmission curve and PSF for the source photons
         self.tc_source = self._gen_master_tc(preset="source")
 
@@ -428,17 +429,19 @@ class OpticalTrain(object):
 
                 if preset == "ao":
                     tc_keywords = base
-                if preset == "mirror":
+                elif preset == "mirror":
                     tc_keywords = base + ao
-                if preset == "atmosphere":
+                elif preset == "atmosphere":
                     tc_keywords = base + ao + ['SCOPE_M1_TC']
-                if preset == "source":
+                elif preset == "source":
                     tc_keywords = base + ao + ['SCOPE_M1_TC', 'ATMO_TC']
+                else:
+                    raise ValueError("Unknown preset parameter " + preset)
 
             else:
-                raise ValueError("""
+                warnings.warn("""
                 No presets or keywords passed to gen_master_tc().
-                Setting self.tc_master = sc.UnityCurve()""")
+                Setting self.tc_master = sc.UnityCurve()""", UserWarning)
                 self.tc_master = sc.UnityCurve()
                 return
 
@@ -505,7 +508,7 @@ class OpticalTrain(object):
             if self.cmds.verbose:
                 print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
             logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
-            
+
             psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                      self.lam_bin_centers)
 
@@ -521,13 +524,13 @@ class OpticalTrain(object):
                                         undersized=True)
                 psf_m1 = strehl * psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
                 # !!!!!! The line above won't work !!! addition on a list? #####
-                
-                
+
+
         else:
             if self.cmds.verbose:
                 print("Using PSF:", psf_type)
             logging.debug("Using PSF: " + psf_type)
-            
+
             ao_eff = self.cmds["SCOPE_AO_EFFECTIVENESS"]
 
             # Get a Diffraction limited PSF
