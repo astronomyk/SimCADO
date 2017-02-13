@@ -113,17 +113,17 @@ from . import utils
 from .utils import __pkg_dir__
 
 
-__all__ = ["Source", 
-           "star", "stars", "cluster", 
-           "galaxy", "source_from_image", 
-           "star_grid", "empty_sky", "sersic_profile", "SED", 
-           "get_SED_names", 
-           "scale_spectrum", "scale_spectrum_sb", 
-           "flat_spectrum", "flat_spectrum_sb", 
-           "value_at_lambda", 
-           "BV_to_spec_type", 
-           "zero_magnitude_photon_flux", "mag_to_photons", "photons_to_mag", 
-           "_get_pickles_curve", "_get_stellar_properties", 
+__all__ = ["Source",
+           "star", "stars", "cluster",
+           "galaxy", "source_from_image",
+           "star_grid", "empty_sky", "sersic_profile", "SED",
+           "get_SED_names",
+           "scale_spectrum", "scale_spectrum_sb",
+           "flat_spectrum", "flat_spectrum_sb",
+           "value_at_lambda",
+           "BV_to_spec_type",
+           "zero_magnitude_photon_flux", "mag_to_photons", "photons_to_mag",
+           "_get_pickles_curve", "_get_stellar_properties",
            "_get_stellar_Mv", "_get_stellar_mass",
            ]
 
@@ -595,9 +595,9 @@ class Source(object):
     def scale_spectrum(self, idx=0, mag=20, filter_name="Ks"):
         """
         Scale a certain spectrum to a certain magnitude
-        
+
         See :func:`simcado.source.scale_spectrum` for examples
-        
+
         Parameters
         ----------
         idx : int
@@ -617,46 +617,46 @@ class Source(object):
                                                      filter_name=filter_name,
                                                      return_ec=False)
 
-                                                     
+
     def scale_with_distance(self, distance_factor):
         """
         Scale the source for a new distance
-        
+
         Scales the positions and brightnesses of the :class:`.Source` object
         according to the ratio of the new and old distances
-        
+
         i.e. distance_factor = new_distance / current_distance
-        
+
         .. warning::
             This does not yet take into accout redshift
-        
+
         .. todo::
             Implement redshift
-        
+
         Parameters
         ----------
         distance_factor : float
             The ratio of the new distance to the current distance
             i.e. distance_factor = new_distance / current_distance
-        
+
         Examples
         --------
         ::
-        
+
             >>> from simcado.source import cluster
             >>>
             >>> curr_dist = 50000  # pc, i.e. LMC
             >>> new_dist = 770000  # pc, i.e. M31
             >>> src = cluster(distance=curr_dist)
             >>> src.scale_with_distance( new_dist/curr_dist )
-        
+
         """
-                  
+
         self.x /= distance_factor
         self.y /= distance_factor
         self.weight /= distance_factor**2
-                                                     
-                                                     
+
+
     def rotate(self, angle, unit="arcsec"):
         """
         Rotates the ``x`` and ``y`` coordinates by ``angle`` [degrees]
@@ -666,7 +666,7 @@ class Source(object):
         angle : float
             Default is in degrees, this can set with ``unit``
         unit : str, astropy.Unit
-            Either a string with the unit name, or an 
+            Either a string with the unit name, or an
             ``astropy.unit.Unit`` object
         """
 
@@ -678,15 +678,15 @@ class Source(object):
     def offset(self, dx=0, dy=0):
         """
         Shifts the coordinates of the source by (dx, dy) in [arcsec]
-        
+
         Parameters
         ----------
         dx, dy : float, array
             [arcsec] The offsets for each coordinate in the arrays ``x``, ``y``.
             - If dx, dy are floats, the same offset is applied to all coordinates
             - If dx, dy are arrays, they must be the same length as ``x``, ``y``
-            
-            
+
+
         """
 
         self.x += dx
@@ -695,22 +695,22 @@ class Source(object):
 
     def on_grid(self, pix_res=0.004):
         """
-        Return an image with the positions of all sources. 
-        
+        Return an image with the positions of all sources.
+
         The pixel values correspond to the number of emitting objects in that
         pixel
-        
+
         Parameters
         ----------
         pix_res : float
             [arcsec] The grid spacing
-           
+
         Returns
         -------
         im : 2D array
             A numpy array containing an image of where the sources are
-        
-        
+
+
         """
 
         xmin = np.min(self.x)
@@ -728,14 +728,14 @@ class Source(object):
     def read(self, filename):
         """
         Read in a previously saved :class:`.Source` FITS file
-        
+
         Parameters
         ----------
         filename : str
             Path to the file
-            
+
         """
-        
+
         ipt = fits.open(filename)
         dat0 = ipt[0].data
         hdr0 = ipt[0].header
@@ -766,7 +766,7 @@ class Source(object):
         self.lam_res = hdr1["LAM_RES"]
 
         self._convert_to_photons()
-        
+
 
     def write(self, filename):
         """
@@ -832,13 +832,13 @@ class Source(object):
         ----------
         transmission_curve : TransmissionCurve
             The TransmissionCurve to be applied
-            
+
         See Also
         --------
         :class:`simcado.spectral.TransmissionCurve`
-        
+
         """
-        
+
         tc = deepcopy(transmission_curve)
         tc.resample(self.lam, use_default_lam=False)
         self.spectra = self.spectra_orig * tc.val
@@ -847,15 +847,15 @@ class Source(object):
     def _convert_to_photons(self):
         """
         Convert the spectra to photons/(s m2)
-        
+
         if [arcsec] are in the units, we want to find the photons per pixel
         if [um] are in the units, we want to find the photons per wavelength bin
 
-        .. todo:: 
+        .. todo::
             Come back and put in other energy units like Jy, mag, ergs
-        
+
         """
-        
+
         self.units = u.Unit(self.params["units"])
         bases = self.units.bases
 
@@ -865,7 +865,7 @@ class Source(object):
         if u.s not in bases:
             factor /= (self.exptime * u.s)
         if u.m not in bases:
-            factor /= (self.area * u.m**2)
+            factor /= (1. * u.m**2)
         if u.micron in bases:
             factor *= (self.lam_res * u.um)
         if u.arcsec in bases:
@@ -880,14 +880,14 @@ class Source(object):
     def _from_cube(self, filename):
         """
         Make a Source object from a cube in memory or a FITS cube on disk
-        
+
         Parameters
         ----------
         filename : str
             Path to the FITS cube
-        
+
         """
-        
+
         if isinstance(filename, str) and os.path.exists(filename):
             hdr = fits.getheader(filename)
             cube = fits.getdata(filename)
@@ -926,7 +926,7 @@ class Source(object):
     def _from_arrays(self, lam, spectra, x, y, ref, weight=None):
         """
         Make a Source object from a series of lists
-        
+
         Parameters
         ----------
         lam : np.array
@@ -939,9 +939,9 @@ class Source(object):
             Dimensions (1, n) for referencing each coordinate to a spectrum
         weight : np.array, optional
             Dimensions (1, n) for weighting the spectrum of each object
-            
+
         """
-        
+
         self.lam = lam
         self.spectra = spectra
         self.x = x
@@ -1036,7 +1036,7 @@ class Source(object):
 
 def _get_stellar_properties(spec_type, cat=None, verbose=False):
     """
-    Returns an :class:`astropy.Table` with the list of properties for the 
+    Returns an :class:`astropy.Table` with the list of properties for the
     star(s) in ``spec_type``
 
     Parameters
@@ -1044,7 +1044,7 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
     spec_type : str, list
         The single or list of spectral types
     cat : str, optional
-        The filename of a catalogue in a format readable by 
+        The filename of a catalogue in a format readable by
         :func:`astropy.io.ascii.read`, e.g. ASCII, CSV. The catalogue should
         contain stellar properties
     verbose : bool
@@ -1091,7 +1091,7 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
 def _get_stellar_mass(spec_type):
     """
     Returns a single (or list of) float(s) with the stellar mass(es)
-    
+
     Parameters
     ----------
     spec_type : str, list
@@ -1101,9 +1101,9 @@ def _get_stellar_mass(spec_type):
     -------
     mass : float, list
         [Msol]
-        
+
     """
-    
+
     props = _get_stellar_properties(spec_type)
 
     if isinstance(props, (list, tuple)):
@@ -1209,7 +1209,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     -------
     lam, ec : array
         The wavelength bins and the SEDs for the spectral type
-        
+
     Notes
     -----
     - Vega has a 5556 flux of between 950 and 1000 ph/s/cm2/A. The pickles
@@ -1222,7 +1222,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     - Values range from 3.39 to 3.46 with the majority in range 3.44 to 3.46.
       Bohlin recommends 3.44
     - This results in a photon flux of 962 ph cm-2 s-1 A-1 at 5556 Ang
-    
+
     """
 
     if isinstance(spec_type, (list, tuple, np.ndarray)):
@@ -1276,34 +1276,34 @@ def _scale_pickles_to_photons(spec_type, mag=0):
 
     return lam, ec
 
-    
+
 def BV_to_spec_type(B_V):
     """
     Returns the latest main sequence spectral type(s) for (a) B-V colour
-    
+
     Parameters
     ----------
     B_V : float, array
         [mag] B-V colour
-    
+
     Returns
     -------
     spec_types : list
         A list of the spectral types corresponding to the B-V colours
-    
+
     Examples
     --------
     ::
-    
+
         >>> BV = np.arange(-0.3, 2.5, 0.5)
         >>> spec_types = BV_to_spec_type(BV)
         >>> print(BV)
         >>> print(spec_types)
         [-0.3  0.2  0.7  1.2  1.7  2.2]
         ['O9V', 'A8V', 'G2V', 'K5V', 'M3V', 'M8V']
-    
+
     """
-    
+
     #from simcado.source import _get_stellar_properties
 
     spec_type = [spt+str(i)+"V" for spt in "OBAFGKM" for i in range(10) ]
@@ -1313,8 +1313,8 @@ def BV_to_spec_type(B_V):
     if np.isscalar(idx): idx = np.array([idx])
     spec_types = [spec_type[i] for i in idx]
 
-    return spec_types    
-    
+    return spec_types
+
 
 def mag_to_photons(filter_name, magnitude=0):
     """
@@ -1331,19 +1331,19 @@ def mag_to_photons(filter_name, magnitude=0):
     -------
     flux : float
         [ph/s/m2] Photon flux in the given filter
-        
+
     See Also
     --------
     :func:`.photons_to_mag`
-    :func:`.zero_magnitude_photon_flux`, 
+    :func:`.zero_magnitude_photon_flux`,
     :func:`simcado.optics.get_filter_set`
     """
 
     flux_0 = zero_magnitude_photon_flux(filter_name)
     flux = flux_0 * 10**(-0.4 * magnitude)
     return flux
-    
-    
+
+
 def photons_to_mag(filter_name, photons=1):
     """
     Return the number of photons for a certain filter and magnitude
@@ -1359,19 +1359,19 @@ def photons_to_mag(filter_name, photons=1):
     -------
     mag : float
         The magnitude of an object with the given photon flux through the filter
-        
+
     See Also
     --------
     :func:`.photons_to_mag`
-    :func:`.zero_magnitude_photon_flux`, 
+    :func:`.zero_magnitude_photon_flux`,
     :func:`simcado.optics.get_filter_set`
-    
+
     """
 
     flux_0 = zero_magnitude_photon_flux(filter_name)
     mag = -2.5 * np.log10(flux / flux_0)
     return mag
-    
+
 
 
 def zero_magnitude_photon_flux(filter_name):
@@ -1445,11 +1445,11 @@ def value_at_lambda(lam_i, lam, val, return_index=False):
 def get_SED_names(path=None):
     """
     Return a list of the SEDs installed in the package directory
-    
-    Looks for files that follow the naming convention ``SED_<name>.dat``. 
-    For example, SimCADO contains an SED for an elliptical galaxy named 
+
+    Looks for files that follow the naming convention ``SED_<name>.dat``.
+    For example, SimCADO contains an SED for an elliptical galaxy named
     ``SED_elliptical.dat``
-        
+
     Parameters
     ----------
     path : str, optional
@@ -1459,24 +1459,24 @@ def get_SED_names(path=None):
     -------
     sed_names : list
         A list of names for the SED files available
-        
+
     Examples
     --------
     Names returned here can be used with the function :func:`.SED` to call up
     ::
-    
+
         >>> from simcado import SED, get_SED_names
         >>> print(get_SED_names())
         ['elliptical', 'interacting', 'spiral', 'starburst', 'ulirg']
         >>> SED("spiral")
         (array([ 0.3  ,  0.301,  0.302, ...,  2.997,  2.998,  2.999]),
          array([        0.        ,         0.        ,  26055075.98709349, ...,
-                  5007498.76444208,   5000699.21993188,   4993899.67542169]))   
-    
+                  5007498.76444208,   5000699.21993188,   4993899.67542169]))
+
     See Also
     --------
     :func:`.SED`
-            
+
     """
     if path is None:
         path = os.path.join(__pkg_dir__, "data")
@@ -1484,8 +1484,8 @@ def get_SED_names(path=None):
                                 for i in glob(os.path.join(path, "SED_*.dat"))]
     return sed_names
 
-    
-    
+
+
 
 def SED(spec_type, filter_name="V", magnitude=0.):
     """
@@ -1533,19 +1533,19 @@ def SED(spec_type, filter_name="V", magnitude=0.):
 
     .. plot::
         :include-source:
-        
+
         import matplotlib.pyplot as plt
         from simcado.source import SED
-        
+
         lam, spec = SED(spec_type=["A0V", "G2V"],
                             filter_name="PaBeta",
                             magnitude=[15, 20])
-    
+
         plt.plot(lam, spec[0], "blue", label="Vega")
         plt.plot(lam, spec[1], "orange", label="G2V")
         plt.semilogy(); plt.legend(); plt.show()
-        
-                            
+
+
 
     Notes
     -----
@@ -1588,17 +1588,17 @@ def SED(spec_type, filter_name="V", magnitude=0.):
 def empty_sky():
     """
     Returns an empty source so that instrumental fluxes can be simulated
-    
+
     Returns
     -------
     sky : Source
-    
+
     """
     sky = Source(lam=np.linspace(0.3, 3.0, 271),
                  spectra=np.zeros((1, 271)),
                  x=[0], y=[0], ref=[0], weight=[0])
     return sky
-                 
+
 
 def star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1,
               spec_type="A0V"):
@@ -2139,10 +2139,10 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
 
     See Also
     --------
-    :class:`simcado.spectral.TransmissionCurve`, 
-    :func:`simcado.optics.get_filter_curve`, 
+    :class:`simcado.spectral.TransmissionCurve`,
+    :func:`simcado.optics.get_filter_curve`,
     :func:`simcado.optics.get_filter_set`,
-    :func:`simcado.source.SED`, 
+    :func:`simcado.source.SED`,
     :func:`simcado.source.stars`
 
     Examples
@@ -2256,7 +2256,7 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,
 
     See Also
     --------
-        
+
     """
 
     if return_ec:
@@ -2345,13 +2345,13 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
         lam, spec = scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res,
                                       filter_name, return_ec)
         return lam, spec
-        
-        
+
+
 def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks",
            normalization="total", spectrum="elliptical", n=4, **kwargs):
     """
     Create a extended :class:`.Source` object for a "Galaxy"
-    
+
     Parameters
     ----------
     distance : float
@@ -2378,10 +2378,10 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks"
         - an EmissionCurve with a user defined spectrum
     n : float, optional
         Power law index. Default = 4
-        - n=1 for exponential (spiral), 
+        - n=1 for exponential (spiral),
         - n=4 for de Vaucouleurs (elliptical)
-    
-    
+
+
     Optional Parameters (passed to ``sersic_profile``)
     --------------------------------------------------
 
@@ -2394,22 +2394,22 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks"
     x_offset, y_offset : float
         [arcsec] The distance between the centre of the profile and the centre
         of the image. Default: (dx,dy) = (0,0)
-    
-    
+
+
     Returns
     -------
     galaxy_src : simcado.Source
-        
-    
+
+
     See Also
     --------
     source.sersic_profile()
     optics.get_filter_set(), source.get_SED_names()
     spectral.TransmissionCurve, spectral.EmissionCurve
-    
-    
+
+
     """
-    
+
     params = {"n"           : n,
               "ellipticity" : 0.5,
               "angle"       : 30,
@@ -2418,20 +2418,20 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks"
               "x_offset"    : 0,
               "y_offset"    : 0 }
     params.update(kwargs)
-    
+
     angular_hlr = np.rad2deg(half_light_radius/distance) * 3600
     pixular_hlr = angular_hlr / plate_scale
-    
+
     im = sersic_profile(r_eff        =pixular_hlr,
-                        n            =params["n"], 
-                        ellipticity  =params["ellipticity"], 
+                        n            =params["n"],
+                        ellipticity  =params["ellipticity"],
                         angle        =params["angle"],
                         normalization=normalization,
                         width        =params["width"] /plate_scale,
-                        height       =params["height"]/plate_scale, 
-                        x_offset     =params["x_offset"], 
+                        height       =params["height"]/plate_scale,
+                        x_offset     =params["x_offset"],
                         y_offset     =params["y_offset"])
-    
+
     if isinstance(spectrum, sc.EmissionCurve):
         lam, spec = spectrum.lam, spectrum.val
         lam, spec = scale_spectrum(lam=lam, spec=spec, mag=magnitude, filter_name=filter_name)
@@ -2440,24 +2440,24 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks"
     else:
         print(spectrum)
         raise ValueError("Cannot understand ``spectrum``")
-    
+
     galaxy_src = source_from_image(images=im, lam=lam, spectra=spec, plate_scale=plate_scale)
-    
+
     return galaxy_src
-        
-    
+
+
 def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30, normalization="half-light",
                    width=1024, height=1024, x_offset=0, y_offset=0):
     """
     Returns a 2D array with a normailised sersic profile
-    
+
     Parameters
     ----------
     r_eff : float
         [pixel] Effective (half-light) radius
     n : float
-        Power law index. 
-        - n=1 for exponential (spiral), 
+        Power law index.
+        - n=1 for exponential (spiral),
         - n=4 for de Vaucouleurs (elliptical)
     normalization : str, optional
         ["half-light", "centre", "total"] Where in the profile the unity values are.
@@ -2478,29 +2478,29 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30, normalization="hal
     Returns
     -------
     img : 2D array
-    
+
 
     Notes
     -----
-    Most units are in [pixel] in this function. This differs from :func:`.galaxy` 
+    Most units are in [pixel] in this function. This differs from :func:`.galaxy`
     where parameter units are in [arcsec] or [pc]
-        
+
     """
-    
+
     from astropy.modeling.models import Sersic2D
-    
+
     x,y = np.meshgrid(np.arange(width), np.arange(height))
-    
+
     dx = 0.5 * width  + x_offset
     dy = 0.5 * height + y_offset
-        
+
     mod = Sersic2D(amplitude=1, r_eff=r_eff, n=n, x_0=dx, y_0=dy,
                    ellip=ellipticity, theta=np.deg2rad(angle))
     img = mod(x, y)
-    
+
     if "cen" in normalization.lower():
         img /= np.max(img)
     elif "tot" in normalization.lower():
         img /= np.sum(img)
-    
+
     return img
