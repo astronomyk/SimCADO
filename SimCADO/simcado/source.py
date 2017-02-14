@@ -205,7 +205,8 @@ class Source(object):
         self.spectra_orig = deepcopy(self.spectra)
 
 
-    def apply_optical_train(self, opt_train, detector, chips="all", **kwargs):
+    def apply_optical_train(self, opt_train, detector, chips="all", 
+                            sub_pixel=False, **kwargs):
         """
         Apply all effects along the optical path to the source photons
 
@@ -216,17 +217,22 @@ class Source(object):
             photons as they travel from the source to the detector
         detector : simcado.Detector
             the object representing the detector
-        chips : int, list
-            Default is "all"
-
-
-        Optional parameters (**kwargs)
-        ------------------------------
-        sub_pixel : bool
+        chips : int, str, list, optional
+            The IDs of the chips to be readout. "all" is also acceptable
+        sub_pixel : bool, optional
             if sub-pixel accuracy is needed, each source is shifted individually.
             Default is False
 
-
+        Other Parameters
+        ----------------
+        INST_DEROT_PERFORMANCE : float
+            [0 .. 100] Percentage of the sky rotation that the derotator removes
+        SCOPE_JITTER_FWHM : float
+            [arcsec] The FWMH of the gaussian blur caused by jitter
+        SCOPE_DRIFT_DISTANCE : float
+            [arcsec] How far from the centre of the field of view has the 
+            telescope drifted during a DIT
+        
         Notes
         -----
         Output array is in units of [ph/s/pixel] where the pixel is internal
@@ -237,7 +243,7 @@ class Source(object):
                   "INST_DEROT_PERFORMANCE" : opt_train.cmds["INST_DEROT_PERFORMANCE"],
                   "SCOPE_JITTER_FWHM"      : opt_train.cmds["SCOPE_JITTER_FWHM"],
                   "SCOPE_DRIFT_DISTANCE"   : opt_train.cmds["SCOPE_DRIFT_DISTANCE"],
-                  "sub_pixel"              : False}
+                  "sub_pixel"              : sub_pixel}
         params.update(self.params)
         params.update(kwargs)
 
@@ -287,8 +293,8 @@ class Source(object):
                     print("Wavelength slice [um]:", \
                                             opt_train.lam_bin_centers[i])
                 # apply the adc shifts
-                self.x = self.x_orig + opt_train.adc_shifts[0][i]
-                self.y = self.y_orig + opt_train.adc_shifts[1][i]
+                self._x = self.x + opt_train.adc_shifts[0][i]
+                self._y = self.y + opt_train.adc_shifts[1][i]
 
                 # include any other shifts here
 
@@ -386,8 +392,10 @@ class Source(object):
             The PSF that the sources will be convolved with
         lam_min, lam_max : float
             [um] the wavelength range relevant for the psf
-        chip : detector.Chip object
-            the chip that will be seeing this image.
+        chip : str, detector.Chip
+            - detector.Chip : the chip that will be seeing this image.
+            - str : ["tiny", "small", "center"] -> [128, 1024, 4096] pixel chips
+            
 
         Optional parameters (**kwargs)
         ------------------------------
@@ -431,9 +439,20 @@ class Source(object):
             psf = sim_psf.PSF(size, pix_res)
             psf.set_array(arr)
 
+        if isinstance(chip, str):
+            if chip.lower() == "small":
+                from .detector import Chip
+                chip = Chip(0, 0, 1024, 1024, 0.004, 1, 0)
+            elif "cent" in chip.lower():
+                from .detector import Chip
+                chip = Chip(0, 0, 4096, 4096, 0.004, 1, 0)
+            elif "tiny" in chip.lower():
+                from .detector import Chip
+                chip = Chip(0, 0, 128, 128, 0.004, 1, 0)
+            
         if chip is not None:
-            mask = (self.x > chip.x_min) * (self.x < chip.x_max) * \
-                   (self.y > chip.y_min) * (self.y < chip.y_max)
+            mask = (self._x > chip.x_min) * (self._x < chip.x_max) * \
+                   (self._y > chip.y_min) * (self._y < chip.y_max)
             params["pix_res"] = chip.pix_res / params["oversample"]
             x_min, x_max = chip.x_min, chip.x_max,
             y_min, y_max = chip.y_min, chip.y_max
@@ -442,10 +461,10 @@ class Source(object):
             naxis1, naxis2 = chip.naxis1, chip.naxis2
 
         else:
-            mask = np.array([True]*len(self.x))
+            mask = np.array([True]*len(self._x))
             params["pix_res"] /= params["oversample"]
-            x_min, x_max = np.min(self.x), np.max(self.x)
-            y_min, y_max = np.min(self.y), np.max(self.y),
+            x_min, x_max = np.min(self._x), np.max(self._x)
+            y_min, y_max = np.min(self._y), np.max(self._y),
             x_cen, y_cen = (x_max + x_min) / 2, (y_max + y_min) / 2
 
             # the conversion to int was causing problems because some
@@ -457,8 +476,8 @@ class Source(object):
         slice_array = np.zeros((naxis1, naxis2), dtype=np.float32)
         slice_photons = self.photons_in_range(lam_min, lam_max, min_bins=10)
 
-        x_pix = (self.x - x_cen) / params["pix_res"]
-        y_pix = (self.y - y_cen) / params["pix_res"]
+        x_pix = (self._x - x_cen) / params["pix_res"]
+        y_pix = (self._y - y_cen) / params["pix_res"]
 
 
         # if sub pixel accuracy is needed, be prepared to wait. For this we
@@ -480,7 +499,9 @@ class Source(object):
             #x_int, y_int = np.floor(x_pix), np.floor(y_pix)
             #dx, dy = src.x - x_int, src.y - y_int
 
-            if bx > ax and by > ay:
+            if bx == ax and by == ay:
+                pass
+            elif bx > ax and by > ay:
                 psf_array = psf_array[bx-ax:bx+ax, by-ay:by+ay]
             elif bx < ax and by < ay:
                 pad_x, pad_y = ax-bx, ay-by
@@ -496,7 +517,7 @@ class Source(object):
                 psf_tmp = np.copy(psf_array)
                 #print(x_pix[i], y_pix[i])
                 psf_tmp = spi.shift(psf_tmp, (x_pix[i], y_pix[i]), order=1)
-                slice_array += psf_tmp * slice_photons[i] * self.weight[i]
+                slice_array += psf_tmp * slice_photons[i]
 
         elif params["sub_pixel"] == "raw":
             #x_int, y_int = np.round(x_pix).astype(int), np.round(y_pix).astype(int)
@@ -528,8 +549,7 @@ class Source(object):
         return slice_array
 
 
-    def photons_in_range(self, lam_min=None, lam_max=None, min_bins=10,
-                         mask=None):
+    def photons_in_range(self, lam_min=None, lam_max=None, min_bins=10):
         ## Argument 'mask' is unused (OC)
         """
 
@@ -657,7 +677,7 @@ class Source(object):
         self.weight /= distance_factor**2
                                                      
                                                      
-    def rotate(self, angle, unit="arcsec"):
+    def rotate(self, angle, unit="arcsec", use_orig_xy=False):
         """
         Rotates the ``x`` and ``y`` coordinates by ``angle`` [degrees]
 
@@ -668,14 +688,23 @@ class Source(object):
         unit : str, astropy.Unit
             Either a string with the unit name, or an 
             ``astropy.unit.Unit`` object
+        use_orig_xy : bool
+            If the rotation should be based on the original coordinates or the
+            current coordinates (e.g. if rotation has already been applied)
+            
         """
 
         ang = (angle * u.Unit(unit)).to(u.rad)
-        self.x *= np.cos(ang)
-        self.y *= np.sin(ang)
+        
+        if use_orig_xy:
+            self.x = self.x_orig * np.cos(ang)
+            self.y = self.x_orig * np.sin(ang)
+        else:
+            self.x *= np.cos(ang)
+            self.y *= np.sin(ang)
 
 
-    def offset(self, dx=0, dy=0):
+    def shift(self, dx=0, dy=0, use_orig_xy=False):
         """
         Shifts the coordinates of the source by (dx, dy) in [arcsec]
         
@@ -685,14 +714,23 @@ class Source(object):
             [arcsec] The offsets for each coordinate in the arrays ``x``, ``y``.
             - If dx, dy are floats, the same offset is applied to all coordinates
             - If dx, dy are arrays, they must be the same length as ``x``, ``y``
+        use_orig_xy : bool
+            If the shift should be based on the original coordinates or the
+            current coordinates (e.g. if shift has already been applied)
             
             
         """
+        self.dx = dx
+        self.dy = dy
 
-        self.x += dx
-        self.y += dy
-
-
+        if use_orig_xy:
+            self.x = self.x_orig + dx
+            self.y = self.y_orig + dy
+        else:
+            self.x += dx
+            self.y += dy
+            
+        
     def on_grid(self, pix_res=0.004):
         """
         Return an image with the positions of all sources. 
@@ -823,7 +861,12 @@ class Source(object):
         hdu = fits.HDUList([xyHDU, specHDU])
         hdu.writeto(filename, overwrite=True, checksum=True)
 
-
+        
+    @property
+    def info_keys():
+        return self.info.keys()
+        
+    
     def _apply_transmission_curve(self, transmission_curve):
         """
         Apply the values from a TransmissionCurve object to self.spectra
@@ -863,13 +906,13 @@ class Source(object):
 
         factor = 1.
         if u.s not in bases:
-            factor /= (self.exptime * u.s)
+            factor /= (self.params["exptime"] * u.s)
         if u.m not in bases:
-            factor /= (self.area * u.m**2)
+            factor /= (self.params["area"] * u.m**2)
         if u.micron in bases:
             factor *= (self.lam_res * u.um)
         if u.arcsec in bases:
-            factor *= (self.pix_res * u.arcsec)**2
+            factor *= (self.params["pix_res"] * u.arcsec)**2
 
         #print((factor*self.units).unit, factor)
 
@@ -954,8 +997,7 @@ class Source(object):
             self.spectra = np.array([spectra])
 
         self._convert_to_photons()
-
-
+       
     def __str__(self):
         return "A photon source object"
 
@@ -1003,6 +1045,9 @@ class Source(object):
 
         else:
             newsrc.array += x
+            
+        newsrc.info["object"] = "combined"
+            
         return newsrc
 
     def __sub__(self, x):
@@ -1369,7 +1414,7 @@ def photons_to_mag(filter_name, photons=1):
     """
 
     flux_0 = zero_magnitude_photon_flux(filter_name)
-    mag = -2.5 * np.log10(flux / flux_0)
+    mag = -2.5 * np.log10(photons / flux_0)
     return mag
     
 
@@ -1482,6 +1527,8 @@ def get_SED_names(path=None):
         path = os.path.join(__pkg_dir__, "data")
     sed_names = [i.replace(".dat", "").split("SED_")[-1] \
                                 for i in glob(os.path.join(path, "SED_*.dat"))]
+                                
+    sed_names += ["All stellar spectral types (e.g. G2V, K0III)"]
     return sed_names
 
     
@@ -1557,6 +1604,8 @@ def SED(spec_type, filter_name="V", magnitude=0.):
 
     if isinstance(spec_type, (tuple, list, np.ndarray)):
         spec_type = list(spec_type)
+        if np.isscalar(magnitude):
+            magnitude = [magnitude]*len(spec_type)
     elif isinstance(spec_type, str):
         spec_type = [spec_type]
 
@@ -1792,6 +1841,11 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
                  ref=ref, weight=weight,
                  units=units)
 
+    src.info["object"] = "stars"
+    src.info["spec_types"] = spec_types
+    src.info["magnitudes"] = mags
+    src.info["filter_name"] = filter_name
+                 
     return src
 
 
@@ -1914,8 +1968,8 @@ def cluster(mass=1E3, distance=50000, half_light_radius=1):
     # Assign stellar types to the masses in imf using list of average
     # main-sequence star masses:
     stel_type = [i + str(j) + "V" for i in "OBAFGKM" for j in range(10)]
-    mass = _get_stellar_mass(stel_type)
-    ref = utils.nearest(mass, imf)
+    masses = _get_stellar_mass(stel_type)
+    ref = utils.nearest(masses, imf)
     thestars = [stel_type[i] for i in ref] # was stars, redefined function name
 
     # assign absolute magnitudes to stellar types in cluster
@@ -1951,6 +2005,14 @@ def cluster(mass=1E3, distance=50000, half_light_radius=1):
     src = Source(lam=lam, spectra=spectra, x=x, y=y, ref=stars_spec_ref,
                  weight=weight, units="ph/s/m2")
 
+    src.info["object"] = "cluster"
+    src.info["total_mass"] = mass
+    src.info["masses"] = imf
+    src.info["half_light_radius"] = half_light_radius
+    src.info["hwhm"] = hwhm
+    src.info["distance"] = distance
+    src.info["stel_type"] = stel_type
+    
     return src
 
 
@@ -1962,6 +2024,11 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
     """
     Create a Source object from an image or a list of images.
 
+    .. note::
+        ``plate_scale`` is the original plate scale of the images. If this is
+        not the same as the plate scale of the ``Detector`` (i.e. 4mas for MICADO)
+        then you will need to specify oversample to interpolate between the two
+        scales. I.e.  oversample = Image plate scale / Detector plate scale
 
 
     Parameters
@@ -2347,7 +2414,7 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
         return lam, spec
         
         
-def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks",
+def galaxy(distance, half_light_radius, plate_scale, magnitude=10, filter_name="Ks",
            normalization="total", spectrum="elliptical", n=4, **kwargs):
     """
     Create a extended :class:`.Source` object for a "Galaxy"
@@ -2434,19 +2501,23 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude, filter_name="Ks"
     
     if isinstance(spectrum, sc.EmissionCurve):
         lam, spec = spectrum.lam, spectrum.val
-        lam, spec = scale_spectrum(lam=lam, spec=spec, mag=magnitude, filter_name=filter_name)
+        lam, spec = scale_spectrum(lam=lam, spec=spec, mag=magnitude, 
+                                                        filter_name=filter_name)
     elif spectrum in get_SED_names():
-        lam, spec = SED(spec_type=spectrum, filter_name=filter_name, magnitude=magnitude)
+        lam, spec = SED(spec_type=spectrum, filter_name=filter_name, 
+                                                            magnitude=magnitude)
     else:
         print(spectrum)
         raise ValueError("Cannot understand ``spectrum``")
     
-    galaxy_src = source_from_image(images=im, lam=lam, spectra=spec, plate_scale=plate_scale)
+    galaxy_src = source_from_image(images=im, lam=lam, spectra=spec, 
+                                                        plate_scale=plate_scale)
     
     return galaxy_src
         
     
-def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30, normalization="half-light",
+def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30, 
+                   normalization="total",
                    width=1024, height=1024, x_offset=0, y_offset=0):
     """
     Returns a 2D array with a normailised sersic profile
@@ -2459,16 +2530,16 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30, normalization="hal
         Power law index. 
         - n=1 for exponential (spiral), 
         - n=4 for de Vaucouleurs (elliptical)
+    ellipticity : float
+        Default = 0.5
+    angle : float
+        [deg] Default = 30. Rotation anti-clockwise from the x-axis
     normalization : str, optional
         ["half-light", "centre", "total"] Where in the profile the unity values are.
         If normalization equals:
         - "half-light" : the pixels at the half-light radius are set to 1
         - "centre" : the maximum values are set to 1
         - "total" : the image sums to 1
-    ellipticity : float
-        Default = 0.5
-    angle : float
-        [deg] Default = 30. Rotation anti-clockwise from the x-axis
     width, height : int
         [pixel] Dimensions of the image
     x_offset, y_offset : float
