@@ -1,0 +1,32 @@
+02/14/2017 09:18:07 AM SimCADO imported
+02/14/2017 09:18:09 AM UserCommands object created
+02/14/2017 09:18:09 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:09 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:09 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:09 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:09 AM [OpticalTrain] Generating an optical train
+02/14/2017 09:18:10 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:10 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:10 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:10 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:10 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:10 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:10 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:10 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:10 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:10 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:11 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:11 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:11 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:11 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:11 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:11 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:11 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:11 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:11 AM [UserCommands] Determining lam_bin_edges
+02/14/2017 09:18:11 AM [UserCommands] lam_bin_edges found
+02/14/2017 09:18:11 AM [_gen_all_tc] Generating AO module mirror emission photons
+02/14/2017 09:18:11 AM [_gen_all_tc] Generating telescope mirror emission photons
+02/14/2017 09:18:11 AM [_gen_all_tc] Generating atmospheric emission photons
+02/14/2017 09:18:12 AM [_gen_all_tc] GGenerating optical path for source photons
+02/14/2017 09:18:12 AM Using PSF: C:\Program Files\Anaconda3\lib\site-packages\simcado\data\PSF_SCAO.fits

@@ -2,7 +2,9 @@ Welcome to SimCADocs
 ====================
 
 The (slowly expanding) documentation base for SimCADO
-:mod:`astropy.io`
+
+All Notebooks and API available on the University of Vienna's server:  
+www.univie.ac.at/simcado
 
 .. figure:: images/Omega_Cen_Fabricius.png
     :figwidth: 600 px
@@ -29,25 +31,40 @@ iPython/Jupyter notebooks
 A (continualy expanding) series of iPython Notebooks detailing how to
 use SimCADO are available :doc:`here in the Notebooks <examples/Notebooks>` section.
 
+.. hint:: 
+    Don't feel like sifting through documentation? Common commands and examples 
+    are on the SimCADO cheat-sheet: 
+    
+    * `PDF version`_ or 
+    * `Jupyter Notebook`_
+
+
+.. _PDF version: ./_static/downloads/SimCADO_cheatsheet.pdf
+.. _Jupyter Notebook: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/SimCADO-cheat-sheet.ipynb
+
+
 Reference Material
 ~~~~~~~~~~~~~~~~~~
 
 -  The inner workings of SimCADO are described in detail in `Leschinski
    et al. (2016)`_
+   
+.. _Leschinski et al. (2016): https://arxiv.org/pdf/1609.01480v1.pdf   
 
 -  The current status of MICADO is described in `Davies et al. (2016)`_
+
+.. _Davies et al. (2016): https://arxiv.org/pdf/1607.01954.pdf
 
 Downloading and Installing
 --------------------------
 
-For more information, see the :doc:Downloads section
+For more information, see the :doc:`Download` section
 
 **SimCADO has only been tested in Python 3.x**.
 
 It is hightly recommended to use Python 3, however the basics of
 generating images will still work in Python 2.7. We cannot guarantee
-this though. See the `Features`_ page for more info on which functions
-with which Python version.
+this though. 
 
 The quick way:
 
@@ -99,8 +116,8 @@ installed).
 At the very least, we need to create a :class:`.Source` object which contains
 both spatial and spectral information on our object of interest. Here we
 use the built-in command :func:`simcado.source.cluster()` to create a
-:class:`.Source`-object for a 10000-Msun stellar cluster. (See `Creating
-Sources`_ for more information).
+:class:`.Source`-object for a 10000-Msun stellar cluster. (:doc:`Creating
+Sources <Source>` for more information).
 ::
 
     >>> src = simcado.source.cluster()
@@ -118,15 +135,15 @@ notebook.
 Changing simulation parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`.run` also takes any `configuration keywords`_ as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
+The :func:`.run` also takes any :doc:`configuration keywords <Keywords>` as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
 
     >>> simcado.run(src, filename="my_first_sim.fits", OBS_EXPTIME=600, OBS_NDIT=6)
     
-That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the [API](API/_build/index.html) documentation
+That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the :doc:`API` documentation
 
 SimCADO building blocks
 -----------------------
-For a brief explanation of how SimCADO works and which classes are relevant, please see either the [Getting Started](GettingStarted.md) or [SimCADO in depth](deep_stuff/SimCADO.md) section.
+For a brief explanation of how SimCADO works and which classes are relevant, please see either the :doc:`Getting Started` or :doc:`SimCADO in depth <./deep_stuff/SimCADO>` section.
 
 Bugs and Issues
 ---------------
@@ -134,6 +151,8 @@ Bugs and Issues
 We freely admit that there may still be several bugs that we have not found. If you come across an buggy part of SimCADO, *please please* tell us. We can't make SimCADO better if we don't know about things.
 
 The preferable option is to open an issue on our Github page: `gastronomyk/SimCADO/issues`_, or you can contact either one of us directly.
+
+.. _gastronomyk/SimCADO/issues: https://github.com/gastronomyk/SimCADO/issues,
 
 Contact
 -------
@@ -148,14 +167,3 @@ For questions and complaints alike, please contact the authors:
 **Data Flow Team Leader (Gronigen):** Gijs Verdoes Kleijn
 
 **MICADO home office (MPE):** http://www.mpe.mpg.de/ir/micado
-
-
-
-
-.. _Leschinski et al. (2016): https://arxiv.org/pdf/1609.01480v1.pdf
-.. _Davies et al. (2016): https://arxiv.org/pdf/1607.01954.pdf
-.. _Downloads: Download.md
-.. _Features: Features.md
-.. _Creating Sources: examples/Source.md
-.. _configuration keywords: Keywords.md
-.. _gastronomyk/SimCADO/issues: https://github.com/gastronomyk/SimCADO/issues,

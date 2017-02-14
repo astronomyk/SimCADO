@@ -4,7 +4,7 @@ SimCADO FAQs
 Here are some answers to known issues with SimCADO.
 
 Work around for failing :func:`~simcado.detector.install_noise_cube` with Python 2.7
----------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
 
 The problem lies with Python 2.7. The noise cube code is 3rd party code
 that only works on Python 3 and I haven’t had a chance to dig into that
