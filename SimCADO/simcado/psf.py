@@ -1151,7 +1151,7 @@ class UserPSFCube(PSFCube):
         if not hasattr(lam_bin_centers, "__len__"):
             lam_bin_centers = [lam_bin_centers]
 
-        n_slices = len(fits.open(filename).info(output=False))
+        n_slices = len(fits.info(filename, output=False))
         psf_slices = []
 
         # pull out the wavelengths in the PSF FITS files
@@ -1187,6 +1187,8 @@ class UserPSFCube(PSFCube):
                 pix_res = hdr["CDELT1"]
             elif 'CD1_1' in hdr.keys():
                 pix_res = hdr['CD1_1']
+            elif 'PIXSCALE' in hdr.keys():
+                pix_res = hdr['PIXSCALE']
             else:
                 raise KeyError("Could not get pixel scale from " +
                                filename)
