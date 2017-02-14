@@ -1,1 +1,6 @@
-*.ipynb
+stable_dists
+old
+pdfs
+data_backup
+.cache
+
