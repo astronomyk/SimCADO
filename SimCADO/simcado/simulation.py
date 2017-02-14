@@ -12,6 +12,7 @@ __all__ = ["run", "snr", "check_chip_positions"]
 
 def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         detector_layout="small", filename=None, return_internals=False,
+        filter_name=None, exptime=None,
         **kwargs):
     """
     Run a MICADO simulation with default parameters
@@ -48,27 +49,41 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         [False, True] Default is False. If True, the ``UserCommands``,
         ``OpticalTrain`` and ``Detector`` objects used in the simulation are
         returned in a tuple: ``return hdu, (cmds, opt_train, fpa)``
+        
+    filter_name : str, TransmissionCurve
+        Analogous to passing INST_FILTER_TC as a keyword argument
 
+    exptime : int, float
+        [s] Analogous to passing OBS_EXPTIME as a keyword argument
+               
     """
 
     if cmds is None:
         cmds = sim.UserCommands()
         cmds["INST_FILTER_TC"] = "Ks"
-    cmds["FPA_CHIP_LAYOUT"] = detector_layout
+    
+        if detector_layout.lower() in ("small", "centre", "center"):
+            cmds["FPA_CHIP_LAYOUT"] = detector_layout
 
-    if mode == "wide":
-        cmds["SIM_DETECTOR_PIX_SCALE"] = 0.004
-        cmds["INST_NUM_MIRRORS"] = 11
-        if detector_layout.lower() == "full":
-            cmds["FPA_CHIP_LAYOUT"] = "wide"
-    elif mode == "zoom":
-        cmds["SIM_DETECTOR_PIX_SCALE"] = 0.0015
-        cmds["INST_NUM_MIRRORS"] = 13
-        if detector_layout.lower() == "full":
-            cmds["FPA_CHIP_LAYOUT"] = "zoom"
-    else:
-        raise ValueError("'mode' must be either 'wide' or ' zoom', not " + mode)
+        if mode == "wide":
+            cmds["SIM_DETECTOR_PIX_SCALE"] = 0.004
+            cmds["INST_NUM_MIRRORS"] = 11
+            if detector_layout.lower() == "full":
+                cmds["FPA_CHIP_LAYOUT"] = "wide"
+        elif mode == "zoom":
+            cmds["SIM_DETECTOR_PIX_SCALE"] = 0.0015
+            cmds["INST_NUM_MIRRORS"] = 13
+            if detector_layout.lower() == "full":
+                cmds["FPA_CHIP_LAYOUT"] = "zoom"
+        else:
+            raise ValueError("'mode' must be either 'wide' or ' zoom', not " + mode)
 
+    if filter_name is not None:
+        cmds["INST_FILTER_TC"] = filter_name
+        
+    if exptime is not None:
+        cmds["OBS_EXPTIME"] = exptime
+            
     # update any remaining keywords
     cmds.update(kwargs)
 
