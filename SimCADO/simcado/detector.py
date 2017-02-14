@@ -266,12 +266,6 @@ class Detector(object):
         the ``Detector``. Therefore any dictionary keywords can be passed in the
         form of a dictionary, i.e. {"EXPTIME" : 60, "OBS_OUTPUT_DIR" : "./"}
 
-        Notes
-        -----
-        ** In the current release ** the parameter that controls which read
-        mode is used is the "SIM_SPEED" command. <3 = full up-the-ramp, 3 <=
-        SIM_SPEED < 7 = stacked single read outs. <7 = one single read out for
-        the whole NDIT*EXPTIME time span.
 
         References
         ----------
@@ -732,20 +726,7 @@ class Chip(object):
         out_array = np.zeros(self.array.shape, dtype=np.float32)
 
         ############## TO DO add in the different read out modes ###############
-        # if cmds["SIM_SPEED"] <= 3:
-            # for n in range(ndit):
-                # out_array += self._read_out_uptheramp(self.array, dit, tro,
-                                                   # max_byte)
-                # out_array += dark * dit
-
-        # elif cmds["SIM_SPEED"] > 3 and cmds["SIM_SPEED"] <= 7:
-            # for n in range(ndit):
-                # out_array += self._read_out_fast(self.array, dit)
-
-            # out_array += dark * dit * ndit
-
-        #elif cmds["SIM_SPEED"] > 7:
-        #######################################################################
+        ########################################################################
 
         out_array = self._read_out_superfast(self.array, dit, ndit)
         # TODO: noise estimate is np.sqrt(self.array * dit * ndit)
@@ -786,7 +767,7 @@ class Chip(object):
         Test readout onto a detector using cube model
 
         Parameters
-        ==========
+        ----------
         image :
             a 2D image to be mapped onto the detector. Units are [ph/s/pixel]
         dit :
@@ -795,7 +776,7 @@ class Chip(object):
             time for a single non-destructive read (default: 1.3 seconds)
 
         Optional Parameters
-        ===================
+        -------------------
         max_byte :
             the largest possible chunk of memory that can be used for computing
             the sampling slope
