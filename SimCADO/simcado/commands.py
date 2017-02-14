@@ -64,8 +64,7 @@ keywords - e.g. for the keywords for the instrument:
 
 
 import os, shutil
-import warnings
-import logging
+import warnings, logging
 
 from collections import OrderedDict
 
@@ -74,6 +73,7 @@ import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
 
 from . import spectral as sc
 from .utils import __pkg_dir__, atmospheric_refraction
+from .psf import PSFCube
 
 #__all__ = []
 __all__ = ["UserCommands", "dump_defaults", "dump_chip_layout",
@@ -240,14 +240,13 @@ class UserCommands(object):
         # read in the default keywords
         self.cmds = read_config(default)
 
-        # turn any "none" strings into python None values
-        self._convert_none()
-
         # read in the users wishes
         if filename is not None:
             self.cmds.update(read_config(filename))
 
-        # set the default paths and file names
+        # set the default paths and file names and turn any "none" strings 
+        # into python None values
+        self._convert_none()
         self._find_files()
         self._default_data()
 
@@ -424,25 +423,35 @@ class UserCommands(object):
         Input system-specific path names for the default package data files
         """
 
-        if self.cmds["SCOPE_PSF_FILE"].lower() in ("ltao"):
-            self.cmds["SCOPE_PSF_FILE"] = \
-                os.path.join(self.pkg_dir, "data", "PSF_LTAO.fits")
-        elif self.cmds["SCOPE_PSF_FILE"].lower() in ("default", "scao"):
-            self.cmds["SCOPE_PSF_FILE"] = \
-                os.path.join(self.pkg_dir, "data", "PSF_SCAO.fits")
-            self.cmds["INST_USE_AO_MIRROR_BG"] = "no"
-        elif self.cmds["SCOPE_PSF_FILE"].lower() in ("mcao", "maory"):
-            print("Unfortunately SimCADO doesn't yet have a MCAO PSF")
-            print("Using the SCAO PSF instead")
-            self.cmds["SCOPE_PSF_FILE"] = \
-                os.path.join(self.pkg_dir, "data", "PSF_SCAO.fits")
-        elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
-            self.cmds["SCOPE_PSF_FILE"] = \
-                os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
-        elif not os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-            raise ValueError("Cannot recognise PSF file name: " + \
+        if isinstance(self.cmds["SCOPE_PSF_FILE"], str):
+            if self.cmds["SCOPE_PSF_FILE"].lower() in ("ltao"):
+                self.cmds["SCOPE_PSF_FILE"] = \
+                    os.path.join(self.pkg_dir, "data", "PSF_LTAO.fits")
+            elif self.cmds["SCOPE_PSF_FILE"].lower() in ("default", "scao"):
+                self.cmds["SCOPE_PSF_FILE"] = \
+                    os.path.join(self.pkg_dir, "data", "PSF_SCAO.fits")
+                self.cmds["INST_USE_AO_MIRROR_BG"] = "no"
+            elif self.cmds["SCOPE_PSF_FILE"].lower() in ("mcao", "maory"):
+                print("Unfortunately SimCADO doesn't yet have a MCAO PSF")
+                print("Using the SCAO PSF instead")
+                self.cmds["SCOPE_PSF_FILE"] = \
+                    os.path.join(self.pkg_dir, "data", "PSF_SCAO.fits")
+            elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
+                self.cmds["SCOPE_PSF_FILE"] = \
+                    os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
+            elif not os.path.exists(self.cmds["SCOPE_PSF_FILE"]): 
+                raise ValueError("Cannot recognise PSF file name: " + \
+                                                    self.cmds["SCOPE_PSF_FILE"])
+        elif isinstance(self.cmds["SCOPE_PSF_FILE"], PSFCube):
+            pass
+        elif self.cmds["SCOPE_PSF_FILE"] is None:
+            warnings.warn("SCOPE_PSF_FILE is None")
+            logging.debug("SCOPE_PSF_FILE is None")
+        else:
+            raise ValueError("Cannot recognise SCOPE_PSF_FILE: " + \
                                                     self.cmds["SCOPE_PSF_FILE"])
 
+                                                        
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
@@ -472,9 +481,20 @@ class UserCommands(object):
         Update the UserCommand convenience attributes
         """
 
-        self.mirrors_telescope = ioascii.read(self.cmds["SCOPE_MIRROR_LIST"])
-        self.mirrors_ao = ioascii.read(self.cmds["INST_MIRROR_AO_LIST"])
-
+        if self.cmds["SCOPE_MIRROR_LIST"] is not None:
+            self.mirrors_telescope = ioascii.read(self.cmds["SCOPE_MIRROR_LIST"])
+        else:
+            raise ValueError("SCOPE_MIRROR_LIST = " + \
+                                                self.cmds["SCOPE_MIRROR_LIST"])
+        
+        if self.cmds["INST_MIRROR_AO_LIST"] is not None:
+            self.mirrors_ao = ioascii.read(self.cmds["INST_MIRROR_AO_LIST"])
+        else:
+            self.mirrors_ao = ioascii.read("""
+            #Mirror     Outer   Inner   Temp
+            M0          0.     0.      -273  
+            """)
+            
         i = np.where(self.mirrors_telescope["Mirror"] == "M1")[0][0]
         self.diameter = self.mirrors_telescope["Outer"][i]
         self.area = np.pi / 4 * (self.diameter**2 - \
@@ -556,9 +576,12 @@ class UserCommands(object):
                 wfe = wfe_list[wfe_list.colnames[0]]
                 num = wfe_list[wfe_list.colnames[1]]
             elif isinstance(self.cmds["INST_WFE"], (float, int)):
-                wfe, num = self.cmds["INST_WFE"], 1
-
-        tot_wfe = np.sqrt(np.sum(num * wfe**2))
+                wfe, num = float(self.cmds["INST_WFE"]), 1
+        
+            tot_wfe = np.sqrt(np.sum(num * wfe**2))
+        else:
+            tot_wfe = 0
+            
         self.cmds["INST_TOTAL_WFE"] = tot_wfe
 
 
