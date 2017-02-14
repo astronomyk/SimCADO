@@ -1,6 +1,0 @@
-#  id    x_cen    y_cen    x_len   y_len
-#        arcsec   arcsec   pixel   pixel
-    0      -116     -116    2048    2048
-    1       116     -116    2048    2048
-    2      -116      116    2048    2048
-    3       116      116    2048    2048
