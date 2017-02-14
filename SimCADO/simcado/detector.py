@@ -208,12 +208,11 @@ class Detector(object):
                    #       arcsec   arcsec   pixel   pixel   e-/ADU
                    0        0        0    1024    1024       1.7  """)
         else:
-            if os.path.exists(self.cmds["FPA_CHIP_LAYOUT"]):
+            try:
                 self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
-            else:
-                raise FileNotFoundError("File " +
-                                        self.cmds["FPA_CHIP_LAYOUT"] +
-                                        " (FPA_CHIP_LAYOUT) does not exist")
+            except:
+                raise FileNotFoundError(self.cmds["FPA_CHIP_LAYOUT"] +
+                                        " (FPA_CHIP_LAYOUT) cannot be read")
 
         self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
                            self.layout["x_len"][i], self.layout["y_len"][i],
@@ -246,13 +245,13 @@ class Detector(object):
         Parameters
         ----------
         filename : str
-            where the file is to be saved. If ``None`` and ``to_disk`` is true, the output
-            file is called "output.fits". Default is ``None``
+            where the file is to be saved. If ``None`` and ``to_disk`` is true, 
+            the output file is called "output.fits". Default is ``None``
         to_disk : bool
-            a flag for where the output should go. If ``True`` the ``Chip``
-            images will be written to a ``.fits`` file on disk. If no
-            ``filename`` is specified, the output will be called "output.fits".
-            The default is ``False``
+            a flag for where the output should go. If ``filename`` is given
+            or ``to_disk=True``, the ``Chip`` images will be written to a 
+            ``.fits`` file on disk.  
+            If no `filename`` is specified, the output will be called "output.fits".
         chips : int, array-like, optional
             The chip or chips to be read out, based on the detector_layout.dat
             file. Default is the first ``Chip`` specified in the list, i.e. [0].
