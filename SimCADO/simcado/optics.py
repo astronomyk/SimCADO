@@ -15,8 +15,7 @@
 import os
 
 import glob
-import warnings
-import logging
+import warnings, logging
 from datetime import datetime as dt
 from copy import deepcopy
 
@@ -265,6 +264,8 @@ class OpticalTrain(object):
                 airmass = self.cmds["ATMO_AIRMASS"] if tc == "ATMO_TC" else None
                 self.cmds[tc] = sc.TransmissionCurve(filename=self.cmds[tc],
                                                      airmass=airmass)
+            elif self.cmds[tc] is None:
+                self.cmds[tc] = sc.UnityCurve()
 
         # see Rics email from 22.11.2016
         wfe = self.cmds["INST_TOTAL_WFE"]
@@ -283,9 +284,10 @@ class OpticalTrain(object):
 
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
+        
         mirr_list = self.cmds.mirrors_ao
         ao_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
-                                        mirr_list["Inner"]**2)
+                                     mirr_list["Inner"]**2)
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_ao = self._gen_master_tc(preset="ao")
@@ -473,19 +475,16 @@ class OpticalTrain(object):
         return tc_master
 
 
-    def _gen_master_psf(self, psf_type="Airy"):
+    def _gen_master_psf(self):
         """
-        Generate a Master PSF for the system. This includes the AO PSF.
-        Notes: Jitter can be applied to detector array as a single PSF, and the
+        Import or make a aaster PSF for the system. 
+        
+        Notes
+        -----
+        Jitter can be applied to detector array as a single PSF, and the
                ADC shift can be applied to each layer of the psf separately
 
-        Parameters
-        ==========
-        psf_type : str
-            'Moffat', 'Airy'
         """
-
-        ####### PSF CUBES #######
 
         ############################################################
         # !!!!!!!!! USER DEFINED CUBE NOT FULLY TESTED !!!!!!!!!!! #
@@ -497,70 +496,46 @@ class OpticalTrain(object):
 
         # Make a PSF for the main mirror. If there is one on file, read it in
         # otherwise generate an Airy+Gaussian (or Moffat, Oliver?)
+        
+        if self.cmds["SCOPE_PSF_FILE"] is None:
+            warnings.warn("""
+            No PSF given. SCOPE_PSF_FILE = None. 
+            Returning an Delta function for SCOPE_PSF_FILE""")
 
-        if self.cmds["SCOPE_PSF_FILE"] is not None and not \
-                                    os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-            warnings.warn("There is no PSF file under " + self.cmds["SCOPE_PSF_FILE"])
-
-
-        if self.cmds["SCOPE_PSF_FILE"] is not None and \
-                                os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
+            psf_m1 = psf.DeltaPSFCube(self.lam_bin_centers,
+                                      pix_res=self.pix_res,
+                                      size=9)
+            logging.debug("No PSF Given: making Delta PSF")
+            
+        elif isinstance(self.cmds["SCOPE_PSF_FILE"], psf.PSFCube):
+            psf_m1 = self.cmds["SCOPE_PSF_FILE"]
+            logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
+        
+        elif isinstance(self.cmds["SCOPE_PSF_FILE"], str):
             if self.cmds.verbose:
                 print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
-            logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
+            
+            if os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
+                logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
+            
+                psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
+                                         self.lam_bin_centers)
 
-            psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
-                                     self.lam_bin_centers)
+                if psf_m1[0].pix_res != self.pix_res:
+                    psf_m1.resample(self.pix_res)
+            else:
+                warnings.warn("""
+                Couldn't resolve SCOPE_PSF_FILE. 
+                Returning an Delta function for SCOPE_PSF_FILE""")
+        
+                psf_m1 = psf.DeltaPSFCube(self.lam_bin_centers,
+                                          pix_res=self.pix_res,
+                                          size=9)
+                logging.debug("Couldn't resolve given PSF: making Delta PSF")
+            
+        return psf_m1
 
-            if psf_m1[0].pix_res != self.pix_res:
-                psf_m1.resample(self.pix_res)
-
-            if self.cmds["SCOPE_STREHL_RATIO"] < 1. and \
-                                    "PSF_POPPY" in self.cmds["SCOPE_PSF_FILE"]:
-                strehl = self.cmds["SCOPE_STREHL_RATIO"]
-                gauss = psf.GaussianPSF(fwhm=0.8,
-                                        size=psf_m1[0].size,
-                                        pix_res=self.pix_res,
-                                        undersized=True)
-                psf_m1 = strehl * psf_m1 + [gauss.array * (1-strehl)]*len(psf_m1)
-                # !!!!!! The line above won't work !!! addition on a list? #####
-
-
-        else:
-            if self.cmds.verbose:
-                print("Using PSF:", psf_type)
-            logging.debug("Using PSF: " + psf_type)
-
-            ao_eff = self.cmds["SCOPE_AO_EFFECTIVENESS"]
-
-            # Get a Diffraction limited PSF
-            fwhm = (1.22*u.rad * self.lam_bin_centers * u.um / \
-                                (self.cmds.diameter * u.m)).to(u.arcsec).value
-            if psf_type == "Moffat":
-                psf_m1 = psf.MoffatPSFCube(self.lam_bin_centers,
-                                           fwhm=fwhm,
-                                           pix_res=self.pix_res,
-                                           size=self.psf_size)
-            elif psf_type == "Airy":
-                psf_diff = psf.AiryPSFCube(self.lam_bin_centers,
-                                           fwhm=fwhm,
-                                           pix_res=self.pix_res,
-                                           size=self.psf_size)
-
-                # Get the Gaussian seeing PSF
-                if ao_eff < 100.:
-                    fwhm = (1. - ao_eff/100.) * self.cmds["OBS_SEEING"]
-                    psf_seeing = psf.GaussianPSF(self.lam_bin_centers,
-                                                 fwhm=fwhm,
-                                                 pix_res=self.pix_res)
-
-                    psf_m1 = psf_diff.convolve(psf_seeing)
-                else:
-                    psf_m1 = psf_diff
-
-        psf_master = psf_m1
-        return psf_master
-
+        
     def _gen_adc_shifts(self):
         """
         Keywords:
