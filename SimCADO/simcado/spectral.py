@@ -480,13 +480,17 @@ class EmissionCurve(TransmissionCurve):
             Assuming ph/(s m2 micron arcsec2)""", RuntimeWarning)
         default_params.update(kwargs)
 
+        if default_params["area"] < 1E-6:
+            default_params["area"] = 1E-6
+            
         if filename is not None:
             default_params["filename"] = filename
 
         super(EmissionCurve, self).__init__(Type="Emission", **default_params)
         self.factor = 1
         self.convert_to_photons()
-
+            
+            
     def resample(self, bins, action="sum", use_edges=False):
         # TODO: What about argument min_step from Transmission.resample? (OC)
         """Rebin an emission curve"""
@@ -570,9 +574,16 @@ class BlackbodyCurve(EmissionCurve):
     """
 
     def __init__(self, lam, temp, **kwargs):
-        self.params = {"pix_res":0.004, "area":978}
+        self.params = {"pix_res":0.004, "area":978, "temp":temp}
         self.params.update(kwargs)
 
+        # FOr some wierd reason it returns NaNs for temp < 266 or area == 0
+        if temp < -266: 
+            temp = 266.
+        if self.params["area"] < 1E-6:
+            self.params["area"] = 1E-6
+                
+        
         temp += 273.15
 
         lam_res = lam[1] - lam[0]
@@ -603,7 +614,7 @@ class UnityCurve(TransmissionCurve):
     - val: constant value of transmission (default: 1)
     """
 
-    def __init__(self, lam=np.asarray([0.5, 2.5]), val=1, **kwargs):
+    def __init__(self, lam=np.asarray([0.3, 3.0]), val=1, **kwargs):
         val = np.asarray([val]*len(lam))
         super(UnityCurve, self).__init__(lam=lam, val=val, **kwargs)
 
