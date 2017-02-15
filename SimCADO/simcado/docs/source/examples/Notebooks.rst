@@ -5,13 +5,35 @@ Here are a list of notebooks detailing how to use SimCADO. If you would
 like to add a notebook to this collection, please email it to `Kieran
 Leschinski`_.
 
+.. _Kieran Leschinski: kieran.leschinski@univie.ac.at
+
+Cheat Sheet
+-----------
+
+.. hint:: 
+
+    If you don't like sifting through documentation, try looking through the 
+    cheat sheet at some common commands and examples. If you find what you need, 
+    then you'll know exactly what to look for in the :doc:`API`
+
+    * `PDF version`_ or 
+    * `Jupyter Notebook`_
+
+
+.. _PDF version: ../_static/downloads/SimCADO_cheatsheet.pdf
+.. _Jupyter Notebook: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/SimCADO-cheat-sheet.ipynb
+
+
+
 Tutorials
 ---------
 
 -  `my\_first\_sim.ipynb`_
    An introductory notebook to SimCADO. Topics include: first steps with
-   SimCADO, creating ``Source`` objects and customising simulations.
+   SimCADO, creating :class:`.Source` objects and customising simulations.
 
+.. _my\_first\_sim.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/my_first_sim.ipynb
+   
 Science Cases
 -------------
 
@@ -19,11 +41,17 @@ Science Cases
    A quick look at whether it would be possible to observe Betelgeuse (J
    = -3 mag) with SimCADO without destroying the detectors. Short
    answer: yes.
+   
+.. _Betelgeuse.ipynb:     http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Betelgeuse.ipynb   
+   
 -  `StarDestroyer.ipynb`_
    If General Tarkin were to attack Earth and has hidding in orbit
    around the moon in his spaceship, could the E-ELT see it, and would
    we we know what it was?
 
+.. _StarDestroyer.ipynb:  http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/StarDestroyer.ipynb
+   
+   
 MICADO experiments
 ------------------
 
@@ -32,6 +60,8 @@ MICADO experiments
    notebook uses SimCADO to have a look at what that means for the
    resulting E-ELT PSF.
 
+.. _E-ELT\_2-Phase\_Mirror.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/POPPY_EELT.ipynb   
+   
 .. note::
     the PSFs generated here are only approximations based on a diffraction limited core combined with a Seeing Halo. These are meant only as a guide.
 
@@ -40,28 +70,29 @@ MICADO experiments
    filters in MICADO will need to have in order to restrict flux leakage
    through the filter wings to less than 1% of the flux coming through
    the filter.
+   
+.. _Filter\_Wings.ipynb:  http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Filter_Wings.ipynb   
 
 Workshop notebooks
 ------------------
 
 #. `Setting up SimCADO`_
    Some basics about running SimCADO
+   
+.. _Setting up SimCADO:   http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/1_Setting_up_SimCADO.ipynb   
+   
 #. `Working with point sources`_
    The basics for making and combining point source objects
-
+   
+.. _Working with point sources: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/2_Working_with_Point_Sources.ipynb   
+   
+#. `Notes on simulation with sub-pixel resolution`_
+   A couple of examples on how to get SimCADO to do sub-pixel scale simulations
+   
+.. _Notes on simulation with sub-pixel resolution: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/4_Sub-pixel_shifting.ipynb   
+   
+   
 -  `Working with extended sources`_
 -  `Working with multiple sources`_
 -  `Running simulations`_
--  [Astrometry]
 
-.. _Kieran Leschinski: kieran.leschinski@univie.ac.at
-.. _my\_first\_sim.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/my_first_sim.ipynb
-.. _Betelgeuse.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/Betelgeuse.ipynb
-.. _StarDestroyer.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/StarDestroyer.ipynb
-.. _E-ELT\_2-Phase\_Mirror.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/POPPY_EELT.ipynb
-.. _Filter\_Wings.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/Filter_Wings.ipynb
-.. _Setting up SimCADO: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/1_Setting_up_SimCADO.ipynb
-.. _Working with point sources: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/examples/2_Working_with_Point_Sources.ipynb
-.. _Working with extended sources: 
-.. _Working with multiple sources: 
-.. _Running simulations: 

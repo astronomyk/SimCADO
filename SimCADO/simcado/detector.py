@@ -208,12 +208,11 @@ class Detector(object):
                    #       arcsec   arcsec   pixel   pixel   e-/ADU
                    0        0        0    1024    1024       1.7  """)
         else:
-            if os.path.exists(self.cmds["FPA_CHIP_LAYOUT"]):
+            try:
                 self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
-            else:
-                raise FileNotFoundError("File " +
-                                        self.cmds["FPA_CHIP_LAYOUT"] +
-                                        " (FPA_CHIP_LAYOUT) does not exist")
+            except:
+                raise FileNotFoundError(self.cmds["FPA_CHIP_LAYOUT"] +
+                                        " (FPA_CHIP_LAYOUT) cannot be read")
 
         self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
                            self.layout["x_len"][i], self.layout["y_len"][i],
@@ -246,13 +245,13 @@ class Detector(object):
         Parameters
         ----------
         filename : str
-            where the file is to be saved. If ``None`` and ``to_disk`` is true, the output
-            file is called "output.fits". Default is ``None``
+            where the file is to be saved. If ``None`` and ``to_disk`` is true, 
+            the output file is called "output.fits". Default is ``None``
         to_disk : bool
-            a flag for where the output should go. If ``True`` the ``Chip``
-            images will be written to a ``.fits`` file on disk. If no
-            ``filename`` is specified, the output will be called "output.fits".
-            The default is ``False``
+            a flag for where the output should go. If ``filename`` is given
+            or ``to_disk=True``, the ``Chip`` images will be written to a 
+            ``.fits`` file on disk.  
+            If no `filename`` is specified, the output will be called "output.fits".
         chips : int, array-like, optional
             The chip or chips to be read out, based on the detector_layout.dat
             file. Default is the first ``Chip`` specified in the list, i.e. [0].
@@ -267,12 +266,6 @@ class Detector(object):
         the ``Detector``. Therefore any dictionary keywords can be passed in the
         form of a dictionary, i.e. {"EXPTIME" : 60, "OBS_OUTPUT_DIR" : "./"}
 
-        Notes
-        -----
-        ** In the current release ** the parameter that controls which read
-        mode is used is the "SIM_SPEED" command. <3 = full up-the-ramp, 3 <=
-        SIM_SPEED < 7 = stacked single read outs. <7 = one single read out for
-        the whole NDIT*EXPTIME time span.
 
         References
         ----------
@@ -733,20 +726,7 @@ class Chip(object):
         out_array = np.zeros(self.array.shape, dtype=np.float32)
 
         ############## TO DO add in the different read out modes ###############
-        # if cmds["SIM_SPEED"] <= 3:
-            # for n in range(ndit):
-                # out_array += self._read_out_uptheramp(self.array, dit, tro,
-                                                   # max_byte)
-                # out_array += dark * dit
-
-        # elif cmds["SIM_SPEED"] > 3 and cmds["SIM_SPEED"] <= 7:
-            # for n in range(ndit):
-                # out_array += self._read_out_fast(self.array, dit)
-
-            # out_array += dark * dit * ndit
-
-        #elif cmds["SIM_SPEED"] > 7:
-        #######################################################################
+        ########################################################################
 
         out_array = self._read_out_superfast(self.array, dit, ndit)
         # TODO: noise estimate is np.sqrt(self.array * dit * ndit)
@@ -787,7 +767,7 @@ class Chip(object):
         Test readout onto a detector using cube model
 
         Parameters
-        ==========
+        ----------
         image :
             a 2D image to be mapped onto the detector. Units are [ph/s/pixel]
         dit :
@@ -796,7 +776,7 @@ class Chip(object):
             time for a single non-destructive read (default: 1.3 seconds)
 
         Optional Parameters
-        ===================
+        -------------------
         max_byte :
             the largest possible chunk of memory that can be used for computing
             the sampling slope

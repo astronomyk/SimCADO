@@ -1,5 +1,11 @@
-simcado/docs/site
+simcado/docs/build
+examples
 simcado/docs/source/API
+SimCADO.egg-info
+data_ext
+dist
+
+
 .idea
 build
 __pycache__
@@ -8,11 +14,13 @@ MANIFEST
 
 *.py[co]
 version.py
+*.ipynb_checkpoints
 
 *.FITS
 *.old
 *.zip
 *.bmp
+*.log
 
 *.png
 !apply_optical_train.png
