@@ -550,7 +550,6 @@ class Source(object):
 
 
     def photons_in_range(self, lam_min=None, lam_max=None, min_bins=10):
-        ## Argument 'mask' is unused (OC)
         """
 
         Number of photons between lam_min and lam_max in units of [ph/s/m2]
