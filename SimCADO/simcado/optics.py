@@ -280,6 +280,31 @@ class OpticalTrain(object):
         self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam,
                                                                      val=val)
 
+    def _gen_thermal_emission(self):
+        '''Determine the number of thermal photons emitted by the warm surfaces'''
+
+        # List of warm mirrors
+        mirr_list = self.cmds.mirrors_telescope
+
+        # Load transmission curves into a dictionary indexed by coating
+        tc_dict = dict()
+        for coating in np.unique(mirr_list['Coating']):
+            tc_file = os.path.join(__pkg_dir__, "data", coating)
+            tc_dict[coating] = sc.TransmissionCurve(tc_file)
+
+        thermal_flux = 0
+        for mirror in mirr_list:
+            area = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4
+            temp = mirror['Temp'] + 273.15
+            reflectivity = tc_dict[mirror['Coating']].val
+            emissivity = 1. - reflectivity
+
+            thermal_flux = sc.Blackbody(lam, temp, pix_res, area) * emissivity + thermal_flux * reflectivity
+
+            self.n_ph_thermal = thermal_flux.photons_in_range(self.lam_bin_edges[0],
+                                                              self.lam_bin_edges[-1])
+
+
 
     def _gen_all_tc(self):
 
@@ -393,7 +418,7 @@ class OpticalTrain(object):
             self.ph_atmo = None
             self.n_ph_atmo = 0.
 
-        self.n_ph_bg = self.n_ph_atmo + self.n_ph_mirror +  self.n_ph_ao
+        self.n_ph_bg = self.n_ph_atmo + self.n_ph_mirror + self.n_ph_ao
 
         ############## SOURCE PHOTONS #########################
         if self.cmds.verbose:
