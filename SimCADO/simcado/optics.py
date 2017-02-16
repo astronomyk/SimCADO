@@ -15,13 +15,14 @@
 import os
 
 import glob
-import warnings, logging
-from datetime import datetime as dt
+import warnings
+import logging
+#from datetime import datetime as dt    # unused
 from copy import deepcopy
 
 import numpy as np
 
-from astropy.io import fits
+#from astropy.io import fits      # unused
 from astropy.io import ascii as ioascii    # 'ascii' redefines built-in
 import astropy.units as u
 
@@ -186,7 +187,7 @@ class OpticalTrain(object):
         #self.field_rot = self._gen_field_rotation_angle()
 
 
-    def replace_psf(self, psf, lam_bin_centres):
+    def replace_psf(self, new_psf, lam_bin_centres):
         """
         Change the PSF of the optical train
         """
@@ -228,7 +229,7 @@ class OpticalTrain(object):
                                   sc.BlackbodyCurve)):
                 filt = trans
             elif isinstance(trans, (np.ndarray, list, tuple)) and \
-                 isinstance(lam  , (np.ndarray, list, tuple)):
+                 isinstance(lam, (np.ndarray, list, tuple)):
                 filt = sc.TransmissionCurve(lam=lam, val=trans,
                                             lam_res=self.lam_res)
 
@@ -252,25 +253,30 @@ class OpticalTrain(object):
     def apply_wind_jitter(self, arr):
         return pe.wind_jitter(arr, self.cmds)
 
-    def _load_all_tc(self, tc_list=["ATMO_TC", "SCOPE_M1_TC", "INST_MIRROR_AO_TC",
-                                    "INST_ENTR_WINDOW_TC", "INST_DICHROIC_TC",
-                                    "INST_MIRROR_TC", "INST_ADC_TC",
-                                    "INST_PUPIL_TC", "INST_FILTER_TC", "FPA_QE"]):
+    def _load_all_tc(self, tc_list=None):
         """
         Pre-loads all the transmission curves
         """
-        for tc in tc_list:
-            if isinstance(self.cmds[tc], str):
-                airmass = self.cmds["ATMO_AIRMASS"] if tc == "ATMO_TC" else None
-                self.cmds[tc] = sc.TransmissionCurve(filename=self.cmds[tc],
-                                                     airmass=airmass)
-            elif self.cmds[tc] is None:
-                self.cmds[tc] = sc.UnityCurve()
+
+        # Safe default - lists should not be defaults in declaration
+        if tc_list is None:
+            tc_list = ["ATMO_TC", "SCOPE_M1_TC", "INST_MIRROR_AO_TC",
+                       "INST_ENTR_WINDOW_TC", "INST_DICHROIC_TC",
+                       "INST_MIRROR_TC", "INST_ADC_TC",
+                       "INST_PUPIL_TC", "INST_FILTER_TC", "FPA_QE"]
+
+        for cur_tc in tc_list:
+            if isinstance(self.cmds[cur_tc], str):
+                airmass = self.cmds["ATMO_AIRMASS"] if cur_tc == "ATMO_TC" else None
+                self.cmds[cur_tc] = sc.TransmissionCurve(filename=self.cmds[cur_tc],
+                                                         airmass=airmass)
+            elif self.cmds[cur_tc] is None:
+                self.cmds[cur_tc] = sc.UnityCurve()
 
         # see Rics email from 22.11.2016
         wfe = self.cmds["INST_TOTAL_WFE"]
-        lam = np.arange(0.3,3.0)
-        val = np.exp( -(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2 )
+        lam = np.arange(0.3, 3.0)
+        val = np.exp(-(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2)
         self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam,
                                                                      val=val)
 
@@ -284,17 +290,17 @@ class OpticalTrain(object):
 
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
-        
+
         mirr_list = self.cmds.mirrors_ao
         ao_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
                                      mirr_list["Inner"]**2)
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_ao = self._gen_master_tc(preset="ao")
-        self.ec_ao = sc.BlackbodyCurve(lam     = self.tc_ao.lam,
-                                       temp    = self.cmds["INST_AO_TEMPERATURE"],
-                                       pix_res = self.cmds.pix_res,
-                                       area    = ao_area)
+        self.ec_ao = sc.BlackbodyCurve(lam    =self.tc_ao.lam,
+                                       temp   =self.cmds["INST_AO_TEMPERATURE"],
+                                       pix_res=self.cmds.pix_res,
+                                       area   =ao_area)
 
         if self.cmds["INST_USE_AO_MIRROR_BG"].lower() == "yes" and \
            self.cmds["SCOPE_PSF_FILE"].lower() != "scao":
@@ -322,10 +328,10 @@ class OpticalTrain(object):
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
-        self.ec_mirror = sc.BlackbodyCurve(lam     = self.tc_mirror.lam,
-                                           temp    = self.cmds["SCOPE_TEMP"],
-                                           pix_res = self.cmds.pix_res,
-                                           area    = scope_area)
+        self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,
+                                           temp   =self.cmds["SCOPE_TEMP"],
+                                           pix_res=self.cmds.pix_res,
+                                           area   =scope_area)
 
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
             self.ph_mirror = self.ec_mirror * self.tc_mirror
@@ -426,8 +432,7 @@ class OpticalTrain(object):
                        ['INST_SURFACE_FACTOR'] + \
                        ['FPA_QE']
 
-                ao =   ['INST_MIRROR_AO_TC'] + ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1)
-
+                ao = ['INST_MIRROR_AO_TC'] + ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1)
 
                 if preset == "ao":
                     tc_keywords = base
@@ -477,8 +482,8 @@ class OpticalTrain(object):
 
     def _gen_master_psf(self):
         """
-        Import or make a aaster PSF for the system. 
-        
+        Import or make a aaster PSF for the system.
+
         Notes
         -----
         Jitter can be applied to detector array as a single PSF, and the
@@ -496,28 +501,28 @@ class OpticalTrain(object):
 
         # Make a PSF for the main mirror. If there is one on file, read it in
         # otherwise generate an Airy+Gaussian (or Moffat, Oliver?)
-        
+
         if self.cmds["SCOPE_PSF_FILE"] is None:
             warnings.warn("""
-            No PSF given. SCOPE_PSF_FILE = None. 
+            No PSF given. SCOPE_PSF_FILE = None.
             Returning an Delta function for SCOPE_PSF_FILE""")
 
             psf_m1 = psf.DeltaPSFCube(self.lam_bin_centers,
                                       pix_res=self.pix_res,
                                       size=9)
             logging.debug("No PSF Given: making Delta PSF")
-            
+
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], psf.PSFCube):
             psf_m1 = self.cmds["SCOPE_PSF_FILE"]
             logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
-        
+
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], str):
             if self.cmds.verbose:
                 print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
-            
+
             if os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
                 logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
-            
+
                 psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                          self.lam_bin_centers)
 
@@ -525,17 +530,17 @@ class OpticalTrain(object):
                     psf_m1.resample(self.pix_res)
             else:
                 warnings.warn("""
-                Couldn't resolve SCOPE_PSF_FILE. 
+                Couldn't resolve SCOPE_PSF_FILE.
                 Returning an Delta function for SCOPE_PSF_FILE""")
-        
+
                 psf_m1 = psf.DeltaPSFCube(self.lam_bin_centers,
                                           pix_res=self.pix_res,
                                           size=9)
                 logging.debug("Couldn't resolve given PSF: making Delta PSF")
-            
+
         return psf_m1
 
-        
+
     def _gen_adc_shifts(self):
         """
         Keywords:
