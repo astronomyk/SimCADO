@@ -2495,8 +2495,8 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude=10,
                         normalization=normalization,
                         width        =params["width"] /plate_scale,
                         height       =params["height"]/plate_scale,
-                        x_offset     =params["x_offset"],
-                        y_offset     =params["y_offset"])
+                        x_offset     =params["x_offset"]/plate_scale,
+                        y_offset     =params["y_offset"]/plate_scale)
 
     if isinstance(spectrum, sc.EmissionCurve):
         lam, spec = spectrum.lam, spectrum.val
