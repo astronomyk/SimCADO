@@ -2516,7 +2516,7 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude=10,
 
 def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
                    normalization="total",
-                   width=1024, height=1024, x_offset=0, y_offset=0):
+                   width=1024, height=1024, x_offset=0, y_offset=0, oversample=1):
     """
     Returns a 2D array with a normailised sersic profile
 
@@ -2529,7 +2529,7 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
         - n=1 for exponential (spiral),
         - n=4 for de Vaucouleurs (elliptical)
     ellipticity : float
-        Default = 0.5
+        Ellipticity is defined as (a - b)/a. Default = 0.5
     angle : float
         [deg] Default = 30. Rotation anti-clockwise from the x-axis
     normalization : str, optional
@@ -2543,6 +2543,9 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
     x_offset, y_offset : float
         [pixel] The distance between the centre of the profile and the centre
         of the image
+    oversample : int
+        Factor of oversampling, default factor = 1. If > 1, the model is
+        discretized by taking the average of an oversampled grid.
 
     Returns
     -------
@@ -2558,14 +2561,27 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
 
     from astropy.modeling.models import Sersic2D
 
-    x,y = np.meshgrid(np.arange(width), np.arange(height))
+    # Silently cast to integer
+    os_factor = np.int(oversample)
 
-    dx = 0.5 * width  + x_offset
-    dy = 0.5 * height + y_offset
+    if os_factor <=0:
+        raise ValueError("Oversampling factor must be >=1.")
 
-    mod = Sersic2D(amplitude=1, r_eff=r_eff, n=n, x_0=dx, y_0=dy,
+    width_os = os_factor * width
+    height_os = os_factor * height
+    x,y = np.meshgrid(np.arange(width_os), np.arange(height_os))
+
+    dx = 0.5 * width_os  + x_offset * os_factor
+    dy = 0.5 * height_os + y_offset * os_factor
+
+    r_eff_os = r_eff * os_factor
+
+    mod = Sersic2D(amplitude=1, r_eff=r_eff_os, n=n, x_0=dx, y_0=dy,
                    ellip=ellipticity, theta=np.deg2rad(angle))
-    img = mod(x, y)
+    img_os = mod(x, y)
+
+    # Rebin os_factord image
+    img = _rebin(img_os, os_factor)
 
     if "cen" in normalization.lower():
         img /= np.max(img)
@@ -2573,3 +2589,18 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
         img /= np.sum(img)
 
     return img
+
+
+def _rebin(img, bpix):
+    '''Rebin image img by block averaging bpix x bpix pixels'''
+
+    xedge = np.shape(img)[0] % bpix
+    yedge = np.shape(img)[1] % bpix
+    img_block = img[xedge:, yedge:]
+
+    binim = np.reshape(img_block,
+                       (int(img_block.shape[0]/bpix), bpix,
+                        int(img_block.shape[1]/bpix), bpix))
+    binim = np.mean(binim, axis=3)
+    binim = np.mean(binim, axis=1)
+    return binim
