@@ -292,17 +292,23 @@ class OpticalTrain(object):
             tc_file = os.path.join(__pkg_dir__, "data", coating)
             tc_dict[coating] = sc.TransmissionCurve(tc_file)
 
-        thermal_flux = 0
+        # Follow the thermal flux through all the warm elements
+        total_flux = 0
+        print("Total flux init: " + str(total_flux))
         for mirror in mirr_list:
             area = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4
             temp = mirror['Temp'] + 273.15
             reflectivity = tc_dict[mirror['Coating']].val
             emissivity = 1. - reflectivity
 
-            thermal_flux = sc.Blackbody(lam, temp, pix_res, area) * emissivity + thermal_flux * reflectivity
+            mirror_flux = sc.BlackbodyCurve(lam=self.lam, temp=temp,
+                                            pix_res=self.pix_res, area=area) * \
+                          emissivity
+            total_flux = mirror_flux + total_flux * reflectivity
+            print(mirror['Mirror'] + ": Emitted " + str(mirror_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])) + "       Total " + str(total_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])))
 
-            self.n_ph_thermal = thermal_flux.photons_in_range(self.lam_bin_edges[0],
-                                                              self.lam_bin_edges[-1])
+        self.n_ph_thermal = total_flux.photons_in_range(self.lam_bin_edges[0],
+                                                        self.lam_bin_edges[-1])
 
 
 
