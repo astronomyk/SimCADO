@@ -297,7 +297,7 @@ class OpticalTrain(object):
         print("Total flux init: " + str(total_flux))
         for mirror in mirr_list:
             area = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4
-            temp = mirror['Temp'] + 273.15
+            temp = mirror['Temp']
             reflectivity = tc_dict[mirror['Coating']].val
             emissivity = 1. - reflectivity
 
