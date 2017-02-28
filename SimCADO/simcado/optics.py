@@ -281,7 +281,7 @@ class OpticalTrain(object):
                                                                      val=val)
 
     def _gen_thermal_emission(self):
-        '''Determine the number of thermal photons emitted by the warm surfaces'''
+        '''Number of thermal photons emitted by the warm surfaces'''
 
         # List of warm mirrors
         mirr_list = self.cmds.mirrors_telescope
@@ -307,9 +307,9 @@ class OpticalTrain(object):
             total_flux = mirror_flux + total_flux * reflectivity
             print(mirror['Mirror'] + ": Emitted " + str(mirror_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])) + "       Total " + str(total_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])))
 
-        self.n_ph_thermal = total_flux.photons_in_range(self.lam_bin_edges[0],
-                                                        self.lam_bin_edges[-1])
-
+        n_ph_thermal = total_flux.photons_in_range(self.lam_bin_edges[0],
+                                                   self.lam_bin_edges[-1])
+        return n_ph_thermal
 
 
     def _gen_all_tc(self):
@@ -359,18 +359,19 @@ class OpticalTrain(object):
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
-        self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,
-                                           temp   =self.cmds["SCOPE_TEMP"],
-                                           pix_res=self.cmds.pix_res,
-                                           area   =scope_area)
+        #self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,
+        #                                   temp   =self.cmds["SCOPE_TEMP"],
+        #                                   pix_res=self.cmds.pix_res,
+        #                                   area   =scope_area)
 
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
-            self.ph_mirror = self.ec_mirror * self.tc_mirror
-            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
-                                                               self.lam_bin_edges[-1])
+            #self.ph_mirror = self.ec_mirror * self.tc_mirror
+            #self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+            #                                                  self.lam_bin_edges[-1])
+            self.n_ph_mirror = self._gen_thermal_emission()
         else:
-            self.ec_mirror = None
-            self.ph_mirror = None
+            #self.ec_mirror = None
+            #self.ph_mirror = None
             self.n_ph_mirror = 0.
 
 
