@@ -250,7 +250,7 @@ class TransmissionCurve(object):
         #####################################################
 
         tmp_x = np.arange(self.lam_orig[0], self.lam_orig[-1],
-                                                        self.params["min_step"])
+                          self.params["min_step"])
         tmp_y = np.interp(tmp_x, self.lam_orig, self.val_orig)
 
         #print("resampling", len(self.lam_orig))
@@ -263,7 +263,8 @@ class TransmissionCurve(object):
             # if bins is a single number, use it as the bin width
             # else as the bin centres
             if not hasattr(bins, "__len__"):
-                lam_tmp = np.arange(self.lam_orig[0], self.lam_orig[-1]+1E-7, bins)
+                lam_tmp = np.arange(self.lam_orig[0],
+                                    self.lam_orig[-1] + 1E-7, bins)
             else:
                 lam_tmp = bins
 
@@ -306,7 +307,7 @@ class TransmissionCurve(object):
         # resampling down to 1E-5um. I account for this summing up all the
         # photons in the original data set and normalising the new 1E-5 bin
         # data set to have the same amount.
-        if action == "sum":
+        if action == "sum" and np.sum(val_tmp) != 0:
             val_tmp *= (np.sum(self.val_orig) / np.sum(val_tmp))
 
         self.lam = lam_tmp
@@ -482,15 +483,15 @@ class EmissionCurve(TransmissionCurve):
 
         if default_params["area"] < 1E-6:
             default_params["area"] = 1E-6
-            
+
         if filename is not None:
             default_params["filename"] = filename
 
         super(EmissionCurve, self).__init__(Type="Emission", **default_params)
         self.factor = 1
         self.convert_to_photons()
-            
-            
+
+
     def resample(self, bins, action="sum", use_edges=False):
         # TODO: What about argument min_step from Transmission.resample? (OC)
         """Rebin an emission curve"""
@@ -577,13 +578,10 @@ class BlackbodyCurve(EmissionCurve):
         self.params = {"pix_res":0.004, "area":978, "temp":temp}
         self.params.update(kwargs)
 
-        # FOr some wierd reason it returns NaNs for temp < 266 or area == 0
-        if temp < -266: 
-            temp = 266.
-        if self.params["area"] < 1E-6:
-            self.params["area"] = 1E-6
-                
-        
+        # FOr some wierd reason it returns NaNs for temp < 266
+        # if self.params["area"] < 1E-6:
+        #    self.params["area"] = 1E-6
+
         temp += 273.15
 
         lam_res = lam[1] - lam[0]
@@ -591,8 +589,15 @@ class BlackbodyCurve(EmissionCurve):
         lam_res = edges[1:] - edges[:-1]
 
         # I is in W sr-1 m-3 : [erg/s/sr/cm2/um]
-        I = 2. * c.h * c.c**2 / (lam * u.um)**5 / \
-            (np.exp(c.h * c.c / (c.k_B * (temp*u.K) * (lam*u.um))) - 1.) / u.sr
+        exparg = c.h * c.c / (c.k_B * (temp * u.K) * (lam * u.um))
+
+        if np.any(exparg.si > 500):  # Wien approximation to avoid overflow
+            I = 2. * c.h * c.c**2 /(lam * u.um)**5 * np.exp(-exparg)
+        else:                        # Full Planck formula
+            I = 2. * c.h * c.c**2 / (lam * u.um)**5 / \
+                (np.exp(c.h * c.c / (c.k_B * (temp*u.K) * (lam*u.um))) - 1.)
+
+        I = I / u.sr    # make it explicit that this is per steradian
 
         # E is in W
         E = I * (self.params["area"] * u.m**2) * (lam_res * u.um) * \
@@ -604,6 +609,7 @@ class BlackbodyCurve(EmissionCurve):
         super(BlackbodyCurve, self).__init__(lam=lam, val=val, units="1/s",
                                              **self.params)
         self.info["Type"] = "Blackbody"
+
 
 class UnityCurve(TransmissionCurve):
     """Constant transmission curve
