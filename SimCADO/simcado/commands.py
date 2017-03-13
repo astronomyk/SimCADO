@@ -413,7 +413,7 @@ class UserCommands(object):
                                                     os.path.split(fname)[-1])
                 if not os.path.exists(fname):
                     fname = self.cmds[key]
-                    warnings.warn("Keyword "+key+" path doesn't exist: "+fname, )
+                    warnings.warn("Keyword "+key+" path doesn't exist: "+fname)
 
                 self.cmds[key] = fname
 
