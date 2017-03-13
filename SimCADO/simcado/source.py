@@ -107,7 +107,7 @@ from astropy.convolution import convolve
 import astropy.units as u
 import astropy.constants as c
 
-from . import spectral as sc
+from .spectral import TransmissionCurve, EmissionCurve, UnityCurve, BlackbodyCurve
 from . import psf as sim_psf
 from . import utils
 from .utils import __pkg_dir__
@@ -1011,8 +1011,8 @@ class Source(object):
 
     def __mul__(self, x):
         newsrc = deepcopy(self)
-        if isinstance(x, (sc.TransmissionCurve, sc.EmissionCurve,
-                          sc.UnityCurve, sc.BlackbodyCurve)):
+        if isinstance(x, (TransmissionCurve, EmissionCurve,
+                          UnityCurve, BlackbodyCurve)):
             newsrc._apply_transmission_curve(x)
         else:
             newsrc.array *= x
@@ -1431,6 +1431,9 @@ def zero_magnitude_photon_flux(filter_name):
     units in [ph/s/m2]
     """
 
+    if isinstance(filter_name, TransmissionCurve):
+        filter_name = filter_name.params["filename"]
+    
     if not os.path.exists(os.path.join(__pkg_dir__, "data", filter_name)):
         fname = os.path.join(__pkg_dir__, "data",
                              "TC_filter_" + filter_name + ".dat")
