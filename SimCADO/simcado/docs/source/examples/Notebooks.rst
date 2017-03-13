@@ -14,7 +14,7 @@ Cheat Sheet
 
     If you don't like sifting through documentation, try looking through the 
     cheat sheet at some common commands and examples. If you find what you need, 
-    then you'll know exactly what to look for in the :doc:`API`
+    then you'll know exactly what to look for in the :doc:`API/simcado`
 
     * `PDF version`_ or 
     * `Jupyter Notebook`_
@@ -76,23 +76,26 @@ MICADO experiments
 Workshop notebooks
 ------------------
 
-#. `Setting up SimCADO`_
+1. `Setting up SimCADO`_
    Some basics about running SimCADO
    
 .. _Setting up SimCADO:   http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/1_Setting_up_SimCADO.ipynb   
    
-#. `Working with point sources`_
+2. `Working with point sources`_
    The basics for making and combining point source objects
    
 .. _Working with point sources: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/2_Working_with_Point_Sources.ipynb   
    
-#. `Notes on simulation with sub-pixel resolution`_
+3. `Notes on simulation with sub-pixel resolution`_
    A couple of examples on how to get SimCADO to do sub-pixel scale simulations
    
 .. _Notes on simulation with sub-pixel resolution: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/4_Sub-pixel_shifting.ipynb   
    
    
--  `Working with extended sources`_
--  `Working with multiple sources`_
--  `Running simulations`_
+4. `Working with extended sources`_
+   Creating a galaxy field with a large galaxy (the Antennae) and adding a series of background galaxies
+   Here are the `FITS file used in the simulation`_
+
+.. _Working with extended sources: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Antennae_galaxy_field.ipynb 
+.. _FITS file used in the simulation: ../_static/downloads/Antennae_data.zip
 
