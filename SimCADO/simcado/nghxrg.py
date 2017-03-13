@@ -29,7 +29,7 @@ class HXRGNoise:
     stationary, and non-stationary components. The default parameters
     make noise that resembles Channel 1 of JWST NIRSpec. NIRSpec uses
     H2RG detectors. They are read out using four video outputs at
-    1.e+5 pix/s/output.
+    100 thousand pix/s/output.
     """
 
     # These class variables are common to all HxRG detectors
