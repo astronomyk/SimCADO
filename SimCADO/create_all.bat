@@ -1,6 +1,10 @@
 D:
 cd D:\Dropbox\Uni\PhD\SimCADO\SimCADO
 
+REM #######################################
+REM Compile the new distribution
+REM #######################################
+
 del .\dist\*.tar.gz
 del .\dist\*.zip
 dir .\dist\
@@ -14,6 +18,18 @@ for /f "delims=" %%a in ('dir .\dist\* /s/b') do set params=!params! %%a
 echo !params!
 
 pip install -I !params!
+
+REM #######################################
+REM Run tests on the installed distribution
+REM #######################################
+
+cd ../dist_tests
+pytest test_run.py
+cd ../SimCADO
+
+REM #######################################
+REM Make the f*ing docs
+REM #######################################
 
 create_docs.bat
 
