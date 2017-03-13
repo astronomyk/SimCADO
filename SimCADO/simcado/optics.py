@@ -304,6 +304,7 @@ class OpticalTrain(object):
             mirror_flux = sc.BlackbodyCurve(lam=self.lam, temp=temp,
                                             pix_res=self.pix_res, area=area) * \
                           emissivity
+                          
             total_flux = mirror_flux + total_flux * reflectivity
             print(mirror['Mirror'] + ": Emitted " + str(mirror_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])) + "       Total " + str(total_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])))
 
@@ -390,35 +391,18 @@ class OpticalTrain(object):
                                                 pix_res=self.cmds.pix_res,
                                                 area=self.cmds.area,
                                                 airmass=self.cmds["ATMO_AIRMASS"])
-                self.ph_atmo = self.tc_atmo * self.ec_atmo
-                self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
-                                                               self.lam_bin_edges[-1])
             else:
-                if len(self.cmds["INST_FILTER_TC"]) > 2:
-                    filt = self.cmds["INST_FILTER_TC"][-5:-3].replace(".", "")
-                else:
-                    filt = self.cmds["INST_FILTER_TC"]
-
-                if filt not in "BVRIzYJHKKs":
-                    raise ValueError("""Only broadband filters (BVRIzYJHKKs)
-                      can be used with keyword ATMO_BG_MAGNITUDE. Please provide
-                      a filename for ATMO_EC, or write ATMO_EC  default""")
-
-                if self.cmds["ATMO_BG_MAGNITUDE"] == "default":
-                    path = os.path.join(__pkg_dir__, "data", "EC_sky_magnitude.dat")
-                    self.cmds["ATMO_BG_MAGNITUDE"] = ioascii.read(path)[filt][0]
-
-
-                from simcado import source
-                ph_zero = source.zero_magnitude_photon_flux(filt)
-
-                self.ec_atmo = None
-                self.ph_atmo = None
-
-                factor = 10**(-0.4*self.cmds["ATMO_BG_MAGNITUDE"]) * \
-                                        self.cmds.pix_res**2 * self.cmds.area
-
-                self.n_ph_atmo = ph_zero * factor
+                ################## TODO ######################
+                # Generalise this to accept any TransmissionCurve object
+                self.ec_atmo = flat_spectrum_sb(self.cmds["ATMO_BG_MAGNITUDE"], 
+                                                self.cmds["INST_FILTER_TC"],
+                                                self.cmds["SIM_DETECTOR_PIX_SCALE"],
+                                                return_ec=True)
+                self.ec_atmo *= self.cmds.area
+                
+            self.ph_atmo = self.tc_atmo * self.ec_atmo
+            self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
+                                                           self.lam_bin_edges[-1])
 
         else:
             self.ec_atmo = None
