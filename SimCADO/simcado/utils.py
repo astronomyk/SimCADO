@@ -33,7 +33,6 @@ from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii as ioascii
 
-
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 
 #__all__ = []
@@ -455,4 +454,4 @@ def zentih_dist_to_airmass(zenith_dist):
     X = sec(Z)
     """
     return 1. / np.cos(np.deg2rad(zenith_dist))
-   
+    
