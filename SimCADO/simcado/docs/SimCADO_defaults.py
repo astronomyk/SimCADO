@@ -41,7 +41,9 @@ This document lists the current configuration which best describes MICADO. Each 
 Data Source
 -----------
 
-The data for this table is generated from this [Excel sheet](https://github.com/gastronomyk/SimCADO/blob/master/SimCADO/simcado/docs/SimCADO_defaults.xlsx)
+The data for this table is generated from this `Excel sheet`_ which acts as a preliminary instrument refereence database. 
+
+_Excel sheet: https://github.com/gastronomyk/SimCADO/blob/master/SimCADO/simcado/docs/SimCADO_defaults.xlsx
 
 """
 skycalc = None
@@ -50,12 +52,14 @@ j = 1
 while data.rows[j][0].value != "EOF":
     # Section
     if data.rows[j][0].value is not None:
-        text += "## " + str(data.rows[j][0].value) + "\n\n"
+        text += str(data.rows[j][0].value) + "\n"
+        text += "=" * len(data.rows[j][0].value) + "\n\n"
     
     # Subsection
     if data.rows[j][1].value is not None:
         text += "------ \n\n"
-        text += "### " + str(data.rows[j][1].value) + "\n\n"
+        text += str(data.rows[j][1].value) + "\n"
+        text += "-" * len(data.rows[j][0].value) + "\n\n"
     
     # Description of source
     if data.rows[j][7].value is not None:
@@ -157,11 +161,11 @@ while data.rows[j][0].value != "EOF":
         plt.savefig(format="png", filename=hname)
 
         gname = os.path.join(site_plot_dir, fname+".png")
-        text += "![" + gname + "](" + gname + ") \n\n"
+        text += ".. image: " + gname + " \n\n"
         #print(hname, gname)
         print(hname)
     j += 1
 
-f = open("./source/SimCADO_defaults.md", "w")
+f = open("./source/SimCADO_defaults.rst", "w")
 f.write(text) 
 f.close()
