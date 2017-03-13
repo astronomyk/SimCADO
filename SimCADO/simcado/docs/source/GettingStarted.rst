@@ -114,8 +114,7 @@ Two useful functions here are :func:`.stars()` and :func:`.source_from_image()`
         >>> lam, spec = simcado.source.SED("G2V", filter_name="K", magnitude=20)
         >>>
         >>> # ... Make the source object
-        >>> my_src = sim.source.source_from_image(images=im, lam=lam, 
-                                                    spectra=spec, pix_res=0.004)
+        >>> my_src = sim.source.source_from_image(images=im, lam=lam, spectra=spec, plate_scale=0.004)
 
 SimCADO also provides a series of spectra for stars and galaxies,
 however these are meant as a guide to those who are just starting out.
