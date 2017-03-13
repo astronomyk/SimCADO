@@ -90,6 +90,7 @@ from copy import deepcopy
 import multiprocessing as mp
 
 import numpy as np
+import numpy.ma as ma
 #from scipy.ndimage.interpolation import zoom
 
 from astropy.io import fits
@@ -206,7 +207,7 @@ class Detector(object):
             self.layout = ioascii.read(
                 """#  id    x_cen    y_cen   x_len   y_len   gain
                    #       arcsec   arcsec   pixel   pixel   e-/ADU
-                   0        0        0    1024    1024       1.7  """)
+                   0        0        0    1024    1024       1.  """)
         else:
             try:
                 self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
@@ -225,19 +226,17 @@ class Detector(object):
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
         self.exptime = self.cmds["OBS_EXPTIME"]
         self.ndit    = self.cmds["OBS_NDIT"]
-        self.tro     = self.cmds["OBS_NONDESTRUCT_TRO"]
         self._n_ph_atmo   = 0
         self._n_ph_mirror = 0
         self._n_ph_ao     = 0
         self.array = None        # defined in method
 
         
-    def read_out(self, filename=None, to_disk=False, chips=None, **kwargs):
+    def read_out(self, filename=None, to_disk=False, chips=None, 
+                 read_out_type="superfast", **kwargs):
         """
         Simulate the read-out process of the detector array
 
-        Summary
-        -------
         Based on the parameters set in the ``UserCommands`` object, the detector
         will read out the images stored on the ``Chips`` according to the
         specified read-out scheme, i.e. Fowler, up-the-ramp, single read, etc.
@@ -247,15 +246,23 @@ class Detector(object):
         filename : str
             where the file is to be saved. If ``None`` and ``to_disk`` is true, 
             the output file is called "output.fits". Default is ``None``
+            
         to_disk : bool
-            a flag for where the output should go. If ``filename`` is given
-            or ``to_disk=True``, the ``Chip`` images will be written to a 
-            ``.fits`` file on disk.  
+            a flag for where the output should go. 
+            If ``filename`` is given or if ``to_disk=True``, 
+            the ``Chip`` images will be written to a  `.fits`` file on disk.  
             If no `filename`` is specified, the output will be called "output.fits".
+            
         chips : int, array-like, optional
             The chip or chips to be read out, based on the detector_layout.dat
             file. Default is the first ``Chip`` specified in the list, i.e. [0].
-
+            
+        read_out_type : str, optional
+            The name of the algorithm used to read out the chips:
+            - "superfast"
+            - "non_destructive"
+            - "up_the_ramp"
+            
         Returns
         -------
         astropy.io.fits.HDUList
@@ -266,13 +273,6 @@ class Detector(object):
         the ``Detector``. Therefore any dictionary keywords can be passed in the
         form of a dictionary, i.e. {"EXPTIME" : 60, "OBS_OUTPUT_DIR" : "./"}
 
-
-        References
-        ----------
-
-
-        Examples
-        --------
         """
 
         #removed kwargs
@@ -287,7 +287,7 @@ class Detector(object):
             filename = self.cmds["OBS_OUTPUT_DIR"]
 
         if chips is not None:
-            if not hasattr(chips, "__len__"):
+            if np.isscalar(chips):
                 ro_chips = [chips]
             else:
                 ro_chips = chips
@@ -320,8 +320,8 @@ class Detector(object):
             # Put in a catch here so that only the chips specified in "chips"
             # are read out
             ######
-            print("Reading out chip", self.chips[i].id)
-            array = self.chips[i].read_out(self.cmds)
+            print("Reading out chip", self.chips[i].id, "using", read_out_type)
+            array = self.chips[i].read_out(self.cmds, read_out_type=read_out_type)
 
             ## TODO: transpose is just a hack - need to make sure
             ##       x and y are handled correctly throughout SimCADO
@@ -340,7 +340,7 @@ class Detector(object):
 
             # axis 2
             thishdu.header["CTYPE2"] = "DEC--TAN"
-            thishdu.header["CUNIT2"] = "arcsec"
+            thishdu.header["CUNIT2"] = "deg"
             thishdu.header["CRVAL2"] = (self.cmds["OBS_DEC"], "[degrees]")
             thishdu.header["CRPIX2"] = (self.chips[i].naxis2 //2 -
                                         self.chips[i].y_cen / self.chips[i].pix_res)
@@ -357,8 +357,8 @@ class Detector(object):
             thishdu.header["BUNIT"] = ("ADU", "")
             thishdu.header["EXPTIME"] = (self.exptime, "[s] Exposure time")
             thishdu.header["NDIT"] = (self.ndit, "Number of exposures")
-            thishdu.header["TRO"] = (self.tro,
-                                     "[s] Time between non-destructive readouts")
+            #thishdu.header["TRO"] = (self.tro,
+            #                         "[s] Time between non-destructive readouts")
             thishdu.header["GAIN"] = (self.chips[i].gain, "[e-/ADU]")
             thishdu.header["AIRMASS"] = (self.cmds["ATMO_AIRMASS"], "")
             thishdu.header["ZD"] = (self.cmds["OBS_ZENITH_DIST"], "[deg]")
@@ -515,7 +515,8 @@ class Chip(object):
     --------
     """
 
-    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, gain, chipid=None):
+    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, gain, 
+                 chipid=None, flat_field=None):
 
         self.x_cen  = x_cen
         self.y_cen  = y_cen
@@ -524,6 +525,7 @@ class Chip(object):
         self.pix_res = pix_res
         self.gain   = gain
         self.id     = chipid
+        self.flat_field = flat_field
 
         dx = (x_len // 2) * pix_res
         dy = (y_len // 2) * pix_res
@@ -533,6 +535,11 @@ class Chip(object):
         self.y_max = y_cen + dy
 
         self.array = None
+        
+        self.ndit    = 0
+        self.dit     = 0
+        self.dark    = 0
+        self.min_dit = 0
 
 
     def add_signal(self, signal):
@@ -553,12 +560,6 @@ class Chip(object):
         Returns
         -------
         None
-
-        Raises
-        ------
-
-        Examples
-        --------
 
         """
         if isinstance(signal, np.ndarray):
@@ -636,15 +637,7 @@ class Chip(object):
         Returns
         -------
         None
-
-        Raises
-        ------
-
-        See Also
-        --------
-
-        Examples
-        --------
+        
         """
 
         try:
@@ -664,31 +657,12 @@ class Chip(object):
 
 
     def reset(self):
-        """
-        <One-line summary goes here>
-
-        Summary
-        -------
-
-        Parameters
-        ----------
-        x : type [, optional [, {set values} ]]
-            Description of ``x``. [(Default value)]
-
-        Returns
-        -------
-        """
-
-        ### TODO - add in persistence
         self.array = None
 
 
-    def read_out(self, cmds):
+    def read_out(self, cmds, read_out_type="superfast"):
         """
         Read out the detector array
-
-        Summary
-        -------
 
         Parameters
         ----------
@@ -700,80 +674,95 @@ class Chip(object):
         out_array : np.ndarray
             image of the chip read out
 
-        Raises
-        ------
-
-        Examples
-        --------
         """
 
-        ###############################################
-        #!!!!!!!!!!! TODO - add dark strom !!!!!!!!!!!#
-
-        dit      = cmds["OBS_EXPTIME"]
-        ndit     = int(cmds["OBS_NDIT"])
-        #tro      = cmds["OBS_NONDESTRUCT_TRO"]
-        #max_byte = cmds["SIM_MAX_RAM_CHUNK_GB"] * 2**30
-        dark     = cmds["FPA_DARK_MEDIAN"]
-
+        # set up the read out
+        self.dit      = cmds["OBS_EXPTIME"] / cmds["OBS_NDIT"]
+        self.ndit     = int(cmds["OBS_NDIT"])
+        self.dark     = cmds["FPA_DARK_MEDIAN"]
+        self.min_dit  = cmds["FPA_PIXEL_READ_TIME"] * \
+                        (self.naxis1 * self.naxis1 / cmds["HXRG_NUM_OUTPUTS"])
+                          
         if self.array is None:
             self.array = np.zeros((self.naxis1, self.naxis2), dtype=np.float32)
 
         # At this point, the only negatives come from the convolution.
         # Remove them for the Poisson process
         self.array[self.array < 0] = 0
-
         out_array = np.zeros(self.array.shape, dtype=np.float32)
-
-        ############## TO DO add in the different read out modes ###############
-        ########################################################################
-
-        out_array = self._read_out_superfast(self.array, dit, ndit)
-        # TODO: noise estimate is np.sqrt(self.array * dit * ndit)
-        out_array /= self.gain
-
-        # apply the linearity curve
-        if cmds["FPA_LINEARITY_CURVE"] is not None:
-            fname = cmds["FPA_LINEARITY_CURVE"]
-
-            data = ioascii.read(fname)
-            real_cts = data[data.colnames[0]]
-            measured_cts = data[data.colnames[1]]
-
-            out_array = np.interp(out_array.flatten(),
-                                  real_cts, measured_cts).reshape(out_array.shape)
-            out_array = out_array.astype(np.float32)
-
-        #### TODO #########
-        # add read out noise for every readout
-        # add a for loop to _read_noise where n random noise frames are added
-        # based on the size of the noise cube
-        ro = self._read_noise_frame(cmds)
-        for _ in range(1, ndit):
-            ro += self._read_noise_frame(cmds) + dark * dit
-
-        out_array += ro
-
+        
+        # the different read out modes
+        if read_out_type.lower() == "superfast":
+            out_array = self._read_out_superfast(cmds, self.dit, self.ndit)
+        elif read_out_type.lower() == "non_destructive":
+            out_array = self._read_out_non_destructive(cmds, self.dit, self.ndit)
+        elif read_out_type.lower() == "up_the_ramp":
+            out_array = self._read_out_up_the_ramp(cmds, self.dit, max_byte=2**30)
+        else:
+            raise ValueError("``read_out_type`` not readable")
+        
         if cmds["OBS_REMOVE_CONST_BG"].lower() == "yes":
             bg_val = np.median(out_array)
             out_array -= bg_val
 
         return out_array
 
+    
+    def _read_out_non_destructive(self, cmds, dit, ndit):
+        """
+        Read out NDIT times non-destructively according to FPA_READ_OUT_SCHEME
+        
+        Parameters
+        ----------
+        cmds : UserCommands
+        
+        Returns
+        -------
+        out_array : np.ndarray
+        
+        """
+        lin_curve = cmds["FPA_LINEARITY_CURVE"]
+        ro_times  = self._get_readout_times(scheme=cmds["FPA_READ_OUT_SCHEME"])
+        out_array = np.zeros(self.array.shape, dtype=np.float32)
+    
+        for n in range(self.ndit):
+            ro_cube = []
+            for t in ro_times:
+                
+                signal = self._read_out_poisson((self.array + self.dark), dit=t, ndit=1)
+                if lin_curve is not None:
+                    signal, lin_curve = self._apply_linearity(signal, lin_curve, 
+                                                              return_curve=True)
+                read_noise = self._read_noise_frame(cmds)[0] 
+                ro_cube += [signal + read_noise]
+                
+            ro_cube = np.array(ro_cube)
+            mask = ro_cube > cmds["FPA_FULL_WELL_DEPTH"]
+            masked_ro_cube = ma.array(ro_cube, mask=mask)           
+            masked_ro_cube[1:,:,:] -= masked_ro_cube[0,:,:]
+            ro_times.resize((len(ro_times),1,1))
+            masked_ro_cube[1:,:,:] /= ro_times[1:,:,:]
+            av_ro_cube = np.average(masked_ro_cube[1:,:,:], axis=0)
+            
+            out_array += av_ro_cube * dit
+        
+        out_array /= self.gain
+
+        return out_array.astype(np.float32)
+   
+    
     ## TODO: What to do if dit = min_dit (single read)?
     ## TODO: Make breaking up into memory chunks more flexible?
-    def _read_out_uptheramp(self, image, dit, tro=1.3, max_byte=2**30):
+    def _read_out_up_the_ramp(self, cmds, dit, max_byte=2**30):
         """
         Test readout onto a detector using cube model
 
         Parameters
         ----------
-        image :
+        image : 
             a 2D image to be mapped onto the detector. Units are [ph/s/pixel]
         dit :
             integration time [s]
-        tro :
-            time for a single non-destructive read (default: 1.3 seconds)
 
         Optional Parameters
         -------------------
@@ -786,6 +775,12 @@ class Chip(object):
 
         Output is given in [ph/pixel].
         """
+        
+        print("NOTE - 'up the ramp' readout only reads a single DIT")
+        
+        image = self.array
+        tro   = self.min_dit
+        
         nx, ny = image.shape
 
         nro = np.int(dit / tro)
@@ -842,95 +837,79 @@ class Chip(object):
         return slope * dit
 
 
+    def _read_out_superfast(self, cmds, dit, ndit):
+        """
+        Superfast read-out
+        """
+
+        signal = self._read_out_poisson(self.array, dit, ndit)
+                
+        # apply the linearity curve
+        lin_curve = cmds["FPA_LINEARITY_CURVE"]
+        if lin_curve is not None:
+            signal, lin_curve = self._apply_linearity(signal, 
+                                                      lin_curve, 
+                                                      return_curve=True)
+
+        # add 1 to the ndits, because there will always be a readout at the start
+        ro_frames = self._read_noise_frame(cmds, n_frames=max(ndit,2))
+        ro = np.sum(ro_frames, axis=0)
+
+        out_array = signal + ro
+        out_array /= self.gain
+        
+        return out_array
+
+        
     def _read_out_poisson(self, image, dit, ndit):
         """
-        <One-line summary goes here>
-
+        Apply a poisson distribution to the image
+        
         Parameters
         ----------
-        x : type [, optional [, {set values} ]]
-            Description of ``x``. [(Default value)]
-
+        image : np.ndarray
+            image to be poissonified
+        dit : float
+            [s] length of exposure
+        ndit : int
+            [#] number of exposures
+            
         Returns
         -------
-
-        Examples
-        --------
+        im_st : np.ndarray
+            Poissonified image array
+        
         """
         image2 = image * dit
         image2[image2 > 2.14E9] = 2.14E9
 
         im_st = np.zeros(np.shape(image))
-        for _ in range(ndit):
+        for n in range(ndit):
             im_st += np.random.poisson(image2)
 
         return im_st.astype(np.float32)
-
-
-    def _read_out_fast(self, image, dit):
-        """
-        <One-line summary goes here>
-
-        Parameters
-        ----------
-        x : type [, optional [, {set values} ]]
-            Description of ``x``. [(Default value)]
-
-        Returns
-        -------
-
-        Examples
-        --------
-        """
-
-        image2 = image * dit
-        image2[image2 > 2.14E9] = 2.14E9
-
-        return np.random.poisson(image2 * dit)
-
-
-    def _read_out_superfast(self, image, dit, ndit):
-        """
-        <One-line summary goes here>
-
-        Summary
-        -------
-
-        Parameters
-        ----------
-        x  :  type [, optional [, {set values} ]]
-            Description of ``x``. [(Default value)]
-
-        Returns
-        -------
-
-        Examples
-        --------
-        """
-
-        exptime = dit * ndit
-        image2 = image * exptime
-        image2[image2 > 2.14E9] = 2.14E9
-        return np.random.poisson(image2).astype(np.float32)
-
-
-    def _read_noise_frame(self, cmds):
+        
+        
+    def _read_noise_frame(self, cmds, n_frames=1):
         """
         Read in read-out-noise from the FITS file specified by FPA_NOISE_PATH
 
+        If cmds["FPA_NOISE_PATH"] == "gen", all info about the size and number
+        of layers must be in the :class:`.UserCommands` object.
+        I.e. HXRG_NUM_NDRO
+        
         Parameters
         ----------
-        x : type [, optional [, {set values} ]]
-            Description of ``x``. [(Default value)]
-
+        cmds : UserCommands
+        n_frames : int
+            The number of frames needed
+            
         Returns
         -------
-
-        Raises
-        ------
-
-        Examples
-        --------
+        noise_cube : np.ndarray
+            if n_frames == 1: shape = (naxis1, naxis2)
+            else: shape = = (naxis1, naxis2, n_frames)
+            
         """
 
         if cmds["FPA_USE_NOISE"].lower() == "no":
@@ -938,21 +917,101 @@ class Chip(object):
 
         if "gen" in cmds["FPA_NOISE_PATH"].lower():
             if cmds["HXRG_OUTPUT_PATH"] is not None:
-                _generate_hxrg_noise(self.naxis1, self.naxis2, cmds)
+                generate_hxrg_noise(cmds)
                 tmp = fits.getdata(cmds["HXRG_OUTPUT_PATH"])
                 return tmp[:self.naxis1, :self.naxis2]
             else:
-                return _generate_hxrg_noise(self.naxis1, self.naxis2, cmds)
+                noise_cube = generate_hxrg_noise(cmds)
 
         elif cmds["FPA_NOISE_PATH"] is not None:
             n = len(fits.info(cmds["FPA_NOISE_PATH"], False))
-            layer = np.random.randint(n)
-            tmp = fits.getdata(cmds["FPA_NOISE_PATH"], layer)
-            return tmp[:self.naxis1, :self.naxis2]
+            layer = np.random.randint(low=0, high=n, size=n_frames)
+            tmp = [fits.getdata(cmds["FPA_NOISE_PATH"], i) for i in layer]
+            noise_cube = np.array([im[:self.naxis1, :self.naxis2] for im in tmp])
+        
         else:
-            return np.zeros((self.naxis1, self.naxis2))
+            noise_cube = np.zeros((self.naxis1, self.naxis2, n_frames))
+        
+        if n_frames == 1:
+            return noise_cube[0,:,:]
+        else:
+            return noise_cube
 
+            
+    def _get_readout_times(self, scheme="double_corr"):
+        """
+        Expect that scheme = cmds["FPA_READ_OUT_SCHEME"]
+        
+        """
 
+        if "double_corr" in scheme:
+            scheme = [0, self.dit]
+        elif "up" in scheme:
+            scheme = np.arange(0, self.dit, self.min_dit + 1E-3)
+        elif "fowl" in scheme:
+            fowl_pair = np.min((4, int(self.dit / self.min_dit) // 2))
+            scheme = np.arange(0, self.dit, self.min_dit + 1E-3).tolist()
+            scheme = scheme[:fowl_pair] + scheme[-fowl_pair:]
+        
+        
+        if isinstance(scheme, str):
+            if os.path.exists(scheme):
+                data = ioascii.read(scheme)
+                times = data[data.colnames[0]]
+        elif isinstance(scheme, (list, tuple, np.ndarray)):
+            times = np.array(scheme)
+        
+        return times.astype(np.float32)
+    
+
+    def _apply_linearity(self, in_array, curve, return_curve=False):
+        """
+        Apply a linearity curve to a 2D array
+        
+        Parameters
+        ----------
+        in_array : array
+            the array to be linearized
+        curve : string, astropy.Table
+            if string, it is assumed to be a filename
+            if Table,  it is assumed to be from a previous run
+        return_curve : bool
+            whether to return the linearity curve
+        
+        Returns
+        -------
+        out_array, data : array, Table
+            if return_curve == True
+        out_array : array
+            if return_curve == False
+        
+        """
+
+        from astropy.table import Table
+        
+        if isinstance(curve, str):
+            if os.path.exists(curve):
+                data = ioascii.read(curve)
+            else:
+                raise ValueError("file doesn't exist: "+curve)
+        elif isinstance(curve, Table):
+            data = curve
+            
+        real_cts = data[data.colnames[0]]
+        measured_cts = data[data.colnames[1]]
+                
+        out_array = np.interp(in_array.flatten(),
+                              real_cts, measured_cts).reshape(in_array.shape)
+        out_array = out_array.astype(np.float32)
+
+        if return_curve:
+            return out_array, data
+        else: 
+            return out_array
+            
+            
+            
+            
     def __array__(self):
         return self.array
 
@@ -1027,30 +1086,21 @@ def open(self, filename):
     raise ValueError("Function not finished")
 
 
-def plot_detector_layout(detector):
+def plot_detector_layout(detector, clr="g"):
     """Plot the detector layout. NOT FINISHED """
     try:
         import matplotlib.pyplot as plt
     except ImportError:
         raise ImportError("matplotlib can't be found")
 
-    plt.figure(figsize=(10, 10))
-    clr = ["g"]
-
     for i, chip in enumerate(detector.chips):
-        plt.plot((chip.x_min, chip.x_max), (chip.y_min, chip.y_min),
-                 c=clr[i%len(clr)])
-        plt.plot((chip.x_min, chip.x_max), (chip.y_max, chip.y_max),
-                 c=clr[i%len(clr)])
-        plt.plot((chip.x_min, chip.x_min), (chip.y_min, chip.y_max),
-                 c=clr[i%len(clr)])
-        plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max),
-                 c=clr[i%len(clr)])
+        plt.plot((chip.x_min, chip.x_max), (chip.y_min, chip.y_min), clr)
+        plt.plot((chip.x_min, chip.x_max), (chip.y_max, chip.y_max), clr)
+        plt.plot((chip.x_min, chip.x_min), (chip.y_min, chip.y_max), clr)
+        plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max), clr)
         plt.text(chip.x_cen, chip.y_cen, chip.id, fontsize=14)
         plt.xlabel("Distance [arcsec]", fontsize=14)
         plt.ylabel("Distance [arcsec]", fontsize=14)
-
-    plt.show()
 
 
 def plot_detector(detector):
@@ -1089,8 +1139,7 @@ def plot_detector(detector):
         
         
 
-def _generate_hxrg_noise(cmds):
-#def _generate_hxrg_noise(naxis1, naxis2, cmds):
+def generate_hxrg_noise(cmds):
     """
     Generate a read noise frame using a UserCommands object
 
@@ -1107,9 +1156,9 @@ def _generate_hxrg_noise(cmds):
     print("Generating a new chip noise array")
     print(mp.current_process())
     # HXRG needs a pca file to run. Work out what a PCA file means!!
-    ng_h4rg = HXRGNoise(naxis1=4096,
-                        naxis2=4096,
-                        naxis3=1,
+    ng_h4rg = HXRGNoise(naxis1=cmds["HXRG_NAXIS1"],
+                        naxis2=cmds["HXRG_NAXIS2"],
+                        naxis3=cmds["HXRG_NUM_NDRO"],
                         n_out=cmds["HXRG_NUM_OUTPUTS"],
                         nroh=cmds["HXRG_NUM_ROW_OH"],
                         pca0_file=cmds["HXRG_PCA0_FILENAME"],
@@ -1161,17 +1210,15 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
     cmds["FPA_NOISE_PATH"] = "generate"
     cmds["FPA_CHIP_LAYOUT"] = "default"
 
-    #layout = ioascii.read(cmds.cmds["FPA_CHIP_LAYOUT"])
-    #naxis1, naxis2 = layout["x_len"][0], layout["y_len"][0]  # unused variables
-
+    
     if "Windows" in os.environ.get('OS', ''):
         multicore = False
 
     if __name__ == "__main__" and multicore:
         pool = mp.Pool(processes=mp.cpu_count()-1)
-        frames = pool.map(_generate_hxrg_noise, (cmds)*num_layers)
+        frames = pool.map(generate_hxrg_noise, (cmds)*num_layers)
     else:
-        frames = [_generate_hxrg_noise(cmds) \
+        frames = [generate_hxrg_noise(cmds) \
                   for i in range(num_layers)]
 
     hdu = fits.HDUList([fits.PrimaryHDU(frames[0])] + \
