@@ -19,9 +19,8 @@ Observation Parameters
     OBS_PARALLACTIC_ANGLE   0                       # [deg] rotation of the source relative to the zenith
     OBS_SEEING              0.6                     # [arcsec]
                             
-    OBS_EXPTIME             60                      # [sec] simulated exposure time
-    OBS_NDIT                1                       # [#] number of exposures taken
-    OBS_NONDESTRUCT_TRO     2.6                     # [sec] time between non-destructive readouts in the detector
+    OBS_EXPTIME             60                      # [sec] total simulated exposure time
+    OBS_NDIT                1                       # [#] number of exposures making up OBS_EXPTIME
     OBS_REMOVE_CONST_BG     no                      # remove the median background value
     OBS_READ_MODE           single                  # [single, fowler, ramp] Only single is implemented at the moment
     OBS_SAVE_ALL_FRAMES     no                      # yes/no to saving all DITs in an NDIT sequence
@@ -30,7 +29,7 @@ Observation Parameters
     OBS_FITS_EXT            0                       # the extension number where the useful data cube is
     
     OBS_OUTPUT_DIR          "./output.fits"         # [filename] Path to save output in.
-    
+    OBS_NONDESTRUCT_TRO     1.3                     # Archaic command
     
 Simulation Parameters
 ----------------------
@@ -64,10 +63,6 @@ Simulation Parameters
     SIM_OPT_TRAIN_OUT_PATH  none                    # Options for saving and reusing optical trains. If "none": "./"
     SIM_DETECTOR_IN_PATH    none                    # Options for saving and reusing detector objects. If "none": "./"
     SIM_DETECTOR_OUT_PATH   none                    # Options for saving and reusing detector objects. If "none": "./"
-                
-    SIM_MAX_RAM_CHUNK_GB   2                        # Maximum amount of RAM to be taken up by one a single object
-    SIM_SPEED              10                       # 10 = Fast, but skips on details, 1 = Slow, but does everything as accurately as possible
-    SIM_NUM_CPUS           -1                       # Number of CPUs to use for multicore computations. -1 = all idle cores
     
     
 Atmospheric Parameters
@@ -114,7 +109,7 @@ Telescope Parameters
                 
     SCOPE_NUM_MIRRORS       5                       # number of reflecting surfaces
     SCOPE_TEMP              0                       # deg Celsius - temperature of mirror
-    SCOPE_M1_TC             TC_mirror_EELT.dat      # [filename] Mirror reflectance curve. Default: <pkg_dir>/data/TC_mirror_EELT.dat
+    SCOPE_M1_TC             TC_mirror_mgf2agal.dat  # [filename] Mirror reflectance curve. Default: <pkg_dir>/data/TC_mirror_EELT.dat
     SCOPE_MIRROR_LIST       EC_mirrors_scope.tbl    # [filename] List of mirror sizes.     Default: <pkg_dir>/data/EC_mirrors_scope.tbl
     
     
@@ -179,12 +174,15 @@ Detector parameters
     FPA_NOISE_PATH          FPA_noise.fits          # [filename, "generate"] if "generate": use NGHxRG to create a noise frame.
     FPA_GAIN                1                       # e- to ADU conversion
     FPA_LINEARITY_CURVE     FPA_linearity.dat       # [filename, "none"]
+    FPA_FULL_WELL_DEPTH     5E4                     # [e-] Count level where non-linearity becomes evident
     
     FPA_PIXEL_MAP           none                    # path to a FITS file with the pixel sensitivity map
     # if FPA_PIXEL_MAP == none          
     FPA_DEAD_PIXELS         1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
     FPA_DEAD_LINES          1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
-            
+    
+    FPA_READ_OUT_SCHEME     double_correlated       # ["double_correlated", "up_the_ramp", "fowler", <filename>]
+    FPA_PIXEL_READ_TIME     1E-5                    # [s] Time needed to read a pixel (on the order of microseconds, i.e. 1E-5)
     FPA_CHIP_LAYOUT         wide                    # ["small", "centre", "wide", "zoom", <filename>] description of the chip layout on the detector array.
     
     
@@ -198,7 +196,10 @@ NXRG Noise Generator package parameters
     # See Rauscher (2015) for details
     # http://arxiv.org/pdf/1509.06264.pdf
     
-    HXRG_NUM_OUTPUTS        64                      # Number of
+    HXRG_NAXIS1             4096                    # Number of pixels in the first dimensions
+    HXRG_NAXIS2             4096                    # Number of pixels in the second dimensions
+    HXRG_NUM_NDRO           1                       # Number of non-destructive read-outs in noise cubes
+    HXRG_NUM_OUTPUTS        64                      # Number of outputs
     HXRG_NUM_ROW_OH         8                       # Number of row overheads
     HXRG_PCA0_FILENAME      FPA_nirspec_pca0.fits   # if "default": <pkg_dir>/data/
     HXRG_OUTPUT_PATH        none                    # Path to save the detector noise

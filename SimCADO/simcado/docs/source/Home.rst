@@ -6,16 +6,11 @@ The (slowly expanding) documentation base for SimCADO
 All Notebooks and API available on the University of Vienna's server:  
 www.univie.ac.at/simcado
 
-.. figure:: images/Omega_Cen_Fabricius.png
+.. figure:: examples/gallery/Pulsar_light_curve_Davies.png
     :figwidth: 600 px
     :align: center
 
-    Omega Cen as imaged with HST/WFC3, HST/SimCADO and MICADO/SimCADO by
-    Maximilian Fabricius (MPE). The synthetic images
-    of the same region of Omega Cen are based on the HST catalog by
-    Anderson & van der Marel 2010 and augmented by all the faint stars
-    that did not end up in the HST catalogue.
-
+    This is the lightcurve that follows the shape of the Crab Pulsar, but scaled so that each pulse is easily visible in a 5ms windowed H-band exposure with MICADO. The star is H=15mag. The light curve has been extracted from the intermediate non-destructive reads from an up-the-ramp simulated exposure.
 
 SimCADO in a nutshell
 ---------------------
@@ -116,8 +111,8 @@ installed).
 At the very least, we need to create a :class:`.Source` object which contains
 both spatial and spectral information on our object of interest. Here we
 use the built-in command :func:`simcado.source.cluster()` to create a
-:class:`.Source`-object for a 10000-Msun stellar cluster. (:doc:`Creating
-Sources <Source>` for more information).
+:class:`.Source` object for a 10000-Msun stellar cluster. (:doc:`Creating
+Sources <example/Source>` for more information).
 ::
 
     >>> src = simcado.source.cluster()
@@ -139,11 +134,11 @@ The :func:`.run` also takes any :doc:`configuration keywords <Keywords>` as para
 
     >>> simcado.run(src, filename="my_first_sim.fits", OBS_EXPTIME=600, OBS_NDIT=6)
     
-That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the :doc:`API` documentation
+That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the :doc:`API/simcado` documentation
 
 SimCADO building blocks
 -----------------------
-For a brief explanation of how SimCADO works and which classes are relevant, please see either the :doc:`Getting Started` or :doc:`SimCADO in depth <./deep_stuff/SimCADO>` section.
+For a brief explanation of how SimCADO works and which classes are relevant, please see either the :doc:`GettingStarted` or :doc:`SimCADO in depth <./deep_stuff/SimCADO>` section.
 
 Bugs and Issues
 ---------------

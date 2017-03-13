@@ -16,11 +16,11 @@ Contents:
     examples/UserCommands
     Download
     Updates
+    examples/Gallery
     Keywords
     deep_stuff/SimCADO
     deep_stuff/FAQs
     API <API/simcado>
-    Modules <API/modules>
     Workshop
     
     

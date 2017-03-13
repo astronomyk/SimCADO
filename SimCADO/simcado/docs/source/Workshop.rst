@@ -132,18 +132,105 @@ LOC
 -  Rainer Köhler
 -  Michael Mach
 
-Participants
-------------
 
--  Ric Davies
--  Eline Tolstoy
--  Maximilian Fabricius
+Participants and their topics
+-----------------------------
+
+-  Ric Davies  
+   Looking at observing the Antennae galaxy redshifted to z=1 so that the PaBeta
+   filter can be used to detect Halpha
+   
+-  Suzanne Ramsay  
+   Looking into massive star forming regions with stellar spectra surrounded by
+   nebulosity
+   
+-  Davide Massari   
+   Relative astrometry: what is the accuracy achievable for a globular cluster 
+   science case without any distortion term, but with the only PSF modelling 
+   procedure as source of uncertainty?
+   
+-  Simona Paiano  
+   Study the simulation of a QSO (mag 17 in H band) and its 
+   fainter elliptical host galaxy (mag 19 or fainter)
+   
+-  Maximilian Fabricius  
+   10 year motions in the core of Omega Cen
+   
 -  Gijs Verdoes Kleijn
--  Suzanne Ramsay
--  Davide Massari
--  Simona Paiano
--  Eckhard Sturm
--  Michele Perna
--  Michael Wegner
--  Natascha Förster Schreiber
+   The moon for calibration purposes
+   
 -  Giuliana Fiorentino
+   Comparisons to MAORY simulations
+
+-  Michele Perna
+   Detections of QSOs
+   
+-  Natascha Förster Schreiber
+   Super star clusters in high redshift galaxies
+
+
+Results of the Workshop
+------------------------
+-  Ric Davies
+   Made a light curve for simulated images of a pulsar with HTR imaging and a 
+   windowed readout.  
+   Redshifted the Antennae galaxy to z=1 and observed them
+   
+-  Suzanne Ramsay  
+   Did the ground work for making young clusters and the associated nebulocity
+   
+-  Davide Massari and Giuliana Fiorentino  
+   Confirmed that we are on the same level as the MAORY simulations  
+
+-  Maximilian Fabricius
+   Created images of the movement of stars in Omega Cen for a period of 10 years.
+   Movement is visible, and we should be able to already do astrometry down to 
+   10km/s with a 1 year baseline
+
+-  Simona Paiano and Michele Perna
+   Looked into resolving the faint host galaxies of quasars
+   
+-  Natascha Förster Schreiber  
+   Built the code base to simulate super star clusters in high redshift
+   galaxies. 
+
+
+Ideas from the Discussion round at the end
+-------------------------------------------   
+   
+Questions
+~~~~~~~~~~
+* What filters are included? 
+* How to use an image (i.e. source_from_image)
+    * Diagrammatically explain the scaling
+
+Blackboxes
+~~~~~~~~~~~
+* what is "lam"
+* more examples on the docs
+    * definitely for the "must-have" parameters
+   
+
+Things to improve for next time
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* stars() takes ra,dec coordinates + FOV centre
+* rename TC_HAWKI_H"RG
+* Start off with examples
+* pixel_scale of source_from_image - deal with the grid
+* option in simcado.source.galaxy
+    * drop cosmologocial info (Oliver) - only use angles and apparent magnitude
+* background values - iterate with Ric
+* user must specify filter to observe it
+* include function to return spectrum for magnitude - e.g. mag_to_spec()
+    * or method for Source() to scale based on magnitude, without passing any spectra
+* Zeropoints in the header info
+* exact pixel poistions in the Source() (e.g <Source>.xpix, .ypix)
+* improve noise models 
+    * document how to use FPA_PIXEL_MAP
+* make sure all default.config parameters are there
+* Future: Keywords are the same as the pipeline keywords
+    * Look into what are standards from ESO etc
+* Include field dependent MAORY SCAO PSFs
+* Future: Flat field (Wolfgang)
+
+
