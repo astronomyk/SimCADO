@@ -179,10 +179,7 @@ class TransmissionCurve(object):
         elif self.params["filename"] is not None:
             filename = self.params["filename"]
 
-            if self.params["airmass"] is not None:
-                lam, val = get_sky_spectrum(filename,
-                                                airmass=self.params["airmass"])
-            elif ".fits" in filename:
+            if ".fits" in filename:
                 hdr = fits.getheader(filename)
                 if any(["SKYCALC" in hdr[i] for i in range(len(hdr)) \
                         if isinstance(hdr[i], str)]):
@@ -196,6 +193,11 @@ class TransmissionCurve(object):
                     data = fits.getdata("../data/skytable.fits")
                     lam = data[data.columns[0].name]
                     val = data[data.columns[1].name]
+            
+            elif self.params["airmass"] is not None:
+                lam, val = get_sky_spectrum(filename,
+                                                airmass=self.params["airmass"])
+            
             else:
                 data = ioascii.read(self.params["filename"])
                 lam = data[data.colnames[0]]
