@@ -479,7 +479,9 @@ class Source(object):
         x_pix = (self._x - x_cen) / params["pix_res"]
         y_pix = (self._y - y_cen) / params["pix_res"]
 
-
+        self._x_pix = x_pix + chip.naxis1 // 2
+        self._y_pix = y_pix + chip.naxis2 // 2
+        
         # if sub pixel accuracy is needed, be prepared to wait. For this we
         # need to go through every source spectra in turn, shift the psf by
         # the decimal amount given by pos - int(pos), then place a
@@ -2607,3 +2609,85 @@ def _rebin(img, bpix):
     binim = np.mean(binim, axis=3)
     binim = np.mean(binim, axis=1)
     return binim
+
+
+def get_lum_class_params(lum_class="V", cat=None):
+    """
+    Returns a table with parameters for a certain luminosity class
+    
+    Parameters
+    ----------
+    lum_class : str, optional
+        Default is the main sequence ("V")
+        
+    Returns : astropy.Table object
+    
+    """
+    import astropy.table as tbl
+    
+    if cat is None:
+        cat = ascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
+    
+    t = []
+    for row in cat:
+        spt = row["Stellar_Type"]
+        if spt[0] in "OBAFGKM" and \ 
+           spt[-len(lum_class):] == lum_class and \
+           len(spt) == 2 + len(lum_class):
+            t += [row.data]
+
+    t = tbl.Table(data=np.array(t), names=cat.colnames)
+    
+    return t
+
+
+def get_nearest_spec_type(value, param="B-V", cat=None):
+    """
+    Return the spectral type of the star with the closest parameter value
+    
+    Compares values given for a certain stellar parameter and returns the spectral type
+    which matches the best. In case several spectral types have the same value, only the first
+    sectral type is returned
+    
+    Acceptable parameters are:
+    "Mass" : [Msun]
+    "Luminosity" : [Lsun]
+    "Radius" : [Rsun]
+    "Temp" : [K]
+    "B-V" : [mag]
+    "Mv" : [mag]
+    "BC(Temp)" : [Corr]
+    "Mbol" : [mag]
+    
+    Parameters
+    ----------
+    value : float, array
+        The value that the spectral type should have
+    param : str, optional
+        Default is "B-V". The column to be searched.
+    cat : astropy.Table, optional
+        The catalogue to use. Default is in the simcado/data directory
+        
+    Returns
+    -------
+    a value/list of strings corresponding to the spectral types which best fit to the given values
+    
+    """
+    
+    if cat is None:
+        cat = ioascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
+    
+    if isinstance(value, (np.ndarray, list, tuple)):
+        spt = []
+        for val in value:
+            spt += [get_nearest_spec_type(val, param, cat)]
+        
+        return spt
+        
+    col = cat[param]
+    i = np.argmin(np.abs(col-value))
+    spec_type = cat["Stellar_Type"][i]
+    
+    return spec_type
+    
+    
