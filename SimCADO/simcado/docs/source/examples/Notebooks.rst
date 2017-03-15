@@ -29,6 +29,7 @@ Tutorials
 ---------
 
 -  `my\_first\_sim.ipynb`_
+
    An introductory notebook to SimCADO. Topics include: first steps with
    SimCADO, creating :class:`.Source` objects and customising simulations.
 
@@ -37,7 +38,15 @@ Tutorials
 Science Cases
 -------------
 
+-  `Limiting_Magnitudes.ipynb`_
+
+   Examples for how to use ``limiting_mags()`` from the sub-module 
+   ``simcado.simulation``. 
+
+.. _Limiting_Magnitudes.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Limiting_Magnitudes.ipynb
+
 -  `Betelgeuse.ipynb`_
+
    A quick look at whether it would be possible to observe Betelgeuse (J
    = -3 mag) with SimCADO without destroying the detectors. Short
    answer: yes.
@@ -45,6 +54,7 @@ Science Cases
 .. _Betelgeuse.ipynb:     http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Betelgeuse.ipynb   
    
 -  `StarDestroyer.ipynb`_
+
    If General Tarkin were to attack Earth and has hidding in orbit
    around the moon in his spaceship, could the E-ELT see it, and would
    we we know what it was?
@@ -56,6 +66,7 @@ MICADO experiments
 ------------------
 
 -  `E-ELT\_2-Phase\_Mirror.ipynb`_
+
    As the primary mirror of the E-ELT may be built in 2 phases, this
    notebook uses SimCADO to have a look at what that means for the
    resulting E-ELT PSF.
@@ -66,6 +77,7 @@ MICADO experiments
     the PSFs generated here are only approximations based on a diffraction limited core combined with a Seeing Halo. These are meant only as a guide.
 
 -  `Filter\_Wings.ipynb`_
+
    A experiment to investigate the transmission coefficients that the
    filters in MICADO will need to have in order to restrict flux leakage
    through the filter wings to less than 1% of the flux coming through
@@ -77,22 +89,26 @@ Workshop notebooks
 ------------------
 
 1. `Setting up SimCADO`_
+
    Some basics about running SimCADO
    
 .. _Setting up SimCADO:   http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/1_Setting_up_SimCADO.ipynb   
    
 2. `Working with point sources`_
+
    The basics for making and combining point source objects
    
 .. _Working with point sources: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/2_Working_with_Point_Sources.ipynb   
    
 3. `Notes on simulation with sub-pixel resolution`_
+
    A couple of examples on how to get SimCADO to do sub-pixel scale simulations
    
 .. _Notes on simulation with sub-pixel resolution: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/4_Sub-pixel_shifting.ipynb   
    
    
 4. `Working with extended sources`_
+
    Creating a galaxy field with a large galaxy (the Antennae) and adding a series of background galaxies
    Here are the `FITS file used in the simulation`_
 
