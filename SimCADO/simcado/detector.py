@@ -851,11 +851,15 @@ class Chip(object):
                                                       lin_curve, 
                                                       return_curve=True)
 
+        # superfast hack to get an approximation of the readout noise in the image
+        ro = self._read_noise_frame(cmds, n_frames=1) * np.sqrt(ndit)
+        
+        ############# Could work, but it's too slow for ndit > 10 ##############
         # add 1 to the ndits, because there will always be a readout at the start
-        ro_frames = self._read_noise_frame(cmds, n_frames=max(ndit,2))
-        ro = np.sum(ro_frames, axis=0)
-
-        out_array = signal + ro
+        #ro_frames = self._read_noise_frame(cmds, n_frames=max(ndit,2))
+        #ro = np.sum(ro_frames, axis=0)
+        
+        out_array = signal + ro 
         out_array /= self.gain
         
         return out_array
