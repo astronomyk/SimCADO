@@ -29,6 +29,7 @@ import astropy.units as u
 from . import psf as psf
 from . import spectral as sc
 from . import spatial as pe
+from .source import flat_spectrum_sb
 from .commands import UserCommands
 from .utils import __pkg_dir__
 
@@ -333,6 +334,8 @@ class OpticalTrain(object):
                                        temp   =self.cmds["INST_AO_TEMPERATURE"],
                                        pix_res=self.cmds.pix_res,
                                        area   =ao_area)
+        # Really dodgy hack to emulate emissivity - half way between Al and AgAl
+        self.ec_ao *= 0.1
 
         if self.cmds["INST_USE_AO_MIRROR_BG"].lower() == "yes" and \
            self.cmds["SCOPE_PSF_FILE"].lower() != "scao":
@@ -360,19 +363,22 @@ class OpticalTrain(object):
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
-        #self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,
-        #                                   temp   =self.cmds["SCOPE_TEMP"],
-        #                                   pix_res=self.cmds.pix_res,
-        #                                   area   =scope_area)
+        self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,
+                                           temp   =self.cmds["SCOPE_TEMP"],
+                                           pix_res=self.cmds.pix_res,
+                                           area   =scope_area)
 
+        # Really dodgy hack to emulate emissivity - half way between Al and AgAl
+        self.ec_mirror *= 0.1
+                                           
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
-            #self.ph_mirror = self.ec_mirror * self.tc_mirror
-            #self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
-            #                                                  self.lam_bin_edges[-1])
-            self.n_ph_mirror = self._gen_thermal_emission()
+            self.ph_mirror = self.ec_mirror * self.tc_mirror
+            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+                                                               self.lam_bin_edges[-1])
+            #self.n_ph_mirror = self._gen_thermal_emission()
         else:
-            #self.ec_mirror = None
-            #self.ph_mirror = None
+            self.ec_mirror = None
+            self.ph_mirror = None
             self.n_ph_mirror = 0.
 
 
@@ -394,6 +400,7 @@ class OpticalTrain(object):
             else:
                 ################## TODO ######################
                 # Generalise this to accept any TransmissionCurve object
+                from .source import flat_spectrum_sb
                 self.ec_atmo = flat_spectrum_sb(self.cmds["ATMO_BG_MAGNITUDE"], 
                                                 self.cmds["INST_FILTER_TC"],
                                                 self.cmds["SIM_DETECTOR_PIX_SCALE"],
