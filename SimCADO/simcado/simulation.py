@@ -6,6 +6,7 @@ simulation.py
 import warnings, logging
 
 import numpy as np
+
 import simcado as sim
 
 __all__ = ["run", "snr", "check_chip_positions"]
@@ -217,7 +218,8 @@ def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
 
     
     
-def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32, **kwargs):
+def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32, 
+                        cmds=None, **kwargs):
     """
     Makes a series of :class:`.Detector` objects containing a grid of stars
     
@@ -230,9 +232,13 @@ def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32, **kwarg
     mmin, mmax : float
         [mag] Minimum and maximum magnitudes to use for the grid of stars
         
+    cmds : simcado.UserCommands
+        A custom set of commands for building the optical train
+        
     Optional Parameters
     -------------------
-    Any Keyword-Value pairs accepted by a :class:`~simcado.UserCommands` object
+    Any Keyword-Value pairs accepted by a 
+    :class:`~simcado.commands.UserCommands` object
     
     Returns
     -------
@@ -242,17 +248,24 @@ def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32, **kwarg
     grid : simcado.Source
         A :class:`Source` object containing the grids of stars
     
+    See Also
+    --------
+    :class:`~simcado.commands.UserCommands`
     
     """
     
     if isinstance(filter_names, str):
         filter_names = [filter_names]
     
+    if not isinstance(cmds, list):
+        cmds = [cmds] * len(filter_names)
+        
     fpas = []
     grids = []
-    for filt in filter_names:
-        cmd = sim.UserCommands()
-        cmd["FPA_USE_NOISE"] = "no"
+    for filt, cmd in zip(filter_names, cmds):
+        if cmd is None:
+            cmd = sim.UserCommands()
+        #cmd["FPA_USE_NOISE"] = "no"
         cmd["OBS_NDIT"] = 1
         cmd["FPA_LINEARITY_CURVE"] = "none"
         cmd["FPA_CHIP_LAYOUT"] = "small"
@@ -335,8 +348,9 @@ def _get_limiting_mags(fpas, grid, exptimes, filter_names=["J", "H", "Ks"],
             im = hdus[0].data
 
             im_width = hdus[0].data.shape[0]
-            x = (grid._x_pix+im_width//2).astype(int)
-            y = (grid._y_pix+im_width//2).astype(int)
+            #x = (grid._x_pix+im_width//2).astype(int)
+            x = grid._x_pix.astype(int)
+            y = grid._y_pix.astype(int)
 
             sigs, nss, snrs, bgs = [], [], [], []
             for n in range(len(x)):
@@ -375,14 +389,14 @@ def _get_limiting_mags(fpas, grid, exptimes, filter_names=["J", "H", "Ks"],
 
 def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H", "Ks"], 
                                  colors="bgrcymk", mmin=22, mmax=29,
-                                 legend_loc=None, marker="+"):
+                                 legend_loc=3, marker="+"):
     """
     Plots exposure time versus limiting magnitudes
        
     
     Parameters
     ----------
-    exptimes : array
+    exptimes : list, array
         [s] Exposure times corresponding to the signal-to-noise values
     
     limiting_mags : array, list of array
@@ -406,6 +420,8 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H"
     
     """
 
+    import matplotlib.pyplot as plt
+    
     if len(np.shape(limiting_mags)) == 1:
         limiting_mags = [limiting_mags]
     if filter_names is None:
@@ -414,6 +430,8 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H"
     elif isinstance(filter_names, str):
         filter_names = [filter_names]*np.shape(limiting_mags)[0]
 
+    exptimes = np.array(exptimes)
+    
     
     fig = plt.gcf()
     
@@ -421,13 +439,13 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H"
     ax1 = fig.add_axes([0, 0, 1, 1])
 
     for mag, clr, filt in zip(limiting_mags, colors, filter_names):
-        plt.scatter(exptimes/3600, mag, c=clr, s=50, marker=marker, label=filt)
+        plt.plot(exptimes/3600, mag, clr+marker, label=filt)
 
     if legend_loc is not None:
         plt.legend(loc=legend_loc, scatterpoints=1)
         
     plt.xlabel("Exposure time [hours]")
-    plt.ylabel("Limiting Magnitudes  (5$\sigma$)")
+    plt.ylabel("Limiting Magnitudes")
     plt.xlim(np.min(exptimes/3600)-0.1, np.max(exptimes/3600)+0.1)
     plt.ylim(22,31)
 
@@ -436,7 +454,7 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H"
     ax2 = fig.add_axes([0.5, 0.15, 0.45, 0.35])
 
     for mag, clr in zip(limiting_mags, colors):
-        plt.scatter(exptimes, mag, c=clr, s=50, marker=marker)
+        plt.plot(exptimes, mag, clr+marker)
 
     plt.plot((60*1,60*1),    (mmin, mmax), "k:")
     plt.text(60*1-5, mmin+0.5, "1 min", horizontalalignment="right")
@@ -453,8 +471,9 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H"
 
 def limiting_mags(exptimes=[1,60,3600,18000], filter_names=["J", "H", "Ks"], 
                   AB_corrs=None, limiting_sigma=5,
-                  return_mags=True, make_graph=True, 
-                  mmin=22, mmax=31, **kwargs):
+                  return_mags=True, make_graph=False, 
+                  mmin=22, mmax=31, 
+                  cmds=None, **kwargs):
     """
     Return or plot a graph of the limiting magnitudes for MICADO
     
@@ -480,6 +499,9 @@ def limiting_mags(exptimes=[1,60,3600,18000], filter_names=["J", "H", "Ks"],
     make_graph : bool
         If True (defualt), a graph of the limiting magnitudes vs exposure time is plotted
         Calls :func:`plot_exptime_vs_limiting_mag`
+        
+    cmds : simcado.UserCommands
+        A custom set of commands for building the optical train    
         
     
     Optional Parameters
@@ -512,12 +534,15 @@ def limiting_mags(exptimes=[1,60,3600,18000], filter_names=["J", "H", "Ks"],
     """
 
 
-    fpas, grid    = _make_snr_grid_fpas(filter_names, **kwargs)    
-    limiting_mags = _get_limiting_mags(fpas, grid, exptimes, filter_names, AB_corrs=AB_corrs, 
+    fpas, grid    = _make_snr_grid_fpas(filter_names, cmds=cmds, 
+                                        mmin=mmin, mmax=mmax, **kwargs)    
+    limiting_mags = _get_limiting_mags(fpas, grid, exptimes, filter_names, 
+                                       mmin=mmin, mmax=mmax, AB_corrs=AB_corrs,
                                        limiting_sigma=limiting_sigma)
     
     if make_graph:
-        plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names)
+        plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names, 
+                                     mmin=mmin, mmax=mmax)
     
     if return_mags:
         return limiting_mags    
