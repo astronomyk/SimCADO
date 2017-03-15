@@ -21,6 +21,7 @@ Observation Parameters
                             
     OBS_EXPTIME             60                      # [sec] total simulated exposure time
     OBS_NDIT                1                       # [#] number of exposures making up OBS_EXPTIME
+    OBS_NONDESTRUCT_TRO     2.6                     # [sec] time between non-destructive readouts in the detector
     OBS_REMOVE_CONST_BG     no                      # remove the median background value
     OBS_READ_MODE           single                  # [single, fowler, ramp] Only single is implemented at the moment
     OBS_SAVE_ALL_FRAMES     no                      # yes/no to saving all DITs in an NDIT sequence
@@ -177,7 +178,7 @@ Detector parameters
     FPA_FULL_WELL_DEPTH     5E4                     # [e-] Count level where non-linearity becomes evident
     
     FPA_PIXEL_MAP           none                    # path to a FITS file with the pixel sensitivity map
-    # if FPA_PIXEL_MAP == none          
+    # if FPA_PIXEL_MAP == none
     FPA_DEAD_PIXELS         1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
     FPA_DEAD_LINES          1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
     
