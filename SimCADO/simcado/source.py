@@ -141,24 +141,49 @@ class Source(object):
     Source class generates the arrays needed for source. It takes various
     inputs and converts them to an array of positions and references to spectra
     It also converts spectra to photons/s/voxel. The default units for input
-    data is ph/s
+    data is ph/s/m2/bin
 
+    The internal variables are related like so:
+    ::
+        f(x[i],y[i]) = spectra[ref[i]] * weight[i]
+        
+    
     Parameters
-    ==========
-    - filename
+    ----------
+    filename : str
+        Filename for where to find the FITS file holding a Source object
+    
     or
-    - lam
-    - spectra
-    - x [arcsec]
-    - y [arcsec]
-    - ref
-    - weight
-
+    
+    lam : np.array
+        [um] Wavelength bins of length (m)
+    spectra : np.array
+        [ph/s/m2/bin] A (n,m) array with n spectra, each with m spectral bins
+    x, y : np.array
+        [arcsec] coordinates of where the emitting sources are relative to the
+        centre of the field of view
+    ref : np.array
+        the indiec for .spectra which connects a position (x,y) to a spectrum
+        f(x[i],y[i]) = spectra[ref[i]] * weight[i]
+    weight : np.array
+        A weighting to scale the relevant spectrum for each position
+    
     Keyword arguments
-    =================
-    - units
-    - pix_unit
-    - exptime
+    -----------------
+    units : str
+        The units of the spectra. Default is ph/s/m2/bin
+    pix_unit : str
+        Default is arcsec
+    exptime : float
+        If the input spectrum is not normalised to 1 sec
+    area : float
+        The telescope area used to generate the source object
+    pix_res : float
+        [arcsec] The pixel resolution of the detector. Useful for surface 
+        brightness calculations
+    bg_spectrum : EmissionCurve
+        If there is a surface brightness term to add, add it here
+        
     """
 
     def __init__(self, filename=None,
@@ -169,7 +194,8 @@ class Source(object):
                        "pix_unit": "arcsec",
                        "exptime" : 1,
                        "area"    : 1,
-                       "pix_res" : 0.004}
+                       "pix_res" : 0.004
+                       "bg_spectrum" : None}
         self.params.update(kwargs)
 
         if isinstance(x, (tuple, list)):
@@ -204,6 +230,8 @@ class Source(object):
         self.y_orig = deepcopy(self.y)
         self.spectra_orig = deepcopy(self.spectra)
 
+        self.bg_spectrum = None
+        
 
     def apply_optical_train(self, opt_train, detector, chips="all",
                             sub_pixel=False, **kwargs):
@@ -676,6 +704,14 @@ class Source(object):
         self.x /= distance_factor
         self.y /= distance_factor
         self.weight /= distance_factor**2
+
+        
+    def add_background_surface_brightness(self):
+        """
+        Add an EmissionCurve for the background surface brightness of the object
+        """
+        pass
+        
 
 
     def rotate(self, angle, unit="arcsec", use_orig_xy=False):
