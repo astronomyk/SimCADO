@@ -340,11 +340,11 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     local_filename = os.path.join(save_dir, url.split('/')[-1])
     try:
         temp_file = wget.download(url,
-                                  out=wget.tempfile.mktemp(dir=save_dir, 
+                                  out=wget.tempfile.mktemp(dir=save_dir,
                                                            suffix='.tmp'),
                                   bar=wget.bar_adaptive)
         print("\n")
-        if os.path.exists(local_filename): 
+        if os.path.exists(local_filename):
             os.remove(local_filename)
         os.rename(temp_file, local_filename)
     except wget.ulib.HTTPError:
@@ -399,32 +399,32 @@ def get_extras():
 
     print("Finished downloading data for SimCADO")
 
-    
+
 def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
     """
     Adds the SED given in ``file_in`` to the SimCADO data directory
-    
+
     Parameters
     ----------
     file_in : str
         path to the SED file. Can be either FITS or ASCII format with 2 columns
         Column 1 is the wavelength, column 2 is the flux
     file_out : str, optional
-        Default is None. The file path to save the ASCII file. If ``None``, the SED 
+        Default is None. The file path to save the ASCII file. If ``None``, the SED
         is saved to the SimCADO data directory i.e. to ``<utils.__pkg_dir__>/data/``
     lam_units : str, astropy.Units
         Units for the wavelength column, either as a string or as astropy units
         Default is [um]
-    
+
     """
-    
+
     file_name, file_ext = os.path.basename(file_in).split(".")
-    
+
     if file_out is None:
         if "SED_" not in file_name:
             file_out = __pkg_dir__+"/data/SED_"+file_name+".dat"
         else: file_out = __pkg_dir__+"/data/"+file_name+".dat"
-            
+
     if file_ext.lower() in "fits":
         data = fits.getdata(file_in)
         lam, val = data[data.columns[0].name], data[data.columns[1].name]
@@ -432,26 +432,25 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
         lam, val = ioascii.read(file_in)[:2]
 
     lam = (lam * u.Unit(lam_units)).to(u.um)
-    mask = (lam > 0.3*u.um) * (lam < 5.0*u.um) 
+    mask = (lam > 0.3*u.um) * (lam < 5.0*u.um)
 
-    np.savetxt(file_out, np.array((lam[mask], val[mask]), dtype=np.float32).T, 
+    np.savetxt(file_out, np.array((lam[mask], val[mask]), dtype=np.float32).T,
                header="wavelength    value \n [um]         [flux]")
 
-    
+
 def airmass_to_zenith_dist(airmass):
     """
     returns zenith distance in degrees
-    
+
     Z = arccos(1/X)
     """
     return np.rad2deg(np.arccos(1. / airmass))
-    
 
-def zentih_dist_to_airmass(zenith_dist):
+
+def zenith_dist_to_airmass(zenith_dist):
     """
     ``zenith_dist`` is in degrees
-    
+
     X = sec(Z)
     """
     return 1. / np.cos(np.deg2rad(zenith_dist))
-    
