@@ -141,24 +141,49 @@ class Source(object):
     Source class generates the arrays needed for source. It takes various
     inputs and converts them to an array of positions and references to spectra
     It also converts spectra to photons/s/voxel. The default units for input
-    data is ph/s
+    data is ph/s/m2/bin
 
+    The internal variables are related like so:
+    ::
+        f(x[i],y[i]) = spectra[ref[i]] * weight[i]
+        
+    
     Parameters
-    ==========
-    - filename
+    ----------
+    filename : str
+        Filename for where to find the FITS file holding a Source object
+    
     or
-    - lam
-    - spectra
-    - x [arcsec]
-    - y [arcsec]
-    - ref
-    - weight
-
+    
+    lam : np.array
+        [um] Wavelength bins of length (m)
+    spectra : np.array
+        [ph/s/m2/bin] A (n,m) array with n spectra, each with m spectral bins
+    x, y : np.array
+        [arcsec] coordinates of where the emitting sources are relative to the
+        centre of the field of view
+    ref : np.array
+        the indiec for .spectra which connects a position (x,y) to a spectrum
+        f(x[i],y[i]) = spectra[ref[i]] * weight[i]
+    weight : np.array
+        A weighting to scale the relevant spectrum for each position
+    
     Keyword arguments
-    =================
-    - units
-    - pix_unit
-    - exptime
+    -----------------
+    units : str
+        The units of the spectra. Default is ph/s/m2/bin
+    pix_unit : str
+        Default is arcsec
+    exptime : float
+        If the input spectrum is not normalised to 1 sec
+    area : float
+        The telescope area used to generate the source object
+    pix_res : float
+        [arcsec] The pixel resolution of the detector. Useful for surface 
+        brightness calculations
+    bg_spectrum : EmissionCurve
+        If there is a surface brightness term to add, add it here
+        
     """
 
     def __init__(self, filename=None,
@@ -169,7 +194,8 @@ class Source(object):
                        "pix_unit": "arcsec",
                        "exptime" : 1,
                        "area"    : 1,
-                       "pix_res" : 0.004}
+                       "pix_res" : 0.004
+                       "bg_spectrum" : None}
         self.params.update(kwargs)
 
         if isinstance(x, (tuple, list)):
@@ -204,6 +230,8 @@ class Source(object):
         self.y_orig = deepcopy(self.y)
         self.spectra_orig = deepcopy(self.spectra)
 
+        self.bg_spectrum = None
+        
 
     def apply_optical_train(self, opt_train, detector, chips="all",
                             sub_pixel=False, **kwargs):
@@ -481,7 +509,7 @@ class Source(object):
 
         self._x_pix = x_pix + chip.naxis1 // 2
         self._y_pix = y_pix + chip.naxis2 // 2
-        
+
         # if sub pixel accuracy is needed, be prepared to wait. For this we
         # need to go through every source spectra in turn, shift the psf by
         # the decimal amount given by pos - int(pos), then place a
@@ -676,6 +704,14 @@ class Source(object):
         self.x /= distance_factor
         self.y /= distance_factor
         self.weight /= distance_factor**2
+
+        
+    def add_background_surface_brightness(self):
+        """
+        Add an EmissionCurve for the background surface brightness of the object
+        """
+        pass
+        
 
 
     def rotate(self, angle, unit="arcsec", use_orig_xy=False):
@@ -1435,7 +1471,7 @@ def zero_magnitude_photon_flux(filter_name):
 
     if isinstance(filter_name, TransmissionCurve):
         filter_name = filter_name.params["filename"]
-    
+
     if not os.path.exists(os.path.join(__pkg_dir__, "data", filter_name)):
         fname = os.path.join(__pkg_dir__, "data",
                              "TC_filter_" + filter_name + ".dat")
@@ -2614,41 +2650,41 @@ def _rebin(img, bpix):
 def get_lum_class_params(lum_class="V", cat=None):
     """
     Returns a table with parameters for a certain luminosity class
-    
+
     Parameters
     ----------
     lum_class : str, optional
         Default is the main sequence ("V")
-        
+
     Returns : astropy.Table object
-    
+
     """
     import astropy.table as tbl
-    
+
     if cat is None:
         cat = ascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
-    
+
     t = []
     for row in cat:
         spt = row["Stellar_Type"]
-        if spt[0] in "OBAFGKM" and \ 
+        if spt[0] in "OBAFGKM" and \
            spt[-len(lum_class):] == lum_class and \
            len(spt) == 2 + len(lum_class):
             t += [row.data]
 
     t = tbl.Table(data=np.array(t), names=cat.colnames)
-    
+
     return t
 
 
 def get_nearest_spec_type(value, param="B-V", cat=None):
     """
     Return the spectral type of the star with the closest parameter value
-    
+
     Compares values given for a certain stellar parameter and returns the spectral type
     which matches the best. In case several spectral types have the same value, only the first
     sectral type is returned
-    
+
     Acceptable parameters are:
     "Mass" : [Msun]
     "Luminosity" : [Lsun]
@@ -2658,7 +2694,7 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
     "Mv" : [mag]
     "BC(Temp)" : [Corr]
     "Mbol" : [mag]
-    
+
     Parameters
     ----------
     value : float, array
@@ -2667,27 +2703,26 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
         Default is "B-V". The column to be searched.
     cat : astropy.Table, optional
         The catalogue to use. Default is in the simcado/data directory
-        
+
     Returns
     -------
     a value/list of strings corresponding to the spectral types which best fit to the given values
-    
+
     """
-    
+
     if cat is None:
         cat = ioascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
-    
+
     if isinstance(value, (np.ndarray, list, tuple)):
         spt = []
         for val in value:
             spt += [get_nearest_spec_type(val, param, cat)]
-        
+
         return spt
-        
+
     col = cat[param]
     i = np.argmin(np.abs(col-value))
     spec_type = cat["Stellar_Type"][i]
-    
+
     return spec_type
-    
-    
+
