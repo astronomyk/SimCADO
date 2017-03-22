@@ -194,7 +194,7 @@ class Source(object):
                        "pix_unit": "arcsec",
                        "exptime" : 1,
                        "area"    : 1,
-                       "pix_res" : 0.004
+                       "pix_res" : 0.004,
                        "bg_spectrum" : None}
         self.params.update(kwargs)
 
