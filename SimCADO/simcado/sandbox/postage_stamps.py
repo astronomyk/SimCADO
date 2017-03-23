@@ -1,8 +1,10 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
 from photutils import Background2D, SigmaClip, MedianBackground
 from photutils import DAOStarFinder
-from photutils import aperture_photometry, CircularAperture, CircularAnnulus
+#from photutils import aperture_photometry, CircularAperture, CircularAnnulus
 from astropy.stats import sigma_clipped_stats
-
 
 class Stamp(object):
 
@@ -169,8 +171,6 @@ class PostageStamps(object):
         w = n_wide
         l = len(n)
         h = l // w + 1
-
-        print(len(self.stamps), n, w, l, h)
         
         for i in n:
             plt.subplot(h, w, i+1)
