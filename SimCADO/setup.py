@@ -68,7 +68,7 @@ def setup_package():
                             oliver.czoske@univie.ac.at""",
           url = "http://homepage.univie.ac.at/kieran.leschinski/",
           package_dir={'simcado': 'simcado'},
-          packages=['simcado', 'simcado.tests', 'simcado.experiments'],
+          packages=['simcado', 'simcado.tests', 'simcado.sandbox'],
           # for some reason include_package_data can be temperamental
           #include_package_data=True,
           package_data = {'simcado': ['data/*']},
