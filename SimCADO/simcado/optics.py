@@ -22,7 +22,7 @@ from copy import deepcopy
 
 import numpy as np
 
-#from astropy.io import fits      # unused
+from astropy.io import fits      # unused
 from astropy.io import ascii as ioascii    # 'ascii' redefines built-in
 import astropy.units as u
 
@@ -188,7 +188,7 @@ class OpticalTrain(object):
         #self.field_rot = self._gen_field_rotation_angle()
 
 
-    def replace_psf(self, new_psf, lam_bin_centres):
+    def replace_psf(self, new_psf, lam_bin_centers):
         """
         Change the PSF of the optical train
         """
@@ -527,14 +527,24 @@ class OpticalTrain(object):
 
         if self.cmds["SCOPE_PSF_FILE"] is None:
             warnings.warn("""
-            No PSF given. SCOPE_PSF_FILE = None.
-            Returning an Delta function for SCOPE_PSF_FILE""")
-
-            psf_m1 = psf.DeltaPSFCube(self.lam_bin_centers,
-                                      pix_res=self.pix_res,
-                                      size=9)
-            logging.debug("No PSF Given: making Delta PSF")
-
+            SCOPE_PSF_FILE == None.
+            Generating Moffat profile from with FWHM = OBS_SEEING""")
+            logging.debug("No PSF Given: making Seeng PSF")
+            
+            hdulist = fits.HDUList()
+            for lam in self.cmds.lam_bin_centers:
+                
+                psf_mo = psf.seeing_psf(fwhm   =self.cmds["OBS_SEEING"],
+                                        size   =self.cmds["SIM_PSF_SIZE"], 
+                                        pix_res=self.cmds["SIM_DETECTOR_PIX_SCALE"],
+                                        psf_type="moffat", filename=None) 
+                
+                psf_mo[0].header["WAVELENG"] = lam
+                hdulist.append(psf_mo[0])
+            
+            psf_m1 = psf.UserPSFCube(hdulist, self.lam_bin_centers)
+            
+            
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], psf.PSFCube):
             psf_m1 = self.cmds["SCOPE_PSF_FILE"]
             logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])

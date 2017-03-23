@@ -70,6 +70,7 @@ from collections import OrderedDict
 
 import numpy as np
 import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
+from astropy.io import fits
 
 from . import spectral as sc
 from .utils import __pkg_dir__, atmospheric_refraction
@@ -444,9 +445,11 @@ class UserCommands(object):
                                                     self.cmds["SCOPE_PSF_FILE"])
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], PSFCube):
             pass
+        
         elif self.cmds["SCOPE_PSF_FILE"] is None:
-            warnings.warn("SCOPE_PSF_FILE is None")
-            logging.debug("SCOPE_PSF_FILE is None")
+            warnings.warn("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
+            logging.debug("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
+            
         else:
             raise ValueError("Cannot recognise SCOPE_PSF_FILE: " + \
                                                     self.cmds["SCOPE_PSF_FILE"])

@@ -1151,12 +1151,19 @@ class UserPSFCube(PSFCube):
         if not hasattr(lam_bin_centers, "__len__"):
             lam_bin_centers = [lam_bin_centers]
 
-        n_slices = len(fits.info(filename, output=False))
         psf_slices = []
 
         # pull out the wavelengths in the PSF FITS files
         psf_lam_cen = []
-        hdulist = fits.open(filename)
+        
+        if isinstance(filename, fits.HDUList):
+            hdulist = filename
+        else:
+            hdulist = fits.open(filename)
+        
+        n_slices = len(hdulist.info(output=False))
+
+        
         for i in range(n_slices):
             if "WAVE0" in hdulist[i].header.keys():
                 psf_lam_cen += [hdulist[i].header["WAVE0"]]
@@ -1171,7 +1178,7 @@ class UserPSFCube(PSFCube):
             # If the wavelength is not in the 0.1-2.5 range, it must be in [m]
             if psf_lam_cen[i] < 0.1:
                 psf_lam_cen[i] *= 1E6
-        hdulist.close()
+        
 
         # find the closest PSFs in the file to what is needed for the psf
         i_slices = utils.nearest(psf_lam_cen, lam_bin_centers)
@@ -1180,7 +1187,7 @@ class UserPSFCube(PSFCube):
         # import only the relevant PSFs
         for i in np.unique(i_slices):
 
-            hdr = fits.getheader(filename, ext=i)
+            hdr = hdulist[i].header
             self.header = hdr
 
             if 'CDELT1' in hdr.keys():
@@ -1198,7 +1205,7 @@ class UserPSFCube(PSFCube):
                 pix_res *= 1E-3
 
             psf = PSF(size=hdr["NAXIS1"], pix_res=pix_res)
-            psf.set_array(fits.getdata(filename, ext=i))
+            psf.set_array(hdulist[i].data)
 
             if "PSF_TYPE" in hdr.keys():
                 psf.info["Type"] = hdr["PSF_TYPE"]
@@ -1212,13 +1219,19 @@ class UserPSFCube(PSFCube):
 
             psf_slices += [psf]
 
+            
+        hdulist.close()
+            
         lam_bin_centers = np.array(lam_bin_centers)
 
         super(UserPSFCube, self).__init__(i_psf_lam_cen)
         self.psf_slices = psf_slices
         self.size = [psf.size for psf in self.psf_slices]
 
-        self.info['description'] = "User PSF cube input from " + filename
+        if isinstance(filename, str):
+            self.info['description'] = "User PSF cube input from " + filename
+        else:
+            self.info['description'] = "User PSF cube input from memory"
         self.info["Type"] = psf_slices[0].info["Type"]+"Cube"
 
 

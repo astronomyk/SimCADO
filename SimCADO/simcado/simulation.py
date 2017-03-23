@@ -161,7 +161,7 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
 
     opt = sim.OpticalTrain(cmd)
 
-    if type(mags) not in (list, tuple, np.adarray):
+    if type(mags) not in (list, tuple, np.ndarray):
         mags = [mags]
 
     sn = []
