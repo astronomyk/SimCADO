@@ -28,6 +28,7 @@ from .version import version as __version__
 
 # import specific Classes from the modules to be accessible in the global
 # namespace
+from .utils     import __pkg_dir__
 from .detector  import Detector, Chip
 from .source    import Source
 from .optics    import OpticalTrain
@@ -38,6 +39,10 @@ from .commands  import UserCommands
 from .simulation import run
 from .utils import get_extras
 from .detector import install_noise_cube
+
+from os.path import join
+__data_dir__ = join(__pkg_dir__, "data")
+
 
 logging.basicConfig(filename='simcado.log', filemode='w', level=logging.DEBUG,
                     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
