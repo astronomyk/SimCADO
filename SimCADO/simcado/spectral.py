@@ -209,7 +209,7 @@ class TransmissionCurve(object):
 
 
     def resample(self, bins, action="average", use_edges=False, min_step=None,
-                 use_default_lam=True):
+                 use_default_lam=False):
         """
         Resamples both the wavelength and value vectors to an even grid.
         In order to avoid losing spectral information, the TransmissionCurve
@@ -234,7 +234,7 @@ class TransmissionCurve(object):
         min_step : float, optional
             [um] default=1E-4, the step size for the down-sample
         use_default_lam : bool, optional
-            Default is True. If True, ``bins`` is ignored and the default
+            Default is False. If True, ``bins`` is ignored and the default
             wavelength range is used as the resampling grid.
         """
 
@@ -457,20 +457,34 @@ class EmissionCurve(TransmissionCurve):
     """
     Class for emission curves
 
+    Create an emission curve from a file or from wavelength and flux vectors.
+    In the latter case, the keywords `lam` and `val` have to be specified.
+
     Parameters
     ==========
-    - lam: [um] 1D numpy array of length n
-    - val: 1D numpy array of length n
-    - res: [um] float with the desired spectral resolution
     - filename: string with the path to the transmission curve file where
                 the first column is wavelength in [um] and the second is the
                 transmission coefficient between [0,1]
+    - lam: [um] 1D numpy array of length n
+    - val: 1D numpy array of length n
+    - res: [um] float with the desired spectral resolution
     - pix_res: [arcsec] float of int for the field of view for each pixel
     - area: [m2] float or int for the collecting area of M1
     - units: string or astropy.unit for calculating the number of photons
              per voxel
 
     Return values are in [ph/s/voxel]
+
+    Examples
+    --------
+    ::
+
+        >>> from simcado.spectral import EmissionCurve
+        >>>
+        >>> ec_1 = EmissionCurve("emission_curve.dat")
+        >>> lam = np.arange(0.7, 1.5, 0.05)
+        >>> flux = 1. - 0.2 * wave**2   # power-law spectrum
+        >>> ec_2 = EmissionCurve(lam=lam, val=flux)
     """
     def __init__(self, filename=None, **kwargs):
         default_params = {"exptime" :1,
