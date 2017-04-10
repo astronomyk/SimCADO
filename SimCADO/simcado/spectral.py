@@ -135,10 +135,10 @@ class TransmissionCurve(object):
         self.info["Type"] = self.params["Type"]
 
         self.lam_orig, self.val_orig = self._get_data()
+        self.lam_orig *= (1 * self.params["lam_unit"]).to(u.um).value
 
         self.lam = self.lam_orig
         self.val = self.val_orig
-        self.lam_orig *= (1 * self.params["lam_unit"]).to(u.um).value
 
         ## OC: resampling should only be done when necessary
         ## KL: This ensures that the curves are on a regular grid. Not all of
@@ -193,11 +193,11 @@ class TransmissionCurve(object):
                     data = fits.getdata("../data/skytable.fits")
                     lam = data[data.columns[0].name]
                     val = data[data.columns[1].name]
-            
+
             elif self.params["airmass"] is not None:
                 lam, val = get_sky_spectrum(filename,
                                                 airmass=self.params["airmass"])
-            
+
             else:
                 data = ioascii.read(self.params["filename"])
                 lam = data[data.colnames[0]]
