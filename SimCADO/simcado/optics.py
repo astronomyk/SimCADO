@@ -529,7 +529,7 @@ class OpticalTrain(object):
             warnings.warn("""
             SCOPE_PSF_FILE == None.
             Generating Moffat profile from with FWHM = OBS_SEEING""")
-            logging.debug("No PSF Given: making Seeng PSF")
+            logging.debug("No PSF Given: making Seeing PSF")
             
             hdulist = fits.HDUList()
             for lam in self.cmds.lam_bin_centers:
