@@ -2306,8 +2306,6 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
                   for sp in spec]
     else:
         curves = [EmissionCurve(lam=lam, val=spec, area=1, units="ph/s/m2")]
-    for curve in curves:
-        curve.resample(0.001)
 
     if isinstance(filter_name, TransmissionCurve):
         filt = filter_name

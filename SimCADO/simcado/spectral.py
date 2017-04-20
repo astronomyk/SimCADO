@@ -149,9 +149,11 @@ class TransmissionCurve(object):
         ## We could always implement a catch for irregular bin spacing and only
         ## resample those curves.
         if self.params["Type"] == "Emission":
-            self.resample(self.params["lam_res"], action="sum")
+            self.resample(self.params["lam_res"], action="sum", 
+                                use_default_lam=self.params["use_default_lam"])
         else:
-            self.resample(self.params["lam_res"], action="average")
+            self.resample(self.params["lam_res"], action="average",
+                                use_default_lam=self.params["use_default_lam"])
 
 
     def __str__(self):
@@ -508,11 +510,14 @@ class EmissionCurve(TransmissionCurve):
         self.convert_to_photons()
 
 
-    def resample(self, bins, action="sum", use_edges=False):
+    def resample(self, bins, action="average", use_edges=False, min_step=None, 
+                 use_default_lam=False):
         # TODO: What about argument min_step from Transmission.resample? (OC)
+        # Yup, this was the problem to the NaNs - use_default_lam wasn't defined
         """Rebin an emission curve"""
-        super(EmissionCurve, self).resample(bins=bins, action=action,
-                                            use_edges=use_edges)
+        super(EmissionCurve, self).resample(bins=bins, action=action, 
+                                            use_edges=use_edges, min_step=min_step,
+                                            use_default_lam=use_default_lam)
 
     def convert_to_photons(self):
         """Do the conversion to photons/s/voxel by using the val_unit, lam, area
