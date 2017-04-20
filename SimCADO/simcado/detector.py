@@ -91,6 +91,7 @@ import multiprocessing as mp
 
 import numpy as np
 import numpy.ma as ma
+import scipy.ndimage.interpolation as spi
 #from scipy.ndimage.interpolation import zoom
 
 from astropy.io import fits
@@ -193,8 +194,9 @@ class Detector(object):
 
     def __init__(self, cmds, small_fov=True):
         # 1. Read in the chip layout
-        # 2. Generate chip objects
-        # 3. Check if a noise file has been given
+        # 2. Read in the flat field file
+        # 3. Generate chip objects
+        # 4. Check if a noise file has been given
             # if not, generate new noise files
             # else: read in the noise file
             # if the noise file has many extensions, choose several random
@@ -214,12 +216,31 @@ class Detector(object):
             except:
                 raise FileNotFoundError(self.cmds["FPA_CHIP_LAYOUT"] +
                                         " (FPA_CHIP_LAYOUT) cannot be read")
-
+        
+        
+        if self.cmds["INST_FLAT_FIELD"] is not None and \
+                                os.path.exists(self.cmds["INST_FLAT_FIELD"]):
+            hdu_flat_field = fits.open(self.cmds["INST_FLAT_FIELD"])
+            n_exts = len(hdu_flat_field.info(output=False))
+            if n_exts == len(self.layout["id"]):
+                j = 0
+            elif n_exts > len(self.layout["id"]):
+                j = 1
+            elif n_exts == 1:
+                hdu_flat_field = [hdu_flat_field[0]] * len(self.layout["id"])
+            else:
+                raise ValueError("What's going on with INST_FLAT_FIELD?")
+        else:
+            j = 0
+            hdu_flat_field = [None] * len(self.layout["id"])
+        
+        
         self.chips = [Chip(self.layout["x_cen"][i], self.layout["y_cen"][i],
                            self.layout["x_len"][i], self.layout["y_len"][i],
                            self.cmds["SIM_DETECTOR_PIX_SCALE"],
                            self.layout["gain"][i],
-                           self.layout["id"][i])
+                           self.layout["id"][i],
+                           hdu_flat_field[i+j])
                       for i in range(len(self.layout["x_cen"]))]
 
         self.oversample = self.cmds["SIM_OVERSAMPLING"]
@@ -402,9 +423,6 @@ class Detector(object):
             ``filename=None`` (by default), the file written is ``./detector.fits``
 
 
-        Returns
-        -------
-        None
 
         Keyword Arguments (**kwargs)
         ----------------------------
@@ -465,6 +483,8 @@ class Chip(object):
     id : int
         an identification number for the chip (assuming they are not correctly
         ordered)
+    flat_field : np.ndarray
+        a 2D array holding the flat fielding effects for the chip
 
     Attributes
     ----------
@@ -525,8 +545,7 @@ class Chip(object):
         self.pix_res = pix_res
         self.gain   = gain
         self.id     = chipid
-        self.flat_field = flat_field
-
+        
         dx = (x_len // 2) * pix_res
         dy = (y_len // 2) * pix_res
         self.x_min = x_cen - dx
@@ -541,6 +560,18 @@ class Chip(object):
         self.dark    = 0
         self.min_dit = 0
 
+        if flat_field is not None:
+            if isinstance(flat_field, (fits.ImageHDU, fits.PrimaryHDU)):
+                flat_field = flat_field.data
+            wf, hf = flat_field.shape
+            zx, zy = self.naxis1 / wf, self.naxis2 / hf
+            if wf == 1. and hf == 1.:
+                self.flat_field = flat_field
+            else:
+                self.flat_field = spi.zoom(flat_field, (zx, zy), order=1)
+        else:
+            self.flat_field = None
+        
 
     def add_signal(self, signal):
         """
@@ -614,8 +645,7 @@ class Chip(object):
     def apply_pixel_map(self, pixel_map_path=None, dead_pix=None,
                         max_well_depth=1E5):
         """
-        adds "hot" and "dead" pixels to the array
-
+        Adds "hot" and "dead" pixels to the array
 
         Summary
         -------
@@ -691,6 +721,7 @@ class Chip(object):
         self.array[self.array < 0] = 0
         out_array = np.zeros(self.array.shape, dtype=np.float32)
         
+        ######## Multiply by Exptime
         # the different read out modes
         if read_out_type.lower() == "superfast":
             out_array = self._read_out_superfast(cmds, self.dit, self.ndit)
@@ -701,6 +732,11 @@ class Chip(object):
         else:
             raise ValueError("``read_out_type`` not readable")
         
+        ######## Flat fielding
+        if self.flat_field is not None:
+            out_array *= self.flat_field
+        
+        ######## Remove a constant BG level
         if cmds["OBS_REMOVE_CONST_BG"].lower() == "yes":
             bg_val = np.median(out_array)
             out_array -= bg_val
