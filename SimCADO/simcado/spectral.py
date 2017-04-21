@@ -93,7 +93,7 @@ class TransmissionCurve(object):
     Optional Parameters (**kwargs)
     ------------------------------
     lam_res : float
-        [um] float with the desired spectral resolution
+        [um] float with the desired spectral resolution. Default is 0.001.
     min_step : float
         [um] the minimum bin size used when resampling. Default is 1E-4
     lam_unit : str
@@ -102,8 +102,8 @@ class TransmissionCurve(object):
         Default is True. If True the curve is resmapled to a default range. This
         is useful for getting all curves on the same grid from the beginning
     default_lam : array
-        Default is [0.3 .. 3.0] um. A default wavelength range to avoid excessive
-        resampling operations.
+        Default is [0.3 .. 3.0] um with a step size of 0.001 um. A default
+        wavelength range to avoid excessive resampling operations.
     airmass : float
         If transmission coefficients for more than one airmass are in ``filename``
 
@@ -113,10 +113,7 @@ class TransmissionCurve(object):
 
     """
     def __init__(self, filename=None, lam=None, val=None, **kwargs):
-        # TODO: remove automatic resampling to lam_res. This should
-        #       only be done when requested (i.e. lam_res in kwargs)
-        # See answer below
-
+        # default parameters. Can be overridden with kwargs.
         self.params = {"filename"    : filename,
                        "lam"         : lam,
                        "val"         : val,
@@ -140,29 +137,28 @@ class TransmissionCurve(object):
         self.lam = self.lam_orig
         self.val = self.val_orig
 
-        ## OC: resampling should only be done when necessary
-        ## KL: This ensures that the curves are on a regular grid. Not all of
-        ## the filter curve .dat files have regular bin spacing and so it is
-        ## impossible to define a "lam_res" for those curves. This is needed for
-        ## the EmissionCurve function "photons_in_range(lam_min, lam_max)"
-        ##
-        ## We could always implement a catch for irregular bin spacing and only
-        ## resample those curves.
+        ## Resample to a default regular grid.
+        ## Not all of the filter curve .dat files have regular bin spacing and
+        ## so it is impossible to define a "lam_res" for those curves.
+        ## This is needed for the EmissionCurve method
+        ## "photons_in_range(lam_min, lam_max)"
         if self.params["Type"] == "Emission":
-            self.resample(self.params["lam_res"], action="sum", 
-                                use_default_lam=self.params["use_default_lam"])
+            self.resample(self.params["lam_res"], action="sum",
+                          use_default_lam=self.params["use_default_lam"])
         else:
             self.resample(self.params["lam_res"], action="average",
-                                use_default_lam=self.params["use_default_lam"])
+                          use_default_lam=self.params["use_default_lam"])
 
 
     def __str__(self):
         return "Spectral curve:\n" + str(self.info)
 
+
     def __repr__(self):
         mask = [0, 1, 2], [-3, -2, -1]
         return self.info["Type"]+"Curve \n"+str(self.val[mask[0]])[:-1] \
                                     +" ..."+str(self.val[mask[1]])[1:]
+
 
     def _get_data(self):
         """
@@ -319,6 +315,7 @@ class TransmissionCurve(object):
         self.res = lam_res
         self.params["lam_res"] = self.res
 
+
     def normalize(self, val=1., mode='integral'):
         """
         Normalize the spectral curve
@@ -340,6 +337,7 @@ class TransmissionCurve(object):
         else:
             errorstr = "Unknown normalization mode: {0}. No action taken."
             raise ValueError(errorstr.format(mode))
+
 
     def __len__(self):
         return len(self.val)
@@ -410,6 +408,7 @@ class TransmissionCurve(object):
 
         return tcnew
 
+
     def __add__(self, tc):
         """
         Addition of a TransmissionCurve with a scalar or another Curve.
@@ -431,24 +430,31 @@ class TransmissionCurve(object):
 
         return tcnew
 
+
     def __sub__(self, tc):
         return  self.__add__(-1 * tc)
+
 
     def __rmul__(self, x):
         return self.__mul__(x)
 
+
     def __radd__(self, x):
         return self.__add__(x)
+
 
     def __rsub__(self, x):
         self.__mul__(-1)
         return self.__add__(x)
 
+
     def __imul__(self, x):
         return self.__mul__(x)
 
+
     def __iadd__(self, x):
         return self.__add__(x)
+
 
     def __isub__(self, x):
         return self.__sub__(x)
@@ -510,14 +516,15 @@ class EmissionCurve(TransmissionCurve):
         self.convert_to_photons()
 
 
-    def resample(self, bins, action="average", use_edges=False, min_step=None, 
+    def resample(self, bins, action="average", use_edges=False, min_step=None,
                  use_default_lam=False):
         # TODO: What about argument min_step from Transmission.resample? (OC)
         # Yup, this was the problem to the NaNs - use_default_lam wasn't defined
         """Rebin an emission curve"""
-        super(EmissionCurve, self).resample(bins=bins, action=action, 
+        super(EmissionCurve, self).resample(bins=bins, action=action,
                                             use_edges=use_edges, min_step=min_step,
                                             use_default_lam=use_default_lam)
+
 
     def convert_to_photons(self):
         """Do the conversion to photons/s/voxel by using the val_unit, lam, area
