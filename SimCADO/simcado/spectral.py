@@ -56,7 +56,7 @@ import os
 
 from copy import deepcopy
 import warnings
-import logging
+#import logging    # not used
 
 import numpy as np
 from astropy import units as u
@@ -64,7 +64,7 @@ from astropy import constants as c
 from astropy.io import fits
 from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
 
-from .utils import __pkg_dir__
+#from .utils import __pkg_dir__    # not used
 
 __all__ = []
 __all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve",
@@ -169,7 +169,7 @@ class TransmissionCurve(object):
         lam, val : 1D array
         """
 
-        if self.params["lam" ] is not None and self.params["val" ] is not None:
+        if self.params["lam"] is not None and self.params["val"] is not None:
             lam = self.params["lam"]
             val = self.params["val"]
 
@@ -194,7 +194,7 @@ class TransmissionCurve(object):
 
             elif self.params["airmass"] is not None:
                 lam, val = get_sky_spectrum(filename,
-                                                airmass=self.params["airmass"])
+                                            airmass=self.params["airmass"])
 
             else:
                 data = ioascii.read(self.params["filename"])
@@ -348,6 +348,7 @@ class TransmissionCurve(object):
     def __array__(self):
         return self.val
 
+
     def __pow__(self, n):
         """
         TransmissionCurve.val to the power of n.
@@ -360,27 +361,6 @@ class TransmissionCurve(object):
 
         return tcnew
 
-    # def __mul__(self, tc):
-        # """
-        # Product of a TransmissionCurve with a scalar or another Curve
-        # If tc is a TransmissionCurve and does not have the same lam, it is
-        # resampled first.
-        # """
-
-        # tcnew = deepcopy(self)
-
-        # if not hasattr(tc, "val"):
-            # tcnew.val *= tc
-        # else:
-            # ### TODO: This comparison needs work
-            # if not np.all(self.lam == tc.lam):
-                # tc.resample(self.lam)
-            # tcnew.val *= tc.val
-
-        # tcnew.lam_orig = tcnew.lam
-        # tcnew.val_orig = tcnew.val
-
-        # return tcnew
 
     def __mul__(self, tc):
         """
@@ -391,14 +371,14 @@ class TransmissionCurve(object):
 
         tcnew = deepcopy(self)
 
-        # EmissionCUrve takes precedence over TransmissionCurve
+        # EmissionCurve takes precedence over TransmissionCurve
         if not isinstance(self, EmissionCurve) and isinstance(tc, EmissionCurve):
             return tc * tcnew
 
         if not hasattr(tc, "val"):
             tcnew.val *= tc
         else:
-            ### TODO: This comparison needs work
+            # Would np.allclose be better?
             if not np.all(self.lam == tc.lam):
                 tc.resample(self.lam)
             tcnew.val *= tc.val
@@ -411,7 +391,7 @@ class TransmissionCurve(object):
 
     def __add__(self, tc):
         """
-        Addition of a TransmissionCurve with a scalar or another Curve.
+        Addition to a TransmissionCurve of a scalar or another Curve.
         If tc is a TransmissionCurve and does not have the same lam, it is
         resampled first.
         """
@@ -420,7 +400,7 @@ class TransmissionCurve(object):
         if not hasattr(tc, "val"):
             tcnew.val += tc
         else:
-            ### TODO: This comparison needs work
+            ### Would np.allclose be better?
             if not np.all(self.lam == tc.lam):
                 tc.resample(self.lam)
             tcnew.val += tc.val
@@ -518,8 +498,6 @@ class EmissionCurve(TransmissionCurve):
 
     def resample(self, bins, action="average", use_edges=False, min_step=None,
                  use_default_lam=False):
-        # TODO: What about argument min_step from Transmission.resample? (OC)
-        # Yup, this was the problem to the NaNs - use_default_lam wasn't defined
         """Rebin an emission curve"""
         super(EmissionCurve, self).resample(bins=bins, action=action,
                                             use_edges=use_edges, min_step=min_step,
@@ -533,22 +511,23 @@ class EmissionCurve(TransmissionCurve):
         self.params["units"] = u.Unit(self.params["units"])
         bases = self.params["units"].bases
 
-        factor = 1.*self.params["units"]
+        factor = 1. * self.params["units"]
 
         # The delivered EmissionCurve should be in ph/s/voxel
         if u.s  not in bases:
-            factor /= self.params["exptime"]*u.s
+            factor /= self.params["exptime"] * u.s
         if u.m      in bases:
-            factor *= self.params["area"]*u.m**2
+            factor *= self.params["area"] * u.m**2
         if u.arcsec in bases:
-            factor *= (self.params["pix_res"]*u.arcsec)**2
+            factor *= (self.params["pix_res"] *u.arcsec)**2
         if u.micron in bases:
-            factor *= self.params["lam_res"]*u.um
+            factor *= self.params["lam_res"] * u.um
 
         self.params["units"] = factor.unit
 
         self.val *= factor.value
         self.factor = factor
+
 
     def photons_in_range(self, lam_min=None, lam_max=None):
         """
@@ -686,28 +665,29 @@ def get_sky_spectrum(fname, airmass, return_type=None, **kwargs):
     """
 
     if not os.path.exists(fname):
-        raise OSError("File doesn't exist: "+fname)
+        raise OSError("File doesn't exist: " + fname)
 
     data = ioascii.read(fname)
     tbl_airmass = np.array([float(i[1:]) for i in data.colnames[2:]])
 
     lam = data[data.colnames[0]]
 
-    if "X"+str(float(airmass)) in data.colnames:
-        val = data["X"+str(float(airmass))]
+    if "X" + str(float(airmass)) in data.colnames:
+        val = data["X" + str(float(airmass))]
 
 
     elif airmass > 1 and airmass < 3:
         i = np.where(tbl_airmass - airmass >= 0)[0][0]
 
         # get the nearest two columns to the given airmass
-        x0, x1 = tbl_airmass[i-1:i+1]
-        w = np.sum(tbl_airmass[i-1:i+1] * np.array([-1, 1]))
+        x0, x1 = tbl_airmass[(i-1):(i+1)]
+        w = np.sum(tbl_airmass[(i-1):(i+1)] * np.array([-1, 1]))
 
         # get the weights for summing the two columns
         f1, f0 = (airmass - x0, x1 - airmass) / w    # backwards for a reason!
-        val = f0 * data["X"+str(x0)] + f1 * data["X"+str(x1)]
-    else: print("Column not found")
+        val = f0 * data["X" + str(x0)] + f1 * data["X" + str(x1)]
+    else:
+        print("Column not found")
 
     if return_type is not None:
         if "trans" in return_type.lower():
