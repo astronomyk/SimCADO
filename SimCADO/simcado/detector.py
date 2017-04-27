@@ -569,6 +569,7 @@ class Chip(object):
                 self.flat_field = flat_field
             else:
                 self.flat_field = spi.zoom(flat_field, (zx, zy), order=1)
+            self.flat_field = self.flat_field.T
         else:
             self.flat_field = None
         
