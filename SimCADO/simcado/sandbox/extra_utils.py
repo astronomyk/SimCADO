@@ -2,8 +2,10 @@
 Extra utility functions that aren't needed for everyday SimCADO
 """    
     
+    import glob
     import numpy as np
     from astropy.io import fits
+    
 
 def centre_psfs(fname, output=None, x_cen=511.5, y_cen=511.5, tile_width=32):
     """
@@ -66,3 +68,65 @@ def centre_psfs(fname, output=None, x_cen=511.5, y_cen=511.5, tile_width=32):
         fits_file.writeto(fname, clobber=True)
     else:
         fits_file.writeto(output, clobber=True)
+        
+        
+def stack_fits_files(in_dirname, out_filename=None):
+    """
+    Stacks a series of similar FITS files (e.g. flat fields, biases)
+    
+    
+    Parameters
+    ----------
+    in_dirname : str
+        The directory name with all the FITS files. All files in the directory will be stacked
+    
+    out_filename : str
+        If not None, the name where the combined HDUList should be saved
+        
+
+    Returns
+    -------
+    hdu : astropy.HDUList
+        A FITS object with the combines frames
+        
+
+    Examples
+    --------
+    ::
+        
+        >>> flats = stack_fits_files("./J_flats/", "HAWKI_flats_J.fits")
+        (24, 4, 2048, 2048)
+        (4, 2048, 2048)
+        
+        
+    """
+
+    fnames = glob.glob(in_dirname+"/*.fits")
+
+    last_ext = len(fits.info(fnames[0], output=False))
+    first_ext = 1 if last_ext > 1 else 0
+    
+    chips = []
+    for fname in fnames:
+        chips += [[fits.getdata(fname, ext=i) for i in range(first_ext, last_ext)]]
+
+    chips = np.array(chips)
+
+    print(chips.shape)
+    chips = np.median(chips, axis=0)
+    print(chips.shape)
+
+    for i in range(last_ext - first_ext):
+        chips[i] /= np.median(chips[i])
+
+    a = fits.PrimaryHDU()
+    b = [fits.ImageHDU(chip) for chip in chips]
+
+    hdu = fits.HDUList()
+    hdu.append(a)
+    for bb in b:
+        hdu.append(bb)
+
+    hdu.writeto(out_filename, clobber=True)
+    
+    return hdu
