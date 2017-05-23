@@ -146,15 +146,15 @@ class Source(object):
     The internal variables are related like so:
     ::
         f(x[i],y[i]) = spectra[ref[i]] * weight[i]
-        
-    
+
+
     Parameters
     ----------
     filename : str
         Filename for where to find the FITS file holding a Source object
-    
+
     or
-    
+
     lam : np.array
         [um] Wavelength bins of length (m)
     spectra : np.array
@@ -167,7 +167,7 @@ class Source(object):
         f(x[i],y[i]) = spectra[ref[i]] * weight[i]
     weight : np.array
         A weighting to scale the relevant spectrum for each position
-    
+
     Keyword arguments
     -----------------
     units : str
@@ -179,11 +179,11 @@ class Source(object):
     area : float
         The telescope area used to generate the source object
     pix_res : float
-        [arcsec] The pixel resolution of the detector. Useful for surface 
+        [arcsec] The pixel resolution of the detector. Useful for surface
         brightness calculations
     bg_spectrum : EmissionCurve
         If there is a surface brightness term to add, add it here
-        
+
     """
 
     def __init__(self, filename=None,
@@ -231,7 +231,7 @@ class Source(object):
         self.spectra_orig = deepcopy(self.spectra)
 
         self.bg_spectrum = None
-        
+
 
     def apply_optical_train(self, opt_train, detector, chips="all",
                             sub_pixel=False, **kwargs):
@@ -400,10 +400,8 @@ class Source(object):
         """
         chip.reset()
         scale_factor = self.pix_res / chip.pix_res
-
         chip_arr = spi.zoom(image, scale_factor, order=1)
         chip_arr *= np.sum(image) / np.sum(chip_arr)
-
         chip.add_signal(chip_arr)
 
 
@@ -705,13 +703,13 @@ class Source(object):
         self.y /= distance_factor
         self.weight /= distance_factor**2
 
-        
+
     def add_background_surface_brightness(self):
         """
         Add an EmissionCurve for the background surface brightness of the object
         """
         pass
-        
+
 
 
     def rotate(self, angle, unit="arcsec", use_orig_xy=False):
@@ -2723,4 +2721,3 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
     spec_type = cat["Stellar_Type"][i]
 
     return spec_type
-
