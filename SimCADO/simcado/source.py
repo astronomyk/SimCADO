@@ -1,13 +1,14 @@
 # pylint: disable=too-many-lines
 """
-The module which contains the functionality to create Source objects
+The module that contains the functionality to create Source objects
 
 Summary
+-------
 The source is essentially a list of spectra and a list of positions. The
 list of positions contains a reference to the relevant spectra. The advantage
 here is that if there are repeated spectra in a data cube, we can reduce the
 amount of calculations needed. Furthermore, if the input is originally a list
-of stars, etc where the position of a star is not always and integer multiple
+of stars, etc., where the position of a star is not always an integer multiple
 of the plate scale, we can keep the information until the PSFs are needed.
 
 Classes
@@ -21,16 +22,16 @@ Functions to create ``Source`` objects
 
     empty_sky()
     star(mag, filter_name="Ks", spec_type="A0V", x=0, y=0)
-    stars(mags, filter_name="Ks", spec_types=["A0V"], x=[0] y=[0])
-    star_grid(n, mag_min, mag_max, filter_name="Ks", seperation=1, area=1,
+    stars(mags, filter_name="Ks", spec_types=["A0V"], x=[0], y=[0])
+    star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1, area=1,
               spec_type="A0V")
     source_from_image(images, lam, spectra, pix_res, oversample=1,
                       units="ph/s/m2", flux_threshold=0,
-                      center_pixel_offset=(0,0))
+                      center_pixel_offset=(0, 0))
     source_1E4_Msun_cluster(distance=50000, half_light_radius=1)
 
 
-Functions for manipulating spectra for a `Source` object
+Functions for manipulating spectra for a ``Source`` object
 ::
 
     scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False)
@@ -76,16 +77,16 @@ Helper functions
 # - apply any 2D spatials [PositionArray]
 # for i in len(slices)
 #   - generate a working slice [PositionArray, SpectrumArray, WorkingSlice]
-#   - Apply the PSF for the appropriate wavelength [WorkingSlice]
-#   - Apply any wavelength dependent spatials [WorkingSlice]
+#   - apply the PSF for the appropriate wavelength [WorkingSlice]
+#   - apply any wavelength dependent spatials [WorkingSlice]
 #   - apply Poisson noise to the photons in the slice [WorkingSlice]
 #   - add the WorkingSlice to the FPA [WorkingSlice, FPArray]
 
 
 ## TODO implement conversions to Source object from:
 # ascii
-#    x,y,mag,[temp]
-#    x,y,type
+#    x, y, mag, [temp]
+#    x, y, type
 # images
 #    JHK
 #    cube
@@ -139,32 +140,34 @@ class Source(object):
     Create a source object from a file or from arrays
 
     Source class generates the arrays needed for source. It takes various
-    inputs and converts them to an array of positions and references to spectra
+    inputs and converts them to an array of positions and references to spectra.
     It also converts spectra to photons/s/voxel. The default units for input
-    data is ph/s/m2/bin
+    data is ph/s/m2/bin.
 
     The internal variables are related like so:
     ::
-        f(x[i],y[i]) = spectra[ref[i]] * weight[i]
+        f(x[i], y[i]) = spectra[ref[i]] * weight[i]
 
 
     Parameters
     ----------
     filename : str
-        Filename for where to find the FITS file holding a Source object
+        FITS file that contains either a previously saved ``Source`` object or a
+        data cube with dimensions x, y, lambda. A ``Source`` object is
+        identified by the header keyword SIMCADO with value SOURCE.
 
     or
 
     lam : np.array
         [um] Wavelength bins of length (m)
     spectra : np.array
-        [ph/s/m2/bin] A (n,m) array with n spectra, each with m spectral bins
+        [ph/s/m2/bin] A (n, m) array with n spectra, each with m spectral bins
     x, y : np.array
         [arcsec] coordinates of where the emitting sources are relative to the
         centre of the field of view
     ref : np.array
-        the indiec for .spectra which connects a position (x,y) to a spectrum
-        f(x[i],y[i]) = spectra[ref[i]] * weight[i]
+        the index for .spectra which connects a position (x, y) to a spectrum
+        f(x[i], y[i]) = spectra[ref[i]] * weight[i]
     weight : np.array
         A weighting to scale the relevant spectrum for each position
 
@@ -214,6 +217,10 @@ class Source(object):
         self.x = None
         self.y = None  # set later
 
+        # A file can contain a previously saved Source object; in this case the header keyword
+        # "SIMCADO" is set to "SOURCE". If this is not the case, we assume that the file
+        # contains a data cube with dimensions x, y, lambda.
+        # If no filename is given, we build the Source from the arrays.
         if filename is not None:
             hdr = fits.getheader(filename)
             if "SIMCADO" in hdr.keys() and hdr["SIMCADO"] == "SOURCE":
@@ -318,8 +325,9 @@ class Source(object):
             for i in range(len(opt_train.lam_bin_edges[:-1])):
 
                 if params["verbose"]:
-                    print("Wavelength slice [um]:", \
-                                            opt_train.lam_bin_centers[i])
+                    print("Wavelength slice [um]:",
+                          opt_train.lam_bin_centers[i])
+
                 # apply the adc shifts
                 self._x = self.x + opt_train.adc_shifts[0][i]
                 self._y = self.y + opt_train.adc_shifts[1][i]
@@ -339,22 +347,18 @@ class Source(object):
                 verbose = params["verbose"]
 
                 # image is in units of ph/s/pixel/m2
+                imgslice = self.image_in_range(psf, lam_min, lam_max,
+                                               detector.chips[chip_i],
+                                               pix_res=opt_train.pix_res,
+                                               oversample=oversample,
+                                               sub_pixel=sub_pixel,
+                                               verbose=verbose)
                 if image is None:
-                    image = self.image_in_range(psf, lam_min, lam_max,
-                                                detector.chips[chip_i],
-                                                pix_res=opt_train.pix_res,
-                                                oversample=oversample,
-                                                sub_pixel=sub_pixel,
-                                                verbose=verbose)
+                    image = imgslice
                 else:
-                    image += self.image_in_range(psf, lam_min, lam_max,
-                                                 detector.chips[chip_i],
-                                                 pix_res=opt_train.pix_res,
-                                                 oversample=oversample,
-                                                 sub_pixel=sub_pixel,
-                                                 verbose=verbose)
+                    image += imgslice
 
-            # 3.
+            # 3. Apply wavelength-independent spatial effects
             # !!!!!!!!!!!!!! All of these need to be combined into a single
             # function that traces out the path taken by the telescope,
             # rather than having the arcs from the derotator() function
@@ -367,19 +371,21 @@ class Source(object):
             if params["SCOPE_JITTER_FWHM"] > 0.33 * self.pix_res:
                 image = opt_train.apply_wind_jitter(image)
 
-            # 3.5
+            # 3.5 Scale by telescope area
             image *= opt_train.cmds.area
 
-            # 4.
+            # 4. Add backgrounds
             image += (opt_train.n_ph_atmo + opt_train.n_ph_mirror +
                       opt_train.n_ph_ao)
 
             ## TODO: protected members should not be set by another class (OC)
+            ##       These could be added to info dictionary, if they're only
+            ##       informational.
             detector._n_ph_atmo = opt_train.n_ph_atmo
             detector._n_ph_mirror = opt_train.n_ph_mirror
             detector._n_ph_ao = opt_train.n_ph_ao
 
-            # 5.
+            # 5. Project onto chip
             self.project_onto_chip(image, detector.chips[chip_i])
 
         ######################################
@@ -398,6 +404,7 @@ class Source(object):
         chip : detector.Chip
             the chip object where the image will land
         """
+        # This is just a change of pixel scale
         chip.reset()
         scale_factor = self.pix_res / chip.pix_res
         chip_arr = spi.zoom(image, scale_factor, order=1)
@@ -450,14 +457,17 @@ class Source(object):
 
         params.update(kwargs)
 
+        #  no PSF given: use a delta kernel
         if isinstance(psf, type(None)):
             psf = np.zeros((7, 7))
             psf[3, 3] = 1
 
+        # psf cube given: extract layer for central wavelength
         if isinstance(psf, (sim_psf.PSFCube, sim_psf.UserPSFCube)):
             lam_cen = (lam_max + lam_min) / 2.
             psf = psf.nearest(lam_cen)
 
+        # psf given as array: convert to PSF object
         if isinstance(psf, np.ndarray):
             arr = deepcopy(psf)
             pix_res = params["pix_res"] / params["oversample"]
@@ -465,6 +475,9 @@ class Source(object):
             psf = sim_psf.PSF(size, pix_res)
             psf.set_array(arr)
 
+
+        # TODO: There is no provision for chip rotation wrt (x, y) system (OC)
+        # Create Chip object if chip described by a string
         if isinstance(chip, str):
             if chip.lower() == "small":
                 from .detector import Chip
@@ -475,7 +488,10 @@ class Source(object):
             elif "tiny" in chip.lower():
                 from .detector import Chip
                 chip = Chip(0, 0, 128, 128, 0.004, 1, 0)
+            else:
+                raise(ValueError, "Unknown chip identification")
 
+        # Determine x- and y- range covered by chip
         if chip is not None:
             mask = (self._x > chip.x_min) * (self._x < chip.x_max) * \
                    (self._y > chip.y_min) * (self._y < chip.y_max)
@@ -487,7 +503,8 @@ class Source(object):
             naxis1, naxis2 = chip.naxis1, chip.naxis2
 
         else:
-            mask = np.array([True]*len(self._x))
+            # no chip given: use area covered by object arrays
+            mask = np.array([True] * len(self._x))
             params["pix_res"] /= params["oversample"]
             x_min, x_max = np.min(self._x), np.max(self._x)
             y_min, y_max = np.min(self._y), np.max(self._y),
@@ -502,14 +519,15 @@ class Source(object):
         slice_array = np.zeros((naxis1, naxis2), dtype=np.float32)
         slice_photons = self.photons_in_range(lam_min, lam_max, min_bins=10)
 
+        # convert point source coordinates to pixels
         x_pix = (self._x - x_cen) / params["pix_res"]
         y_pix = (self._y - y_cen) / params["pix_res"]
 
         self._x_pix = x_pix + chip.naxis1 // 2
         self._y_pix = y_pix + chip.naxis2 // 2
 
-        # if sub pixel accuracy is needed, be prepared to wait. For this we
-        # need to go through every source spectra in turn, shift the psf by
+        # if sub-pixel accuracy is needed, be prepared to wait. For this we
+        # need to go through every source spectrum in turn, shift the psf by
         # the decimal amount given by pos - int(pos), then place a
         # certain slice of the psf on the output array.
         ax, ay = np.array(slice_array.shape) // 2
@@ -517,7 +535,7 @@ class Source(object):
         mx, my = np.array(psf.array.shape) % 2
 
         if params["verbose"]:
-            print("Chip ID:", chip.id, \
+            print("Chip ID:", chip.id,
                   "- Creating layer between [um]:", lam_min, lam_max)
 
         psf_array = np.copy(psf.array)
@@ -530,9 +548,11 @@ class Source(object):
             if bx == ax and by == ay:
                 pass
             elif bx > ax and by > ay:
-                psf_array = psf_array[bx-ax:bx+ax, by-ay:by+ay]
+                # psf_array larger than slice_array: cut down
+                psf_array = psf_array[(bx - ax):(bx + ax), (by - ay):(by + ay)]
             elif bx < ax and by < ay:
-                pad_x, pad_y = ax-bx, ay-by
+                # psf_array smaller than slice_array: pad with zeros
+                pad_x, pad_y = ax - bx, ay - by
                 psf_array = np.pad(psf_array,
                                    ((pad_x, pad_x-mx),
                                     (pad_y, pad_y-my)),
@@ -548,8 +568,6 @@ class Source(object):
                 slice_array += psf_tmp * slice_photons[i]
 
         elif params["sub_pixel"] == "raw":
-            #x_int, y_int = np.round(x_pix).astype(int), np.round(y_pix).astype(int)
-            # use np.floor instead of int-ing
             x_int, y_int = np.floor(x_pix), np.floor(y_pix)
             i = (ax + x_int[mask]).astype(int)
             j = (ay + y_int[mask]).astype(int)
