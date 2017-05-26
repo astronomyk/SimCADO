@@ -1,8 +1,9 @@
+"""Unit tests for module simcado.source"""
 import numpy as np
 import simcado as sim
 
 
-def test_rotate_1():
+def test_rotate():
     """Test method Source.rotate
 
     Points are rotated by 90 degrees.
@@ -15,25 +16,31 @@ def test_rotate_1():
 
     src = sim.source.stars(x=x_in, y=y_in)
     src.rotate(angle=90., unit="degree")
-    assert(np.allclose(src.x, x_out))
-    assert(np.allclose(src.y, y_out))
+    assert np.allclose(src.x, x_out)
+    assert np.allclose(src.y, y_out)
+
+    src.rotate(angle=90., unit="degree", use_orig_xy=True)
+    assert np.allclose(src.x, x_out)
+    assert np.allclose(src.y, y_out)
 
 
-def test_rotate_2():
-    """Test method Source.rotate
-
-    Points are rotated by 90 degrees. This test uses the original coordinates.
-    """
+def test_shift():
+    """Test method Source.shift"""
+    d_x, d_y = 1.5, -0.3
 
     x_in = np.array([1., 0., 1.])
-    y_in = np.array([0., 1., 1.])
-    x_out = np.array([0., -1., -1.])
-    y_out = np.array([1., 0., 1.])
+    y_in = np.array([0, 1., 1.])
+    x_out = np.array([2.5, 1.5, 2.5])
+    y_out = np.array([-0.3, 0.7, 0.7])
 
     src = sim.source.stars(x=x_in, y=y_in)
-    src.rotate(angle=90., unit="degree", use_orig_xy=True)
-    assert(np.allclose(src.x, x_out))
-    assert(np.allclose(src.y, y_out))
+    src.shift(dx=d_x, dy=d_y, use_orig_xy=False)
+    assert np.allclose(src.x, x_out)
+    assert np.allclose(src.y, y_out)
+
+    src.shift(dx=d_x, dy=d_y, use_orig_xy=True)
+    assert np.allclose(src.x, x_out)
+    assert np.allclose(src.y, y_out)
 
 
 def test_stars_params():
