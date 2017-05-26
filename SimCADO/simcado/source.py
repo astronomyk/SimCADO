@@ -728,14 +728,14 @@ class Source(object):
 
 
 
-    def rotate(self, angle, unit="arcsec", use_orig_xy=False):
+    def rotate(self, angle, unit="degree", use_orig_xy=False):
         """
         Rotates the ``x`` and ``y`` coordinates by ``angle`` [degrees]
 
         Parameters
         ----------
         angle : float
-            Default is in arcsec, this can set with ``unit``
+            Default is in degrees, this can set with ``unit``
         unit : str, astropy.Unit
             Either a string with the unit name, or an
             ``astropy.unit.Unit`` object
