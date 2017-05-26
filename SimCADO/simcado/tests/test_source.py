@@ -1,6 +1,41 @@
 import numpy as np
 import simcado as sim
 
+
+def test_rotate_1():
+    """Test method Source.rotate
+
+    Points are rotated by 90 degrees.
+    """
+
+    x_in = np.array([1., 0., 1.])
+    y_in = np.array([0., 1., 1.])
+    x_out = np.array([0., -1., -1.])
+    y_out = np.array([1., 0., 1.])
+
+    src = sim.source.stars(x=x_in, y=y_in)
+    src.rotate(angle=90., unit="degree")
+    assert(np.allclose(src.x, x_out))
+    assert(np.allclose(src.y, y_out))
+
+
+def test_rotate_2():
+    """Test method Source.rotate
+
+    Points are rotated by 90 degrees. This test uses the original coordinates.
+    """
+
+    x_in = np.array([1., 0., 1.])
+    y_in = np.array([0., 1., 1.])
+    x_out = np.array([0., -1., -1.])
+    y_out = np.array([1., 0., 1.])
+
+    src = sim.source.stars(x=x_in, y=y_in)
+    src.rotate(angle=90., unit="degree", use_orig_xy=True)
+    assert(np.allclose(src.x, x_out))
+    assert(np.allclose(src.y, y_out))
+
+
 def test_stars_params():
     # Test combinations of input parameters
     assert sim.source.stars()

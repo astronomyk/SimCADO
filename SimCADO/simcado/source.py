@@ -625,16 +625,12 @@ class Source(object):
         # Check if the slice limits are within the spectrum wavelength range
         if lam_min > self.lam[-1] or lam_max < self.lam[0]:
             print((lam_min, lam_max), (self.lam[0], self.lam[-1]))
-            warnings.warn("lam_min or lam_max outside wavelength range" + \
-                            " of spectra. Returning 0 photons for this range")
+            warnings.warn("lam_min or lam_max outside wavelength range" +
+                          " of spectra. Returning 0 photons for this range")
             return np.array([0])
 
 
-
         # find the closest indices i0, i1 which match the limits
-        #x0, x1 = np.abs(self.lam - lam_min), np.abs(self.lam - lam_max)
-        #i0 = np.where(x0 == np.min(x0))[0][0]
-        #i1 = np.where(x1 == np.min(x1))[0][0]
         i0 = np.argmin(np.abs(self.lam - lam_min))
         i1 = np.argmin(np.abs(self.lam - lam_max))
         if self.lam[i0] > lam_min and i0 > 0:
@@ -642,7 +638,9 @@ class Source(object):
         if self.lam[i1] < lam_max and i1 < len(self.lam):
             i1 += 1
 
-        # If there are less than min_bins between i0 and i1, then interpolate
+        # If there are less than min_bins between i0 and i1, then interpolate.
+        # Uses np.interp -> linear interpolation.
+        # TODO: Zoomed fluxes should be scaled by binsize.
         if i1 - i0 < min_bins:
             lam_zoom = np.linspace(lam_min, lam_max, min_bins)
             spec_zoom = np.zeros((self.spectra.shape[0], len(lam_zoom)))
@@ -693,7 +691,7 @@ class Source(object):
         i.e. distance_factor = new_distance / current_distance
 
         .. warning::
-            This does not yet take into accout redshift
+            This does not yet take into account redshift
 
         .. todo::
             Implement redshift
@@ -737,7 +735,7 @@ class Source(object):
         Parameters
         ----------
         angle : float
-            Default is in degrees, this can set with ``unit``
+            Default is in arcsec, this can set with ``unit``
         unit : str, astropy.Unit
             Either a string with the unit name, or an
             ``astropy.unit.Unit`` object
@@ -746,15 +744,15 @@ class Source(object):
             current coordinates (e.g. if rotation has already been applied)
 
         """
-
         ang = (angle * u.Unit(unit)).to(u.rad)
 
         if use_orig_xy:
-            self.x = self.x_orig * np.cos(ang)
-            self.y = self.x_orig * np.sin(ang)
+            xold, yold = self.x_orig, self.y_orig
         else:
-            self.x *= np.cos(ang)
-            self.y *= np.sin(ang)
+            xold, yold = self.x, self.y
+
+        self.x = xold * np.cos(ang) - yold * np.sin(ang)
+        self.y = xold * np.sin(ang) + yold * np.cos(ang)
 
 
     def shift(self, dx=0, dy=0, use_orig_xy=False):
