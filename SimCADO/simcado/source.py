@@ -176,7 +176,7 @@ class Source(object):
     units : str
         The units of the spectra. Default is ph/s/m2/bin
     pix_unit : str
-        Default is arcsec
+        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel" 
     exptime : float
         If the input spectrum is not normalised to 1 sec
     area : float
@@ -206,6 +206,17 @@ class Source(object):
         if isinstance(y, (tuple, list)):
             y = np.array(y)
 
+        if "pix" in self.params["pix_unit"]:
+            x *= self.params["pix_res"]
+            y *= self.params["pix_res"]
+        elif "arcmin" in self.params["pix_unit"]:
+            x *= 60
+            y *= 60
+        elif "deg" in self.params["pix_unit"]:
+            x *= 3600
+            y *= 3600
+           
+            
         self.info = dict([])
         self.info['created'] = 'yes'
         self.info['description'] = "List of spectra and their positions"
@@ -1768,7 +1779,7 @@ def star_grid(n, mag_min, mag_max, filter_name="Ks", separation=1,
 
 
 
-def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0):
+def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0, **kwargs):
     """
     Creates a simcado.Source object for a star with a given magnitude
 
@@ -1786,6 +1797,17 @@ def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0):
     x, y : float, int, optional
         [arcsec] the x,y position of the star on the focal plane
 
+
+    Keyword arguments
+    -----------------
+    Passed to the ``simcado.Source`` object. See the docstring for this object.
+    
+    pix_unit : str
+        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
+    pix_res : float
+        [arcsec] The pixel resolution of the detector. Useful for surface
+        brightness calculations
+        
     Returns
     -------
     source : ``simcado.Source``
@@ -1796,12 +1818,12 @@ def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0):
 
     """
 
-    thestar = stars([spec_type], [mag], filter_name, [x], [y])
+    thestar = stars([spec_type], [mag], filter_name, [x], [y], **kwargs)
     return thestar
 
 
 def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
-          x=None, y=None):
+          x=None, y=None, **kwargs):
     """
     Creates a simcado.Source object for a bunch of stars.
 
@@ -1818,6 +1840,17 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
     x, y : arrays
         [arcsec] x and y coordinates of the stars on the focal plane
 
+        
+    Keyword arguments
+    -----------------
+    Passed to the ``simcado.Source`` object. See the docstring for this object.
+    
+    pix_unit : str
+        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"        
+    pix_res : float
+        [arcsec] The pixel resolution of the detector. Useful for surface
+        brightness calculations
+    
     Returns
     -------
     source : ``simcado.Source``
@@ -1892,7 +1925,7 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
     src = Source(lam=lam, spectra=spec,
                  x=x, y=y,
                  ref=ref, weight=weight,
-                 units=units)
+                 units=units, **kwargs)
 
     src.info["object"] = "stars"
     src.info["spec_types"] = spec_types
@@ -2073,7 +2106,8 @@ def cluster(mass=1E3, distance=50000, half_light_radius=1):
 def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                       units="ph/s/m2", flux_threshold=0,
                       center_offset=(0, 0),
-                      conserve_flux=True):
+                      conserve_flux=True,
+                      **kwargs):
     """
     Create a Source object from an image or a list of images.
 
@@ -2112,7 +2146,18 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         If False, the maximum value of the image stays constant after rescaling
         i.e. np.max(image) remains constant
 
-
+        
+    Keyword arguments
+    -----------------
+    Passed to the ``simcado.Source`` object. See the docstring for this object.
+    
+    pix_unit : str
+        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
+    pix_res : float
+        [arcsec] The pixel resolution of the detector. Useful for surface
+        brightness calculations     
+    
+        
     Returns
     -------
     src : source.Source object
@@ -2223,7 +2268,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         ref = np.zeros(len(x))
 
         src = Source(lam=lam, spectra=spectra, x=x, y=y, ref=ref, weight=weight,
-                     units=units)
+                     units=units, **kwargs)
 
         return src
 
