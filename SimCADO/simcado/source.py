@@ -176,7 +176,7 @@ class Source(object):
     units : str
         The units of the spectra. Default is ph/s/m2/bin
     pix_unit : str
-        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel" 
+        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
     exptime : float
         If the input spectrum is not normalised to 1 sec
     area : float
@@ -215,8 +215,8 @@ class Source(object):
         elif "deg" in self.params["pix_unit"]:
             x *= 3600
             y *= 3600
-           
-            
+
+
         self.info = dict([])
         self.info['created'] = 'yes'
         self.info['description'] = "List of spectra and their positions"
@@ -528,7 +528,7 @@ class Source(object):
             naxis2 = int((y_max - y_min) / params["pix_res"] + 1E-3)
 
         slice_array = np.zeros((naxis1, naxis2), dtype=np.float32)
-        slice_photons = self.photons_in_range(lam_min, lam_max, min_bins=10)
+        slice_photons = self.photons_in_range(lam_min, lam_max)
 
         # convert point source coordinates to pixels
         x_pix = (self._x - x_cen) / params["pix_res"]
@@ -606,7 +606,7 @@ class Source(object):
         return slice_array
 
 
-    def photons_in_range(self, lam_min=None, lam_max=None, min_bins=10):
+    def photons_in_range(self, lam_min=None, lam_max=None):
         """
 
         Number of photons between lam_min and lam_max in units of [ph/s/m2]
@@ -619,8 +619,6 @@ class Source(object):
         lam_min, lam_max : float, optional
             [um] integrate photons between these two limits. If both are ``None``,
             limits are set at lam[0], lam[-1] for the source's wavelength range
-        min_bins : float, optional
-            the minimum number of spectral bins counted per layer
 
         Returns
         -------
@@ -628,39 +626,7 @@ class Source(object):
             [ph/s/m2] The number of photons in the wavelength range
 
         """
-        if lam_min is None:
-            lam_min = self.lam[0]
-        if lam_max is None:
-            lam_max = self.lam[-1]
-
-        # Check if the slice limits are within the spectrum wavelength range
-        if lam_min > self.lam[-1] or lam_max < self.lam[0]:
-            print((lam_min, lam_max), (self.lam[0], self.lam[-1]))
-            warnings.warn("lam_min or lam_max outside wavelength range" +
-                          " of spectra. Returning 0 photons for this range")
-            return np.array([0])
-
-
-        # find the closest indices i0, i1 which match the limits
-        i0 = np.argmin(np.abs(self.lam - lam_min))
-        i1 = np.argmin(np.abs(self.lam - lam_max))
-        if self.lam[i0] > lam_min and i0 > 0:
-            i0 -= 1
-        if self.lam[i1] < lam_max and i1 < len(self.lam):
-            i1 += 1
-
-        # If there are less than min_bins between i0 and i1, then interpolate.
-        # Uses np.interp -> linear interpolation.
-        # TODO: Zoomed fluxes should be scaled by binsize.
-        if i1 - i0 < min_bins:
-            lam_zoom = np.linspace(lam_min, lam_max, min_bins)
-            spec_zoom = np.zeros((self.spectra.shape[0], len(lam_zoom)))
-            for i in range(len(self.spectra)):
-                spec_zoom[i, :] = np.interp(lam_zoom, self.lam[i0:i1],
-                                            self.spectra[i, i0:i1])
-            spec_photons = np.sum(spec_zoom, axis=1)
-        else:
-            spec_photons = np.sum(self.spectra[:, i0:i1], axis=1)
+        spec_photons = spectrum_sum_over_range(self.lam, self.spectra, lam_min, lam_max)
 
         slice_photons = spec_photons[self.ref] * self.weight
         return slice_photons
@@ -1801,13 +1767,13 @@ def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0, **kwargs):
     Keyword arguments
     -----------------
     Passed to the ``simcado.Source`` object. See the docstring for this object.
-    
+
     pix_unit : str
         Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
     pix_res : float
         [arcsec] The pixel resolution of the detector. Useful for surface
         brightness calculations
-        
+
     Returns
     -------
     source : ``simcado.Source``
@@ -1840,17 +1806,17 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
     x, y : arrays
         [arcsec] x and y coordinates of the stars on the focal plane
 
-        
+
     Keyword arguments
     -----------------
     Passed to the ``simcado.Source`` object. See the docstring for this object.
-    
+
     pix_unit : str
-        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"        
+        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
     pix_res : float
         [arcsec] The pixel resolution of the detector. Useful for surface
         brightness calculations
-    
+
     Returns
     -------
     source : ``simcado.Source``
@@ -2146,18 +2112,18 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         If False, the maximum value of the image stays constant after rescaling
         i.e. np.max(image) remains constant
 
-        
+
     Keyword arguments
     -----------------
     Passed to the ``simcado.Source`` object. See the docstring for this object.
-    
+
     pix_unit : str
         Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
     pix_res : float
         [arcsec] The pixel resolution of the detector. Useful for surface
-        brightness calculations     
-    
-        
+        brightness calculations
+
+
     Returns
     -------
     src : source.Source object
@@ -2782,3 +2748,50 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
     spec_type = cat["Stellar_Type"][i]
 
     return spec_type
+
+
+def spectrum_sum_over_range(lam, flux, lam_min=None, lam_max=None):
+    """Sum spectrum over range lam_min to lam_max
+
+    Parameters
+    ----------
+    lam : float, array
+        wavelength array of spectrum
+    flux : float, array
+        flux array of spectrum [ph/s/m2/bin]
+    lam_min, lam_max : float
+        wavelength limits of range over which the spectrum is summed. If None,
+        the spectrum is summed over its definition range
+
+    Returns
+    -------
+    number of photons within lam_min and lam_max [ph/s/m2]
+    """
+    if lam_min is None:
+        lam_min = lam[0]
+    if lam_max is None:
+        lam_max = lam[-1]
+
+    if lam_max < lam_min:
+        raise ValueError("lam_max < lam_min")
+
+    # Check if the slice limits are within the spectrum wavelength range
+    dlam = lam[1] - lam[0]
+    if (lam_min > lam[-1] + dlam/2) or (lam_max < lam[0] - dlam/2):
+        print((lam_min, lam_max), (lam[0], lam[-1]))
+        warnings.warn("lam_min or lam_max outside wavelength range" +
+                      " of spectra. Returning 0 photons for this range")
+        return np.array([0])
+
+    # find the closest indices imin, imax that match the limits
+    imin = np.argmin(np.abs(lam - lam_min))
+    imax = np.argmin(np.abs(lam - lam_max))
+
+    # Treat edge bins: Since lam[imin] < lam_min < lam_max < lam[imax], we have to
+    # subtract part of the outer bins
+    dlam = lam[1] - lam[0]
+    spec_photons = np.sum(flux[:, imin:(imax + 1)], axis=1) \
+                   - flux[:, imin] * (0.5 + (lam_min - lam[imin])/dlam) \
+                   - flux[:, imax] * (0.5 - (lam_max - lam[imax])/dlam)
+
+    return spec_photons

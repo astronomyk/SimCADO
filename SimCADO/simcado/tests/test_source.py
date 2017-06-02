@@ -1,7 +1,7 @@
 """Unit tests for module simcado.source"""
+import pytest
 import numpy as np
 import simcado as sim
-
 
 def test_rotate():
     """Test method Source.rotate
@@ -41,6 +41,25 @@ def test_shift():
     src.shift(dx=d_x, dy=d_y, use_orig_xy=True)
     assert np.allclose(src.x, x_out)
     assert np.allclose(src.y, y_out)
+
+
+def test_spectrum_sum_over_range():
+    """Test function spectrum_sum_over_range"""
+    lam = np.array([1.0, 1.1, 1.2])
+    flux = np.array([[1., 1., 1.]])
+
+    flux_1 = sim.source.spectrum_sum_over_range(lam, flux, 0.95, 1.25)
+    assert np.allclose(flux_1, 3.)
+
+    flux_2 = sim.source.spectrum_sum_over_range(lam, flux, 1., 1.2)
+    assert np.allclose(flux_2, 2.)
+
+    flux_3 = sim.source.spectrum_sum_over_range(lam, flux, 1.05, 1.15)
+    assert np.allclose(flux_3, 1.)
+
+    with pytest.raises(ValueError):
+        flux_4 = sim.source.spectrum_sum_over_range(lam, flux, 1.15, 1.05)
+
 
 
 def test_stars_params():
