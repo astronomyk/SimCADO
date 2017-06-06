@@ -1038,8 +1038,8 @@ class Chip(object):
         elif isinstance(curve, Table):
             data = curve
             
-        real_cts = data[data.colnames[0]]
-        measured_cts = data[data.colnames[1]]
+        real_cts = data[data.colnames[0]].data.astype(np.float32)
+        measured_cts = data[data.colnames[1]].data.astype(np.float32)
                 
         out_array = np.interp(in_array.flatten(),
                               real_cts, measured_cts).reshape(in_array.shape)

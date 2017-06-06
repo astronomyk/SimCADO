@@ -55,7 +55,7 @@ Simulation Parameters
     SIM_LAM_PSF_BIN_WIDTH   0.1                     # [um] wavelength resolution of the PSF layers
     SIM_ADC_SHIFT_THRESHOLD 1                       # [pixel] the spatial shift before a new spectral layer is added (i.e. how often the spectral domain is sampled for an under-performing ADC)
     
-    SIM_PSF_SIZE            511                     # size of PSF
+    SIM_PSF_SIZE            1024                    # size of PSF
     SIM_PSF_OVERSAMPLE      no                      # use astropy's inbuilt oversampling technique when generating the PSFs. Kills memory for PSFs over 511 x 511
     SIM_VERBOSE             no                      # [yes/no] print information on the simulation run
     SIM_SIM_MESSAGE_LEVEL   3                       # the amount of information printed [5-everything, 0-nothing]
@@ -110,8 +110,8 @@ Telescope Parameters
     
     SCOPE_NUM_MIRRORS       5                       # number of reflecting surfaces
     SCOPE_TEMP              0                       # deg Celsius - temperature of mirror
-    SCOPE_M1_TC             TC_mirror_mgf2agal.dat  # [filename] Mirror reflectance curve. Default: <pkg_dir>/data/TC_mirror_EELT.dat
-    SCOPE_MIRROR_LIST       EC_mirrors_scope.tbl    # [filename] List of mirror sizes.     Default: <pkg_dir>/data/EC_mirrors_scope.tbl
+    SCOPE_M1_TC             TC_mirror_EELT.dat      # [filename] Mirror reflectance curve. Default: <pkg_dir>/data/TC_mirror_EELT.dat
+    SCOPE_MIRROR_LIST       EC_mirrors_EELT_SCAO.tbl    # [filename] List of mirror sizes.     Default: <pkg_dir>/data/EC_mirrors_EELT_SCAO.tbl
     
     
 Instrument Parameters
@@ -154,7 +154,18 @@ Instrument Parameters
     
     INST_DISTORTION_MAP     none                    # path to distortion map
     INST_WFE                data/INST_wfe.tbl       # [nm] (float or filename) A single number for the total WFE of a table of wavefront errors for each surface in the instrument
+    INST_FLAT_FIELD         none                    # path to a FITS file containing a flat field (median = 1) for each chip.
     
+Spectroscopy parameters
+------------------------
+
+.. code-block:: none
+
+    Keyword                 Default     [units] Explanation
+    -----------------------------------------------------------------------------------------------
+    
+    SPEC_ORDER_SORT         HK                      # Order-sorting filter: "HK" or "IJ"
+    SPEC_SLIT_WIDTH         narrow                  # Slit width: "narrow" or "wide"
     
 Detector parameters
 --------------------
@@ -175,17 +186,16 @@ Detector parameters
     FPA_NOISE_PATH          FPA_noise.fits          # [filename, "generate"] if "generate": use NGHxRG to create a noise frame.
     FPA_GAIN                1                       # e- to ADU conversion
     FPA_LINEARITY_CURVE     FPA_linearity.dat       # [filename, "none"]
-    FPA_FULL_WELL_DEPTH     5E4                     # [e-] Count level where non-linearity becomes evident
+    FPA_FULL_WELL_DEPTH     1E5                     # [e-] The level where saturation occurs
     
     FPA_PIXEL_MAP           none                    # path to a FITS file with the pixel sensitivity map
     # if FPA_PIXEL_MAP == none
     FPA_DEAD_PIXELS         1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
     FPA_DEAD_LINES          1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
     
-    FPA_READ_OUT_SCHEME     double_correlated       # ["double_correlated", "up_the_ramp", "fowler", <filename>]
-    FPA_PIXEL_READ_TIME     1E-5                    # [s] Time needed to read a pixel (on the order of microseconds, i.e. 1E-5)
     FPA_CHIP_LAYOUT         wide                    # ["small", "centre", "wide", "zoom", <filename>] description of the chip layout on the detector array.
     FPA_PIXEL_READ_TIME     1E-5                    # [s] read time for y pixel - typically ~10 us
+    FPA_READ_OUT_SCHEME     double_corr             # "double_corr", "up-the-ramp", "fowler"
     
 NXRG Noise Generator package parameters
 ----------------------------------------
@@ -197,10 +207,7 @@ NXRG Noise Generator package parameters
     # See Rauscher (2015) for details
     # http://arxiv.org/pdf/1509.06264.pdf
     
-    HXRG_NAXIS1             4096                    # Number of pixels in the first dimensions
-    HXRG_NAXIS2             4096                    # Number of pixels in the second dimensions
-    HXRG_NUM_NDRO           1                       # Number of non-destructive read-outs in noise cubes
-    HXRG_NUM_OUTPUTS        64                      # Number of outputs
+    HXRG_NUM_OUTPUTS        64                      # Number of
     HXRG_NUM_ROW_OH         8                       # Number of row overheads
     HXRG_PCA0_FILENAME      FPA_nirspec_pca0.fits   # if "default": <pkg_dir>/data/
     HXRG_OUTPUT_PATH        none                    # Path to save the detector noise

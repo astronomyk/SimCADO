@@ -142,14 +142,49 @@ RAM.
    it’s accurate though. I’ll put that on my list of things to do this
    week (22 Nov 2016)
 
+   
+I have many PSFs in a FITS Cube. How do I use just one layer
+------------------------------------------------------------
+
+To extract a slice from the cube, we use astropy. Here ``i`` is the layer we
+want to extract
+
+    from astropy.io import fits
+
+    f = fits.open("path/to/my/psf_cube.fits")
+
+    i = 24     # which ever layer from the cube that you want
+    psf = f[0].data[i, :,:]
+    hdr = f[0].header
+
+    hdu = fits.PrimaryHDU(data=psf, header=hdr)   
+
+    hdu.header["CDELT1"] = 0.002    # whatever the plate scale of the PSF file is in arcsec
+    hdu.header["WAVELENG"] = 2.16   # whatever the wavelength of that layer is in micron
+
+    hdu.writeto("my_psf_layer.fits")
+
+
+To use this PSF with SimCADO, we use the keyword ``SCOPE_PSF_FILE`` and pass the
+filename of the saved PSF slice
+
+    simcado.run( ... , SCOPE_PSF_FILE="my_psf_layer.fits", ...)
+
+   
+   
 What SimCADO can do?
 --------------------
+Many things. Chances are it can do what you'd like, however you may need some 
+patience
 
 What SimCADO can’t yet do?
 --------------------------
+Coronography, Spectroscopy
 
 What SimCADO will never do?
 ---------------------------
+Ray tracing
 
 I have useful instrument data, who do I give it to?
 ---------------------------------------------------
+Kieran

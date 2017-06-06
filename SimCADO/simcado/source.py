@@ -205,16 +205,19 @@ class Source(object):
             x = np.array(x)
         if isinstance(y, (tuple, list)):
             y = np.array(y)
-
+            
+        x = x.astype(np.float32)
+        y = y.astype(np.float32)
+        
         if "pix" in self.params["pix_unit"]:
             x *= self.params["pix_res"]
             y *= self.params["pix_res"]
         elif "arcmin" in self.params["pix_unit"]:
-            x *= 60
-            y *= 60
+            x *= 60.
+            y *= 60.
         elif "deg" in self.params["pix_unit"]:
-            x *= 3600
-            y *= 3600
+            x *= 3600.
+            y *= 3600.
 
 
         self.info = dict([])
@@ -534,8 +537,8 @@ class Source(object):
         x_pix = (self._x - x_cen) / params["pix_res"]
         y_pix = (self._y - y_cen) / params["pix_res"]
 
-        self._x_pix = x_pix + chip.naxis1 // 2
-        self._y_pix = y_pix + chip.naxis2 // 2
+        self.x_pix = x_pix + chip.naxis1 // 2
+        self.y_pix = y_pix + chip.naxis2 // 2
 
         # if sub-pixel accuracy is needed, be prepared to wait. For this we
         # need to go through every source spectrum in turn, shift the psf by
@@ -1859,7 +1862,7 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
     if isinstance(mags, (int, float)):
         mags = [mags] * len(spec_types)
 
-    if len(mags) > 1  and len(spec_types) == 1:
+    if len(mags) > 1  and len(spec_types) == 1 :
         spec_types *= len(mags)
     elif len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")

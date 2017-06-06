@@ -348,9 +348,9 @@ def _get_limiting_mags(fpas, grid, exptimes, filter_names=["J", "H", "Ks"],
             im = hdus[0].data
 
             im_width = hdus[0].data.shape[0]
-            #x = (grid._x_pix+im_width//2).astype(int)
-            x = grid._x_pix.astype(int)
-            y = grid._y_pix.astype(int)
+            #x = (grid.x_pix+im_width//2).astype(int)
+            x = grid.x_pix.astype(int)
+            y = grid.y_pix.astype(int)
 
             sigs, nss, snrs, bgs = [], [], [], []
             for n in range(len(x)):

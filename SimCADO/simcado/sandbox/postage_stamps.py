@@ -435,7 +435,7 @@ def plot_catalogue_on_image(catalogue, hdu, hdu_ext, dx=0, dy=0, cat_ra_name="RA
 
     n = 0
     #w, h = np.shape(hdu[hdu_ext].data)
-    #mask = (src._x_pix > n) * (src._x_pix < w-n) * (src._y_pix > n) * (src._y_pix < h-n)
+    #mask = (src.x_pix > n) * (src.x_pix < w-n) * (src.y_pix > n) * (src.y_pix < h-n)
 
     cat = catalogue
     xw  = cat[cat_ra_name]
@@ -587,15 +587,15 @@ def mimic_image(hdu, catalogue, cmds=None, hdu_ext=0, sim_chip_n=0, return_stamp
         params.update(**kwargs)
 
         w, h = hdu_sim[0].data.shape
-        mask = (src._x_pix > 0) * (src._x_pix < w) * (src._y_pix > 0) * (src._y_pix < h)
+        mask = (src.x_pix > 0) * (src.x_pix < w) * (src.y_pix > 0) * (src.y_pix < h)
 
         xw = cat[cat_ra_name][mask]
         yw = cat[cat_dec_name][mask]
         mag = cat[cat_filter_name][mask]
 
         # get the x,y pixel positions of the stars in the simulated image
-        xps = src._x_pix[mask]
-        yps = src._y_pix[mask]
+        xps = src.x_pix[mask]
+        yps = src.y_pix[mask]
 
         # get the x,y pixel positions of the stars in the real image, include offset if needed
         xpr, ypr = apl_fig.world2pixel(xw, yw)
