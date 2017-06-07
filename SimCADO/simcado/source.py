@@ -205,10 +205,12 @@ class Source(object):
             x = np.array(x)
         if isinstance(y, (tuple, list)):
             y = np.array(y)
-            
-        x = x.astype(np.float32)
-        y = y.astype(np.float32)
-        
+
+        if x is not None:
+            x = x.astype(np.float32)
+        if y is not None:
+            y = y.astype(np.float32)
+
         if "pix" in self.params["pix_unit"]:
             x *= self.params["pix_res"]
             y *= self.params["pix_res"]
@@ -252,6 +254,22 @@ class Source(object):
         self.spectra_orig = deepcopy(self.spectra)
 
         self.bg_spectrum = None
+
+
+    @classmethod
+    def load(cls, filename):
+        '''Load :class:'Source' object from filename'''
+        import pickle
+        with open(filename, 'rb') as fp1:
+            src = pickle.load(fp1)
+        return src
+
+
+    def dump(self, filename):
+        '''Save to filename as a pickle'''
+        import pickle
+        with open(filename, 'wb') as fp1:
+            pickle.dump(self, fp1)
 
 
     def apply_optical_train(self, opt_train, detector, chips="all",
@@ -848,10 +866,10 @@ class Source(object):
         Notes
         -----
         Just a place holder so that I know what's going on with the input table
-        * The fist extension [0] contains an "image" of size 4 x N where N is the
-        amount of sources. The 4 columns are x, y, ref, weight.
-        * The second extension [1] contains an "image" with the spectra of each
-        source. The image is M x len(spectrum), where M is the number of unique
+        * The first extension [0] contains an "image" of size 4 x N where N is the
+        number of sources. The 4 columns are x, y, ref, weight.
+        * The second extension [1] contains an "image" with the spectra of all
+        sources. The image is M x len(spectrum), where M is the number of unique
         spectra in the source list. M = max(ref) - 1
         """
 
@@ -892,8 +910,10 @@ class Source(object):
         hdu.writeto(filename, overwrite=True, checksum=True)
 
 
+
+
     @property
-    def info_keys():
+    def info_keys(self):
         return self.info.keys()
 
 
@@ -2798,3 +2818,8 @@ def spectrum_sum_over_range(lam, flux, lam_min=None, lam_max=None):
                    - flux[:, imax] * (0.5 - (lam_max - lam[imax])/dlam)
 
     return spec_photons
+
+
+def load(filename):
+    '''Load :class:'Source' object from filename'''
+    return Source.load(filename)

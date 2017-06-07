@@ -43,6 +43,28 @@ def test_shift():
     assert np.allclose(src.y, y_out)
 
 
+def test_dump_load():
+    '''Test dumping and loading'''
+    import os
+    import tempfile
+    src1 = sim.source.cluster()
+    while True:
+        filename = next(tempfile._get_candidate_names())
+        if not os.path.isfile(filename):
+            break
+    src1.dump(filename)
+    src2 = sim.source.load(filename)
+    os.remove(filename)
+
+    # Comparison of two Source objects is complex.
+    # We do not look at nested dictionaries.
+    comp_list = list()
+    for key in vars(src1).keys():
+        if not isinstance(vars(src1)[key], dict):
+            comp_list.append(np.array_equal(vars(src1)[key], vars(src2)[key]))
+    assert np.array(comp_list).all()
+
+
 def test_spectrum_sum_over_range():
     """Test function spectrum_sum_over_range"""
     lam = np.array([1.0, 1.1, 1.2])
