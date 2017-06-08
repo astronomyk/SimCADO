@@ -125,8 +125,7 @@ __all__ = ["Source",
            "BV_to_spec_type",
            "zero_magnitude_photon_flux", "mag_to_photons", "photons_to_mag",
            "_get_pickles_curve", "_get_stellar_properties",
-           "_get_stellar_Mv", "_get_stellar_mass",
-           ]
+           "_get_stellar_Mv", "_get_stellar_mass"]
 
 
 # add_uniform_background() moved to detector
@@ -223,7 +222,6 @@ class Source(object):
 
 
         self.info = dict([])
-        self.info['created'] = 'yes'
         self.info['description'] = "List of spectra and their positions"
 
         self.units = u.Unit(self.params["units"])
@@ -521,7 +519,7 @@ class Source(object):
                 from .detector import Chip
                 chip = Chip(0, 0, 128, 128, 0.004, 1, 0)
             else:
-                raise(ValueError, "Unknown chip identification")
+                raise ValueError("Unknown chip identification")
 
         # Determine x- and y- range covered by chip
         if chip is not None:
@@ -712,7 +710,6 @@ class Source(object):
             >>> src.scale_with_distance( new_dist/curr_dist )
 
         """
-
         self.x /= distance_factor
         self.y /= distance_factor
         self.weight /= distance_factor**2
@@ -723,7 +720,6 @@ class Source(object):
         Add an EmissionCurve for the background surface brightness of the object
         """
         pass
-
 
 
     def rotate(self, angle, unit="degree", use_orig_xy=False):
@@ -796,19 +792,16 @@ class Source(object):
         im : 2D array
             A numpy array containing an image of where the sources are
 
-
         """
 
         xmin = np.min(self.x)
         ymin = np.min(self.y)
-        # xmin, xmax = np.min(self.x), np.max(self.x)
-        # ymin, ymax = np.min(self.y), np.max(self.y)
-        xi = ((self.x - xmin) / pix_res).astype(int)
-        yi = ((self.y - ymin) / pix_res).astype(int)
-        im = np.zeros((np.max(xi)+2, np.max(yi)+2))
-        im[xi, yi] += 1
+        x_i = ((self.x - xmin) / pix_res).astype(int)
+        y_i = ((self.y - ymin) / pix_res).astype(int)
+        img = np.zeros((np.max(x_i)+2, np.max(y_i)+2))
+        img[x_i, y_i] += 1
 
-        return im
+        return img
 
 
     def read(self, filename):
@@ -910,10 +903,9 @@ class Source(object):
         hdu.writeto(filename, overwrite=True, checksum=True)
 
 
-
-
     @property
     def info_keys(self):
+        """Return keys of the `info` dict"""
         return self.info.keys()
 
 
@@ -931,7 +923,6 @@ class Source(object):
         :class:`simcado.spectral.TransmissionCurve`
 
         """
-
         tc = deepcopy(transmission_curve)
         tc.resample(self.lam, use_default_lam=False)
         self.spectra = self.spectra_orig * tc.val
@@ -941,8 +932,8 @@ class Source(object):
         """
         Convert the spectra to photons/(s m2)
 
-        if [arcsec] are in the units, we want to find the photons per pixel
-        if [um] are in the units, we want to find the photons per wavelength bin
+        If [arcsec] are in the units, we want to find the photons per pixel.
+        If [um] are in the units, we want to find the photons per wavelength bin.
 
         .. todo::
             Come back and put in other energy units like Jy, mag, ergs
@@ -966,11 +957,12 @@ class Source(object):
 
         #print((factor*self.units).unit, factor)
 
-        self.units = (factor*self.units).unit
+        self.units = (factor * self.units).unit
         self.spectra *= factor
 
 
     def _from_cube(self, filename):
+        # Should this be a class method?
         """
         Make a Source object from a cube in memory or a FITS cube on disk
 
@@ -985,7 +977,7 @@ class Source(object):
             hdr = fits.getheader(filename)
             cube = fits.getdata(filename)
         else:
-            raise ValueError(filename+" doesn't exist")
+            raise ValueError(filename + " doesn't exist")
 
         lam_res = hdr["CDELT3"]
         lam_min = hdr["CRVAL3"] - hdr["CRPIX3"] * lam_res
@@ -995,8 +987,7 @@ class Source(object):
         x, y = np.where(flux_map != 0)
 
         self.lam = np.linspace(lam_min, lam_max, hdr["NAXIS3"])
-        ## TODO: ipt is undefined (OC)
-        self.spectra = np.swapaxes(ipt[:, x, y], 0, 1)
+        self.spectra = np.swapaxes(cube[:, x, y], 0, 1)
         self.x = x
         self.y = y
         self.ref = np.arange(len(x))
@@ -1016,21 +1007,23 @@ class Source(object):
 
         self._convert_to_photons()
 
+
     def _from_arrays(self, lam, spectra, x, y, ref, weight=None):
+        # Should this be a class method?
         """
         Make a Source object from a series of lists
 
         Parameters
         ----------
-        lam : np.array
+        lam : np.ndarray
             Dimensions (1, m) with m spectral bins
-        spectra : np.array
+        spectra : np.ndarray
             Dimensions (n, m) for n SEDs, each with m spectral bins
-        x,y : np.array
+        x, y : np.ndarray
             [arcsec] each (1, n) for the coordinates of n emitting objects
-        ref : np.array
+        ref : np.ndarray
             Dimensions (1, n) for referencing each coordinate to a spectrum
-        weight : np.array, optional
+        weight : np.ndarray, optional
             Dimensions (1, n) for weighting the spectrum of each object
 
         """
@@ -1040,7 +1033,10 @@ class Source(object):
         self.x = x
         self.y = y
         self.ref = ref
-        self.weight = weight   if weight is not None   else np.array([1]*len(x))
+        if weight is not None:
+            self.weight = weight
+        else:
+            self.weight = np.array([1] * len(x))
         self.lam_res = np.median(lam[1:] - lam[:-1])
 
         if len(spectra.shape) == 1:
@@ -1048,8 +1044,10 @@ class Source(object):
 
         self._convert_to_photons()
 
+
     def __str__(self):
         return "A photon source object"
+
 
     def __array__(self):
         if self.array is None:
@@ -1057,9 +1055,11 @@ class Source(object):
         else:
             return self.array
 
+
     def __getitem__(self, i):
         return (self.x[i], self.y[i],
                 self.spectra[self.ref[i], :] * self.weight[i])
+
 
     def __mul__(self, x):
         newsrc = deepcopy(self)
@@ -1070,15 +1070,17 @@ class Source(object):
             newsrc.array *= x
         return newsrc
 
+
     def __add__(self, x):
         newsrc = deepcopy(self)
         if isinstance(x, Source):
             if self.units != x.units:
                 raise ValueError("units are not compatible: " + \
-                                  str(self.units) + ", " + str(x.units))
+                                 str(self.units) + ", " + str(x.units))
 
             newsrc.lam = self.lam
             newsrc.spectra = list(self.spectra)
+            # Resample new spectra to wavelength grid of self
             for spec in x.spectra:
                 tmp = np.interp(self.lam, x.lam, spec)
                 scale_factor = np.sum(spec) / np.sum(tmp)
@@ -1100,25 +1102,32 @@ class Source(object):
 
         return newsrc
 
+
     def __sub__(self, x):
         newsrc = deepcopy(self)
         newsrc.array -= x
         return newsrc
 
+
     def __rmul__(self, x):
         return self.__mul__(x)
+
 
     def __radd__(self, x):
         return self.__add__(x)
 
+
     def __rsub__(self, x):
         return self.__mul__(-1) + x
+
 
     def __imul__(self, x):
         return self.__mul__(x)
 
+
     def __iadd__(self, x):
         return self.__add__(x)
+
 
     def __isub__(self, x):
         return self.__sub__(x)
@@ -1268,8 +1277,7 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
         elif "V" in lum.upper():
             lum = "V"
 
-
-        for i in range(10):  # TODO: What does this loop do? (OC)
+        for _ in range(10):  # TODO: What does this loop do? (OC)
             if cls > 9:
                 cls = 0
                 spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
@@ -1401,11 +1409,12 @@ def BV_to_spec_type(B_V):
 
     #from simcado.source import _get_stellar_properties
 
-    spec_type = [spt+str(i)+"V" for spt in "OBAFGKM" for i in range(10) ]
+    spec_type = [spt+str(i)+"V" for spt in "OBAFGKM" for i in range(10)]
     B_V_int = np.array([spt["B-V"] for spt in _get_stellar_properties(spec_type)])
 
     idx = np.round(np.interp(B_V, B_V_int, np.arange(len(B_V_int)))).astype(int)
-    if np.isscalar(idx): idx = np.array([idx])
+    if np.isscalar(idx):
+        idx = np.array([idx])
     spec_types = [spec_type[i] for i in idx]
 
     return spec_types
@@ -1882,7 +1891,7 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
     if isinstance(mags, (int, float)):
         mags = [mags] * len(spec_types)
 
-    if len(mags) > 1  and len(spec_types) == 1 :
+    if len(mags) > 1  and len(spec_types) == 1:
         spec_types *= len(mags)
     elif len(mags) != len(spec_types):
         raise ValueError("len(mags) != len(spec_types)")
@@ -2238,22 +2247,22 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         # x, y, weight = np.array(x_list), np.array(y_list), np.array(w_list)
 
         if oversample != 1:
-            im = spi.zoom(images, oversample, order=1).astype(np.float32)
-            scale_factor = np.sum(images)/np.sum(im)
+            img = spi.zoom(images, oversample, order=1).astype(np.float32)
+            scale_factor = np.sum(images)/np.sum(img)
             if conserve_flux:
-                im *= scale_factor
+                img *= scale_factor
         else:
-            im = images
+            img = images
             scale_factor = 1
 
-        y_cen, x_cen = np.array(im.shape) / 2
-        y_i, x_i = np.where(im > flux_threshold * scale_factor)
+        y_cen, x_cen = np.array(img.shape) / 2
+        y_i, x_i = np.where(img > flux_threshold * scale_factor)
 
         pix_res = plate_scale / oversample
         x = (x_i - x_cen) * pix_res + center_offset[0]
         y = (y_i - y_cen) * pix_res + center_offset[1]
 
-        weight = im[y_i, x_i]
+        weight = img[y_i, x_i]
         ref = np.zeros(len(x))
 
         src = Source(lam=lam, spectra=spectra, x=x, y=y, ref=ref, weight=weight,
@@ -2344,7 +2353,6 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     #     >>>
     #     >>> lam, spec = scale_spectrum(lam, spec, magnitudes, new_filt)
 
-    from simcado.spectral import EmissionCurve, TransmissionCurve
     from simcado.optics import get_filter_curve
 
     mag = np.asarray(mag)
@@ -2530,7 +2538,8 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude=10,
     normalization : str, optional
         ["half-light", "centre", "total"] Where in the profile the unity values are.
         If normalization equals:
-        - "half-light" : the pixels at the half-light radius have a surface brightness of ``magnitude`` [mag/arcsec2]
+        - "half-light" : the pixels at the half-light radius have a surface brightness of
+                         ``magnitude`` [mag/arcsec2]
         - "centre" : the maximum pixels have a surface brightness of ``magnitude`` [mag/arcsec2]
         - "total" : the whole image has a brightness of ``magnitude`` [mag]
     spectrum : str, EmissionCurve, optional
@@ -2577,7 +2586,7 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude=10,
               "width"       : plate_scale * 512,
               "height"      : plate_scale * 512,
               "x_offset"    : 0,
-              "y_offset"    : 0 }
+              "y_offset"    : 0}
     params.update(kwargs)
 
     angular_hlr = np.rad2deg(half_light_radius/distance) * 3600
@@ -2593,13 +2602,13 @@ def galaxy(distance, half_light_radius, plate_scale, magnitude=10,
                         x_offset     =params["x_offset"]/plate_scale,
                         y_offset     =params["y_offset"]/plate_scale)
 
-    if isinstance(spectrum, sc.EmissionCurve):
+    if isinstance(spectrum, EmissionCurve):
         lam, spec = spectrum.lam, spectrum.val
         lam, spec = scale_spectrum(lam=lam, spec=spec, mag=magnitude,
-                                                        filter_name=filter_name)
+                                   filter_name=filter_name)
     elif spectrum in get_SED_names():
         lam, spec = SED(spec_type=spectrum, filter_name=filter_name,
-                                                            magnitude=magnitude)
+                        magnitude=magnitude)
     else:
         print(spectrum)
         raise ValueError("Cannot understand ``spectrum``")
@@ -2659,12 +2668,12 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
     # Silently cast to integer
     os_factor = np.int(oversample)
 
-    if os_factor <=0:
+    if os_factor <= 0:
         raise ValueError("Oversampling factor must be >=1.")
 
     width_os = os_factor * width
     height_os = os_factor * height
-    x,y = np.meshgrid(np.arange(width_os), np.arange(height_os))
+    x, y = np.meshgrid(np.arange(width_os), np.arange(height_os))
 
     dx = 0.5 * width_os  + x_offset * os_factor
     dy = 0.5 * height_os + y_offset * os_factor
@@ -2716,7 +2725,7 @@ def get_lum_class_params(lum_class="V", cat=None):
     import astropy.table as tbl
 
     if cat is None:
-        cat = ascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
+        cat = ioascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
 
     t = []
     for row in cat:
