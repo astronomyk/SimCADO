@@ -158,6 +158,38 @@ Read the Detector images out into a FITS file
 
 
 
+Stand-alone units, and border cases
+===================================
+
+TransmissionCurve
+-----------------
+Is the rebinning ok?
+Is th
+
+
+EmissionCurve
+-------------
+
+PSF
+---
+
+PSFCube
+-------
+
+Source
+------
+
+UserCommands
+------------
+
+OpticalTrain
+------------
+
+Detector
+--------
+
+Chip
+----
 
 
 
