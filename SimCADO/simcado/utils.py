@@ -21,7 +21,6 @@ Helper functions for SimCADO
 #
 import os
 import inspect
-from glob import glob
 
 try:
     import wget
@@ -95,87 +94,45 @@ def unify(x, unit, length=1):
     return y
 
 
-# Just a sketch
 def parallactic_angle(ha, de, lat=-24.589167):
-    """
+    r"""
     Compute the parallactic angle
 
     Parameters
     ----------
-    ha, de : float
-        hour angle and declination of observation point
+    ha : float
+        [hours] hour angle of target point
+    de : float
+        [deg] declination of target point
     lat : float
-        latitude of observatory
+        [deg] latitude of observatory, defaults to Armazones
 
     Returns
     -------
     parang : float
-        The parallactic angle
-    """
+       The parallactic angle
 
-    # Convert observation point, pole and zenith to cartesian coordinates
-    x_pole = [0, 0, -1]
-
-    poledist = (90. - lat)/180 * np.pi  # from north pole
-    x_zenith = [0, np.sin(poledist), np.cos(poledist)]
-
-    obsdist = (90. - de)/180 * np.pi
-    ha = ha/180. * np.pi
-    x_obs = [np.sin(obsdist) * np.sin(ha), np.sin(obsdist) * np.cos(ha),
-             np.cos(obsdist)]
-
-    # normals to the great circles
-    n_pole = np.cross(x_obs, x_pole)
-    n_pole = n_pole/np.sqrt((n_pole**2).sum())
-    n_zenith = np.cross(x_obs, x_zenith)
-    n_zenith = n_zenith/np.sqrt((n_zenith**2).sum())
-
-    # Angle between the great circles
-    # CHECK: exact definition, modulo 180 deg?
-    parang = np.arccos((n_pole * n_zenith).sum()) * 180. / np.pi
-
-    return parang
-
-
-# From Filippenko1982
-def parallactic_angle_2(ha, de, lat=-24.589167):
-    """
-    Compute the parallactic angle
-
-    Parameters
-    ----------
-    ha, de : float
-        hour angle and declination of observation point
-    lat : float
-        latitude of observatory
-
-    Returns
-    -------
-    parang : float
-        The parallactic angle
+    Notes
+    -----
+    The parallactic angle is defined as the angle PTZ, where P is the
+    .. math::
+    \tan\eta = \frac{\cos\phi\sin H}{\sin\phi \cos\delta - \cos\phi \sin\delta \cos H}
+    It is negative (positive) if the target point is east (west) of the meridian.
 
     References
     ----------
-    Filippenko (1982)
+    R. Ball: "A Treatise on Spherical Astronomy", Cambridge 1908
     """
+    # Convert angles to radians
+    ha = ha / 12. * np.pi
+    de = np.deg2rad(de)
+    lat = np.deg2rad(lat)
 
-    hadeg = ha
-    ha = ha/180. * np.pi
-    de = de/180. * np.pi
-    lat = lat/180. * np.pi
+    eta = np.arctan2(np.cos(lat) * np.sin(ha),
+                     np.sin(lat) * np.cos(de) - \
+                     np.cos(lat) * np.sin(de) * np.cos(ha))
 
-    sineta = np.sin(ha) * np.cos(lat) / \
-             np.sqrt(1. - (np.sin(lat) * np.sin(de) +
-                           np.cos(lat) * np.cos(de) * np.cos(ha))**2)
-
-    eta = np.arcsin(sineta) * 180./np.pi
-    if hadeg >= 0 and hadeg <= 45:
-        eta = 180. - eta
-    elif hadeg < 0 and hadeg >= -45:
-        eta = 180. + eta
-    elif hadeg < -45:
-        eta = - eta
-    return eta
+    return np.rad2deg(eta)
 
 
 def moffat(r, alpha, beta):
