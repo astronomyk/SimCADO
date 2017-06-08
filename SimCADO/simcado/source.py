@@ -2286,10 +2286,10 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     -------
     lam : np.ndarray
         [um] The centres of the wavelength bins for the new spectrum
-    spec : np.array
+    spec : np.ndarray
         [ph/s/m2] The spectrum scaled to the specified magnitude
 
-    if return_ec == True, a :class:`simcado.spectral.EmissionCurve` is returned
+    If return_ec == True, a :class:`simcado.spectral.EmissionCurve` is returned
 
     See Also
     --------
@@ -2302,12 +2302,12 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     Examples
     --------
 
-    Scale the spectrum of a G2V star to J=25
+    Scale the spectrum of a G2V star to J=25:
 
         >>> lam, spec = simcado.source.SED("G2V")
-        >>> lam, spec = simcado.scale_spectrum(lam, spec, 25, "J")
+        >>> lam, spec = simcado.source.scale_spectrum(lam, spec, 25, "J")
 
-    Scale the spectra for many stars to different H-band magnitudes
+    Scale the spectra for many stars to different H-band magnitudes:
 
         >>> from simcado.source import SED, scale_spectrum
         >>>
@@ -2328,52 +2328,62 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
         >>>
         >>> lam, spec = scale_spectrum(lam, spec, magnitudes, "PaBeta")
 
-    Create a tophat filter and rescale to magnitudes in that band
-
-        >>> # first make a tranmsission curve for the filter
-        >>>
-        >>> from simcado.spectral import TransmissionCurve
-        >>> filt_lam   = np.array([0.3, 1.09, 1.1, 1.15, 1.16, 3.])
-        >>> filt_trans = np.array([0.,  0.,   1.,  1.,   0.,   0.])
-        >>> new_filt   = TransmissionCurve(lam=filt_lam, val=filt_trans)
-        >>>
-        >>> lam, spec = scale_spectrum(lam, spec, magnitudes, new_filt)
-
 
     """
+    # The following was part of docstring. The example does not work, because
+    # the new filter is not calibrated.
+    #
+    # Create a tophat filter and rescale to magnitudes in that band:
+    #
+    #     >>> # first make a tranmsission curve for the filter
+    #     >>>
+    #     >>> from simcado.spectral import TransmissionCurve
+    #     >>> filt_lam   = np.array([0.3, 1.09, 1.1, 1.15, 1.16, 3.])
+    #     >>> filt_trans = np.array([0.,  0.,   1.,  1.,   0.,   0.])
+    #     >>> new_filt   = TransmissionCurve(lam=filt_lam, val=filt_trans)
+    #     >>>
+    #     >>> lam, spec = scale_spectrum(lam, spec, magnitudes, new_filt)
 
     from simcado.spectral import EmissionCurve, TransmissionCurve
     from simcado.optics import get_filter_curve
 
+    mag = np.asarray(mag)
+
+    # Number of photons corresponding to desired apparent magnitude mag
     ideal_phs = zero_magnitude_photon_flux(filter_name) * 10**(-0.4 * mag)
     if isinstance(ideal_phs, (int, float)):
         ideal_phs = [ideal_phs]
 
-    if len(spec.shape) > 1:
-        curves = [EmissionCurve(lam=lam, val=sp, area=1, units="ph/s/m2")
-                  for sp in spec]
-    else:
-        curves = [EmissionCurve(lam=lam, val=spec, area=1, units="ph/s/m2")]
+    if len(spec.shape) == 1:
+        spec = [spec]
+
+    # Convert spectra to EmissionCurves
+    curves = [EmissionCurve(lam=lam, val=sp, area=1, units="ph/s/m2")
+              for sp in spec]
 
     if isinstance(filter_name, TransmissionCurve):
         filt = filter_name
     else:
         filt = get_filter_curve(filter_name)
 
+    # Rescale the spectra
     for i in range(len(curves)):
         tmp = curves[i] * filt
         obs_ph = tmp.photons_in_range()
         scale_factor = ideal_phs[i] / obs_ph
         curves[i] *= scale_factor
 
+    # Return in desired format
     if return_ec:
         if len(curves) > 1:
             return curves
         else:
             return curves[0]
     else:
-        if len(curves) > 1: return curves[0].lam, np.array([curve.val for curve in curves])
-        else: return curves[0].lam, curves[0].val
+        if len(curves) > 1:
+            return curves[0].lam, np.array([curve.val for curve in curves])
+        else:
+            return curves[0].lam, curves[0].val
 
 
 def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,
@@ -2392,9 +2402,9 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,
     pix_res : float
         [arcsec] the pixel resolution
     filter_name : str, TransmissionCurve
-           Any filter name from SimCADO or a
-           :class:`~.simcado.spectral.TransmissionCurve` object
-           (see :func:`~.simcado.optics.get_filter_set`)
+        Any filter name from SimCADO or a
+        :class:`~.simcado.spectral.TransmissionCurve` object
+        (see :func:`~.simcado.optics.get_filter_set`)
     return_ec : bool, optional
         If True, a :class:`simcado.spectral.EmissionCurve` object is returned.
         Default is False
@@ -2411,17 +2421,15 @@ def scale_spectrum_sb(lam, spec, mag_per_arcsec, pix_res=0.004,
 
     """
 
+    curve = scale_spectrum(lam, spec, mag_per_arcsec, filter_name,
+                           return_ec=True)
+    curve.val *= pix_res**2
+    curve.params["pix_res"] = pix_res
+
     if return_ec:
-        curve = scale_spectrum(lam, spec, mag_per_arcsec, filter_name,
-                               return_ec)
-        curve.val *= pix_res**2
-        curve.params["pix_res"] = pix_res
         return curve
     else:
-        lam, spec = scale_spectrum(lam, spec, mag_per_arcsec, filter_name,
-                                   return_ec)
-        spec *= pix_res**2
-        return lam, spec
+        return curve.lam, curve.val
 
 
 def flat_spectrum(mag, filter_name="Ks", return_ec=False):
