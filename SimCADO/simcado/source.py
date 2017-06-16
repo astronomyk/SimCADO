@@ -2136,9 +2136,9 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         If there is noise in the image, set threshold to the noise limit so that
         only real photon sources are extracted. Default is 0.
     center_offset : (int, int)
-        [arcsec] If the central of the image is offset, add this offset to (x,y)
+        [arcsec] If the centre of the image is offset, add this offset to (x,y)
         coordinates.
-    convserve_flux : bool, optional
+    conserve_flux : bool, optional
         If True, when the image is rescaled, flux is conserved
         i.e. np.sum(image) remains constant
         If False, the maximum value of the image stays constant after rescaling
@@ -2166,7 +2166,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     To create a ``Source`` object we need an image that describes the spatial
     distribution of the object of interest and spectrum. For the sake of ease we
-    will assign a generic elliptical galagy spectrum to the image.
+    will assign a generic elliptical galaxy spectrum to the image.
 
         >>> from astropy.io import fits
         >>> from simcado.source import SED, source_from_image
@@ -2208,14 +2208,14 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
     """
 
     if isinstance(images, (list, tuple)):
-        srcs = [source_from_image(images[i], lam, spectra[i, :], plate_scale,
-                                  oversample, units, flux_threshold,
-                                  center_offset)
-                for i in range(len(images))]
-        src = srcs[0]
-        for i in range(1, len(images)):
-            src += srcs[i]
-        return src
+        srclist = [source_from_image(images[i], lam, spectra[i, :], plate_scale,
+                                     oversample, units, flux_threshold,
+                                     center_offset)
+                   for i in range(len(images))]
+        fullsrc = srclist[0]
+        for src in srclist[1:]:
+            fullsrc += src
+        return fullsrc
 
     else:
         #if not isinstance(oversample, int):
@@ -2247,7 +2247,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         # x, y, weight = np.array(x_list), np.array(y_list), np.array(w_list)
 
         if oversample != 1:
-            img = spi.zoom(images, oversample, order=1).astype(np.float32)
+            img = spi.zoom(images, oversample, order=3).astype(np.float32)
             scale_factor = np.sum(images)/np.sum(img)
             if conserve_flux:
                 img *= scale_factor
