@@ -305,7 +305,7 @@ class OpticalTrain(object):
             mirror_flux = sc.BlackbodyCurve(lam=self.lam, temp=temp,
                                             pix_res=self.pix_res, area=area) * \
                           emissivity
-                          
+
             total_flux = mirror_flux + total_flux * reflectivity
             print(mirror['Mirror'] + ": Emitted " + str(mirror_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])) + "       Total " + str(total_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])))
 
@@ -370,7 +370,7 @@ class OpticalTrain(object):
 
         # Really dodgy hack to emulate emissivity - half way between Al and AgAl
         self.ec_mirror *= 0.1
-                                           
+
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
             self.ph_mirror = self.ec_mirror * self.tc_mirror
             self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
@@ -401,12 +401,12 @@ class OpticalTrain(object):
                 ################## TODO ######################
                 # Generalise this to accept any TransmissionCurve object
                 from .source import flat_spectrum_sb
-                self.ec_atmo = flat_spectrum_sb(self.cmds["ATMO_BG_MAGNITUDE"], 
+                self.ec_atmo = flat_spectrum_sb(self.cmds["ATMO_BG_MAGNITUDE"],
                                                 self.cmds["INST_FILTER_TC"],
                                                 self.cmds["SIM_DETECTOR_PIX_SCALE"],
                                                 return_ec=True)
                 self.ec_atmo *= self.cmds.area
-                
+
             self.ph_atmo = self.tc_atmo * self.ec_atmo
             self.n_ph_atmo = self.ph_atmo.photons_in_range(self.lam_bin_edges[0],
                                                            self.lam_bin_edges[-1])
@@ -530,21 +530,21 @@ class OpticalTrain(object):
             SCOPE_PSF_FILE == None.
             Generating Moffat profile from with FWHM = OBS_SEEING""")
             logging.debug("No PSF Given: making Seeing PSF")
-            
+
             hdulist = fits.HDUList()
             for lam in self.cmds.lam_bin_centers:
-                
+
                 psf_mo = psf.seeing_psf(fwhm   =self.cmds["OBS_SEEING"],
-                                        size   =self.cmds["SIM_PSF_SIZE"], 
+                                        size   =self.cmds["SIM_PSF_SIZE"],
                                         pix_res=self.cmds["SIM_DETECTOR_PIX_SCALE"],
-                                        psf_type="moffat", filename=None) 
-                
+                                        psf_type="moffat", filename=None)
+
                 psf_mo[0].header["WAVELENG"] = lam
                 hdulist.append(psf_mo[0])
-            
+
             psf_m1 = psf.UserPSFCube(hdulist, self.lam_bin_centers)
-            
-            
+
+
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], psf.PSFCube):
             psf_m1 = self.cmds["SCOPE_PSF_FILE"]
             logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
@@ -624,3 +624,92 @@ def get_filter_set(path=None):
     lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
                     for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst
+
+
+def read_spec_order(filename):
+    """Read spectral order definition from a file
+
+    Parameters
+    ----------
+    filename : str
+
+
+    Returns
+    -------
+    An `astropy.Table` with columns
+        - lam : wavelength
+        - x_1, x_2, x_3 : Column numbers of left edge, centre and right edge
+               of lines of constant wavelength
+        - y_1, y_2, y_3 : Row numbers of left edge, centre and right edge
+               of lines of constant wavelength
+        - r80_1, r80_2, r80_3 : radii of 80% encircled energy
+
+    Notes
+    -----
+    The orders file has the following format:
+    - two lines of information
+    - for each wavelength six lines:
+      - a line with "index= ... wavelength= ".
+      - a flag (0 is good)
+      - a line each for the left edge, centre and right edge of the 2D
+        trace at the given wavelength. Format is "X1= ... Y1= ... r(EE80)= ..."
+      - a separator line
+    """
+
+    # Read file
+    with open(filename) as fp1:
+        lines = fp1.readlines()
+
+    nlines = len(lines)
+
+    # Initialize lists
+    lam = []
+    x_1 = []
+    x_2 = []
+    x_3 = []
+    y_1 = []
+    y_2 = []
+    y_3 = []
+    r80_1 = []
+    r80_2 = []
+    r80_3 = []
+
+    # Extract the order number
+    lhs = lines[1].split(',')[0]
+    order = int(float(lhs.split()[2]))
+
+    # Drop the first two lines
+    iline = 2
+
+    # Loop over group of six lines at a time
+    while iline < nlines - 1:
+        # Use only "good" lines
+        flag = float(lines[iline + 1])
+        if flag == 0:
+            # shortcuts for the next four lines
+            lamline = lines[iline]
+            x1line = lines[iline + 2]
+            x2line = lines[iline + 3]
+            x3line = lines[iline + 4]
+
+            # Extract information
+            lam.append(float(lamline.split()[3]))
+            x_1.append(float(x1line.split()[1]))
+            y_1.append(float(x1line.split()[3]))
+            r80_1.append(float(x1line.split()[5]))
+            x_2.append(float(x2line.split()[1]))
+            y_2.append(float(x2line.split()[3]))
+            r80_2.append(float(x2line.split()[5]))
+            x_3.append(float(x3line.split()[1]))
+            y_3.append(float(x3line.split()[3]))
+            r80_3.append(float(x3line.split()[5]))
+        iline += 6
+
+    # return as numpy arrays
+    from astropy.table import Table
+    order_table = Table([lam, x_1, x_2, x_3, y_1, y_2, y_3, r80_1, r80_2, r80_3],
+                        names=['lam', 'x1', 'x2', 'x3', 'y1', 'y2', 'y3',
+                               'r80_1', 'r80_2', 'r80_3'],
+                        meta={'Order': order})
+
+    return order_table
