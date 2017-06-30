@@ -241,7 +241,10 @@ class Detector(object):
                            self.layout["x_len"][i], self.layout["y_len"][i],
                            self.cmds["SIM_DETECTOR_PIX_SCALE"],
                            self.layout["pixsize"][i],
+                           self.layout["angle"][i],
                            self.layout["gain"][i],
+                           (self.cmds["OBS_RA"], self.cmds["OBS_DEC"]),
+                           0.,
                            self.layout["id"][i],
                            hdu_flat_field[i+j])
                       for i in range(len(self.layout["x_cen"]))]
@@ -354,30 +357,9 @@ class Detector(object):
             thishdu.header["EXTNAME"] = ("CHIP_{:02d}".format(self.chips[i].id),
                                          "Chip ID")
 
-            thishdu.header["CTYPE1"] = "RA---TAN"
-            thishdu.header["CUNIT1"] = "deg"
-            thishdu.header["CRVAL1"] = (self.cmds["OBS_RA"], "[degrees]")
-            thishdu.header["CRPIX1"] = (self.chips[i].naxis1 //2 -
-                                        self.chips[i].x_cen / self.chips[i].pix_res)
-            thishdu.header["CDELT1"] = (-1 * self.chips[i].pix_res / 3600.,
-                                        "[degrees] Pixel scale")
-
-            # axis 2
-            thishdu.header["CTYPE2"] = "DEC--TAN"
-            thishdu.header["CUNIT2"] = "deg"
-            thishdu.header["CRVAL2"] = (self.cmds["OBS_DEC"], "[degrees]")
-            thishdu.header["CRPIX2"] = (self.chips[i].naxis2 //2 -
-                                        self.chips[i].y_cen / self.chips[i].pix_res)
-            thishdu.header["CDELT2"] = (self.chips[i].pix_res / 3600.,
-                                        "[degrees] Pixel resolution")
-
-            # possible rotation
-            thishdu.header["PC1_1"] = 1.
-            thishdu.header["PC1_2"] = 0.
-            thishdu.header["PC2_1"] = 0.
-            thishdu.header["PC2_2"] = 1.
-
             thishdu.header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
+            thishdu.header.extend(self.chips[i].wcs.to_header())
+
             thishdu.header["BUNIT"] = ("ADU", "")
             thishdu.header["EXPTIME"] = (self.exptime, "[s] Exposure time")
             thishdu.header["NDIT"] = (self.ndit, "Number of exposures")
@@ -386,6 +368,7 @@ class Detector(object):
             thishdu.header["GAIN"] = (self.chips[i].gain, "[e-/ADU]")
             thishdu.header["AIRMASS"] = (self.cmds["ATMO_AIRMASS"], "")
             thishdu.header["ZD"] = (self.cmds["OBS_ZENITH_DIST"], "[deg]")
+
 
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
@@ -539,21 +522,34 @@ class Chip(object):
     """
 
     def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, pixsize,
-                 gain, chipid=None, flat_field=None):
+                 angle, gain, obs_coords, fieldangle=0,
+                 chipid=None, flat_field=None):
 
+        # permanent rotation of chip
+        cangle = np.cos(np.deg2rad(angle))
+        sangle = np.sin(np.deg2rad(angle))
 
-        # Construct a WCS for the translation between pixels and
-        # position in the focal plane
-        wfpa = WCS(naxis=2)
-        wfpa.wcs.ctype = ['LINEAR', 'LINEAR']
-        wfpa.wcs.name = "PIX2FP"
-        wfpa.wcs.crpix = [(x_len + 1) / 2,
-                          (y_len + 1) / 2]   # centre of chip
-        wfpa.wcs.crval = [x_cen, y_cen]
-        wfpa.wcs.cdelt = [pixsize, pixsize]
-        wfpa.wcs.cunit = ['mm', 'mm']
+        # offset of chip centre from field centre in um
+        xoff = x_cen * cangle - y_cen * sangle
+        yoff = x_cen * sangle + y_cen * cangle
 
-        self.wfpa = wfpa
+        # Construct the WCS for the chip
+        thewcs = WCS(naxis=2)
+        thewcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+        thewcs.wcs.name = "PIX2FP"
+        thewcs.wcs.crval = obs_coords
+        thewcs.wcs.crpix = [(x_len + 1) / 2 + xoff /pixsize,
+                            (y_len + 1) / 2 + yoff /pixsize]
+        thewcs.wcs.cdelt = [pix_res / 3600, pix_res / 3600]  # arcsec to deg
+        thewcs.wcs.cunit = ['deg', 'deg']
+        thewcs.wcs.pc = np.array([[cangle, sangle], [-sangle, cangle]])
+
+        fieldangle = np.deg2rad(fieldangle)
+        fieldrot = np.matrix([[np.cos(fieldangle), np.sin(fieldangle)],
+                              [-np.sin(fieldangle), np.cos(fieldangle)]])
+        thewcs.wcs.pc = fieldrot * np.asmatrix(thewcs.wcs.pc)
+
+        self.wcs = thewcs
 
         # for backwards compatibility: attributes in arcsec
         self.x_cen  = x_cen / pixsize * pix_res
@@ -1145,21 +1141,54 @@ def open(self, filename):
     raise ValueError("Function not finished")
 
 
-def plot_detector_layout(detector, clr="g"):
-    """Plot the detector layout. NOT FINISHED """
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        raise ImportError("matplotlib can't be found")
+#def plot_detector_layout(detector, clr="g"):
+#    """Plot the detector layout. NOT FINISHED """
+#    try:
+#        import matplotlib.pyplot as plt
+#    except ImportError:
+#        raise ImportError("matplotlib can't be found")
+#
+#    for i, chip in enumerate(detector.chips):
+#        plt.plot((chip.x_min, chip.x_max), (chip.y_min, chip.y_min), clr)
+#        plt.plot((chip.x_min, chip.x_max), (chip.y_max, chip.y_max), clr)
+#        plt.plot((chip.x_min, chip.x_min), (chip.y_min, chip.y_max), clr)
+#        plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max), clr)
+#        plt.text(chip.x_cen, chip.y_cen, chip.id, fontsize=14)
+#        plt.xlabel("Distance [arcsec]", fontsize=14)
+#        plt.ylabel("Distance [arcsec]", fontsize=14)
 
+def plot_detector_layout(detector, clr='g'):
+    """Plot the detector layout"""
+
+    from matplotlib import pyplot as plt
+    npts = 101
     for i, chip in enumerate(detector.chips):
-        plt.plot((chip.x_min, chip.x_max), (chip.y_min, chip.y_min), clr)
-        plt.plot((chip.x_min, chip.x_max), (chip.y_max, chip.y_max), clr)
-        plt.plot((chip.x_min, chip.x_min), (chip.y_min, chip.y_max), clr)
-        plt.plot((chip.x_max, chip.x_max), (chip.y_min, chip.y_max), clr)
-        plt.text(chip.x_cen, chip.y_cen, chip.id, fontsize=14)
-        plt.xlabel("Distance [arcsec]", fontsize=14)
-        plt.ylabel("Distance [arcsec]", fontsize=14)
+        xrange = np.linspace(1, chip.naxis1, npts)
+        yrange = np.linspace(1, chip.naxis2, npts)
+        xpix = np.concatenate((xrange,
+                               np.zeros(npts) + chip.naxis1,
+                               xrange[::-1],
+                               np.zeros(npts) + 1))
+        ypix = np.concatenate((np.zeros(npts) + 1,
+                               yrange,
+                               np.zeros(npts) + chip.naxis2,
+                               yrange[::-1]))
+
+        xworld, yworld = chip.wcs.all_pix2world(xpix, ypix, 1)
+        xworld -= chip.wcs.wcs.crval[0]
+        yworld -= chip.wcs.wcs.crval[1]
+        plt.plot(xworld * 3600, yworld * 3600, 'k')
+
+        xcen, ycen = chip.wcs.all_pix2world(chip.naxis1 / 2, chip.naxis2 / 2, 1)
+        xcen -= chip.wcs.wcs.crval[0]
+        ycen -= chip.wcs.wcs.crval[1]
+        plt.text(xcen * 3600, ycen * 3600, chip.id)
+
+    plt.axes().set_aspect('equal')
+    plt.gca().invert_xaxis()
+    plt.xlabel('RA offset (arcsec)')
+    plt.ylabel('DE offset (arcsec)')
+    plt.show()
 
 
 def plot_detector(detector):
