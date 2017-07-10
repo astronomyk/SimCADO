@@ -522,6 +522,9 @@ class Source(object):
                 raise ValueError("Unknown chip identification")
 
         # Determine x- and y- range covered by chip
+        # TODO: Use chip.wcs to convert (x, y) into pixel coordinates,
+        #       then simply cut at the pixel edges. Alternatively,
+        #       project chip edges to the sky.
         if chip is not None:
             mask = (self._x > chip.x_min) * (self._x < chip.x_max) * \
                    (self._y > chip.y_min) * (self._y < chip.y_max)
