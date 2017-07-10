@@ -1,6 +1,6 @@
 '''Unit tests for module simcado.utils'''
 
-from simcado.utils import parallactic_angle
+from simcado.utils import parallactic_angle, deriv_polynomial2d
 import numpy as np
 
 class TestParallacticAngle():
@@ -38,3 +38,27 @@ class TestParallacticAngle():
         pa = parallactic_angle(6, 0, lat)
 
         assert np.allclose(pa, 90. - lat)
+
+
+class TestDerivPolynomial2D():
+    '''Tests of simcado.utils.deriv_polynomial2d'''
+
+    def test_01(self):
+        '''Test simcado.utils.deriv_polynomial2d'''
+        from astropy.modeling.models import Polynomial2D
+
+        ximg, yimg = np.meshgrid(np.linspace(-1, 1, 101),
+                                 np.linspace(-1, 1, 101))
+        poly = Polynomial2D(2, c0_0=1, c1_0=2, c2_0=3,
+                            c0_1=-1.5, c0_2=0.4, c1_1=-2)
+        # Expected values
+        y_x = 2 + 6 * ximg - 2 * yimg
+        y_y = -1.5 + 0.8 * yimg - 2 * ximg
+
+        dpoly_x, dpoly_y = deriv_polynomial2d(poly)
+        # Computed values
+        y_x_test = dpoly_x(ximg, yimg)
+        y_y_test = dpoly_y(ximg, yimg)
+
+        assert(np.allclose(y_x, y_x_test))
+        assert(np.allclose(y_y, y_y_test))
