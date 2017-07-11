@@ -267,6 +267,37 @@ def nearest(arr, val):
     return np.argmin(abs(arr - val))
 
 
+def deriv_polynomial2d(poly):
+    '''Derivatives (gradient) of a Polynomial2D model
+
+    Parameters
+    ----------
+    poly : astropy.modeling.models.Polynomial2D
+
+    Output
+    ------
+    gradient : tuple of Polynomial2d
+    '''
+    import re
+    from astropy.modeling.models import Polynomial2D
+    degree = poly.degree
+    dpoly_dx = Polynomial2D(degree=degree - 1)
+    dpoly_dy = Polynomial2D(degree=degree - 1)
+    regexp = re.compile('c(\d+)_(\d+)')
+    for pname in poly.param_names:
+        # analyse the name
+        match = regexp.match(pname)
+        i = int(match.group(1))
+        j = int(match.group(2))
+        cij = getattr(poly, pname)
+        pname_x = "c%d_%d" % (i-1, j)
+        pname_y = "c%d_%d" % (i, j-1)
+        setattr(dpoly_dx, pname_x, i * cij)
+        setattr(dpoly_dy, pname_y, j * cij)
+
+    return dpoly_dx, dpoly_dy
+
+
 def add_keyword(filename, keyword, value, comment="", ext=0):
     """
     Add a keyword, value pair to an extension header in a FITS file
