@@ -20,6 +20,7 @@ Helper functions for SimCADO
 #
 #
 import os
+import sys
 import inspect
 
 try:
@@ -283,7 +284,7 @@ def deriv_polynomial2d(poly):
     degree = poly.degree
     dpoly_dx = Polynomial2D(degree=degree - 1)
     dpoly_dy = Polynomial2D(degree=degree - 1)
-    regexp = re.compile('c(\d+)_(\d+)')
+    regexp = re.compile(r'c(\d+)_(\d+)')
     for pname in poly.param_names:
         # analyse the name
         match = regexp.match(pname)
@@ -442,3 +443,59 @@ def zenith_dist_to_airmass(zenith_dist):
     X = sec(Z)
     """
     return 1. / np.cos(np.deg2rad(zenith_dist))
+
+
+def seq(start, stop, step=1):
+    '''Replacement for numpy.arange modelled after R's seq function
+
+    Returns an evenly spaced sequence from start to stop. stop is included if the difference
+    between start and stop is an integer multiple of step.
+
+    From the documentation of numpy.range: "When using a non-integer step, such as 0.1, the
+    results will often not be consistent." This replacement aims to avoid these inconsistencies.
+
+    Parameters
+    ----------
+
+    start, stop: [int, float]
+        the starting and (maximal) end values of the sequence.
+
+    step : [int, float]
+        increment of the sequence, defaults to 1
+
+    '''
+    feps = 1e-10     # value used in R seq.default
+
+    delta = stop - start
+    if delta == 0 and stop == 0:
+        return stop
+    try:
+        npts = delta / step
+    except ZeroDivisionError:
+        if step == 0 and delta == 0:
+            return start
+        else:
+            raise ValueError("invalid '(stop - start) / step'")
+
+    if npts < 0:
+        raise ValueError("wrong sign in 'step' argument")
+    if npts > sys.maxsize:
+        raise ValueError("'step' argument is much too small")
+
+    reldd = abs(delta) / max(abs(stop), abs(start))
+
+    if reldd < 100 * sys.float_info.epsilon:
+        return start
+
+    if isinstance(delta, int) and isinstance(step, int):
+        # integer sequence
+        npts = int(npts)
+        return start + np.asarray(range(npts + 1)) * step
+    else:
+        npts = int(npts + feps)
+        sequence = start + np.asarray(range(npts + 1)) * step
+        # correct for possible overshot because of fuzz (from seq.R)
+        if step > 0:
+            return np.minimum(sequence, stop)
+        else:
+            return np.maximum(sequence, stop)
