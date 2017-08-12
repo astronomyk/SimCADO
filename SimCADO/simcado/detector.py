@@ -460,7 +460,7 @@ class Chip(object):
     Parameters
     ----------
     x_cen, y_cen : float
-        [arcsec] the coordinates of the centre of the chip relative to the
+        [micron] the coordinates of the centre of the chip relative to the
         centre of the focal plane
     x_len, y_len : int
         the number of pixels per dimension
@@ -533,13 +533,13 @@ class Chip(object):
         xoff = x_cen * cangle - y_cen * sangle
         yoff = x_cen * sangle + y_cen * cangle
 
-        # Construct the WCS for the chip
+        # Primary WCS to transform pixel coordinates to sky coordinates
         thewcs = WCS(naxis=2)
         thewcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-        thewcs.wcs.name = "PIX2FP"
+        thewcs.wcs.name = "PIX2SKY"
         thewcs.wcs.crval = obs_coords
-        thewcs.wcs.crpix = [(x_len + 1) / 2 + xoff /pixsize,
-                            (y_len + 1) / 2 + yoff /pixsize]
+        thewcs.wcs.crpix = [(x_len + 1) / 2 - xoff / pixsize,
+                            (y_len + 1) / 2 - yoff / pixsize]
         thewcs.wcs.cdelt = [pix_res / 3600, pix_res / 3600]  # arcsec to deg
         thewcs.wcs.cunit = ['deg', 'deg']
         thewcs.wcs.pc = np.array([[cangle, sangle], [-sangle, cangle]])
@@ -550,6 +550,29 @@ class Chip(object):
         thewcs.wcs.pc = fieldrot * np.asmatrix(thewcs.wcs.pc)
 
         self.wcs = thewcs
+
+        # Second WCS to transform pixel coordinates to focal-plane coordinates
+        wcs_fp = WCS(naxis=2)
+        wcs_fp.wcs.ctype = ['LINEAR', 'LINEAR']
+        wcs_fp.wcs.name = "PIX2FP"
+        wcs_fp.wcs.crval = [0., 0.]
+        wcs_fp.wcs.crpix = [(x_len + 1) / 2 - xoff / pixsize,
+                            (y_len + 1) / 2 - yoff / pixsize]
+        wcs_fp.wcs.cdelt = [pixsize, pixsize]
+        wcs_fp.wcs.cunit = ['mm', 'mm']
+        wcs_fp.wcs.pc = np.array([[cangle, sangle], [-sangle, cangle]])
+
+        self.wcs_fp = wcs_fp
+
+        # attributes in um
+        self.xcen_um = x_cen
+        self.ycen_um = y_cen
+        dx_um = (x_len // 2) * pixsize
+        dy_um = (y_len // 2) * pixsize
+        self.xmin_um = self.xcen_um - dx_um
+        self.xmax_um = self.xcen_um + dx_um
+        self.ymin_um = self.ycen_um - dy_um
+        self.ymax_um = self.ycen_um + dy_um
 
         # for backwards compatibility: attributes in arcsec
         self.x_cen  = x_cen / pixsize * pix_res
@@ -562,10 +585,10 @@ class Chip(object):
 
         dx = (x_len // 2) * pix_res
         dy = (y_len // 2) * pix_res
-        self.x_min = x_cen - dx
-        self.x_max = x_cen + dx
-        self.y_min = y_cen - dy
-        self.y_max = y_cen + dy
+        self.x_min = self.x_cen - dx
+        self.x_max = self.x_cen + dx
+        self.y_min = self.y_cen - dy
+        self.y_max = self.y_cen + dy
 
         self.array = None
 
@@ -1157,12 +1180,24 @@ def open(self, filename):
 #        plt.xlabel("Distance [arcsec]", fontsize=14)
 #        plt.ylabel("Distance [arcsec]", fontsize=14)
 
-def plot_detector_layout(detector, clr='g'):
+def plot_detector_layout(detector, plane="sky", clr='g'):
     """Plot the detector layout"""
 
     from matplotlib import pyplot as plt
     npts = 101
     for i, chip in enumerate(detector.chips):
+
+        if plane == 'sky':
+            thewcs = chip.wcs
+            scale = 3600.
+            xlabel = 'RA offset (arcsec)'
+            ylabel = 'DE offset (arcsec)'
+        elif plane == 'fpa':
+            thewcs = chip.wcs_fp
+            scale = 1.
+            xlabel = 'x (mm)'
+            ylabel = 'y (mm)'
+
         xrange = np.linspace(1, chip.naxis1, npts)
         yrange = np.linspace(1, chip.naxis2, npts)
         xpix = np.concatenate((xrange,
@@ -1174,20 +1209,28 @@ def plot_detector_layout(detector, clr='g'):
                                np.zeros(npts) + chip.naxis2,
                                yrange[::-1]))
 
-        xworld, yworld = chip.wcs.all_pix2world(xpix, ypix, 1)
-        xworld -= chip.wcs.wcs.crval[0]
-        yworld -= chip.wcs.wcs.crval[1]
-        plt.plot(xworld * 3600, yworld * 3600, 'k')
+        xworld, yworld = thewcs.all_pix2world(xpix, ypix, 1)
+        xworld -= thewcs.wcs.crval[0]
+        yworld -= thewcs.wcs.crval[1]
+        plt.plot(xworld * scale, yworld * scale, 'k')
 
-        xcen, ycen = chip.wcs.all_pix2world(chip.naxis1 / 2, chip.naxis2 / 2, 1)
-        xcen -= chip.wcs.wcs.crval[0]
-        ycen -= chip.wcs.wcs.crval[1]
-        plt.text(xcen * 3600, ycen * 3600, chip.id)
+        x0, y0 = thewcs.all_pix2world(1, 1, 1)
+        x0 -= thewcs.wcs.crval[0]
+        y0 -= thewcs.wcs.crval[1]
+        plt.plot(x0 * scale, y0 * scale, 'r.')
+
+
+        xcen, ycen = thewcs.all_pix2world(chip.naxis1 / 2, chip.naxis2 / 2, 1)
+        xcen -= thewcs.wcs.crval[0]
+        ycen -= thewcs.wcs.crval[1]
+        plt.text(xcen * scale, ycen * scale, chip.id)
 
     plt.axes().set_aspect('equal')
-    plt.gca().invert_xaxis()
-    plt.xlabel('RA offset (arcsec)')
-    plt.ylabel('DE offset (arcsec)')
+    if plane == 'sky':
+        plt.gca().invert_xaxis()
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
     plt.show()
 
 
