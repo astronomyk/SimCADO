@@ -369,8 +369,9 @@ class OpticalTrain(object):
                                            area   =scope_area)
 
         # Really dodgy hack to emulate emissivity - half way between Al and AgAl
-        self.ec_mirror *= 0.1
-
+        self.emissivity = 0.1
+        self.ec_mirror *= self.emissivity
+                                           
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
             self.ph_mirror = self.ec_mirror * self.tc_mirror
             self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
@@ -505,7 +506,7 @@ class OpticalTrain(object):
 
     def _gen_master_psf(self):
         """
-        Import or make a aaster PSF for the system.
+        Import or make a master PSF for the system.
 
         Notes
         -----
@@ -547,14 +548,14 @@ class OpticalTrain(object):
 
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], psf.PSFCube):
             psf_m1 = self.cmds["SCOPE_PSF_FILE"]
-            logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
+            #logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
 
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], str):
             if self.cmds.verbose:
                 print("Using PSF:", self.cmds["SCOPE_PSF_FILE"])
 
             if os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
-                logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
+                #logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
 
                 psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
                                          self.lam_bin_centers)

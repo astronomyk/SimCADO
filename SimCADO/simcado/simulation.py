@@ -271,7 +271,9 @@ def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32,
         cmd["FPA_CHIP_LAYOUT"] = "small"
         cmd.update(kwargs)
         
-        grid = sim.source.star_grid(100, mmin, mmax, filter_name=filt, separation=0.4)
+        star_sep = cmd["SIM_DETECTOR_PIX_SCALE"] * 100
+        
+        grid = sim.source.star_grid(100, mmin, mmax, filter_name=filt, separation=star_sep)
         grids += [grid]
         
         hdus, (cmd, opt, fpa) = sim.run(grid,  filter_name=filt, cmds=cmd, return_internals=True)
