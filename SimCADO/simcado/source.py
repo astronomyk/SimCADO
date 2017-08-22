@@ -2279,6 +2279,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                      units=units, **kwargs)
 
         return src
+        
 
 
 def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
