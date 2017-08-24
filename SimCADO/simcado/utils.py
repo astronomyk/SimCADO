@@ -442,3 +442,10 @@ def zenith_dist_to_airmass(zenith_dist):
     X = sec(Z)
     """
     return 1. / np.cos(np.deg2rad(zenith_dist))
+
+    
+def add_mags(mags):
+    """
+    Returns a combined magnitude for a group of objects with ``mags``
+    """
+    return -2.5*np.log10((10**(-0.4*np.array(mags))).sum())
