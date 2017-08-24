@@ -63,7 +63,7 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         cmds = sim.UserCommands()
         cmds["INST_FILTER_TC"] = "Ks"
 
-        if detector_layout.lower() in ("small", "centre", "center"):
+        if detector_layout.lower() in ("tiny", "small", "centre", "center"):
             cmds["FPA_CHIP_LAYOUT"] = detector_layout
 
         if mode == "wide":
