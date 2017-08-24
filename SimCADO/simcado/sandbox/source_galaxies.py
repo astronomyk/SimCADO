@@ -3,7 +3,8 @@ A bunch of helper functions to generate galaxies in SimCADO
 """
 
 import scipy.ndimage as spi
-
+from .spectral import EmissionCurve
+from .source import get_SED_names, SED, source_from_image
 
 def sie_grad(x, y, par):
     """
@@ -100,7 +101,8 @@ def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
         field of view
 
     r_einstein : float
-        [pixel] Einstein radius of lens
+        [pixel] Einstein radius of lens.
+        If None, r_einstein = image.shape[0] // 4
 
     eccentricity : float
         [1..0] The ratio of semi-minor to semi-major axis for the lens
@@ -139,19 +141,17 @@ def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
     lpar = np.asarray([r_einstein, x_cen, y_cen, eccentricity, rotation])
     xg, yg = sie_grad(x, y, lpar)
 
-    # Pull out the pixels from the original image and place them where the lense would
+    # Pull out the pixels from the original image and place them where the lens
+    #  would put them
     i = (x-xg + nx//2).astype(int)
     j = (y-yg + ny//2).astype(int)
 
-    lensed_image = shifted_image[j.flatten(), i.flatten()].reshape(shifted_image.shape)
+    lensed_image = shifted_image[j.flatten(), 
+                                 i.flatten()].reshape(shifted_image.shape)
 
     return lensed_image
 
 
-
-
-from simcado.spectral import EmissionCurve
-from simcado.source import get_SED_names, SED, source_from_image
 
 def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
            filter_name="Ks", normalization="total", spectrum="elliptical",
@@ -181,11 +181,12 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
         - or a TransmissionCurve containing a user-defined filter
 
     normalization : str, optional
-        ["half-light", "centre", "total"] Where in the profile the unity values are.
+        ["half-light", "centre", "total"] Where the profile equals unity
         If normalization equals:
-        - "half-light" : the pixels at the half-light radius have a surface brightness of
-                         ``magnitude`` [mag/arcsec2]
-        - "centre" : the maximum pixels have a surface brightness of ``magnitude`` [mag/arcsec2]
+        - "half-light" : the pixels at the half-light radius have a surface
+                         brightness of ``magnitude`` [mag/arcsec2]
+        - "centre" : the maximum pixels have a surface brightness of 
+                     ``magnitude`` [mag/arcsec2]
         - "total" : the whole image has a brightness of ``magnitude`` [mag]
 
     spectrum : str, EmissionCurve, optional
@@ -285,7 +286,7 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
         [deg] Default = 30. Rotation anti-clockwise from the x-axis
 
     normalization : str, optional
-        ["half-light", "centre", "total"] Where in the profile the unity values are.
+        ["half-light", "centre", "total"] Where the profile equals unity
         If normalization equals:
         - "half-light" : the pixels at the half-light radius are set to 1
         - "centre" : the maximum values are set to 1
@@ -348,7 +349,8 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
 
 def spiral_profile(r_eff, ellipticity=0.5, angle=45,
                    n_arms=2, tightness=4., arms_width=0.1, central_brightness=10,
-                   normalization='total', width=1024, height=1024, oversample=1, **kwargs):
+                   normalization='total', width=1024, height=1024, oversample=1, 
+                   **kwargs):
     """
     Creates a spiral profile with arbitary parameters
 
@@ -378,7 +380,7 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
         Has some connection to ars_width. Default = 10
 
     normalization : str, optional
-        ["half-light", "centre", "total"] Where in the profile the unity values are.
+        ["half-light", "centre", "total"] Where the profile equals unity
         If normalization equals:
         - "centre" : the maximum values are set to 1
         - "total" : the image sums to 1
@@ -409,8 +411,8 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
     Notes
     -----
     The intensity drop-off is dictated by a sersic profile of with indes n=1,
-    i.e. an exponential drop-off. This can be altered by passing the keyword "n=" as
-    an optional parameter.
+    i.e. an exponential drop-off. This can be altered by passing the keyword 
+    "n=" as an optional parameter.
 
     Spiral structure taken from here:
     https://stackoverflow.com/questions/36095775/creating-a-spiral-structure-in-python-using-hyperbolic-tangent
@@ -427,13 +429,13 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
         raise ValueError("ellipticiy <= 1 . This is physically meaningless")
 
     # create a spiral
-    xx, yy = np.meshgrid(np.arange(-width/2, width/2), np.arange(-height/2, height/2))
+    xx, yy = np.meshgrid(np.arange(-width/2, width/2), 
+                         np.arange(-height/2, height/2))
     r = np.sqrt(abs(xx)**2 + abs(yy)**2)
 
-    spiral = np.cos( n_arms * np.arctan2(xx,yy) + tightness * np.log(r**2) ) / arms_width + \
-             central_brightness# - \
-             #arms_gradient * np.log(1.0+r**2)
-             # arms_gradient isn't needed if the
+    spiral = np.cos( n_arms * np.arctan2(xx,yy) + tightness * np.log(r**2) ) / \
+             arms_width + central_brightness
+
     spiral[spiral < 0] = 0
 
     # add an exponential drop off in light intensity for the disk
@@ -485,11 +487,12 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
         - or a TransmissionCurve containing a user-defined filter
 
     normalization : str, optional
-        ["half-light", "centre", "total"] Where in the profile the unity values are.
+        ["half-light", "centre", "total"] Where in the profile equals unityy
         If normalization equals:
-        - "half-light" : the pixels at the half-light radius have a surface brightness of
-                         ``magnitude`` [mag/arcsec2]
-        - "centre" : the maximum pixels have a surface brightness of ``magnitude`` [mag/arcsec2]
+        - "half-light" : the pixels at the half-light radius have a surface 
+                         brightness of ``magnitude`` [mag/arcsec2]
+        - "centre" : the maximum pixels have a surface brightness of 
+                     ``magnitude`` [mag/arcsec2]
         - "total" : the whole image has a brightness of ``magnitude`` [mag]
 
     spectrum : str, EmissionCurve, optional
@@ -572,7 +575,8 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
                           width        =spiral.shape[1],
                           height       =spiral.shape[0])
 
-    thresh = np.max((disk[0,:].max(), disk[-1,:].max(), disk[:,0].max(), disk[:,-1].max()))
+    thresh = np.max((disk[0,:].max(), disk[-1,:].max(), 
+                     disk[:,0].max(), disk[:,-1].max()))
     disk[disk < thresh] = 0
 
 
