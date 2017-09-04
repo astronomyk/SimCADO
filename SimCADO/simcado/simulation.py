@@ -151,6 +151,10 @@ def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
 
     """
     ## TODO: What about argument cmds? (OC)
+
+    warnings.warn("""This is in the process of being depreciated.
+                     Use 'snr_curve()' until SimCADO v0.5 is released""")
+
     if cmds is None:
         cmd = sim.UserCommands()
     else:
@@ -216,30 +220,30 @@ def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
 
     sim.run(src, detector_layout="full", filename=filename, mode=mode)
 
-    
-    
-def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32, 
+
+
+def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32,
                         cmds=None, **kwargs):
     """
     Makes a series of :class:`.Detector` objects containing a grid of stars
-    
-    
+
+
     Parameters
     ----------
     filter_names : list
         Which filters to use for the images. See ``simcado.optices.get_filter_set()``
-    
+
     mmin, mmax : float
         [mag] Minimum and maximum magnitudes to use for the grid of stars
-        
+
     cmds : simcado.UserCommands
         A custom set of commands for building the optical train
-        
+
     Optional Parameters
     -------------------
-    Any Keyword-Value pairs accepted by a 
+    Any Keyword-Value pairs accepted by a
     :class:`~simcado.commands.UserCommands` object
-    
+
     Returns
     -------
     fpas : list
@@ -247,19 +251,19 @@ def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32,
         len(fpas) == len(filter_names)
     grid : simcado.Source
         A :class:`Source` object containing the grids of stars
-    
+
     See Also
     --------
     :class:`~simcado.commands.UserCommands`
-    
+
     """
-    
+
     if isinstance(filter_names, str):
         filter_names = [filter_names]
-    
+
     if not isinstance(cmds, list):
         cmds = [cmds] * len(filter_names)
-        
+
     fpas = []
     grids = []
     for filt, cmd in zip(filter_names, cmds):
@@ -270,76 +274,76 @@ def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32,
         cmd["FPA_LINEARITY_CURVE"] = "none"
         cmd["FPA_CHIP_LAYOUT"] = "small"
         cmd.update(kwargs)
-        
+
         star_sep = cmd["SIM_DETECTOR_PIX_SCALE"] * 100
-        
+
         grid = sim.source.star_grid(100, mmin, mmax, filter_name=filt, separation=star_sep)
         grids += [grid]
-        
+
         hdus, (cmd, opt, fpa) = sim.run(grid,  filter_name=filt, cmds=cmd, return_internals=True)
         fpas += [fpa]
-        
+
     return fpas, grid
 
 
-def _get_limiting_mags(fpas, grid, exptimes, filter_names=["J", "H", "Ks"], 
+def _get_limiting_mags(fpas, grid, exptimes, filter_names=["J", "H", "Ks"],
                        mmin=22, mmax=32, AB_corrs=None, limiting_sigma=5):
     """
     Return the limiting magnitude(s) for filter(s) and exposure time(s)
-    
-    
+
+
     Parameters
     ----------
     fpas : list
-        The output from A list of :class:`Detector` objects with the grid of stars 
+        The output from A list of :class:`Detector` objects with the grid of stars
         for each filter
-    
+
     grid : simcado.Source
         The :class:`Source` object containing the grid of stars - used for the pixel
         positions of the stars
-    
+
     exptimes : array
         [s] An array of exposure times in seconds
-        
+
     filter_names : list
         A list of filters. See :func:`simcado.optics.get_filter_set`
-        
+
     mmin, mmax : float
         [mag] the minimum and maximum magnitudes in the grid of stars
-        
+
     AB_corrs : list
         [mag] A list of magnitude corrections to convert from Vega to AB magnitudes
-        
+
     limiting_sigma : float
-        [\sigma] The number of sigmas to use to define the limiting magnitude. 
+        [\sigma] The number of sigmas to use to define the limiting magnitude.
         Default is 5*sigma
-        
-        
+
+
     Returns
     -------
     mags_all : list
         [mag] A list of limiting magnitudes for each exposure time for each filter
         Dimensions are [n, m] where n is the number of filters and m is the number
         of exposure times passed
-    
-    
+
+
     """
-    
+
     from scipy import stats
-    
-    
+
+
     if AB_corrs is None:
         AB_corrs = np.zeros(len(fpas))
     if np.isscalar(AB_corrs):
         AB_corrs = [AB_corrs]*len(fpas)
-        
-        
+
+
     if isinstance(filter_names, str):
         filter_names = [filter_names]*len(fpas)
-        
+
     if np.isscalar(exptimes):
         exptimes = [exptimes]*len(fpas)
-    
+
     mags_all = []
     for fpa, filt, AB_corr in zip(fpas, filter_names, AB_corrs):
 
@@ -366,7 +370,7 @@ def _get_limiting_mags(fpas, grid, exptimes, filter_names=["J", "H", "Ks"],
                 bg[dw:-dw, dw:-dw] = 0
 
                 bgs  += [np.average(bg[bg!=0])]
-                nss  += [np.std(bg[bg!=0]) * np.sqrt(np.sum(bg!=0))]
+                nss  += [np.std(bg[bg!=0]) * np.sqrt(np.sum(bg==0))]
                 sigs += [np.sum(sig - bgs[-1])]
 
             nss  = np.array(nss)
@@ -385,58 +389,58 @@ def _get_limiting_mags(fpas, grid, exptimes, filter_names=["J", "H", "Ks"],
             lim_mags += [lim_mag]
             print(exptime, filt, lim_mag)
         mags_all += [lim_mags]
-    
+
     return mags_all
 
 
-def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H", "Ks"], 
+def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H", "Ks"],
                                  colors="bgrcymk", mmin=22, mmax=29,
                                  legend_loc=3, marker="+"):
     """
     Plots exposure time versus limiting magnitudes
-       
-    
+
+
     Parameters
     ----------
     exptimes : list, array
         [s] Exposure times corresponding to the signal-to-noise values
-    
+
     limiting_mags : array, list of array
         [mag] Limiting magnitudes for one, or more, filters for the given exposure times
         Dimensions are (1, n) for a single filter, or (m, n) for m filters
-        
+
     filter_names : list
         A list of m filters. See :func:`simcado.optics.get_filter_set`
-    
+
     colors : list
         The colours to use for dots in the plot
-        
+
     mmin, mmax : float
         The minimum and maximum magnitudes for the y axis
-        
+
     marker : str
         The matplotlib scatter marker key
-        
+
     legend_loc : int
         Location of the legend. If ``None`` is passed, no legend is plotted
-    
+
     """
 
     import matplotlib.pyplot as plt
-    
+
     if len(np.shape(limiting_mags)) == 1:
         limiting_mags = [limiting_mags]
     if filter_names is None:
         filter_names = ["Filter "+str(i) for i in range(np.shape(limiting_mags)[0])]
-    
+
     elif isinstance(filter_names, str):
         filter_names = [filter_names]*np.shape(limiting_mags)[0]
 
     exptimes = np.array(exptimes)
-    
-    
+
+
     fig = plt.gcf()
-    
+
     #ax = fig.add_axes([a_left, a_bottom, ax_width, ax_height])
     ax1 = fig.add_axes([0, 0, 1, 1])
 
@@ -445,7 +449,7 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H"
 
     if legend_loc is not None:
         plt.legend(loc=legend_loc, scatterpoints=1)
-        
+
     plt.xlabel("Exposure time [hours]")
     plt.ylabel("Limiting Magnitudes")
     plt.xlim(np.min(exptimes/3600)-0.1, np.max(exptimes/3600)+0.1)
@@ -468,83 +472,300 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names=["J", "H"
     plt.xlim(10, 1800); plt.ylim(mmin, mmax)
     plt.semilogx()
     plt.xlabel("Exposure time [sec]")
-    
-    
 
-def limiting_mags(exptimes=[1,60,3600,18000], filter_names=["J", "H", "Ks"], 
+
+
+def limiting_mags(exptimes=[1,60,3600,18000], filter_names=["J", "H", "Ks"],
                   AB_corrs=None, limiting_sigma=5,
-                  return_mags=True, make_graph=False, 
-                  mmin=22, mmax=31, 
+                  return_mags=True, make_graph=False,
+                  mmin=22, mmax=31,
                   cmds=None, **kwargs):
     """
     Return or plot a graph of the limiting magnitudes for MICADO
-    
-    
+
+
     Parameters
     ----------
     exptimes : array
         [s] Exposure times for which limiting magnitudes should be found
-    
+
     filter_names : list
         A list of filters. See :func:`simcado.optics.get_filter_set`
-    
+
     AB_corrs : list
         [mag] A list of magnitude corrections to convert from Vega to AB magnitudes
-        
+
     limiting_sigma : float
-        [\sigma] The number of sigmas to use to define the limiting magnitude. 
+        [\sigma] The number of sigmas to use to define the limiting magnitude.
         Default is 5*sigma
-    
+
     return_mags : bool
         If True (defualt), the limiting magnitude are returned
-    
+
     make_graph : bool
         If True (defualt), a graph of the limiting magnitudes vs exposure time is plotted
         Calls :func:`plot_exptime_vs_limiting_mag`
-        
+
     cmds : simcado.UserCommands
-        A custom set of commands for building the optical train    
-        
-    
+        A custom set of commands for building the optical train
+
+
     Optional Parameters
     -------------------
     Any Keyword-Value pairs accepted by a :class:`~simcado.UserCommands` object
-    
-    
+
+
     Returns
     -------
     mags_all : list
-        [mag] If ``return_mags=True``, returns a list of limiting magnitudes for 
+        [mag] If ``return_mags=True``, returns a list of limiting magnitudes for
         each exposure time for each filter
         Dimensions are [n, m] where n is the number of filters and m is the number
         of exposure times passed
-    
-    
+
+
     Notes
     -----
     Vega to AB = {"J" : 0.91 , "H" : 1.39 , "Ks" : 1.85}
-    
-    
+
+
     Examples
     --------
     :
         >>> # Set 30 logarithmic time bins between 1 sec and 5 hours
         >>> exptimes = np.logspace(0, np.log10(18000), num=30, endpoint=True)
-        >>> limiting_mags(exptimes=exptimes, filter_names=["J", "PaBeta"], 
+        >>> limiting_mags(exptimes=exptimes, filter_names=["J", "PaBeta"],
         ...               make_graph=False)
-    
+
     """
 
 
-    fpas, grid    = _make_snr_grid_fpas(filter_names, cmds=cmds, 
-                                        mmin=mmin, mmax=mmax, **kwargs)    
-    limiting_mags = _get_limiting_mags(fpas, grid, exptimes, filter_names, 
+    fpas, grid    = _make_snr_grid_fpas(filter_names, cmds=cmds,
+                                        mmin=mmin, mmax=mmax, **kwargs)
+    limiting_mags = _get_limiting_mags(fpas, grid, exptimes, filter_names,
                                        mmin=mmin, mmax=mmax, AB_corrs=AB_corrs,
                                        limiting_sigma=limiting_sigma)
-    
+
     if make_graph:
-        plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names, 
+        plot_exptime_vs_limiting_mag(exptimes, limiting_mags, filter_names,
                                      mmin=mmin, mmax=mmax)
-    
+
     if return_mags:
-        return limiting_mags    
+        return limiting_mags
+
+
+
+def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
+              aperture_radius=4, cmds=None, **kwargs):
+    """
+    Get the signal to noise ratios for a series of magnitudes and exposure times
+
+    This function "observes" a grid of 100 stars equally spaced in the range [``mmin``, ``mmax``]
+    The stars are observed for all times given in ``exptime`` and the SNR for each star is returned
+    for each exposure time.
+
+    Parameters
+    ----------
+    exptimes : float, list
+        [s] exposure times for the stars
+
+    mmin, mmax
+        [mag] minimum and maximum magnitudes tor the SNR curve
+
+    filter_name : str
+        The name of a filter installed in SimCADO - see ``:func:~simcado.optics.get_filter_set()``
+
+    aperture_radius : int
+        [pixels] The radius of the aperture places around each star
+
+    cmds : UserCommands object
+        Used to control the observation fo the grid of stars
+
+
+    Optional Parameters
+    -------------------
+    **kwargs : Anything that you want to pass to a ``UserCommands`` object
+
+
+    Returns
+    -------
+    snr_fits : list of arrays
+        The best fit to the Magnitude-SNR curve for each entry in ``exptimes``
+
+    mags : np.ndarray
+        [mag] The magnitudes that the SNR values correspond to. Generally 100 values
+        in a np.linspace range between ``mmin`` and ``mmax``
+
+
+    See Also
+    --------
+    ``:func:~simcado.optics.get_filter_set()``
+
+    """
+
+    if isinstance(exptimes, (float, int)):
+        exptimes = [exptimes]
+
+    paranal_bg = {"J" : 16.5, "H" : 14.4, "Ks" : 13.6}
+
+    default_cmds = sim.UserCommands()
+    default_cmds["ATMO_EC"] = "none"
+    default_cmds["FPA_USE_NOISE"] = "no"
+    if filter_name in paranal_bg.keys():
+        default_cmds["ATMO_BG_MAGNITUDE"] = paranal_bg[filter_name]
+
+    if cmds is not None:
+        default_cmds.update(cmds)
+
+    default_cmds.update(kwargs)
+
+    q = sim.simulation._make_snr_grid_fpas(filter_names=[filter_name],
+                                           mmin=mmin, mmax=mmax, cmds=default_cmds)
+    fpa, src = q[0][0], q[1]
+
+    mags = np.linspace(mmin, mmax, 100)
+
+    r = aperture_radius
+    r_out = 48
+    r_width = 5
+
+    snr_fits = []
+    for exptime in exptimes:
+
+        hdu = fpa.read_out(OBS_EXPTIME=exptime)
+        data = hdu[0].data
+
+        sq_aps = []
+        bg_stats = []
+
+        for i in range(len(src.x_pix)):
+
+            x, y = int(src.x_pix[i]), int(src.y_pix[i])
+            sq_ap = np.copy(data[y-r:y+r+1, x-r:x+r+1])
+            sq_aps += [sq_ap]
+
+            bg_ap = np.copy(data[y-r_out:y+r_out+1, x-r_out:x+r_out+1])
+            bg_ap[r_width:-r_width, r_width:-r_width] = 0
+
+            av, med, std = sigma_clipped_stats(bg_ap[bg_ap != 0])
+            bg_stats += [[av, med, std]]
+
+        RON    = default_cmds["FPA_READOUT_MEDIAN"]
+        bg_med = np.array([s[1] for s in bg_stats])
+        bg_std = np.array([s[0] for s in bg_stats])
+        n_pix  = (r*2+1)**2
+
+        raw = np.array([np.sum(s) for s in sq_aps])
+        sig = raw - bg_med * n_pix
+
+        sig_shot    = np.sqrt(sig)
+        bg_shot     = np.sqrt(bg_med * n_pix)
+        bg_shot_std = np.sqrt(n_pix) * bg_std
+        e_shot      = np.sqrt(n_pix  * RON**2)
+
+        tot_err = np.sqrt(sig_shot**2 + bg_shot**2 + e_shot**2)
+
+        snr = sig / tot_err
+        mask = snr > 10
+
+        log_snr = np.log10(snr[mask])
+        p = np.polyfit(mags[mask], log_snr, 2)
+        snr_fit = 10**np.polyval(p, mags)
+
+        snr_fits += [snr_fit]
+
+    return snr_fits, mags
+
+
+
+def plot_snr_curve(snr_curve, mags, snr_markers=[5, 10, 250]):
+    """
+    Plots a single ``snr_curve()`` result
+
+    Parameters
+    ----------
+    snr_curve : np.ndarray
+        A single array from the result of ``snr_curve()`` which holds the SNR for
+        each magnitude given in ``mags`` for the corresponding exposure time
+
+    mags : np.ndarray
+        [mag] An array of magnitudes generated by ``snr_curve()``
+
+    snr_markers : list
+        The SNR that should be emphasised on the graph. Default is [5,10,250]
+
+
+    Example
+    -------
+
+        >>> from simcado.simulation import snr_curve, plot_snr_curve
+        >>> snrs, mag = snr_curve(exptimes=[60, 600, 3600], filter_name="J")
+        >>> plot_snr_curve(snrs[-1], mag, snr_Markers=[5,10,50,250])
+
+
+    """
+    plt.plot(mags, snr_curve, "b")
+    #plt.plot(x, yfit, "k")
+    plt.semilogy()
+
+    mags_markers = np.interp(snr_markers[::-1], snr_curve[::-1], mags[::-1])[::-1]
+
+    for snr, m, c in zip(snr_markers, mags_markers, "ryg"):
+        plt.axhline(snr, c=c)
+        plt.axvline(m, c=c)
+        plt.text(mags[2], 1.1*snr, str(int(snr))+"$\sigma$", color=c)
+        plt.text(m-0.1, 1.3, str(m)[:4], color=c, rotation=90, verticalalignment="bottom", horizontalalignment="right")
+
+    plt.ylim(ymin=1)
+
+    plt.xlabel("Magnitude")
+    plt.ylabel("Signal to Noise Ratio")
+
+
+
+def plot_snr_rainbow(exptimes, mags, snrs, snr_levels=[5,10,250], text_height=None):
+    """
+    Plot a nice rainbow curve of the SNR as a function of exposure time and magnitude
+
+    Basically accepts the output from ''func::~simcado.simulation.snr_curve()''
+
+    Parameters
+    ----------
+    exptimes : list, np.ndarray
+        Exposure times, in whatever unit you want them to be displayed
+
+    mags : list, np.array
+        [mag] A list of the magnitudes for which the SNR has been calculated
+
+    snrs : 2D np.ndarray
+        A 2D (n,m) array where n is the length of ''exptimes'' and m is the length of ''mags''
+
+    snr_levels : list, np.ndarray
+        Which contours should be plotted on the graph. Default is [5,10,250] sigma.
+
+    text_height : list, np.ndarray
+       [mag] The height at which the contour labels should be plotted. Default is ''None''.
+
+
+    Returns
+    -------
+    fig : matplotlib.Figure object
+
+
+    """
+
+    fig = plt.figure(figsize=(10,5))
+    plt.contour(exptimes, mags, np.array(snrs).T, snr_levels, colors=list("krygbkkkkkkkk"))
+
+    lvls = list(range(1, 10)) + list(range(10, 100, 10)) + list(range(100, 1001, 100))
+    plt.contourf(exptimes, mags, np.array(snrs).T, levels=lvls, norm=LogNorm(),
+                            alpha=0.5, cmap="rainbow_r")
+    clb = plt.colorbar()
+    clb.set_label("Signal to Noise Ratio ($\sigma$)")
+
+    if text_height is not None:
+        for m, s in zip(text_height, snr_levels[::-1]):
+            plt.text(3, m , str(s)+"$\sigma$", rotation=10)
+
+    plt.grid()
+    plt.semilogx()
