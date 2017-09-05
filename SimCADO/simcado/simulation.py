@@ -116,81 +116,6 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         return hdu
 
 
-def snr(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
-    """
-    Return the signal-to-noise for a list of magnitudes in a specific filter
-
-    Uses the standard setup for MICADO and calculates the signal-to-noise
-    ratio or a list of magnitudes in ``mags`` in a certain broadband
-    ``filter_name``.
-    A custom UserCommands object can also be used. Note that this runs a basic
-    SimCADO simulation len(mags) times, so execution time can be many minutes.
-
-    Parameters
-    ----------
-    mags : array-like
-        [vega mags] The magnitude(s) of the source(s)
-
-    filter_name : str, optional
-        Default is "Ks". Acceptable broadband filters are UBVRIzYJHKKs
-
-    exptime : float
-        [s] Total exposure time length. Default is 18000s (5 hours)
-
-    ndit : int, optional
-        Number of readouts during the period ``exptime``. Default is 1
-
-    cmds : simcado.UserCommands, optional
-        A custom set of commands for the simulations. If not specified, SimCADO
-        uses the default MICADO parameters
-
-    Returns
-    -------
-    sn : np.ndarray
-        An array of signal-to-noise ratios for the magnitudes given
-
-    """
-    ## TODO: What about argument cmds? (OC)
-
-    warnings.warn("""This is in the process of being depreciated.
-                     Use 'snr_curve()' until SimCADO v0.5 is released""")
-
-    if cmds is None:
-        cmd = sim.UserCommands()
-    else:
-        cmd = cmds
-    cmd["OBS_EXPTIME"] = total_exptime / ndit
-    cmd["OBS_NDIT"] = ndit
-    cmd["INST_FILTER_TC"] = filter_name
-
-    opt = sim.OpticalTrain(cmd)
-
-    if type(mags) not in (list, tuple, np.ndarray):
-        mags = [mags]
-
-    sn = []
-    for mag in mags:
-        src = sim.source.star(mag)
-
-        fpa = sim.Detector(cmd)
-        src.apply_optical_train(opt, fpa, chips=0)
-        hdu = fpa.read_out()
-
-        im = hdu[0].data
-        cx, cy = np.array(im.shape) // 2
-        n = 5
-        sig = np.sum(im[cx-n:cx+n+1, cy-n:cy+n+1])
-        av = np.average(im[:200, :50])
-        # std = np.std(im[:200, :50])    ## unused (OC)
-
-        n_pix = (2*n+1)**2
-        only_sig = sig - av*n_pix
-        only_noise = av# * np.sqrt(n_pix)  ## TODO: incorrect (OC)
-
-        sn += [only_sig/only_noise]
-
-    return np.array(sn)
-
 
 def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
                          n = 0.3, mode="wide"):
@@ -589,7 +514,7 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
 
     Returns
     -------
-    snr_fits : list of arrays
+    snr_array : list of arrays
         The best fit to the Magnitude-SNR curve for each entry in ``exptimes``
 
     mags : np.ndarray
@@ -629,7 +554,7 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
     r_out = 48
     r_width = 5
 
-    snr_fits = []
+    snr_array = []
     for exptime in exptimes:
 
         hdu = fpa.read_out(OBS_EXPTIME=exptime)
@@ -665,20 +590,20 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
 
         tot_err = np.sqrt(sig_shot**2 + bg_shot**2 + e_shot**2)
 
-        snr = sig / tot_err
+        snr_val = sig / tot_err
         mask = snr > 10
 
-        log_snr = np.log10(snr[mask])
+        log_snr = np.log10(snr_val[mask])
         p = np.polyfit(mags[mask], log_snr, 2)
         snr_fit = 10**np.polyval(p, mags)
 
-        snr_fits += [snr_fit]
+        snr_array += [snr_fit]
 
-    return snr_fits, mags
+    return snr_array, mags
 
 
 
-def plot_snr_curve(snr_curve, mags, snr_markers=[5, 10, 250]):
+def plot_snr_curve(snr_array, mags, snr_markers=[5, 10, 250]):
     """
     Plots a single ``snr_curve()`` result
 
@@ -704,16 +629,16 @@ def plot_snr_curve(snr_curve, mags, snr_markers=[5, 10, 250]):
 
 
     """
-    plt.plot(mags, snr_curve, "b")
+    plt.plot(mags, snr_array, "b")
     #plt.plot(x, yfit, "k")
     plt.semilogy()
 
-    mags_markers = np.interp(snr_markers[::-1], snr_curve[::-1], mags[::-1])[::-1]
+    mags_markers = np.interp(snr_markers[::-1], snr_array[::-1], mags[::-1])[::-1]
 
-    for snr, m, c in zip(snr_markers, mags_markers, "ryg"):
-        plt.axhline(snr, c=c)
+    for snr_val, m, c in zip(snr_markers, mags_markers, "ryg"):
+        plt.axhline(snr_val, c=c)
         plt.axvline(m, c=c)
-        plt.text(mags[2], 1.1*snr, str(int(snr))+"$\sigma$", color=c)
+        plt.text(mags[2], 1.1*snr_val, str(int(snr))+"$\sigma$", color=c)
         plt.text(m-0.1, 1.3, str(m)[:4], color=c, rotation=90, verticalalignment="bottom", horizontalalignment="right")
 
     plt.ylim(ymin=1)
@@ -723,7 +648,7 @@ def plot_snr_curve(snr_curve, mags, snr_markers=[5, 10, 250]):
 
 
 
-def plot_snr_rainbow(exptimes, mags, snrs, snr_levels=[5,10,250], text_height=None):
+def plot_snr_rainbow(exptimes, mags, snr_array, snr_levels=[5,10,250], text_height=None):
     """
     Plot a nice rainbow curve of the SNR as a function of exposure time and magnitude
 
@@ -737,7 +662,7 @@ def plot_snr_rainbow(exptimes, mags, snrs, snr_levels=[5,10,250], text_height=No
     mags : list, np.array
         [mag] A list of the magnitudes for which the SNR has been calculated
 
-    snrs : 2D np.ndarray
+    snr_array : 2D np.ndarray
         A 2D (n,m) array where n is the length of ''exptimes'' and m is the length of ''mags''
 
     snr_levels : list, np.ndarray
@@ -755,10 +680,10 @@ def plot_snr_rainbow(exptimes, mags, snrs, snr_levels=[5,10,250], text_height=No
     """
 
     fig = plt.figure(figsize=(10,5))
-    plt.contour(exptimes, mags, np.array(snrs).T, snr_levels, colors=list("krygbkkkkkkkk"))
+    plt.contour(exptimes, mags, np.array(snr_array).T, snr_levels, colors=list("krygbkkkkkkkk"))
 
     lvls = list(range(1, 10)) + list(range(10, 100, 10)) + list(range(100, 1001, 100))
-    plt.contourf(exptimes, mags, np.array(snrs).T, levels=lvls, norm=LogNorm(),
+    plt.contourf(exptimes, mags, np.array(snr_array).T, levels=lvls, norm=LogNorm(),
                             alpha=0.5, cmap="rainbow_r")
     clb = plt.colorbar()
     clb.set_label("Signal to Noise Ratio ($\sigma$)")
@@ -769,3 +694,189 @@ def plot_snr_rainbow(exptimes, mags, snrs, snr_levels=[5,10,250], text_height=No
 
     plt.grid()
     plt.semilogx()
+
+
+def mags_from_snr_array(snr_val, snr_array, mags):
+    """
+    Returns magnitudes that will have a certain snr from an array returned by ``snr_curve()``
+
+    Note - this is all good, as long as you know the exposure times that correspond to the SNR values
+
+    Parameters
+    ----------
+    snr_val : float
+        The desired SNR contour
+
+    snr_array, mags : np.ndarray
+        The outputs from ``snr_curve()``
+
+    """
+
+    mags_fit = [np.interp(snr_val, s[::-1], mags[::-1]) for s in snr_array]
+
+    return mags_fit
+
+
+def snr(exptimes, mags, filter_name="Ks", cmds=None, **kwargs):
+    """
+    Returns the signal-to-noise ratio(s) for given exposure times and magnitudes
+
+    Each time this runs, simcado runs a full simulation on a grid of stars. Therefore
+    if you are interested in the SNR for many difference expoure times and a range of
+    magnitudes, it is faster to pass all of them at once to this function. See the
+    exmaple section below.
+
+    Parameters
+    ----------
+    exptimes : float, list
+        [s] A single or multiple exposure times
+
+    mags : float, list
+        [mag] A single or multiple magnitudes
+
+    filter_name : str, optional
+        The name of the filter to be used - See :func:`~simcado.optics.get_filter_set`
+        The default is "Ks"
+
+    cmds : UserCommands object, optional
+        Extra commands to be passed to :func:`simcado.simulation.run`.
+
+    Optional Parameters
+    -------------------
+    aperture_radius
+        [pixels] Default is 4. See :func:`.snr_curve`
+
+    **kwargs : Any keyword-value pairs to be passed to the internal :class:`.UserCommands` object
+
+
+    Returns
+    -------
+    snr_return : list
+        A list of SNR values for each exposure time and each magnitude
+
+    Examples
+    --------
+
+    A basic example of wanting the SNR for a Ks=24 star in a 1 hr observation
+
+        >>> snr(exptimes=3600, mags=24)
+        [72.69760133863036]
+
+    However this is slow because it runs a full simulation. Hence it is better to do more at once
+    If we want the SNR for the range of magnitudes J=[15, 20, 25, 30] for a 1 hr observation:
+
+        >>> snr(exptimes=3600, mags=[15,20,25,30], filter_name="J")
+        [array([  2.35125027e+04,   2.74921916e+03,   8.97552604e+01,
+          8.18183097e-01])]
+
+    Now if we were interested in different exposure times, say 10 minutes and 5 hours, for a
+    24th magnitude star in the narrow band Br$\gamma$ filter:
+
+        >>> # Chekc the name of the Brackett Gamma filter
+        >>> [name for name in simcado.optics.get_filter_set() if "Br" in name]
+        ['BrGamma']
+        >>> snr(exptimes=[600, 18000], mags=24, filter_name="BrGamma")
+        [8.016218764390803, 42.71569256185457]
+
+    """
+
+
+    if isinstance(exptimes, (int, float)):
+        exptimes = np.array([exptimes])
+
+    if isinstance(mags, (int, float)):
+        mmin, mmax = mags - 2, mags + 2
+    elif isinstance(mags, (tuple, list, np.ndarray)):
+        mmin, mmax = np.min(mags), np.max(mags)
+    else:
+        raise ValueError("Couldn't use type(mags): "+str(type(mags)))
+
+    snr_array, mags_array = snr_curve(exptimes, mmin=mmin, mmax=mmax,
+                                      filter_name=filter_name, cmds=cmds, **kwargs)
+
+    snr_return = []
+    for i in range(len(exptimes)):
+        snr_i = snr_array[i]
+        snr_fit = np.interp(mags, mags_array, snr_i)
+        snr_return += [snr_fit]
+
+    return snr_return
+
+
+
+
+
+# def snr_old(mags, filter_name="Ks", total_exptime=18000, ndit=1, cmds=None):
+    # """
+    # Return the signal-to-noise for a list of magnitudes in a specific filter
+
+    # Uses the standard setup for MICADO and calculates the signal-to-noise
+    # ratio or a list of magnitudes in ``mags`` in a certain broadband
+    # ``filter_name``.
+    # A custom UserCommands object can also be used. Note that this runs a basic
+    # SimCADO simulation len(mags) times, so execution time can be many minutes.
+
+    # Parameters
+    # ----------
+    # mags : array-like
+        # [vega mags] The magnitude(s) of the source(s)
+
+    # filter_name : str, optional
+        # Default is "Ks". Acceptable broadband filters are UBVRIzYJHKKs
+
+    # exptime : float
+        # [s] Total exposure time length. Default is 18000s (5 hours)
+
+    # ndit : int, optional
+        # Number of readouts during the period ``exptime``. Default is 1
+
+    # cmds : simcado.UserCommands, optional
+        # A custom set of commands for the simulations. If not specified, SimCADO
+        # uses the default MICADO parameters
+
+    # Returns
+    # -------
+    # sn : np.ndarray
+        # An array of signal-to-noise ratios for the magnitudes given
+
+    # """
+    # TODO: What about argument cmds? (OC)
+
+    # warnings.warn("""This is in the process of being depreciated.
+                     # Use 'snr_curve()' until SimCADO v0.5 is released""")
+
+    # if cmds is None:
+        # cmd = sim.UserCommands()
+    # else:
+        # cmd = cmds
+    # cmd["OBS_EXPTIME"] = total_exptime / ndit
+    # cmd["OBS_NDIT"] = ndit
+    # cmd["INST_FILTER_TC"] = filter_name
+
+    # opt = sim.OpticalTrain(cmd)
+
+    # if type(mags) not in (list, tuple, np.ndarray):
+        # mags = [mags]
+
+    # sn = []
+    # for mag in mags:
+        # src = sim.source.star(mag)
+
+        # fpa = sim.Detector(cmd)
+        # src.apply_optical_train(opt, fpa, chips=0)
+        # hdu = fpa.read_out()
+
+        # im = hdu[0].data
+        # cx, cy = np.array(im.shape) // 2
+        # n = 5
+        # sig = np.sum(im[cx-n:cx+n+1, cy-n:cy+n+1])
+        # av = np.average(im[:200, :50])
+        # std = np.std(im[:200, :50])    ## unused (OC)
+
+        # n_pix = (2*n+1)**2
+        # only_sig = sig - av*n_pix
+        # only_noise = av# * np.sqrt(n_pix)  ## TODO: incorrect (OC)
+
+        # sn += [only_sig/only_noise]
+
+    # return np.array(sn)
