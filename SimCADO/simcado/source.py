@@ -241,7 +241,7 @@ class Source(object):
                 self.read(filename)
             else:
                 self._from_cube(filename)
-        elif not None in (lam, spectra, x, y, ref):
+        elif not any(elem is None for elem in (lam, spectra, x, y, ref)):
             self._from_arrays(lam, spectra, x, y, ref, weight)
         else:
             raise ValueError("Trouble with inputs. Could not create Source")
