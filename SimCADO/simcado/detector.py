@@ -82,6 +82,7 @@ Astropy ``HDUList``. The ``HDUList`` is then written to disk.
 
 import os
 import sys
+from datetime import datetime
 
 import warnings
 #import logging  # unused
@@ -326,6 +327,10 @@ class Detector(object):
         hdulist = fits.HDUList()
         if len(ro_chips) > 1:
             primary_hdu = fits.PrimaryHDU()
+
+            primary_hdu['DATE'] = datetime.now().isoformat()
+
+
             for key in self.cmds.cmds:
                 val = self.cmds.cmds[key]
 
