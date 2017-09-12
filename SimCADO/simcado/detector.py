@@ -358,7 +358,16 @@ class Detector(object):
                                          "Chip ID")
 
             thishdu.header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
+
+            # Primary WCS for sky coordinates
             thishdu.header.extend(self.chips[i].wcs.to_header())
+
+            # Secondary WCS for focal plane coordinates
+            try:
+                thishdu.header.extend(self.chips[i].wcs_fp.to_header(key='A'))
+            except AttributeError:
+                print("No WCS_FP!")
+                pass
 
             thishdu.header["BUNIT"] = ("ADU", "")
             thishdu.header["EXPTIME"] = (self.exptime, "[s] Exposure time")
