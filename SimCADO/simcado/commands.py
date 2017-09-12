@@ -472,6 +472,9 @@ class UserCommands(object):
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_small.dat")
+        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "tiny":
+            self.cmds["FPA_CHIP_LAYOUT"] = \
+                os.path.join(self.pkg_dir, "data", "FPA_chip_layout_tiny.dat")
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("centre", "central",
                                                       "middle", "center"):
             self.cmds["FPA_CHIP_LAYOUT"] = \

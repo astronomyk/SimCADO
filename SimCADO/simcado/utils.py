@@ -499,3 +499,10 @@ def seq(start, stop, step=1):
             return np.minimum(sequence, stop)
         else:
             return np.maximum(sequence, stop)
+
+
+def add_mags(mags):
+    """
+    Returns a combined magnitude for a group of objects with ``mags``
+    """
+    return -2.5*np.log10((10**(-0.4*np.array(mags))).sum())
