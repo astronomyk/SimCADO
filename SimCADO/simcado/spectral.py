@@ -611,7 +611,7 @@ class BlackbodyCurve(EmissionCurve):
                 (self.params["pix_res"] * u.arcsec)**2
         # ph is in 1/s
         ph = E / (c.h * c.c / (lam * u.um))
-        val = ph.si
+        val = ph.si.value
 
         super(BlackbodyCurve, self).__init__(lam=lam, val=val, units="1/s",
                                              **self.params)
