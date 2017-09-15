@@ -210,9 +210,9 @@ class Detector(object):
         if small_fov:
             print("Safety switch is on - Detector(..., small_fov='True')")
             self.layout = ioascii.read(
-                """#  id    x_cen    y_cen   x_len   y_len   angle    gain
-                   #           mm       mm   pixel   pixel     deg  e-/ADU
-                       0        0        0    1024    1024       0.      1.""")
+                """#  id    x_cen    y_cen   x_len   y_len   pixsize  angle    gain
+                   #           mm       mm   pixel   pixel        mm    deg  e-/ADU
+                       0        0        0    1024    1024     0.015      0.      1.""")
         else:
             try:
                 self.layout = ioascii.read(self.cmds["FPA_CHIP_LAYOUT"])
@@ -328,7 +328,7 @@ class Detector(object):
         if len(ro_chips) > 1:
             primary_hdu = fits.PrimaryHDU()
 
-            primary_hdu['DATE'] = datetime.now().isoformat()
+            primary_hdu.header['DATE'] = datetime.now().isoformat()
 
 
             for key in self.cmds.cmds:
