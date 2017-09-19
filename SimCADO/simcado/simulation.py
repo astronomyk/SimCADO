@@ -9,7 +9,7 @@ import numpy as np
 
 import simcado as sim
 
-__all__ = ["run", "snr", "check_chip_positions"]
+__all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]
 
 def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         detector_layout="small", filename=None, return_internals=False,
