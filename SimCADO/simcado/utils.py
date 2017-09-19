@@ -443,9 +443,93 @@ def zenith_dist_to_airmass(zenith_dist):
     """
     return 1. / np.cos(np.deg2rad(zenith_dist))
 
-    
+
 def add_mags(mags):
     """
     Returns a combined magnitude for a group of objects with ``mags``
     """
     return -2.5*np.log10((10**(-0.4*np.array(mags))).sum())
+
+
+def dist_mod_from_distance(d):
+    """
+    mu = 5 * np.log10(d) - 5
+    """
+    
+    mu = 5 * np.log10(d) - 5
+    return mu
+
+
+def distance_from_dist_mod(mu):
+    """
+    d = 10**(1 + mu / 5)
+    """
+    
+    d = 10**(1 + mu / 5)
+    return d
+    
+    
+def telescope_diffraction_limit(aperture_size, wavelength, distance=None):
+    """
+    Returns the diffraction limit of a telescope
+    
+    Parameters
+    ----------
+    aperture_size : float
+        [m] The diameter of the primary mirror
+        
+    wavelength : float
+        [um] The wavelength for diffarction
+        
+    distance : float, optional
+        Default is None. If ``distance`` is given, the transverse distance for
+        the diffraction limit is returned in the same units as ``distance``
+    
+    
+    Returns
+    -------
+    diff_limit : float
+        [arcsec] The angular diffraction limit. 
+        If distance is not None, diff_limit is in the same units as distance
+    
+    """
+    
+    diff_limit = (((wavelength*u.um)/(aperture_size*u.m))*u.rad).to(u.arcsec).value
+    
+    if distance is not None:
+        diff_limit *= distance / u.pc.to(u.AU)
+    
+    return diff_limit
+    
+    
+def transverse_distance(angle, distance):
+    """
+    Turn an angular distance into a proper transverse distance
+    
+    Parameters
+    ----------
+    angle : float
+        [arcsec] The on-sky angle
+        
+    distance : float
+        The distance to the object. Units are arbitary
+        
+    Returns
+    -------
+    trans_distance : float
+        proper transverse distance. Has the same Units as ``distance``
+    
+    """
+    
+    trans_distance = angle * distance * u.AU.to(u.pc)
+    
+    return trans_distance
+
+    
+def angle_in_arcseconds(distance, width):
+    """
+    Returns the angular distance of an object in arcseconds. Units must be consistent
+    """
+    
+    return np.arctan2(width, distance)*u.rad.to(u.arcsec)
+    
