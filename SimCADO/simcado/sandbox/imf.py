@@ -8,7 +8,11 @@ from scipy.signal import fftconvolve
 from astropy.io import fits, ascii
 from astropy.stats import sigma_clipped_stats
 from astropy.table import vstack, hstack, Table
-from photutils import DAOStarFinder
+
+try:
+    from photutils import DAOStarFinder
+except:
+    pass
 
 import simcado as sim
 
