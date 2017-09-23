@@ -8,7 +8,11 @@ from scipy.signal import fftconvolve
 from astropy.io import fits, ascii
 from astropy.stats import sigma_clipped_stats
 from astropy.table import vstack, hstack, Table
-from photutils import DAOStarFinder
+
+try:
+    from photutils import DAOStarFinder
+except:
+    pass
 
 import simcado as sim
 
@@ -102,7 +106,7 @@ def binned_clipped_stats(x, y, bins, **kwargs):
 
 
 
-def power_law(alphas, lims, ddex=0.1):
+def power_law(alphas, lims, ddex=0.1, scale_factors=None):
     """
     Returns
 
@@ -117,17 +121,29 @@ def power_law(alphas, lims, ddex=0.1):
         to the first entry of n pair.
         E.g. [[0, 1], [1, 10]]
 
-
+    ddex : float
+        The resolution of the returned  curve_fit
+        
+    scale_factors : list
+        A list of scaling factors for the parts of various parts of the curve
+        len(scale_factors) must be equal to len(alphas)
+        
+        
     Returns
     -------
-    x, y
+    x, y : np.ndarray
+        x and y coordinates for the combined power law curve
 
 
     """
 
+    if scale_factors is None:
+        scale_factors = [1]*len(alphas)
+    
     yy = []
     xx = []
-    for a, lim in zip(alphas, lims):
+    ff = []
+    for a, lim, sf in zip(alphas, lims, scale_factors):
         n_bins = np.int((np.log10(lim[1]) - np.log10(lim[0])) / ddex) + 1
 
         xe = np.logspace(np.log10(lim[0]), np.log10(lim[1]), n_bins)
@@ -137,19 +153,25 @@ def power_law(alphas, lims, ddex=0.1):
         yc = xc**a
         yy += [yc]
         xx += [xc]
-
+        ff += [sf]*len(xc)
+        
     for i in range(1, len(yy)):
         f = yy[i-1][-1] / yy[i][0]
         yy[i] *= f
 
     x = np.concatenate(xx)
-    y  = np.concatenate(yy)
-
+    y = np.concatenate(yy)
+    f = np.array(ff)
+    
+    y *= f
+    y /= y.sum()
+    
     return x, y
 
 
 def imf_population(mass=1000, ddex=0.01, alphas=[0.3, 1.3, 2.3],
-                   lims=[[1E-3, 0.08], [0.08, 0.5], [0.5, 200]]):
+                   lims=[[1E-3, 0.08], [0.08, 0.5], [0.5, 200]],
+                   scale_factors=[0.3, 1, 1]):
     """
     Returns a random list of masses based on a broken power law distribution
 
@@ -169,7 +191,10 @@ def imf_population(mass=1000, ddex=0.01, alphas=[0.3, 1.3, 2.3],
         The x-axis limits of each of the sections of the broken power law
         Default is for a Kroupa IMF
 
-
+    scale_factors : list
+        To take into account the Brown Dwarf desert. Defaults are [0.3, 1, 1]
+        
+        
     Returns
     -------
     masses : list
@@ -179,7 +204,7 @@ def imf_population(mass=1000, ddex=0.01, alphas=[0.3, 1.3, 2.3],
 
 
     alphas = 1 - np.array(alphas)
-    mcs, ns = power_law(alphas, lims, ddex)
+    mcs, ns = power_law(alphas, lims, ddex, scale_factors)
 
     ns /= np.sum(ns)
 
@@ -570,7 +595,8 @@ def iter_psf_photometry(image, psf, radius, n_steps=5, **kwargs):
     sigma_bins : array
         The sigma bins for setting
         
-        
+    verbose : bool
+    
     Returns
     -------
     results : astropy.Table
@@ -599,6 +625,10 @@ def iter_psf_photometry(image, psf, radius, n_steps=5, **kwargs):
         daofind = DAOStarFinder(fwhm=2.0, threshold=nsig*std)
         sources = daofind(new_im - median)
 
+        if "verbose" in kwargs.keys():
+            if kwargs["verbose"]:
+                print("Found "+str(len(sources))+" sources above "+str(nsig)+"sigma")
+            
         xs, ys, peaks = sources["ycentroid"], sources["xcentroid"], sources["peak"]
         ii = np.argsort(peaks)[::-1]
 

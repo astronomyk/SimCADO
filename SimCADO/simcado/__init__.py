@@ -22,7 +22,7 @@ from . import source
 
 #from . import optics_utils
 #from . import defaults
-from . import simulation
+from . import simulation    
 
 from .version import version as __version__
 
@@ -42,6 +42,11 @@ from .detector import install_noise_cube
 
 from os.path import join
 __data_dir__ = join(__pkg_dir__, "data")
+
+
+# import the experimental stuff
+from .sandbox import imf
+
 
 
 logging.basicConfig(filename='simcado.log', filemode='w', level=logging.DEBUG,

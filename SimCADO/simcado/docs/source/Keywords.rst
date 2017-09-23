@@ -193,7 +193,7 @@ Detector parameters
     FPA_DEAD_PIXELS         1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
     FPA_DEAD_LINES          1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
     
-    FPA_CHIP_LAYOUT         wide                    # ["small", "centre", "wide", "zoom", <filename>] description of the chip layout on the detector array.
+    FPA_CHIP_LAYOUT         wide                    # ["tiny", "small", "centre", "wide", "zoom", <filename>] description of the chip layout on the detector array.
     FPA_PIXEL_READ_TIME     1E-5                    # [s] read time for y pixel - typically ~10 us
     FPA_READ_OUT_SCHEME     double_corr             # "double_corr", "up-the-ramp", "fowler"
     

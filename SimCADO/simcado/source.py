@@ -115,8 +115,10 @@ from .utils import __pkg_dir__
 
 __all__ = ["Source",
            "star", "stars", "cluster",
+           "spiral", "spiral_profile", "elliptical", "sersic_profile"
            "source_from_image",
            "star_grid", "empty_sky", "SED",
+           "sie_grad", "apply_grav_lens"
            "get_SED_names",
            "scale_spectrum", "scale_spectrum_sb",
            "flat_spectrum", "flat_spectrum_sb",
@@ -1502,13 +1504,18 @@ def zero_magnitude_photon_flux(filter_name):
     if isinstance(filter_name, TransmissionCurve):
         filter_name = filter_name.params["filename"]
 
-    if not os.path.exists(os.path.join(__pkg_dir__, "data", filter_name)):
+    if os.path.exists(filter_name):
+        fname = filter_name
+    elif os.path.exists(os.path.join(__pkg_dir__, "data", filter_name)):
+        fname = os.path.join(__pkg_dir__, "data", filter_name)
+    elif os.path.join(__pkg_dir__, "data",
+                             "TC_filter_" + filter_name + ".dat"):
         fname = os.path.join(__pkg_dir__, "data",
                              "TC_filter_" + filter_name + ".dat")
-        if not os.path.exists(fname):
-            raise ValueError("File " + fname + " does not exist")
     else:
-        fname = filter_name
+            raise ValueError("File " + fname + " does not exist")
+    
+    
 
     # Outdated
     # if filter_name not in "UBVRIYzJHKKs":
@@ -2381,6 +2388,8 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
 
     if isinstance(filter_name, TransmissionCurve):
         filt = filter_name
+    elif os.path.exists(filter_name):
+        filt = TransmissionCurve(filename=filter_name)
     else:
         filt = get_filter_curve(filter_name)
 

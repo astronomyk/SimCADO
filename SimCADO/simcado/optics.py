@@ -276,7 +276,7 @@ class OpticalTrain(object):
 
         # see Rics email from 22.11.2016
         wfe = self.cmds["INST_TOTAL_WFE"]
-        lam = np.arange(0.3, 3.0)
+        lam = np.arange(0.3, 3.0, 0.001)
         val = np.exp(-(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2)
         self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam,
                                                                      val=val)
@@ -361,6 +361,9 @@ class OpticalTrain(object):
         scope_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
                                         mirr_list["Inner"]**2)
 
+                                        
+        if "Temp" in mirr_list.colnames:
+            self.cmds["SCOPE_TEMP"] = mirr_list["Temp"][0]
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
         self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,

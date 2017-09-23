@@ -86,7 +86,7 @@ def _line_blur(arr, shift, kernel="gaussian", angle=0):
               'linear' - shift is the length of the tracking blur with all
                          positions weighted equally, approximating no tracking
     - angle: [deg] the angle between image up and the zenith
-    
+
     """
 
     # sample the shift at least every half pixel
@@ -141,6 +141,28 @@ def _rotate_blur(arr, angle, kernel="gaussian"):
     return tmp_arr
 
 
+def rotate_blur(image, angle):
+    """
+    Rotates and coadds an image over a given angle
+
+    ..todo:
+        Replace the function _rotate_blur in simcado.spatial with this one
+
+    """
+
+    edge_pixel_angle = (np.arctan2(1, (psf_s.shape[0] // 2))*u.rad).to(u.deg).value
+
+    angles = [angle]
+    while angles[-1] > edge_pixel_angle and len(angles) < 25: angles += [angles[-1] / 2.]
+
+    image_rot = np.copy(image)
+    for ang in angles: image_rot += spi.rotate(image_rot, ang, reshape=False, order=1)
+
+    image_rot /= image_rot.sum()
+
+    return image_rot
+
+
 def tracking(arr, cmds):
     """
     A method to simulate tracking errors
@@ -167,11 +189,11 @@ def derotator(arr, cmds):
         eff = 1. - (cmds["INST_DEROT_PERFORMANCE"] / 100.)
         kernel = cmds["INST_DEROT_PROFILE"]
         angle = eff * cmds["OBS_EXPTIME"] * 15 / 3600.
-        
+
         edge_smear = angle / cmds.pix_res
         if edge_smear > 50:
             print("The smear at the detector edge is large:", edge_smear, "[px]")
-        
+
         return _rotate_blur(arr, angle, kernel=kernel)
     else:
         return arr
@@ -222,48 +244,48 @@ def adc_shift(cmds):
     ## return values are in [arcsec]
     return x, y
 
-    
+
 def make_distortion_maps(real_xy, detector_xy, step=1):
     """
     Generate distortion maps based on star positions.
-    
+
     The centres of the returned images correspond to the centre of the detector plane
-    
+
     Parameters
     ----------
     real_xy : list
         [arcsec] Contains 2 arrays: ([x_pos], [y_pos]) where x_pos, y_pos are the
         coordinates of the real position of the stars
-    
+
     detector_xy : list
         [arcsec] Contains 2 arrays: ([x_pos], [y_pos]) where x_pos, y_pos are the
         coordinates of the detected position of the stars
-    
+
     step : float
         [arcsec] the grid spacing of the returned images
-    
+
     Returns
     -------
     dx, dy : 2D array
-        Returns two arrays with 
+        Returns two arrays with
     """
 
     from scipy.interpolate import griddata
     from astropy.io import fits
-    
+
     dx = real_xy[0] - detector_xy[0]
     dy = real_xy[1] - detector_xy[1]
-    
+
     w, h = np.max(np.abs(detector_xy[0])), np.max(np.abs(detector_xy[1]))
     gx, gy = np.arange(-w, w+1E-3, step),  np.arange(-h, h+1E-3, step)
-    
+
     xx, yy = np.meshgrid(gx, gy)
-    
-    zx = griddata((real_xy[0], real_xy[1]), dx, (xx.flatten(), yy.flatten()), 
+
+    zx = griddata((real_xy[0], real_xy[1]), dx, (xx.flatten(), yy.flatten()),
                   method='cubic', fill_value=0).reshape(xx.shape)
-    zy = griddata((real_xy[0], real_xy[1]), dy, (xx.flatten(), yy.flatten()), 
+    zy = griddata((real_xy[0], real_xy[1]), dy, (xx.flatten(), yy.flatten()),
                   method='cubic', fill_value=0).reshape(xx.shape)
-    
+
     # the dx extension
     dx_hdu = fits.ImageHDU(data=zx.astype(np.float32))
     dx_hdu.header["CRVAL1"] = (0, "x dist from focal plane centre")
@@ -272,15 +294,15 @@ def make_distortion_maps(real_xy, detector_xy, step=1):
     dx_hdu.header["CRPIX2"] = (h, "y coord ref pixel")
     dx_hdu.header["CDELT1"] = (step, "x coord grid spacing")
     dx_hdu.header["CDELT2"] = (step, "y coord grid spacing")
-    
+
     # the dy extension
-    dy_hdu = fits.ImageHDU(data=zy.astype(np.float32), 
+    dy_hdu = fits.ImageHDU(data=zy.astype(np.float32),
                            header=dx_hdu.header)
-    
+
     dx_hdu.header["COMMENT"] = "The distortion in the X direction"
     dy_hdu.header["COMMENT"] = "The distortion in the Y direction"
-    
-        
+
+
     tb_hdu = fits.BinTableHDU.from_columns([fits.Column(name='id',    format='E', array=np.arange(len(real_xy[0]))),
                                            fits.Column(name='x_real', format='E', array=real_xy[0]),
                                            fits.Column(name='y_real', format='E', array=real_xy[1]),
@@ -295,76 +317,76 @@ def make_distortion_maps(real_xy, detector_xy, step=1):
     pri_hdu.header["EXT1"] = ("DX", "The x coordinate corrections")
     pri_hdu.header["EXT2"] = ("DY", "The y coordinate corrections")
     pri_hdu.header["EXT3"] = ("BinTable", "The data used to generate the distortion maps")
-    
+
     # put it all together
     hdulist = fits.HDUList([pri_hdu, dx_hdu, dy_hdu, tb_hdu])
-    
+
     return hdulist
 
 
 def get_distorion_offsets(x, y, dist_map_hdus, corners):
     """
     Returns the distortion offsets for position relative to the FoV centre
-    
-    
-    
+
+
+
     Parameters
     ----------
     x, y : float, list
         [arcsec] Distances from the centre of the distortion map (which should
         also be the centre of the FoV, given by CPREFn header Keywords)
-    
+
     dist_map_hdus : list, astropy.io.fits.HDUList
-        The distortion maps in X and Y directions. Accepts either 
-        - a list of two PrimaryHDU objects, each containing a map of the 
-          distortion on the x and y direction. 
+        The distortion maps in X and Y directions. Accepts either
+        - a list of two PrimaryHDU objects, each containing a map of the
+          distortion on the x and y direction.
           E.g. ``dist_map_hdus=(hdu_dx, hdu_dy)`` where ``hdu_dx`` and ``hdu_dy``
           are FITS image objects (``ImageHDU``), or
         - a HDULlist object which contains 3 HDU objects: A PrimaryHDU and two
-          ImageHDUs. 
-          - extension [0] (the PrimaryHDU) is nothing by a header, 
-          - extension [1] contains a map of the x-axis distortion, 
-          - extension [2] contains a map of the y-axis distortions 
-        
+          ImageHDUs.
+          - extension [0] (the PrimaryHDU) is nothing by a header,
+          - extension [1] contains a map of the x-axis distortion,
+          - extension [2] contains a map of the y-axis distortions
+
     corners : list
         [arcsec] A list containing 4 values for the borders of the distortion
         map grid in the following order (x_min, x_max, y_min, y_max)
-    
-    
+
+
     Returns
     -------
     dx, dy : float, list
         [arcsec] the shifts which need to be applied to the input positions x,y
-    
+
     See Also
     --------
     make_distortion_maps()
     astropy.io.fits.HDUList, astropy.io.fits.PrimaryHDU
-    
+
     """
-    
+
     import scipy.interpolate as spi
-    
+
     if isinstance(dist_map_hdus, fits.HDUList):
         xdist_hdu = dist_map_hdus[1]
-        ydist_hdu = dist_map_hdus[2]  
+        ydist_hdu = dist_map_hdus[2]
     elif isinstance(dist_map_hdus, (list, tuple)):
         xdist_hdu = dist_map_hdus[0]
         ydist_hdu = dist_map_hdus[1]
 
-        
+
     if xdist_hdu.shape != ydist_hdu.shape:
         raise ValueError("Shape of X and Y distortion maps must be equal: "+str(xdist.shape)+" "+str(ydist.shape))
-        
-    xbins = np.linspace(corners[0], corners[1], xdist_hdu.header["NAXIS1"]) 
-    ybins = np.linspace(corners[2], corners[3], xdist_hdu.header["NAXIS2"]) 
-        
+
+    xbins = np.linspace(corners[0], corners[1], xdist_hdu.header["NAXIS1"])
+    ybins = np.linspace(corners[2], corners[3], xdist_hdu.header["NAXIS2"])
+
     xmesh, ymesh = np.meshgrid(xbins, ybins)
     xmesh, ymesh = xmesh.flatten(), ymesh.flatten()
     zmesh_dx = xdist_hdu.data.flatten()
     zmesh_dy = ydist_hdu.data.flatten()
-    
+
     dx  = spi.griddata((xmesh, ymesh), zmesh_dx, (x, y), method="cubic", fill_value=0)
     dy = spi.griddata((xmesh, ymesh), zmesh_dy, (x, y), method="cubic", fill_value=0)
-    
+
     return dx, dy
