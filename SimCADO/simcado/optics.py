@@ -282,7 +282,14 @@ class OpticalTrain(object):
                                                                      val=val)
 
     def _gen_thermal_emission(self):
-        '''Number of thermal photons emitted by the warm surfaces'''
+        '''Number of thermal photons emitted by the warm surfaces
+
+        Returns
+        -------
+
+        A tuple with the total number of photons in the wavelength range
+        and the spectrum.
+        '''
 
         # List of warm mirrors
         mirr_list = self.cmds.mirrors_telescope
@@ -295,7 +302,8 @@ class OpticalTrain(object):
 
         # Follow the thermal flux through all the warm elements
         total_flux = 0
-        print("Total flux init: " + str(total_flux))
+        if self.cmds.verbose:
+            print("Total flux init: " + str(total_flux))
         for mirror in mirr_list:
             area = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4
             temp = mirror['Temp']
@@ -307,11 +315,18 @@ class OpticalTrain(object):
                           emissivity
 
             total_flux = mirror_flux + total_flux * reflectivity
-            print(mirror['Mirror'] + ": Emitted " + str(mirror_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])) + "       Total " + str(total_flux.photons_in_range(self.lam_bin_edges[0], self.lam_bin_edges[-1])))
+            n_ph_thermal = total_flux.photons_in_range(self.lam_bin_edges[0],
+                                                       self.lam_bin_edges[-1])
 
-        n_ph_thermal = total_flux.photons_in_range(self.lam_bin_edges[0],
-                                                   self.lam_bin_edges[-1])
-        return n_ph_thermal
+            if self.cmds.verbose:
+                print("{0}: Emitted {1:.3f}     Total {2:.3f}".format(
+                    mirror['Mirror'],
+                    mirror_flux.photons_in_range(self.lam_bin_edges[0],
+                                                 self.lam_bin_edges[-1]),
+                    total_flux.photons_in_range(self.lam_bin_edges[0],
+                                                self.lam_bin_edges[-1])))
+
+        return n_ph_thermal, total_flux
 
 
     def _gen_all_tc(self):
@@ -361,7 +376,7 @@ class OpticalTrain(object):
         scope_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
                                         mirr_list["Inner"]**2)
 
-                                        
+
         if "Temp" in mirr_list.colnames:
             self.cmds["SCOPE_TEMP"] = mirr_list["Temp"][0]
         # Make the transmission curve for the blackbody photons from the mirror
@@ -371,15 +386,8 @@ class OpticalTrain(object):
                                            pix_res=self.cmds.pix_res,
                                            area   =scope_area)
 
-        # Really dodgy hack to emulate emissivity - half way between Al and AgAl
-        self.emissivity = 0.1
-        self.ec_mirror *= self.emissivity
-                                           
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
-            self.ph_mirror = self.ec_mirror * self.tc_mirror
-            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
-                                                               self.lam_bin_edges[-1])
-            #self.n_ph_mirror = self._gen_thermal_emission()
+            self.n_ph_mirror, self.ph_mirror = self._gen_thermal_emission()
         else:
             self.ec_mirror = None
             self.ph_mirror = None
