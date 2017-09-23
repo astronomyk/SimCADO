@@ -245,7 +245,7 @@ class UserCommands(object):
         if filename is not None:
             self.cmds.update(read_config(filename))
 
-        # set the default paths and file names and turn any "none" strings 
+        # set the default paths and file names and turn any "none" strings
         # into python None values
         self._convert_none()
         self._find_files()
@@ -440,21 +440,21 @@ class UserCommands(object):
             elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
                 self.cmds["SCOPE_PSF_FILE"] = \
                     os.path.join(self.pkg_dir, "data", "PSF_POPPY.fits")
-            elif not os.path.exists(self.cmds["SCOPE_PSF_FILE"]): 
+            elif not os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
                 raise ValueError("Cannot recognise PSF file name: " + \
                                                     self.cmds["SCOPE_PSF_FILE"])
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], PSFCube):
             pass
-        
+
         elif self.cmds["SCOPE_PSF_FILE"] is None:
             warnings.warn("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
             logging.debug("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
-            
+
         else:
             raise ValueError("Cannot recognise SCOPE_PSF_FILE: " + \
                                                     self.cmds["SCOPE_PSF_FILE"])
 
-                                                        
+
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
@@ -463,12 +463,9 @@ class UserCommands(object):
 
 
         # which detector chip to use
-        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "wide"):
+        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "full"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("zoom", "narrow"):
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                os.path.join(self.pkg_dir, "data", "FPA_chip_layout_zoom.dat")
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 os.path.join(self.pkg_dir, "data", "FPA_chip_layout_small.dat")
@@ -492,15 +489,15 @@ class UserCommands(object):
         else:
             raise ValueError("SCOPE_MIRROR_LIST = " + \
                                                 self.cmds["SCOPE_MIRROR_LIST"])
-        
+
         if self.cmds["INST_MIRROR_AO_LIST"] is not None:
             self.mirrors_ao = ioascii.read(self.cmds["INST_MIRROR_AO_LIST"])
         else:
             self.mirrors_ao = ioascii.read("""
             #Mirror     Outer   Inner   Temp
-            M0          0.     0.      -273  
+            M0          0.     0.      -273
             """)
-            
+
         i = np.where(self.mirrors_telescope["Mirror"] == "M1")[0][0]
         self.diameter = self.mirrors_telescope["Outer"][i]
         self.area = np.pi / 4 * (self.diameter**2 - \
@@ -583,11 +580,11 @@ class UserCommands(object):
                 num = wfe_list[wfe_list.colnames[1]]
             elif isinstance(self.cmds["INST_WFE"], (float, int)):
                 wfe, num = float(self.cmds["INST_WFE"]), 1
-        
+
             tot_wfe = np.sqrt(np.sum(num * wfe**2))
         else:
             tot_wfe = 0
-            
+
         self.cmds["INST_TOTAL_WFE"] = tot_wfe
 
 

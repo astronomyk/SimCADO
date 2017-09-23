@@ -36,10 +36,11 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         A custom detector layout for the simulation. Default is None
 
     detector_layout : str, optional
-        ["small", "centre", "full"] Default is "small".
+        ["small", "centre", "full", "tiny"] Default is "small".
         "small"   - 1x 1k-detector centred in the FoV
+        "tiny"    - 128 x 128 pixels centred in the FoV
         "centre"  - 1x 4k-detector centred in the FoV
-        "full"    - "wide" or "zoom" depending on "mode" keyword.
+        "full"    - 9x 4k-detectors
 
     filename : str, optional
         The filepath for where the FITS images should be saved.
@@ -65,17 +66,15 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
 
         if detector_layout.lower() in ("tiny", "small", "centre", "center"):
             cmds["FPA_CHIP_LAYOUT"] = detector_layout
+        else:
+            cmds["FPA_CHIP_LAYOUT"] = 'full'
 
         if mode == "wide":
             cmds["SIM_DETECTOR_PIX_SCALE"] = 0.004
             cmds["INST_NUM_MIRRORS"] = 11
-            if detector_layout.lower() == "full":
-                cmds["FPA_CHIP_LAYOUT"] = "wide"
         elif mode == "zoom":
             cmds["SIM_DETECTOR_PIX_SCALE"] = 0.0015
             cmds["INST_NUM_MIRRORS"] = 13
-            if detector_layout.lower() == "full":
-                cmds["FPA_CHIP_LAYOUT"] = "zoom"
         else:
             raise ValueError("'mode' must be either 'wide' or ' zoom', not " + mode)
 
