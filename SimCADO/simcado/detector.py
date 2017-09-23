@@ -324,11 +324,16 @@ class Detector(object):
         else:
             raise ValueError("Something wrong with ``chips``")
 
+        # Time stamp for FITS header
+        creation_date = datetime.now().isoformat(timespec='seconds')
+
         hdulist = fits.HDUList()
+
+        # Create primary header unit for multi-extension files
         if len(ro_chips) > 1:
             primary_hdu = fits.PrimaryHDU()
 
-            primary_hdu.header['DATE'] = datetime.now().isoformat()
+            primary_hdu.header['DATE'] = creation_date
 
 
             for key in self.cmds.cmds:
@@ -347,13 +352,17 @@ class Detector(object):
                     pass
             hdulist.append(primary_hdu)
 
+        # Save the detector image(s)
         for i in ro_chips:
             ######
             # Put in a catch here so that only the chips specified in "chips"
             # are read out
             ######
-            print("Reading out chip", self.chips[i].id, "using", read_out_type)
-            array = self.chips[i].read_out(self.cmds, read_out_type=read_out_type)
+            print("Reading out chip", self.chips[i].id, "using",
+                  read_out_type)
+
+            array = self.chips[i].read_out(self.cmds,
+                                           read_out_type=read_out_type)
 
             ## TODO: transpose is just a hack - need to make sure
             ##       x and y are handled correctly throughout SimCADO
@@ -363,6 +372,7 @@ class Detector(object):
                                          "Chip ID")
 
             thishdu.header["CHIP_ID"] = (self.chips[i].id, "Chip ID")
+            thishdu.header['DATE'] = creation_date
 
             # Primary WCS for sky coordinates
             thishdu.header.extend(self.chips[i].wcs.to_header())
