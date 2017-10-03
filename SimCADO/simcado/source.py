@@ -526,7 +526,7 @@ class Source(object):
         if not hasattr(self, "_x"):
             self._x = np.copy(self.x)
             self._y = np.copy(self.y)
-                
+
         # Determine x- and y- range covered by chip
         # TODO: Use chip.wcs to convert (x, y) into pixel coordinates,
         #       then simply cut at the pixel edges. Alternatively,
@@ -966,8 +966,8 @@ class Source(object):
 
         #print((factor*self.units).unit, factor)
 
-        self.units = (factor * self.units).unit
-        self.spectra *= factor
+        self.units = self.units * factor.unit
+        self.spectra *= factor.value
 
 
     def _from_cube(self, filename):
@@ -1514,8 +1514,8 @@ def zero_magnitude_photon_flux(filter_name):
                              "TC_filter_" + filter_name + ".dat")
     else:
             raise ValueError("File " + fname + " does not exist")
-    
-    
+
+
 
     # Outdated
     # if filter_name not in "UBVRIYzJHKKs":
@@ -2285,7 +2285,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                      units=units, **kwargs)
 
         return src
-        
+
 
 
 def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
@@ -2680,8 +2680,8 @@ def load(filename):
     '''Load :class:'Source' object from filename'''
     return Source.load(filename)
 
-    
-    
+
+
 ###############################################################
 
 
@@ -2830,7 +2830,7 @@ def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
     i = (x-xg + nx//2).astype(int)
     j = (y-yg + ny//2).astype(int)
 
-    lensed_image = shifted_image[j.flatten(), 
+    lensed_image = shifted_image[j.flatten(),
                                  i.flatten()].reshape(shifted_image.shape)
 
     return lensed_image
@@ -2869,7 +2869,7 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
         If normalization equals:
         - "half-light" : the pixels at the half-light radius have a surface
                          brightness of ``magnitude`` [mag/arcsec2]
-        - "centre" : the maximum pixels have a surface brightness of 
+        - "centre" : the maximum pixels have a surface brightness of
                      ``magnitude`` [mag/arcsec2]
         - "total" : the whole image has a brightness of ``magnitude`` [mag]
 
@@ -3023,23 +3023,23 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
     # Rebin os_factord image
     img = _rebin(img_os, os_factor)
 
-    thresh = np.max([img[0,:].max(), img[-1,:].max(), 
+    thresh = np.max([img[0,:].max(), img[-1,:].max(),
                      img[:,0].max(), img[:,-1].max()])
     img[img < thresh] = 0
-    
+
     if "cen" in normalization.lower():
         img /= np.max(img)
     elif "tot" in normalization.lower():
         img /= np.sum(img)
 
 
-        
+
     return img
 
 
 def spiral_profile(r_eff, ellipticity=0.5, angle=45,
                    n_arms=2, tightness=4., arms_width=0.1, central_brightness=10,
-                   normalization='total', width=1024, height=1024, oversample=1, 
+                   normalization='total', width=1024, height=1024, oversample=1,
                    **kwargs):
     """
     Creates a spiral profile with arbitary parameters
@@ -3101,7 +3101,7 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
     Notes
     -----
     The intensity drop-off is dictated by a sersic profile of with indes n=1,
-    i.e. an exponential drop-off. This can be altered by passing the keyword 
+    i.e. an exponential drop-off. This can be altered by passing the keyword
     "n=" as an optional parameter.
 
     Spiral structure taken from here:
@@ -3119,7 +3119,7 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
         raise ValueError("ellipticiy <= 1 . This is physically meaningless")
 
     # create a spiral
-    xx, yy = np.meshgrid(np.arange(-width/2, width/2), 
+    xx, yy = np.meshgrid(np.arange(-width/2, width/2),
                          np.arange(-height/2, height/2))
     r = np.sqrt(abs(xx)**2 + abs(yy)**2)
 
@@ -3134,7 +3134,7 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
                           width=width, height=height, **kwargs)
 
     img = spiral * disk
-    thresh = np.max([img[0,:].max(), img[-1,:].max(), 
+    thresh = np.max([img[0,:].max(), img[-1,:].max(),
                      img[:,0].max(), img[:,-1].max()])
     img[img < thresh] = 0
 
@@ -3180,9 +3180,9 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
     normalization : str, optional
         ["half-light", "centre", "total"] Where in the profile equals unityy
         If normalization equals:
-        - "half-light" : the pixels at the half-light radius have a surface 
+        - "half-light" : the pixels at the half-light radius have a surface
                          brightness of ``magnitude`` [mag/arcsec2]
-        - "centre" : the maximum pixels have a surface brightness of 
+        - "centre" : the maximum pixels have a surface brightness of
                      ``magnitude`` [mag/arcsec2]
         - "total" : the whole image has a brightness of ``magnitude`` [mag]
 
@@ -3266,7 +3266,7 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
                           width        =spiral.shape[1],
                           height       =spiral.shape[0])
 
-    thresh = np.max((disk[0,:].max(), disk[-1,:].max(), 
+    thresh = np.max((disk[0,:].max(), disk[-1,:].max(),
                      disk[:,0].max(), disk[:,-1].max()))
     disk[disk < thresh] = 0
 
@@ -3304,4 +3304,3 @@ def _rebin(img, bpix):
     binim = np.mean(binim, axis=3)
     binim = np.mean(binim, axis=1)
     return binim
-        
