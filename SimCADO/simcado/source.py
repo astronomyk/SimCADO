@@ -2945,9 +2945,10 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
 
 def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
                    normalization="total",
-                   width=1024, height=1024, x_offset=0, y_offset=0, oversample=1):
+                   width=1024, height=1024, x_offset=0, y_offset=0,
+                   oversample=1):
     """
-    Returns a 2D array with a normailised sersic profile
+    Returns a 2D array with a normalised Sersic profile
 
     Parameters
     ----------
@@ -2990,8 +2991,8 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
 
     Notes
     -----
-    Most units are in [pixel] in this function. This differs from :func:`.galaxy`
-    where parameter units are in [arcsec] or [pc]
+    Most units are in [pixel] in this function. This differs from
+    :func:`.galaxy` where parameter units are in [arcsec] or [pc]
 
     """
 
@@ -3027,8 +3028,6 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
         img /= np.max(img)
     elif "tot" in normalization.lower():
         img /= np.sum(img)
-
-
 
     return img
 
