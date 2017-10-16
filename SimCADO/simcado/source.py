@@ -952,9 +952,7 @@ class Source(object):
         self.units = u.Unit(self.params["units"])
         bases = self.units.bases
 
-        #print(self.units, bases, self.area)
-
-        factor = 1.
+        factor = u.Quantity(1.)
         if u.s not in bases:
             factor /= (self.params["exptime"] * u.s)
         if u.m not in bases:
@@ -963,8 +961,6 @@ class Source(object):
             factor *= (self.lam_res * u.um)
         if u.arcsec in bases:
             factor *= (self.params["pix_res"] * u.arcsec)**2
-
-        #print((factor*self.units).unit, factor)
 
         self.units = self.units * factor.unit
         self.spectra *= factor.value
