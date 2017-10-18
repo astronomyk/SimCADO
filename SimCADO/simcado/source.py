@@ -512,13 +512,13 @@ class Source(object):
         if isinstance(chip, str):
             if chip.lower() == "small":
                 from .detector import Chip
-                chip = Chip(0, 0, 1024, 1024, 0.004, 1, 0)
+                chip = Chip(0, 0, 1024, 1024, 0.004)
             elif "cent" in chip.lower():
                 from .detector import Chip
-                chip = Chip(0, 0, 4096, 4096, 0.004, 1, 0)
+                chip = Chip(0, 0, 4096, 4096, 0.004)
             elif "tiny" in chip.lower():
                 from .detector import Chip
-                chip = Chip(0, 0, 128, 128, 0.004, 1, 0)
+                chip = Chip(0, 0, 128, 128, 0.004)
             else:
                 raise ValueError("Unknown chip identification")
 
