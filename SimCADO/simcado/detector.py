@@ -545,8 +545,8 @@ class Chip(object):
     --------
     """
 
-    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, pixsize,
-                 angle, gain, obs_coords, fieldangle=0,
+    def __init__(self, x_cen, y_cen, x_len, y_len, pix_res, pixsize=15,
+                 angle=0, gain=1, obs_coords=[0,0], fieldangle=0,
                  chipid=None, flat_field=None):
 
         # permanent rotation of chip
