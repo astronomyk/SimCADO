@@ -327,7 +327,7 @@ class Detector(object):
         # Time stamp for FITS header
         #creation_date = datetime.now().isoformat(timespec='seconds')
         # timespec="seconds" throws an error on some python versions
-        creation_date = datetime.now().isoformat()
+        creation_date = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
 
         hdulist = fits.HDUList()
 
