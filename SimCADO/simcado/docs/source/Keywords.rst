@@ -11,13 +11,15 @@ Observation Parameters
     
     OBS_DATE                0                       # [dd/mm/yyyy] Date of the observation [not yet implemented]
     OBS_TIME                0                       # [hh:mm:ss] Time of the observation [not yet implemented]
-    OBS_RA                  0                       # [deg] RA of the object [not yet implemented]
-    OBS_DEC                 0                       # [deg] Dec of the object [not yet implemented]
+    OBS_RA                  90.                     # [deg] RA of the object
+    OBS_DEC                 -30.                    # [deg] Dec of the object
     OBS_ALT                 0                       # [deg] Altitude of the object [not yet implemented]
     OBS_AZ                  0                       # [deg] Azimuth of the object [not yet implemented]
     OBS_ZENITH_DIST         0                       # [deg] from zenith
     OBS_PARALLACTIC_ANGLE   0                       # [deg] rotation of the source relative to the zenith
     OBS_SEEING              0.6                     # [arcsec]
+    
+    OBS_FIELD_ROTATION      0                       # [deg] field rotation with respect to the detector array
     
     OBS_EXPTIME             60                      # [sec] simulated exposure time
     OBS_NDIT                1                       # [#] number of exposures taken
@@ -79,7 +81,7 @@ Atmospheric Parameters
     ATMO_TC                 TC_sky_25.tbl           # [filename] for atmospheric transmission curve. Default: <pkg_dir>/data/TC_sky_25.tbl
     ATMO_EC                 EC_sky_25.tbl           # [filename, "none"] for atmospheric emission curve. Default: <pkg_dir>/data/EC_sky_25.tbl
     # If ATMO_EC is "none": set ATMO_BG_MAGNITUDE for the simulation filter.
-    ATMO_BG_MAGNITUDE       13.6                    # [ph/s] background photons for the bandpass if ATMO_EC = None
+    ATMO_BG_MAGNITUDE       13.6                    # [ph/s] background photons for the bandpass. If set to None, the ATMO_EC spectrum is assumed to return the needed number of photons
     
     ATMO_TEMPERATURE        0                       # deg Celcius
     ATMO_PRESSURE           750                     # millibar
@@ -193,7 +195,7 @@ Detector parameters
     FPA_DEAD_PIXELS         1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector pixel which are dead
     FPA_DEAD_LINES          1                       # [%] if FPA_PIXEL_MAP=none, a percentage of detector lines which are dead
     
-    FPA_CHIP_LAYOUT         wide                    # ["tiny", "small", "centre", "wide", "zoom", <filename>] description of the chip layout on the detector array.
+    FPA_CHIP_LAYOUT         full                    # ["tiny", "small", "centre", "full", <filename>] description of the chip layout on the detector array.
     FPA_PIXEL_READ_TIME     1E-5                    # [s] read time for y pixel - typically ~10 us
     FPA_READ_OUT_SCHEME     double_corr             # "double_corr", "up-the-ramp", "fowler"
     
@@ -217,6 +219,6 @@ NXRG Noise Generator package parameters
     HXRG_ALT_COL_NOISE      0.5                     # Alternating Column noise
     
     HXRG_NAXIS1             4096                    # Size of the HAWAII 4RG detectors
-    HXRG_NAXIS1             4096
+    HXRG_NAXIS2             4096
     HXRG_NUM_NDRO           1                       # Number of non-destructive readouts to add to a noise cube
 
