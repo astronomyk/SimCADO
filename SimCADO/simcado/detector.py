@@ -325,7 +325,9 @@ class Detector(object):
             raise ValueError("Something wrong with ``chips``")
 
         # Time stamp for FITS header
-        creation_date = datetime.now().isoformat(timespec='seconds')
+        #creation_date = datetime.now().isoformat(timespec='seconds')
+        # timespec="seconds" throws an error on some python versions
+        creation_date = datetime.now().isoformat()
 
         hdulist = fits.HDUList()
 
