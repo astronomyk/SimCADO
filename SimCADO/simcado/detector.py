@@ -951,11 +951,13 @@ class Chip(object):
                                                       lin_curve,
                                                       return_curve=True)
 
-        # superfast hack to get an approximation of the readout noise in the image
+        # superfast hack to get an approximation of the readout noise
+        # in the image
         ro = self._read_noise_frame(cmds, n_frames=1) * np.sqrt(ndit)
 
-        ############# Could work, but it's too slow for ndit > 10 ##############
-        # add 1 to the ndits, because there will always be a readout at the start
+        ########## Could work, but it's too slow for ndit > 10 ##############
+        # add 1 to the ndits, because there will always be a readout at
+        # the start
         #ro_frames = self._read_noise_frame(cmds, n_frames=max(ndit,2))
         #ro = np.sum(ro_frames, axis=0)
 
@@ -981,15 +983,15 @@ class Chip(object):
         Returns
         -------
         im_st : np.ndarray
-            Poissonified image array
+            average of ndit exposures of length dit
 
         """
         image2 = image * dit
-        image2[image2 > 2.14E9] = 2.14E9
+        image2[image2 > 2.14E9] = 2.14E9   # limit to 2**31
 
         im_st = np.zeros(np.shape(image))
         for n in range(ndit):
-            im_st += np.random.poisson(image2)
+            im_st += np.random.poisson(image2) / ndit
 
         return im_st.astype(np.float32)
 
