@@ -99,6 +99,7 @@ from copy import deepcopy
 from glob import glob
 
 import numpy as np
+from scipy.ndimage import sum as ndisum
 import scipy.ndimage.interpolation as spi
 from scipy.signal import fftconvolve
 
@@ -620,8 +621,12 @@ class Source(object):
             x_int, y_int = np.floor(x_pix), np.floor(y_pix)
             i = (ax + x_int[mask]).astype(int)
             j = (ay + y_int[mask]).astype(int)
-            for ii, jj, ph in zip(i, j, slice_photons[mask]):
-                slice_array[ii, jj] += ph
+
+            # The following is faster than a loop
+            ij = i * naxis1 + j   # naxis1 or naxis2?
+            iju = np.unique(ij)
+            slice_array.flat[iju] += ndisum(slice_photons[mask].flat,
+                                            ij, iju)
 
             try:
                 # slice_array = convolve_fft(slice_array, psf.array,
