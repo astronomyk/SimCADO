@@ -393,8 +393,13 @@ class OpticalTrain(object):
                                            area   =scope_area)
 
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
-            self.n_ph_mirror, self.ph_mirror = self._gen_thermal_emission()
-            self.ph_mirror = self.ph_mirror * self.tc_mirror
+            # KL - _gen_thermal_emission() returns the sum of all thermal photons
+            # not just the ones that pass through the system transmission curve
+            # Add the 3rd line here to correct this
+            self.n_ph_mirror, self.ec_mirror = self._gen_thermal_emission()
+            self.ph_mirror   = self.ec_mirror * self.tc_mirror
+            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+                                                               self.lam_bin_edges[-1])
         else:
             self.ec_mirror = None
             self.ph_mirror = None
