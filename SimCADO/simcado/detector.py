@@ -299,7 +299,7 @@ class Detector(object):
         ----------------------------
         **kwargs are used to update the ``UserCommands`` object that controls
         the ``Detector``. Therefore any dictionary keywords can be passed in the
-        form of a dictionary, i.e. {"EXPTIME" : 60, "OBS_OUTPUT_DIR" : "./"}
+        form of a dictionary, i.e. {"OBS_EXPTIME" : 60, "OBS_OUTPUT_DIR" : "./"}
 
         """
 

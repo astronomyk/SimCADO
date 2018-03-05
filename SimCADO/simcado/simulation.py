@@ -13,7 +13,7 @@ __all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]
 
 def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         detector_layout="small", filename=None, return_internals=False,
-        filter_name=None, exptime=None,
+        filter_name=None, exptime=None, sub_pixel=False,
         **kwargs):
     """
     Run a MICADO simulation with default parameters
@@ -97,7 +97,7 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     print("Creating", len(cmds.lam_bin_centers), "layer(s) per chip")
     print(len(fpa.chips), "chip(s) will be simulated")
 
-    src.apply_optical_train(opt_train, fpa)
+    src.apply_optical_train(opt_train, fpa, sub_pixel=sub_pixel)
 
     if filename is not None:
         if cmds["OBS_SAVE_ALL_FRAMES"] == "yes":
