@@ -297,7 +297,13 @@ class OpticalTrain(object):
         # Load transmission curves into a dictionary indexed by coating
         tc_dict = dict()
         for coating in np.unique(mirr_list['Coating']):
-            tc_file = os.path.join(__pkg_dir__, "data", coating)
+            if os.path.exists(coating):
+                tc_file = coating
+            elif os.path.exists(os.path.join(__pkg_dir__, "data", coating)):
+                tc_file = os.path.join(__pkg_dir__, "data", coating)
+            else:
+                raise ValueError("Could not find file: "+coating)
+            
             tc_dict[coating] = sc.TransmissionCurve(tc_file)
 
         # Follow the thermal flux through all the warm elements
@@ -389,8 +395,13 @@ class OpticalTrain(object):
                                            area   =scope_area)
 
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
-            self.n_ph_mirror, self.ph_mirror = self._gen_thermal_emission()
-            self.ph_mirror = self.ph_mirror * self.tc_mirror
+            # KL - _gen_thermal_emission() returns the sum of all thermal photons
+            # not just the ones that pass through the system transmission curve
+            # Add the 3rd line here to correct this
+            self.n_ph_mirror, self.ec_mirror = self._gen_thermal_emission()
+            self.ph_mirror   = self.ec_mirror * self.tc_mirror
+            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+                                                               self.lam_bin_edges[-1])
         else:
             self.ec_mirror = None
             self.ph_mirror = None

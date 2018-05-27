@@ -25,7 +25,7 @@ for single images.
 See the `Features <Features>`__ for a list of the "known" issues when
 running in Python 2.7
 
-.. note:: 
+.. note::
     A side note: Astropy will stop supporting Python 2.7 in 2019 and the official End-of-Life for Python 2.7 is 2020, i.e. no more maintainance. We are running under the assumption that SimCADO will (hopefully) still be around after 2020, hence why we have concentrated our efforts on developing in Python 3.
 
 Installation
@@ -36,13 +36,13 @@ To install it, download SimCADO from the link above and use the standard ``pip3`
 
     $ pip3 install --user SimCADO.tar.gz
 
-    
+
 Alternatively give the full URL to pip and let it do the downloading for you
 ::
 
     $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
 
-    
+
 .. Note::
     SimCADO will need to download several hundreds of MBs of instrument data into the install directory. Hence why we use the `--user` flag when installing via `pip`. If you want to keep SimCADO in your normal packages directory, then you will need to give python root access while updating SimCADO's data files.
 
@@ -72,6 +72,11 @@ Optional
 +--------------+-----------+
 | poppy        | >0.4      |
 +--------------+-----------+
+
+All dependencies can be installed via `pip`:
+::
+   $ pip3 install numpy scipy astropy wget matplotlib poppy
+
 
 Getting up-to-date data for SimCADO
 -----------------------------------

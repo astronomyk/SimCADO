@@ -24,7 +24,8 @@ REM Run tests on the installed distribution
 REM #######################################
 
 cd ../dist_tests
-pytest test_run.py
+REM pytest test_run.py
+python test_play.py
 cd ../SimCADO
 
 REM #######################################

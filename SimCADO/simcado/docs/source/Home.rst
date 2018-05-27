@@ -32,11 +32,12 @@ use SimCADO are available :doc:`here in the Notebooks <examples/Notebooks>` sect
     
     * `PDF version`_ or 
     * `Jupyter Notebook`_
+    * `Presentation for October 2017 Science Team Meeting`_
 
 
 .. _PDF version: ./_static/downloads/SimCADO_cheatsheet.pdf
 .. _Jupyter Notebook: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/SimCADO-cheat-sheet.ipynb
-
+.. _Presentation for October 2017 Science Team Meeting: ./_static/downloads/SimCADO_status_Oct_2017.pdf
 
 Reference Material
 ~~~~~~~~~~~~~~~~~~
