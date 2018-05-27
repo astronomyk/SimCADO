@@ -305,7 +305,9 @@ class OpticalTrain(object):
         if self.cmds.verbose:
             print("Total flux init: " + str(total_flux))
         for mirror in mirr_list:
-            area = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4
+            # mirror area projected perpendicular to beam
+            area = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4 \
+                   * np.cos(np.deg2rad(mirror['Angle']))
             temp = mirror['Temp']
             reflectivity = tc_dict[mirror['Coating']].val
             emissivity = 1. - reflectivity
@@ -405,34 +407,34 @@ class OpticalTrain(object):
 
         if self.cmds["ATMO_USE_ATMO_BG"].lower() == "yes":
             if self.cmds["ATMO_EC"] is not None:
-            
+
                 self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
                                                 pix_res=self.cmds.pix_res,
                                                 area=self.cmds.area,
                                                 airmass=self.cmds["ATMO_AIRMASS"])
-            
-            
+
+
                 ################################################################
                 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 ################################################################
                 # SUPER DODGY HACK THAT NEEDS TO BY TRACKED DOWN AT SOME POINT!!
                 # But it brings SImCADO inline with the HAWKI ETC and SkyCalc
-                # It's only the Sky BG emission that is affected. 
+                # It's only the Sky BG emission that is affected.
                 # The mirror emission is fine
                 ################################################################
                 # self.ec_atmo *= 2.5
                 ################################################################
-            
-            
-            
+
+
+
                 self.th_atmo = sc.BlackbodyCurve(lam    =self.ec_atmo.lam,
                                                  temp   =self.cmds["ATMO_TEMPERATURE"],
                                                  pix_res=self.cmds.pix_res,
                                                  area   =scope_area)
-                                                 
+
                 self.ec_atmo += self.th_atmo
-            
-                # lam, val = sc.get_sky_spectrum(fname=self.cmds["ATMO_EC"], 
+
+                # lam, val = sc.get_sky_spectrum(fname=self.cmds["ATMO_EC"],
                                                # airmass=self.cmds["ATMO_AIRMASS"])
                 # sky_mag = self.cmds["ATMO_BG_MAGNITUDE"]
                 # if sky_mag is not None and isinstance(sky_mag, (float, int)):
@@ -441,7 +443,7 @@ class OpticalTrain(object):
                                                  # mag_per_arcsec=sky_mag,
                                                  # pix_res=self.cmds.pix_res,
                                                  # return_ec=False)
-                
+
                 # self.ec_atmo = sc.EmissionCurve(lam=lam, val=val,
                                                 # pix_res=self.cmds.pix_res,
                                                 # area=self.cmds.area,
