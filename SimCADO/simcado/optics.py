@@ -303,23 +303,31 @@ class OpticalTrain(object):
                 tc_file = os.path.join(__pkg_dir__, "data", coating)
             else:
                 raise ValueError("Could not find file: "+coating)
-            
+
             tc_dict[coating] = sc.TransmissionCurve(tc_file)
 
         # Follow the thermal flux through all the warm elements
         total_flux = 0
         if self.cmds.verbose:
             print("Total flux init: " + str(total_flux))
+
+        # The etendue is assumed to be conserved throughout the system.
+        # We used to compute the solid angle at each mirror, given its area.
+        mirror = mirr_list[0]
+        etendue = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4 \
+                  * self.pix_res**2
+
         for mirror in mirr_list:
             # mirror area projected perpendicular to beam
             area = (mirror['Outer']**2 - mirror['Inner']**2) * np.pi/4 \
                    * np.cos(np.deg2rad(mirror['Angle']))
+            angle = np.sqrt(etendue / area)
             temp = mirror['Temp']
             reflectivity = tc_dict[mirror['Coating']].val
             emissivity = 1. - reflectivity
 
             mirror_flux = sc.BlackbodyCurve(lam=self.lam, temp=temp,
-                                            pix_res=self.pix_res, area=area) * \
+                                            pix_res=angle, area=area) * \
                           emissivity
 
             total_flux = mirror_flux + total_flux * reflectivity
@@ -327,6 +335,9 @@ class OpticalTrain(object):
                                                        self.lam_bin_edges[-1])
 
             if self.cmds.verbose:
+                print("{0}: {1}   Mean reflectivity {2:.3f}".format(
+                    mirror['Mirror'], mirror['Coating'],
+                    np.mean(reflectivity)))
                 print("{0}: Emitted {1:.3f}     Total {2:.3f}".format(
                     mirror['Mirror'],
                     mirror_flux.photons_in_range(self.lam_bin_edges[0],
