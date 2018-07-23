@@ -73,6 +73,11 @@ We freely admit that there may still be several bugs that we have not found. If 
 
 The preferable option is to open an issue on our Github page: [gastronomyk/SimCADO/issues](https://github.com/gastronomyk/SimCADO/issues), or you can contact either one of us directly.
 
+Please always include the output of
+ 
+    >>> simcado.bug_report()
+
+
 ## Contact
 
 For questions and complaints alike, please contact the authors:
