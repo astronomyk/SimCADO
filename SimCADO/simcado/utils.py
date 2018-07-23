@@ -614,10 +614,10 @@ def bug_report():
             print(package_name, "could not be loaded.")
 
     # Check operating system
-    import os
-    osinfo = os.uname()
+    import platform
+    osinfo = platform.uname()
     print("")
-    print("Operating system: ", osinfo.sysname)
+    print("Operating system: ", osinfo.system)
     print("         Release: ", osinfo.release)
     print("         Version: ", osinfo.version)
     print("         Machine: ", osinfo.machine)
