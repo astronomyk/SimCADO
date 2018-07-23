@@ -39,7 +39,6 @@ __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 #__all__ = ["unify", "parallactic_angle", "poissonify",
 #           "atmospheric_refraction", "nearest", "add_keyword"]
 
-
 def msg(cmds, message, level=3):
     """
     Prints a message based on the level of verbosity given in cmds
@@ -589,3 +588,36 @@ def angle_in_arcseconds(distance, width):
     """
 
     return np.arctan2(width, distance)*u.rad.to(u.arcsec)
+
+
+def bug_report():
+    '''Get versions of dependencies for inclusion in bug report'''
+
+    try:
+        from importlib import import_module
+    except ImportError:
+        import_module = __import__
+
+    packages = ["simcado", "astropy", "numpy", "scipy", "poppy", "wget"]
+
+    # Check Python version
+    import sys
+    print("Python:\n", sys.version)
+    print("")
+
+    # Check package dependencies
+    for package_name in packages:
+        try:
+            pkg = import_module(package_name)
+            print(package_name, ": ", pkg.__version__)
+        except ImportError:
+            print(package_name, "could not be loaded.")
+
+    # Check operating system
+    import os
+    osinfo = os.uname()
+    print("")
+    print("Operating system: ", osinfo.sysname)
+    print("         Release: ", osinfo.release)
+    print("         Version: ", osinfo.version)
+    print("         Machine: ", osinfo.machine)
