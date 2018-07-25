@@ -17,19 +17,16 @@ import os
 import glob
 import warnings
 import logging
-#from datetime import datetime as dt    # unused
 from copy import deepcopy
 
 import numpy as np
 
-from astropy.io import fits      # unused
-from astropy.io import ascii as ioascii    # 'ascii' redefines built-in
+from astropy.io import fits
 import astropy.units as u
 
 from . import psf as psf
 from . import spectral as sc
 from . import spatial as pe
-from .source import flat_spectrum_sb
 from .commands import UserCommands
 from .utils import __pkg_dir__
 
@@ -411,8 +408,9 @@ class OpticalTrain(object):
             # Add the 3rd line here to correct this
             self.n_ph_mirror, self.ec_mirror = self._gen_thermal_emission()
             self.ph_mirror   = self.ec_mirror * self.tc_mirror
-            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
-                                                               self.lam_bin_edges[-1])
+            self.n_ph_mirror = self.ph_mirror.photons_in_range(
+                self.lam_bin_edges[0],
+                self.lam_bin_edges[-1])
         else:
             self.ec_mirror = None
             self.ph_mirror = None
@@ -529,7 +527,9 @@ class OpticalTrain(object):
                        ['INST_SURFACE_FACTOR'] + \
                        ['FPA_QE']
 
-                ao = ['INST_MIRROR_AO_TC'] + ['SCOPE_M1_TC'] * (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1)
+                ao = (['INST_MIRROR_AO_TC'] +
+                      ['SCOPE_M1_TC'] *
+                      (int(self.cmds['SCOPE_NUM_MIRRORS']) - 1))
 
                 if preset == "ao":
                     tc_keywords = base
@@ -698,92 +698,3 @@ def get_filter_set(path=None):
     lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
                     for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst
-
-
-def read_spec_order(filename):
-    """Read spectral order definition from a file
-
-    Parameters
-    ----------
-    filename : str
-
-
-    Returns
-    -------
-    An `astropy.Table` with columns
-        - lam : wavelength
-        - x_1, x_2, x_3 : Column numbers of left edge, centre and right edge
-               of lines of constant wavelength
-        - y_1, y_2, y_3 : Row numbers of left edge, centre and right edge
-               of lines of constant wavelength
-        - r80_1, r80_2, r80_3 : radii of 80% encircled energy
-
-    Notes
-    -----
-    The orders file has the following format:
-    - two lines of information
-    - for each wavelength six lines:
-      - a line with "index= ... wavelength= ".
-      - a flag (0 is good)
-      - a line each for the left edge, centre and right edge of the 2D
-        trace at the given wavelength. Format is "X1= ... Y1= ... r(EE80)= ..."
-      - a separator line
-    """
-
-    # Read file
-    with open(filename) as fp1:
-        lines = fp1.readlines()
-
-    nlines = len(lines)
-
-    # Initialize lists
-    lam = []
-    x_1 = []
-    x_2 = []
-    x_3 = []
-    y_1 = []
-    y_2 = []
-    y_3 = []
-    r80_1 = []
-    r80_2 = []
-    r80_3 = []
-
-    # Extract the order number
-    lhs = lines[1].split(',')[0]
-    order = int(float(lhs.split()[2]))
-
-    # Drop the first two lines
-    iline = 2
-
-    # Loop over group of six lines at a time
-    while iline < nlines - 1:
-        # Use only "good" lines
-        flag = float(lines[iline + 1])
-        if flag == 0:
-            # shortcuts for the next four lines
-            lamline = lines[iline]
-            x1line = lines[iline + 2]
-            x2line = lines[iline + 3]
-            x3line = lines[iline + 4]
-
-            # Extract information
-            lam.append(float(lamline.split()[3]))
-            x_1.append(float(x1line.split()[1]))
-            y_1.append(float(x1line.split()[3]))
-            r80_1.append(float(x1line.split()[5]))
-            x_2.append(float(x2line.split()[1]))
-            y_2.append(float(x2line.split()[3]))
-            r80_2.append(float(x2line.split()[5]))
-            x_3.append(float(x3line.split()[1]))
-            y_3.append(float(x3line.split()[3]))
-            r80_3.append(float(x3line.split()[5]))
-        iline += 6
-
-    # return as numpy arrays
-    from astropy.table import Table
-    order_table = Table([lam, x_1, x_2, x_3, y_1, y_2, y_3, r80_1, r80_2, r80_3],
-                        names=['lam', 'x1', 'x2', 'x3', 'y1', 'y2', 'y3',
-                               'r80_1', 'r80_2', 'r80_3'],
-                        meta={'Order': order})
-
-    return order_table
