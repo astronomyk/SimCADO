@@ -1,11 +1,7 @@
 ## Created from E-MCD-FPA-572089EB.uda
-## Author: Oliver Czoske
-## Date: 2018-07-26
-## Orig-Date: 2017-06-28
-## Sources: E-MCD-FPA-572089EB.uda, ELT-TRE-MCD-56300-0011
+## Oliver Czoske, 2017-06-28
 ## Changes:
 ##     2017-08-12: id changed to conform with spectroscopy report
-##     2018-07-26: large gap (chips 5 and 6) reduced to 8 mm
 ## MICADO H4RG-15 FPA
    id   x_cen  y_cen    xhw    yhw  x_len  y_len  pixsize  angle    gain
 #          mm     mm     mm     mm    pix    pix       mm    deg  e-/ADU
@@ -14,7 +10,7 @@
     3   63.84  63.84  30.72  30.72   4096   4096    0.015    0.0     1.0
     4  +63.84   0.00  30.72  30.72   4096   4096    0.015    0.0     1.0
     5    0.00   0.00  30.72  30.72   4096   4096    0.015    0.0     1.0
-    6  -69.44   0.00  30.72  30.72   4096   4096    0.015    0.0     1.0
+    6  -79.50   0.00  30.72  30.72   4096   4096    0.015    0.0     1.0
     7  -63.84 -63.84  30.72  30.72   4096   4096    0.015    0.0     1.0
     8    0.00 -63.84  30.72  30.72   4096   4096    0.015    0.0     1.0
     9   63.84 -63.84  30.72  30.72   4096   4096    0.015    0.0     1.0
