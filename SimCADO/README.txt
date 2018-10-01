@@ -3,7 +3,7 @@ Updated 19.01.2017 - KL
 
 Documentation for SimCADO can be found here:
 
-[www.univie.ac.at/simcado](www.univie.ac.at/simcado)
+[https://www.univie.ac.at/simcado](https://www.univie.ac.at/simcado)
 
 ## SimCADO in a nutshell
 SimCADO is a python package designed to simulate the effects of the Atmosphere, 
@@ -32,7 +32,7 @@ version.
 
 The quick way:
 
-    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.zip
+    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
 
 The **first time** in python 
 
