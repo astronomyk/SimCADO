@@ -2,7 +2,7 @@
 
 Documentation for SimCADO can be found here:
 
-[www.univie.ac.at/simcado](www.univie.ac.at/simcado)
+[https://www.univie.ac.at/simcado/](https://www.univie.ac.at/simcado/)
 
 ## SimCADO in a nutshell
 SimCADO is a python package designed to simulate the effects of the Atmosphere, E-ELT, and MICADO instrument on incoming light. The current version (v0.2) can simulate the MICADO imaging modi (4mas and 1.5mas per pixel in the wavelength range 0.7µm to 2.5µm).
@@ -23,7 +23,7 @@ It is hightly recommended to use Python 3, however the basics of generating imag
 
 The quick way:
 
-    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.zip
+    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
 
 The **first time** in python 
 
