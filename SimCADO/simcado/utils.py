@@ -639,7 +639,7 @@ def find_file(filename, path=None, silent=False):
     -------
     Absolute path of the file
     '''
-    import simmetis as sim
+    import simcado as sim
 
     if path is None:
         path = sim.__search_path__
