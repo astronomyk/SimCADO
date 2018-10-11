@@ -1,7 +1,30 @@
 '''Unit tests for module simcado.utils'''
 
+import pytest
+import simcado as sim
 from simcado.utils import parallactic_angle, deriv_polynomial2d
+from simcado.utils import find_file
 import numpy as np
+
+
+class TestFindFile():
+    '''Tests of function simcado.utils.find_file'''
+
+    def test_01(self):
+        '''Test: fail if not a string'''
+        with pytest.raises(TypeError):
+            find_file(1.2, sim.__search_path__)
+
+    def test_02(self):
+        '''Test: existing file'''
+        filename = 'utils.py'
+        assert find_file(filename, sim.__search_path__)
+
+    def test_03(self):
+        '''Test: non-extisting file'''
+        filename = 'utils987654.pz'
+        assert find_file(filename, sim.__search_path__) is None
+
 
 class TestParallacticAngle():
     '''Tests of function simcado.utils.parallactic_angle'''
@@ -60,5 +83,5 @@ class TestDerivPolynomial2D():
         y_x_test = dpoly_x(ximg, yimg)
         y_y_test = dpoly_y(ximg, yimg)
 
-        assert(np.allclose(y_x, y_x_test))
-        assert(np.allclose(y_y, y_y_test))
+        assert np.allclose(y_x, y_x_test)
+        assert np.allclose(y_y, y_y_test)
