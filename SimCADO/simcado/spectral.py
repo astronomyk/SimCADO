@@ -64,7 +64,7 @@ from astropy import constants as c
 from astropy.io import fits
 from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
 
-#from .utils import __pkg_dir__    # not used
+from .utils import find_file
 
 __all__ = []
 __all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve",
@@ -123,8 +123,8 @@ class TransmissionCurve(object):
                        "lam_unit"    : u.um,
                        "use_default_lam" : True,
                        "on_default_lam" : False,
-                       "default_lam" : np.arange(0.3, 3, 0.001),
-                       "airmass"      : None}
+                       "default_lam" : np.arange(3.0, 18.32, 0.01),
+                       "airmass"     : None}
 
         self.params.update(kwargs)
 
@@ -175,7 +175,7 @@ class TransmissionCurve(object):
 
         # test if it is a skycalc file
         elif self.params["filename"] is not None:
-            filename = self.params["filename"]
+            filename = find_file(self.params["filename"])
 
             if ".fits" in filename:
                 hdr = fits.getheader(filename)
@@ -197,7 +197,7 @@ class TransmissionCurve(object):
                                             airmass=self.params["airmass"])
 
             else:
-                data = ioascii.read(self.params["filename"])
+                data = ioascii.read(filename)
                 lam = data[data.colnames[0]]
                 val = data[data.colnames[1]]
         else:
@@ -478,7 +478,7 @@ class EmissionCurve(TransmissionCurve):
         default_params = {"exptime" :1,
                           "pix_res" :0.004,
                           "area"    :978,
-                          "units"   :"ph/(s m2 micron arcsec2)"}
+                          "units"   :"ph/(s m2 um arcsec2)"}
         if "units" not in kwargs.keys():
             warnings.warn("""
             No 'units' specified in EmissionCurve.
@@ -644,7 +644,7 @@ def get_sky_spectrum(fname, airmass, return_type=None, **kwargs):
         Default is 1.0. Acceptable values are between 1.0 and 3.0
     return_type : str, optional
         ["transmission", "emission", None] Default is None. A TransmissionCurve
-        or EmissionCurve object will be returned if desired. If None two array
+        or EmissionCurve object will be returned if desired. If None two arrays
         are returned: (lam, val)
     **kwargs : optional
         kwargs are passed directly onto the TransmissionCurve or EmissionCurve
@@ -653,7 +653,7 @@ def get_sky_spectrum(fname, airmass, return_type=None, **kwargs):
     Returns
     -------
     TransmissionCurve or EmissionCurve or (lam, val)
-        Be default lam is in [um] and val [ph/s/m2/um/arcsec2] if val is an
+        By default lam is in [um] and val [ph/s/m2/um/arcsec2] if val is an
         emission spectrum
 
     Notes
