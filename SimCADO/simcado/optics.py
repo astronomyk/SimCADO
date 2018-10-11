@@ -27,8 +27,10 @@ import astropy.units as u
 from . import psf as psf
 from . import spectral as sc
 from . import spatial as pe
+from .source import flat_spectrum_sb, scale_spectrum_sb
 from .commands import UserCommands
-from .utils import __pkg_dir__
+from .utils import __pkg_dir__, find_file
+
 
 __all__ = ["OpticalTrain", "get_filter_curve", "get_filter_set"]
 
@@ -273,7 +275,7 @@ class OpticalTrain(object):
 
         # see Rics email from 22.11.2016
         wfe = self.cmds["INST_TOTAL_WFE"]
-        lam = np.arange(0.3, 3.0, 0.001)
+        lam = self.lam
         val = np.exp(-(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2)
         self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam,
                                                                      val=val)
@@ -294,12 +296,9 @@ class OpticalTrain(object):
         # Load transmission curves into a dictionary indexed by coating
         tc_dict = dict()
         for coating in np.unique(mirr_list['Coating']):
-            if os.path.exists(coating):
-                tc_file = coating
-            elif os.path.exists(os.path.join(__pkg_dir__, "data", coating)):
-                tc_file = os.path.join(__pkg_dir__, "data", coating)
-            else:
-                raise ValueError("Could not find file: "+coating)
+            tc_file = find_file(coating, silent=True)
+            if tc_file is None:
+                raise ValueError("Could not find file: " + coating)
 
             tc_dict[coating] = sc.TransmissionCurve(tc_file)
 
@@ -394,7 +393,10 @@ class OpticalTrain(object):
 
 
         if "Temp" in mirr_list.colnames:
-            self.cmds["SCOPE_TEMP"] = mirr_list["Temp"][0]
+        	##
+        	## KL/LB 25 June: manually adding SCOPE_TEMP key to user commands object
+        	##                since we have taken it out of the config files
+            self.cmds.cmds["SCOPE_TEMP"] = mirr_list["Temp"][0]
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
         self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,
@@ -408,9 +410,8 @@ class OpticalTrain(object):
             # Add the 3rd line here to correct this
             self.n_ph_mirror, self.ec_mirror = self._gen_thermal_emission()
             self.ph_mirror   = self.ec_mirror * self.tc_mirror
-            self.n_ph_mirror = self.ph_mirror.photons_in_range(
-                self.lam_bin_edges[0],
-                self.lam_bin_edges[-1])
+            self.n_ph_mirror = self.ph_mirror.photons_in_range(self.lam_bin_edges[0],
+                                                               self.lam_bin_edges[-1])
         else:
             self.ec_mirror = None
             self.ph_mirror = None
@@ -428,11 +429,20 @@ class OpticalTrain(object):
         if self.cmds["ATMO_USE_ATMO_BG"].lower() == "yes":
             if self.cmds["ATMO_EC"] is not None:
 
-                self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
-                                                pix_res=self.cmds.pix_res,
-                                                area=self.cmds.area,
-                                                airmass=self.cmds["ATMO_AIRMASS"])
+                # self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
+                                                # pix_res=self.cmds.pix_res,
+                                                # area=self.cmds.area,
+                                                # airmass=self.cmds["ATMO_AIRMASS"])
 
+                # self.th_atmo = sc.BlackbodyCurve(lam    =self.ec_atmo.lam,
+                                                 # temp   =self.cmds["ATMO_TEMPERATURE"],
+                                                 # pix_res=self.cmds.pix_res,
+                                                 # area   =scope_area)
+
+                # self.ec_atmo += self.th_atmo
+
+                # print("Just loaded EC")
+                # print((self.tc_atmo * self.ec_atmo).photons_in_range()
 
                 ################################################################
                 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -446,33 +456,30 @@ class OpticalTrain(object):
                 ################################################################
 
 
+                self.ec_atmo = sc.get_sky_spectrum(fname=self.cmds["ATMO_EC"],
+                                               airmass=self.cmds["ATMO_AIRMASS"],
+                                               return_type="emission",
+                                               area=self.cmds.area,
+                                               pix_res=self.cmds.pix_res)
+                lam = self.ec_atmo.lam
+                val = self.ec_atmo.val
 
-                self.th_atmo = sc.BlackbodyCurve(lam    =self.ec_atmo.lam,
-                                                 temp   =self.cmds["ATMO_TEMPERATURE"],
+                sky_mag = self.cmds["ATMO_BG_MAGNITUDE"]
+                if sky_mag is not None and isinstance(sky_mag, (float, int)):
+                    lam, val = scale_spectrum_sb(lam=lam, spec=val,
+                                                 filter_name=self.cmds["INST_FILTER_TC"],
+                                                 mag_per_arcsec=sky_mag,
                                                  pix_res=self.cmds.pix_res,
-                                                 area   =scope_area)
+                                                 return_ec=False)
 
-                self.ec_atmo += self.th_atmo
-
-                # lam, val = sc.get_sky_spectrum(fname=self.cmds["ATMO_EC"],
-                                               # airmass=self.cmds["ATMO_AIRMASS"])
-                # sky_mag = self.cmds["ATMO_BG_MAGNITUDE"]
-                # if sky_mag is not None and isinstance(sky_mag, (float, int)):
-                    # lam, val = scale_spectrum_sb(lam=lam, spec=val,
-                                                 # filter_name=self.cmds["INST_FILTER_TC"],
-                                                 # mag_per_arcsec=sky_mag,
-                                                 # pix_res=self.cmds.pix_res,
-                                                 # return_ec=False)
-
-                # self.ec_atmo = sc.EmissionCurve(lam=lam, val=val,
-                                                # pix_res=self.cmds.pix_res,
-                                                # area=self.cmds.area,
-                                                # units="ph/(s m2)",
-                                                # airmass=self.cmds["ATMO_AIRMASS"])
+                    self.ec_atmo = sc.EmissionCurve(lam=lam, val=val,
+                                                 pix_res=self.cmds.pix_res,
+                                                 area=self.cmds.area,
+                                                 units="ph/(s m2)",
+                                                 airmass=self.cmds["ATMO_AIRMASS"])
             else:
                 ################## TODO ######################
                 # Generalise this to accept any TransmissionCurve object
-                from .source import flat_spectrum_sb
                 self.ec_atmo = flat_spectrum_sb(self.cmds["ATMO_BG_MAGNITUDE"],
                                                 self.cmds["INST_FILTER_TC"],
                                                 self.cmds["SIM_DETECTOR_PIX_SCALE"],
@@ -573,6 +580,9 @@ class OpticalTrain(object):
                                   min_step=self.cmds["SIM_SPEC_MIN_STEP"])
         for key in tc_keywords:
             tc_master *= tc_dict[key]
+
+        self.tc_keywords = tc_keywords
+        self.tc_dict = tc_dict
 
         return tc_master
 
@@ -683,9 +693,12 @@ def get_filter_curve(filter_name):
     Acceptable filters can be found be calling get_filter_set()
     """
 
-    if filter_name not in get_filter_set(path=None):
-        raise ValueError("filter not recognised: "+filter)
-    fname = os.path.join(__pkg_dir__, "data", "TC_filter_"+filter_name+".dat")
+    fname = find_file(filter_name)
+    if fname is None:
+        fname = find_file("TC_filter_" + filter_name + ".dat")
+        if fname is None:
+            raise ValueError("filter not recognised: " + filter_name)
+
     return sc.TransmissionCurve(filename=fname)
 
 
