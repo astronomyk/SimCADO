@@ -101,10 +101,7 @@ convolution of a list of PSF components
 
 """
 
-import os
-from .utils import __pkg_dir__
-
-import warnings, logging
+import warnings
 from copy import deepcopy
 
 import numpy as np
@@ -114,7 +111,7 @@ from scipy.signal import fftconvolve
 from astropy.io import fits
 #from astropy import units as u   ## unused (OC)
 from astropy.convolution import Moffat2DKernel, Gaussian2DKernel
-from astropy.convolution import convolve_fft
+#from astropy.convolution import convolve_fft   ## unused
 from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
