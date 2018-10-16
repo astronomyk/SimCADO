@@ -123,7 +123,7 @@ class TransmissionCurve(object):
                        "lam_unit"    : u.um,
                        "use_default_lam" : True,
                        "on_default_lam" : False,
-                       "default_lam" : np.arange(3.0, 18.32, 0.01),
+                       "default_lam" : np.arange(0.3, 3.0, 0.01),
                        "airmass"     : None}
 
         self.params.update(kwargs)
