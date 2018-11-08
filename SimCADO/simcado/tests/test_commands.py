@@ -1,19 +1,16 @@
 import pytest
+from simcado.commands import UserCommands
 
 def test_load_UserCommands():
-    import simcado as sim
-    cmd = sim.UserCommands()
-    assert type(cmd) == sim.commands.UserCommands
-
-
-def test_all_defaults_paths_exist():
-    import simcado as sim
-
+    cmd = UserCommands()
+    assert type(cmd) == UserCommands
 
 def test_update():
-    import simcado as sim
-    cmd = sim.UserCommands()
-    cmd.update({'OBS_EXPTIME' : 30})
+    cmd = UserCommands()
+    cmd['OBS_EXPTIME'] = 30
     assert cmd.cmds['OBS_EXPTIME'] == 30
+    
+def test_wrong_keyword():
+    cmd = UserCommands()
     with pytest.raises(KeyError):
         cmd.update({'NO_EXISTE' : 30})
