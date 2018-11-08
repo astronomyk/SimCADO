@@ -101,7 +101,7 @@ from astropy.wcs import WCS
 
 #from astropy.stats.funcs import median_absolute_deviation as mad
 
-from .utils import find_file
+from .utils import find_file, airmass2zendist
 
 from . import spectral as sc
 from . import commands
@@ -393,7 +393,8 @@ class Detector(object):
             #                         "[s] Time between non-destructive readouts")
             thishdu.header["GAIN"] = (self.chips[i].gain, "[e-/ADU]")
             thishdu.header["AIRMASS"] = (self.cmds["ATMO_AIRMASS"], "")
-            thishdu.header["ZD"] = (self.cmds["OBS_ZENITH_DIST"], "[deg]")
+            thishdu.header["ZD"] = \
+                (airmass2zendist(self.cmds["ATMO_AIRMASS"]), "[deg]")
 
 
             for key in self.cmds.cmds:

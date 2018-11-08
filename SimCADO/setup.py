@@ -8,8 +8,8 @@ from distutils.core import setup
 
 # Version number
 MAJOR = 0
-MINOR = 4
-ATTR = 'dev'
+MINOR = 5
+ATTR = 'dev1'
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
 
@@ -37,7 +37,7 @@ def setup_package():
                             oliver.czoske@univie.ac.at""",
           url = "http://homepage.univie.ac.at/kieran.leschinski/",
           package_dir={'simcado': 'simcado'},
-          packages=['simcado', 'simcado.tests', 'simcado.sandbox'],
+          packages=['simcado'],
           package_data = {'simcado': ['data/*']},
           )
 

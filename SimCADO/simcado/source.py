@@ -2139,7 +2139,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     .. note::
         ``plate_scale`` is the original plate scale of the images. If this is
-        not the same as the plate scale of the ``Detector`` (i.e. 4mas for MICADO)
+        not the same as the plate scale of the ``Detector``
         then you will need to specify oversample to interpolate between the two
         scales. I.e.  oversample = Image plate scale / Detector plate scale
 
@@ -3230,7 +3230,7 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
         [deg] Default = 30. Rotation anti-clockwise from the x-axis
 
     n : float
-        Sersic index, default = 1 (exponential disk)
+         Sersic index, default = 1 (exponential disk)
 
     width, height : int
         [arcsec] Dimensions of the image. Default: 512*plate_scale
