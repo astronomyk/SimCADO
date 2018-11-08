@@ -10,7 +10,7 @@ from os.path import join
 
 from astropy.utils.exceptions import AstropyWarning
 
-# Import all the modules to go under simcado.detector
+# Import all the modules to go under simcado
 from . import utils
 
 from . import spectral
