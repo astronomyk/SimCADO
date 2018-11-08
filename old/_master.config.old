@@ -1,8 +1,0 @@
-################################################################################
-# Paths to the configuration files controlling the main parts of a simulation
-
-CONFIG_ATMOSPHERE          ../user_commands/atmosphere.config
-CONFIG_TELESCOPE           ../user_commands/telescope.config
-CONFIG_DETECTOR            ../user_commands/detector.config
-CONFIG_OBSERVATIONS        ../user_commands/observation.config 
-CONFIG_SOURCE              ../user_commands/source.config 
