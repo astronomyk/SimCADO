@@ -7,7 +7,7 @@ python:
     
 install:
     - pip install -r requirements.travis.txt
-    - pip install .
+    - pip install ./SimCADO
     
 script: 
     - pytest
