@@ -1,5 +1,5 @@
 D:
-cd D:\Dropbox\Uni\PhD\SimCADO\SimCADO
+cd D:\Dropbox\Uni\SimCADO.git\SimCADO
 
 del .\dist\*.tar.gz
 del .\dist\*.zip

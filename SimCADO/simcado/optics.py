@@ -27,6 +27,8 @@ import astropy.units as u
 from . import psf as psf
 from . import spectral as sc
 from . import spatial as pe
+
+from .source import scale_spectrum_sb, flat_spectrum_sb
 from .commands import UserCommands
 from .utils import __pkg_dir__
 
@@ -428,10 +430,38 @@ class OpticalTrain(object):
         if self.cmds["ATMO_USE_ATMO_BG"].lower() == "yes":
             if self.cmds["ATMO_EC"] is not None:
 
-                self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
-                                                pix_res=self.cmds.pix_res,
-                                                area=self.cmds.area,
-                                                airmass=self.cmds["ATMO_AIRMASS"])
+                ## Section copied from SimMETIS
+            
+                self.ec_atmo = sc.get_sky_spectrum(fname=self.cmds["ATMO_EC"],
+                                               airmass=self.cmds["ATMO_AIRMASS"],
+                                               return_type="emission",
+                                               area=self.cmds.area,
+                                               pix_res=self.cmds.pix_res)
+                lam = self.ec_atmo.lam
+                val = self.ec_atmo.val
+
+                sky_mag = self.cmds["ATMO_BG_MAGNITUDE"]
+                if sky_mag is not None and isinstance(sky_mag, (float, int)):
+                    lam, val = scale_spectrum_sb(lam=lam, spec=val,
+                                                 filter_name=self.cmds["INST_FILTER_TC"],
+                                                 mag_per_arcsec=sky_mag,
+                                                 pix_res=self.cmds.pix_res,
+                                                 return_ec=False)
+
+                    self.ec_atmo = sc.EmissionCurve(lam=lam, val=val,
+                                                 pix_res=self.cmds.pix_res,
+                                                 area=self.cmds.area,
+                                                 units="ph/(s m2)",
+                                                 airmass=self.cmds["ATMO_AIRMASS"])
+
+            
+            
+                ## Old confusing section from SimCADO
+            
+                # self.ec_atmo = sc.EmissionCurve(filename=self.cmds["ATMO_EC"],
+                                                # pix_res=self.cmds.pix_res,
+                                                # area=self.cmds.area,
+                                                # airmass=self.cmds["ATMO_AIRMASS"])
 
 
                 ################################################################
@@ -447,12 +477,12 @@ class OpticalTrain(object):
 
 
 
-                self.th_atmo = sc.BlackbodyCurve(lam    =self.ec_atmo.lam,
-                                                 temp   =self.cmds["ATMO_TEMPERATURE"],
-                                                 pix_res=self.cmds.pix_res,
-                                                 area   =scope_area)
+                # self.th_atmo = sc.BlackbodyCurve(lam    =self.ec_atmo.lam,
+                                                 # temp   =self.cmds["ATMO_TEMPERATURE"],
+                                                 # pix_res=self.cmds.pix_res,
+                                                 # area   =scope_area)
 
-                self.ec_atmo += self.th_atmo
+                # self.ec_atmo += self.th_atmo
 
                 # lam, val = sc.get_sky_spectrum(fname=self.cmds["ATMO_EC"],
                                                # airmass=self.cmds["ATMO_AIRMASS"])
@@ -472,7 +502,6 @@ class OpticalTrain(object):
             else:
                 ################## TODO ######################
                 # Generalise this to accept any TransmissionCurve object
-                from .source import flat_spectrum_sb
                 self.ec_atmo = flat_spectrum_sb(self.cmds["ATMO_BG_MAGNITUDE"],
                                                 self.cmds["INST_FILTER_TC"],
                                                 self.cmds["SIM_DETECTOR_PIX_SCALE"],

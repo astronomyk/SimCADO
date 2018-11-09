@@ -7,7 +7,10 @@ import warnings, logging
 
 import numpy as np
 
-import simcado as sim
+from . import source
+from .commands import UserCommands
+from .optics   import OpticalTrain
+from .detector import Detector
 
 __all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]
 
@@ -61,7 +64,7 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     """
 
     if cmds is None:
-        cmds = sim.UserCommands()
+        cmds = UserCommands()
         cmds["INST_FILTER_TC"] = "Ks"
 
     if detector_layout.lower() in ("tiny", "small", "centre", "center"):
@@ -88,9 +91,9 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     cmds.update(kwargs)
 
     if opt_train is None:
-        opt_train = sim.OpticalTrain(cmds)
+        opt_train = OpticalTrain(cmds)
     if fpa is None:
-        fpa = sim.Detector(cmds, small_fov=False)
+        fpa = Detector(cmds, small_fov=False)
 
     print("Detector layout")
     print(fpa.layout)
@@ -139,10 +142,10 @@ def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
         [y_cen + i*n for i in range(8)] + \
         [y_cen + i*n for i in range(9)]
 
-    lam, spec = sim.source.SED("A0V", "Ks", 15)
-    src = sim.source.Source(lam=lam, spectra=spec, x=x, y=y, ref=[0]*len(x))
+    lam, spec = source.SED("A0V", "Ks", 15)
+    src = source.Source(lam=lam, spectra=spec, x=x, y=y, ref=[0]*len(x))
 
-    sim.run(src, detector_layout="full", filename=filename, mode=mode)
+    run(src, detector_layout="full", filename=filename, mode=mode)
 
 
 
@@ -192,7 +195,7 @@ def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32,
     grids = []
     for filt, cmd in zip(filter_names, cmds):
         if cmd is None:
-            cmd = sim.UserCommands()
+            cmd = UserCommands()
         #cmd["FPA_USE_NOISE"] = "no"
         cmd["OBS_NDIT"] = 1
         cmd["FPA_LINEARITY_CURVE"] = "none"
@@ -201,10 +204,10 @@ def _make_snr_grid_fpas(filter_names=["J", "H", "Ks"], mmin=22, mmax=32,
 
         star_sep = cmd["SIM_DETECTOR_PIX_SCALE"] * 100
 
-        grid = sim.source.star_grid(100, mmin, mmax, filter_name=filt, separation=star_sep)
+        grid = source.star_grid(100, mmin, mmax, filter_name=filt, separation=star_sep)
         grids += [grid]
 
-        hdus, (cmd, opt, fpa) = sim.run(grid,  filter_name=filt, cmds=cmd, return_internals=True)
+        hdus, (cmd, opt, fpa) = run(grid,  filter_name=filt, cmds=cmd, return_internals=True)
         fpas += [fpa]
 
     return fpas, grid
@@ -532,7 +535,7 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
 
     paranal_bg = {"J" : 16.5, "H" : 14.4, "Ks" : 13.6}
 
-    default_cmds = sim.UserCommands()
+    default_cmds = UserCommands()
     default_cmds["ATMO_EC"] = "none"
     default_cmds["FPA_USE_NOISE"] = "no"
     if filter_name in paranal_bg.keys():
@@ -543,7 +546,7 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
 
     default_cmds.update(kwargs)
 
-    q = sim.simulation._make_snr_grid_fpas(filter_names=[filter_name],
+    q = _make_snr_grid_fpas(filter_names=[filter_name],
                                            mmin=mmin, mmax=mmax, cmds=default_cmds)
     fpa, src = q[0][0], q[1]
 
@@ -845,23 +848,23 @@ def snr(exptimes, mags, filter_name="Ks", cmds=None, **kwargs):
                      # Use 'snr_curve()' until SimCADO v0.5 is released""")
 
     # if cmds is None:
-        # cmd = sim.UserCommands()
+        # cmd = UserCommands()
     # else:
         # cmd = cmds
     # cmd["OBS_EXPTIME"] = total_exptime / ndit
     # cmd["OBS_NDIT"] = ndit
     # cmd["INST_FILTER_TC"] = filter_name
 
-    # opt = sim.OpticalTrain(cmd)
+    # opt = OpticalTrain(cmd)
 
     # if type(mags) not in (list, tuple, np.ndarray):
         # mags = [mags]
 
     # sn = []
     # for mag in mags:
-        # src = sim.source.star(mag)
+        # src = source.star(mag)
 
-        # fpa = sim.Detector(cmd)
+        # fpa = Detector(cmd)
         # src.apply_optical_train(opt, fpa, chips=0)
         # hdu = fpa.read_out()
 
