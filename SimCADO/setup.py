@@ -31,7 +31,7 @@ def get_old_version(filename='simcado/version.py'):
 
 # Is this the version number scheme that we want?
 MAJOR = 0
-MINOR = 4
+MINOR = 5
 ATTR = 'dev'
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
@@ -68,7 +68,7 @@ def setup_package():
                             oliver.czoske@univie.ac.at""",
           url = "http://homepage.univie.ac.at/kieran.leschinski/",
           package_dir={'simcado': 'simcado'},
-          packages=['simcado', 'simcado.tests', 'simcado.sandbox'],
+          packages=['simcado', 'simcado.tests'],
           # for some reason include_package_data can be temperamental
           #include_package_data=True,
           package_data = {'simcado': ['data/*']},

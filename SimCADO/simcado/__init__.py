@@ -46,7 +46,7 @@ __data_dir__ = join(__pkg_dir__, "data")
 
 
 # import the experimental stuff
-from .sandbox import imf
+# from .sandbox import imf
 
 
 
