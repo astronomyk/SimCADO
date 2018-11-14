@@ -60,7 +60,6 @@ keywords - e.g. for the keywords for the instrument:
 
 """
 
-import sys
 import os
 import shutil
 import warnings
@@ -250,8 +249,8 @@ class UserCommands(object):
             self.cmds['SIM_DATA_DIR'] = sim_data_dir
 
         # If we have no SIM_DATA_DIR from config or parameter, exit.
-        if (self.cmds['SIM_DATA_DIR'] == 'None' or
-            self.cmds['SIM_DATA_DIR'] is None):
+        if self.cmds['SIM_DATA_DIR'] == 'None' \
+           or self.cmds['SIM_DATA_DIR'] is None:
             raise ValueError("""Please specify config file and/or sim_data_dir!""")
 
 
@@ -457,7 +456,7 @@ class UserCommands(object):
                 self.cmds["SCOPE_PSF_FILE"] = find_file("PSF_SCAO.fits")
             elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
                 self.cmds["SCOPE_PSF_FILE"] = find_file("PSF_POPPY.fits")
-            elif (find_file(self.cmds["SCOPE_PSF_FILE"]) is None):
+            elif find_file(self.cmds["SCOPE_PSF_FILE"]) is None:
                 raise ValueError("Cannot recognise PSF file name: " +
                                  self.cmds["SCOPE_PSF_FILE"])
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], PSFCube):
@@ -696,13 +695,13 @@ class UserCommands(object):
         """
         Generate smaller category-specific dictionaries
         """
-        self.obs   = {i:self.cmds[i] for i in self.cmds.keys() if "OBS" in i}
-        self.sim   = {i:self.cmds[i] for i in self.cmds.keys() if "SIM" in i}
-        self.atmo  = {i:self.cmds[i] for i in self.cmds.keys() if "ATMO" in i}
+        self.obs = {i:self.cmds[i] for i in self.cmds.keys() if "OBS" in i}
+        self.sim = {i:self.cmds[i] for i in self.cmds.keys() if "SIM" in i}
+        self.atmo = {i:self.cmds[i] for i in self.cmds.keys() if "ATMO" in i}
         self.scope = {i:self.cmds[i] for i in self.cmds.keys() if "SCOPE" in i}
-        self.inst  = {i:self.cmds[i] for i in self.cmds.keys() if "INST" in i}
-        self.fpa   = {i:self.cmds[i] for i in self.cmds.keys() if "FPA" in i}
-        self.hxrg  = {i:self.cmds[i] for i in self.cmds.keys() if "HXRG" in i}
+        self.inst = {i:self.cmds[i] for i in self.cmds.keys() if "INST" in i}
+        self.fpa = {i:self.cmds[i] for i in self.cmds.keys() if "FPA" in i}
+        self.hxrg = {i:self.cmds[i] for i in self.cmds.keys() if "HXRG" in i}
 
 
     def __str__(self):
@@ -753,9 +752,8 @@ def dump_defaults(filename=None, selection="freq"):
 
     if filename is None:
         gname = os.path.join(__pkg_dir__, "data", fname)
-        f = open(gname, "r")
-        print(f.read())
-        f.close()
+        with open(gname, "r") as fd1:
+            print(fd1.read())
         return None
     else:
         path, gname = os.path.split(filename)
@@ -781,9 +779,8 @@ def dump_chip_layout(path=None):
     fname = find_file("FPA_chip_layout.dat")
 
     if path is None:
-        f = open(fname, "r")
-        print(f.read())
-        f.close()
+        with open(fname, "r") as fd1:
+            print(fd1.read())
     else:
         path = os.path.dirname(path)
         shutil.copy(fname, path)
@@ -811,9 +808,8 @@ def dump_mirror_config(path=None, what="scope"):
         fname = find_file("EC_mirrors_ao.tbl")
 
     if path is None:
-        f = open(fname, "r")
-        print(f.read())
-        f.close()
+        with open(fname, "r") as fd1:
+            print(fd1.read())
     else:
         path = os.path.dirname(path)
         shutil.copy(fname, path)
