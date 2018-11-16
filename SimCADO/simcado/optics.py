@@ -681,6 +681,14 @@ def get_filter_curve(filter_name):
     Notes
     -----
     Acceptable filters can be found be calling get_filter_set()
+    
+    To access the values use TransmissionCurve.lam and TransmissionCurve.val
+
+    Examples
+    --------
+    	>>> TransmissionCurve = get_filter_curve("Ks")
+    	>>> wavelength   = TransmissionCurve.lam
+    	>>> transmission = TransmissionCurve.val
     """
 
     if filter_name not in get_filter_set(path=None):
