@@ -752,11 +752,11 @@ def plot_filter_set(path=None,filters="All",cmap="rainbow",filename=None):
     peaks = np.zeros(np.size(Filter_Names))
     i = 0
     for filter_name in Filter_Names:
-        Tcurve = sim.optics.get_filter_curve(filter_name)
+        Tcurve = get_filter_curve(filter_name)
         wave = Tcurve.lam[Tcurve.val>0.02]
         tran = Tcurve.val[Tcurve.val>0.02]
         lam_peak = wave[tran==np.max(tran)]
-        peaks[i]=lam_peak[0]
+        peaks[i] = lam_peak[0]
         i+=1 
             
         
@@ -769,7 +769,7 @@ def plot_filter_set(path=None,filters="All",cmap="rainbow",filename=None):
         lmin = np.min(wave)
         lmax = np.max(wave)
         lam_peak = wave[tran==np.max(tran)]
-        if (lmax-lmin)/lam_peak[0] >0.1:
+        if (lmax-lmin)/lam_peak[0] > 0.1:
             plt.plot(wave,tran,"--",label=filter_name)
         else:
             plt.plot(wave,tran,"-",label=filter_name)
