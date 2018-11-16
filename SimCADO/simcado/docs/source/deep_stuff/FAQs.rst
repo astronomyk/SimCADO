@@ -162,6 +162,27 @@ filename of the saved PSF slice
 
     simcado.run( ... , SCOPE_PSF_FILE="my_psf_layer.fits", ...)
 
+Accessing Filter Transmission curves
+------------------------------------
+
+To access the transmission curve 
+
+    >>> import simcado as sim 
+    >>> T_curve = sim.optics.get_filter_curve(FilterName)  # Returns a transmission curve object
+
+::
+    
+To access the values as numpy arrays
+
+    >> wavelenght = Tcurve.lam
+    >> transmission = Tcurve.val
+
+::
+
+To see which filters are available
+
+    >> simcado.optics.get_filter_seet()
+
    
    
 What SimCADO can do?
