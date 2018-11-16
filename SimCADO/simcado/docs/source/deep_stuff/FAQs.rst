@@ -10,8 +10,6 @@ The problem lies with Python 2.7. The noise cube code is 3rd party code
 that only works on Python 3 and I haven’t had a chance to dig into that
 code yet to find the problem
 
-Option 1
-~~~~~~~~
 
 Generate a noise cube in Python 3. First install python3
 ::
@@ -26,13 +24,7 @@ Then create the noise cube
     >>> import simcado
     >>> sim.detector.make_noise_cube(num_layers=25, filename='FPA_noise.fits', multicore=True)
 
-Option 2
-~~~~~~~~
 
-Download a 15 slice noise cube from my Google Drive folder and save it
-in the simcado/data folder.
-`https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing 
-<https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing>`__
 
 .. note::
     Your simcado/data folder can be found by printing the ``__pkg_dir__``
