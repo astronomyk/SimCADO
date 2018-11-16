@@ -698,3 +698,88 @@ def get_filter_set(path=None):
     lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
                     for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst
+
+
+
+def plot_filter_set(path=None,filters="All",cmap="rainbow",savefig=None):
+    """
+    Plot a filter transmision curve or transmision curve for a list of filters
+    
+    Parameters
+    ----------
+    path : str 
+        the location of the filters, set to None to use the default one, passed to get_filter_set
+    filters : str or list
+        a filter or a list of filters to be plotted, acceptable filters can be found calling
+        get_filter_set()
+    cmap : str
+        any matplotlib colormap, defaulted to rainbow
+    savefig : str
+        a filename to save the figure if necessary
+        
+    Returns
+    -------
+    a matplotlib object
+        
+    Notes
+    -----
+    
+    Examples
+    --------
+    
+        >>> plot_filter_set()  
+        >>> plot_filter_set(cmap="viridis")  
+        >>> plot_filter_set(filters="Ks")   
+        >>> plot_filter_set(filters=("U","PaBeta","Ks"),savefig="filters.png") 
+    
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib import rcParams, cycler
+    from matplotlib.cm  import get_cmap
+    
+    if np.size(filters) == 1:
+        Filter_Names=[filters,]
+    if  np.size(filters) >1:
+        Filter_Names=filters
+    
+    if filters == "All":
+        Filter_Names=sim.optics.get_filter_set(path)
+    
+    
+    cmap =  get_cmap(cmap) 
+    rcParams['axes.prop_cycle'] = cycler(color=cmap(np.linspace(0, 1, np.size(Filter_Names))))
+    
+    peaks=np.zeros(np.size(Filter_Names))
+    i=0
+    for filter_name in Filter_Names:
+        Tcurve=sim.optics.get_filter_curve(filter_name)
+        wave=Tcurve.lam[Tcurve.val>0.02]
+        tran=Tcurve.val[Tcurve.val>0.02]
+        lam_peak=wave[tran==np.max(tran)]
+        peaks[i]=lam_peak[0]
+        i+=1 
+            
+        
+    ordered_names=[x for _,x in sorted(zip(peaks,Filter_Names))] 
+    
+    for filter_name in ordered_names:
+        Tcurve=sim.optics.get_filter_curve(filter_name)
+        wave=Tcurve.lam[Tcurve.val>0.02]
+        tran=Tcurve.val[Tcurve.val>0.02]
+        lmin=np.min(wave)
+        lmax=np.max(wave)
+        lam_peak=wave[tran==np.max(tran)]
+        if (lmax-lmin)/lam_peak[0] >0.1:
+            plt.plot(wave,tran,"--",label=filter_name)
+        else:
+            plt.plot(wave,tran,"-",label=filter_name)
+        
+        
+        
+        
+    plt.xlabel("wavelenght [$u$m]")
+    plt.ylabel("transmission")
+    plt.legend(loc=(1.03,0))
+    if savefig is not None:
+        plt.savefig(savefig)
+
