@@ -361,10 +361,10 @@ class OpticalTrain(object):
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_ao = self._gen_master_tc(preset="ao")
-        self.ec_ao = sc.BlackbodyCurve(lam=self.tc_ao.lam,
-                                       temp=self.cmds["INST_AO_TEMPERATURE"],
+        self.ec_ao = sc.BlackbodyCurve(lam    =self.tc_ao.lam,
+                                       temp   =self.cmds["INST_AO_TEMPERATURE"],
                                        pix_res=self.cmds.pix_res,
-                                       area=ao_area)
+                                       area   =ao_area)
         # Really dodgy hack to emulate emissivity - half way between Al and AgAl
         self.ec_ao *= 0.1
 
@@ -681,7 +681,7 @@ def get_filter_curve(filter_name):
     Notes
     -----
     Acceptable filters can be found be calling get_filter_set()
-    
+
     To access the values use TransmissionCurve.lam and TransmissionCurve.val
 
     Examples
