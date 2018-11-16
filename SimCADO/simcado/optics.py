@@ -361,10 +361,10 @@ class OpticalTrain(object):
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_ao = self._gen_master_tc(preset="ao")
-        self.ec_ao = sc.BlackbodyCurve(lam    =self.tc_ao.lam,
-                                       temp   =self.cmds["INST_AO_TEMPERATURE"],
+        self.ec_ao = sc.BlackbodyCurve(lam=self.tc_ao.lam,
+                                       temp=self.cmds["INST_AO_TEMPERATURE"],
                                        pix_res=self.cmds.pix_res,
-                                       area   =ao_area)
+                                       area=ao_area)
         # Really dodgy hack to emulate emissivity - half way between Al and AgAl
         self.ec_ao *= 0.1
 
@@ -397,17 +397,17 @@ class OpticalTrain(object):
             self.cmds["SCOPE_TEMP"] = mirr_list["Temp"][0]
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
-        self.ec_mirror = sc.BlackbodyCurve(lam    =self.tc_mirror.lam,
-                                           temp   =self.cmds["SCOPE_TEMP"],
+        self.ec_mirror = sc.BlackbodyCurve(lam=self.tc_mirror.lam,
+                                           temp=self.cmds["SCOPE_TEMP"],
                                            pix_res=self.cmds.pix_res,
-                                           area   =scope_area)
+                                           area=scope_area)
 
         if self.cmds["SCOPE_USE_MIRROR_BG"].lower() == "yes":
             # KL - _gen_thermal_emission() returns the sum of all thermal photons
             # not just the ones that pass through the system transmission curve
             # Add the 3rd line here to correct this
             self.n_ph_mirror, self.ec_mirror = self._gen_thermal_emission()
-            self.ph_mirror   = self.ec_mirror * self.tc_mirror
+            self.ph_mirror = self.ec_mirror * self.tc_mirror
             self.n_ph_mirror = self.ph_mirror.photons_in_range(
                 self.lam_bin_edges[0],
                 self.lam_bin_edges[-1])
@@ -447,10 +447,10 @@ class OpticalTrain(object):
 
 
 
-                self.th_atmo = sc.BlackbodyCurve(lam    =self.ec_atmo.lam,
-                                                 temp   =self.cmds["ATMO_TEMPERATURE"],
+                self.th_atmo = sc.BlackbodyCurve(lam=self.ec_atmo.lam,
+                                                 temp=self.cmds["ATMO_TEMPERATURE"],
                                                  pix_res=self.cmds.pix_res,
-                                                 area   =scope_area)
+                                                 area=scope_area)
 
                 self.ec_atmo += self.th_atmo
 
@@ -608,8 +608,8 @@ class OpticalTrain(object):
             hdulist = fits.HDUList()
             for lam in self.cmds.lam_bin_centers:
 
-                psf_mo = psf.seeing_psf(fwhm   =self.cmds["OBS_SEEING"],
-                                        size   =self.cmds["SIM_PSF_SIZE"],
+                psf_mo = psf.seeing_psf(fwhm=self.cmds["OBS_SEEING"],
+                                        size=self.cmds["SIM_PSF_SIZE"],
                                         pix_res=self.cmds["SIM_DETECTOR_PIX_SCALE"],
                                         psf_type="moffat", filename=None)
 
@@ -701,13 +701,14 @@ def get_filter_set(path=None):
 
 
 
-def plot_filter_set(path=None,filters="All",cmap="rainbow",filename=None):
+def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
+                    show=True):
     """
     Plot a filter transmision curve or transmision curve for a list of filters
-    
+
     Parameters
     ----------
-    path : str 
+    path : str
         the location of the filters, set to None to use the default one, passed to get_filter_set
     filters : str or list
         a filter or a list of filters to be plotted, acceptable filters can be found calling
@@ -716,67 +717,70 @@ def plot_filter_set(path=None,filters="All",cmap="rainbow",filename=None):
         any matplotlib colormap, defaulted to rainbow
     filename : str
         a filename to save the figure if necessary
-        
+    show : boolean
+        if True, the plot is shown immediately in an interactive session
+
     Returns
     -------
     a matplotlib object
-        
+
     Notes
     -----
-    
+
     Examples
     --------
-    
-        >>> plot_filter_set()  
-        >>> plot_filter_set(cmap="viridis")  
-        >>> plot_filter_set(filters="Ks")   
-        >>> plot_filter_set(filters=("U","PaBeta","Ks"),savefig="filters.png") 
-    
+
+        >>> plot_filter_set()
+        >>> plot_filter_set(cmap="viridis")
+        >>> plot_filter_set(filters="Ks")
+        >>> plot_filter_set(filters=("U","PaBeta","Ks"),savefig="filters.png")
+
     """
     import matplotlib.pyplot as plt
     from matplotlib import rcParams, cycler
     from matplotlib.cm  import get_cmap
-    
+
     if np.size(filters) == 1:
-        Filter_Names = [filters,]
+        filter_names = [filters,]
     if  np.size(filters) > 1:
-        Filter_Names = filters
-    
+        filter_names = filters
+
     if filters == "All":
-        Filter_Names = get_filter_set(path)
-    
-    
-    cmap =  get_cmap(cmap) 
-    rcParams['axes.prop_cycle'] = cycler(color=cmap(np.linspace(0, 1, np.size(Filter_Names))))
-    
-    peaks = np.zeros(np.size(Filter_Names))
+        filter_names = get_filter_set(path)
+
+    cmap = get_cmap(cmap)
+    rcParams['axes.prop_cycle'] = \
+        cycler(color=cmap(np.linspace(0, 1, np.size(filter_names))))
+
+    peaks = np.zeros(np.size(filter_names))
     i = 0
-    for filter_name in Filter_Names:
-        Tcurve = sim.optics.get_filter_curve(filter_name)
-        wave = Tcurve.lam[Tcurve.val>0.02]
-        tran = Tcurve.val[Tcurve.val>0.02]
-        lam_peak = wave[tran==np.max(tran)]
-        peaks[i]=lam_peak[0]
-        i+=1 
-            
-        
-    ordered_names=[x for _,x in sorted(zip(peaks,Filter_Names))] 
-    
+    for filter_name in filter_names:
+        tcurve = get_filter_curve(filter_name)
+        wave = tcurve.lam[tcurve.val > 0.02]
+        tran = tcurve.val[tcurve.val > 0.02]
+        lam_peak = wave[tran == np.max(tran)]
+        peaks[i] = lam_peak[0]
+        i += 1
+
+
+    ordered_names = [x for _, x in sorted(zip(peaks, filter_names))]
+
     for filter_name in ordered_names:
-        Tcurve = get_filter_curve(filter_name)
-        wave = Tcurve.lam[Tcurve.val>0.02]
-        tran = Tcurve.val[Tcurve.val>0.02]
+        tcurve = get_filter_curve(filter_name)
+        wave = tcurve.lam[tcurve.val > 0.02]
+        tran = tcurve.val[tcurve.val > 0.02]
         lmin = np.min(wave)
         lmax = np.max(wave)
-        lam_peak = wave[tran==np.max(tran)]
-        if (lmax-lmin)/lam_peak[0] >0.1:
-            plt.plot(wave,tran,"--",label=filter_name)
+        lam_peak = wave[tran == np.max(tran)]
+        if (lmax-lmin)/lam_peak[0] > 0.1:
+            plt.plot(wave, tran, "--", label=filter_name)
         else:
-            plt.plot(wave,tran,"-",label=filter_name)
-        
-    plt.xlabel("wavelenght [$u$m]")
-    plt.ylabel("transmission")
-    plt.legend(loc=(1.03,0))
-    if filename is not None:
-        plt.savefig(filename)
+            plt.plot(wave, tran, "-", label=filter_name)
 
+    plt.xlabel(r"wavelength [$\mu$m]")
+    plt.ylabel("transmission")
+    lgd = plt.legend(loc=(1.03, 0))
+    if filename is not None:
+        plt.savefig(filename, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    if show:
+        plt.show()
