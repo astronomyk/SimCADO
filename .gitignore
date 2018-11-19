@@ -21,6 +21,7 @@ MANIFEST
 
 # other stuff
 stable_dists
+git-ignored
 old
 pdfs
 data_backup
