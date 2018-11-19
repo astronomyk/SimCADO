@@ -684,11 +684,14 @@ def get_filter_curve(filter_name):
 
     To access the values use TransmissionCurve.lam and TransmissionCurve.val
 
+    To plot the transmission curve use TransmissionCurve.plot()
+
     Examples
     --------
     	>>> TransmissionCurve = get_filter_curve("Ks")
     	>>> wavelenght   = TransmissionCurve.lam
     	>>> transmission = TransmissionCurve.val
+        >>> ax = TransmissionCurve.plot()
     """
 
     if filter_name not in get_filter_set(path=None):
