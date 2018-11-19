@@ -181,9 +181,9 @@ class Detector(object):
     Create a :class:`Detector` object
     ::
 
-        >>> import simcado
-        >>> my_cmds = simcado.UserCommands()
-        >>> my_detector = simcado.Detector(my_cmds)
+        >>> import simcado as sim
+        >>> my_cmds = sim.UserCommands()
+        >>> my_detector = sim.Detector(my_cmds)
 
 
     Read out only the first :class:`.Chip`
