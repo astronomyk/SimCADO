@@ -339,19 +339,24 @@ class TransmissionCurve(object):
             errorstr = "Unknown normalization mode: {0}. No action taken."
             raise ValueError(errorstr.format(mode))
 
-    def plot(self,**kwargs):
-	"""
-	Plot the transmission curve on the current axis, accepts matplotlib.pyplot keywords
-	"""
-        
-	plt.plot(self.lam,self.val,**kwargs)
-	
+
+    def plot(self, **kwargs):
+        """
+	Plot the transmission curve on the current axis
+
+        The method accepts matplotlib.pyplot keywords.
+        """
+
+        plt.plot(self.lam, self.val, **kwargs)
+
 
     def __len__(self):
         return len(self.val)
 
+
     def __getitem__(self, i):
         return self.val[i], self.lam[i]
+
 
     def __array__(self):
         return self.val
