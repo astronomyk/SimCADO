@@ -7,15 +7,12 @@ UserCommands is essentially a dictionary that holds all the variables that
 the user may wish to change. It also has some set variables like ``pix_res``
 that can be accessed directly, instead of from the dictionary.
 
-UserCommands is imported directly into the simcado package and is accessible
-from the main package - ``simcado.UserCommands``
-
-If ``UserCommands`` is called without any arguments, the default values for MICADO
-are used.
+UserCommands is imported directly into the simmetis package and is accessible
+from the main package - ``simmetis.UserCommands``
 
 Classes
 -------
-``UserCommands(filename, default=<path_to_default>)``
+``UserCommands(filename, sim_data_dir=<path to data files>)``
 
 Routines
 --------
