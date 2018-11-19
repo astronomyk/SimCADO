@@ -63,6 +63,7 @@ from astropy import units as u
 from astropy import constants as c
 from astropy.io import fits
 from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
+import matplotlib.pyplot as plt
 
 #from .utils import __pkg_dir__    # not used
 
@@ -338,6 +339,13 @@ class TransmissionCurve(object):
             errorstr = "Unknown normalization mode: {0}. No action taken."
             raise ValueError(errorstr.format(mode))
 
+    def plot(self,**kwargs):
+	"""
+	Plot the transmission curve on the current axis, accepts matplotlib.pyplot keywords
+	"""
+        
+	plt.plot(self.lam,self.val,**kwargs)
+	
 
     def __len__(self):
         return len(self.val)
