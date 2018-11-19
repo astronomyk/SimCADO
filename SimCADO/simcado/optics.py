@@ -461,7 +461,6 @@ class OpticalTrain(object):
                 # self.ec_atmo *= 2.5
                 ################################################################
 
-
                 self.ec_atmo = sc.get_sky_spectrum(
                     fname=self.cmds["ATMO_EC"],
                     airmass=self.cmds["ATMO_AIRMASS"],
@@ -627,8 +626,8 @@ class OpticalTrain(object):
             hdulist = fits.HDUList()
             for lam in self.cmds.lam_bin_centers:
 
-                psf_mo = psf.seeing_psf(fwhm   =self.cmds["OBS_SEEING"],
-                                        size   =self.cmds["SIM_PSF_SIZE"],
+                psf_mo = psf.seeing_psf(fwhm=self.cmds["OBS_SEEING"],
+                                        size=self.cmds["SIM_PSF_SIZE"],
                                         pix_res=self.cmds["SIM_DETECTOR_PIX_SCALE"],
                                         psf_type="moffat", filename=None)
 
@@ -700,6 +699,14 @@ def get_filter_curve(filter_name):
     Notes
     -----
     Acceptable filters can be found be calling get_filter_set()
+
+    To access the values use TransmissionCurve.lam and TransmissionCurve.val
+
+    Examples
+    --------
+    	>>> TransmissionCurve = get_filter_curve("Ks")
+    	>>> wavelength   = TransmissionCurve.lam
+    	>>> transmission = TransmissionCurve.val
     """
 
     fname = find_file(filter_name)
@@ -720,3 +727,89 @@ def get_filter_set(path=None):
     lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
                     for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst
+
+
+
+def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
+                    show=True):
+    """
+    Plot a filter transmision curve or transmision curve for a list of filters
+
+    Parameters
+    ----------
+    path : str
+        the location of the filters, set to None to use the default one, passed to get_filter_set
+    filters : str or list
+        a filter or a list of filters to be plotted, acceptable filters can be found calling
+        get_filter_set()
+    cmap : str
+        any matplotlib colormap, defaulted to rainbow
+    filename : str
+        a filename to save the figure if necessary
+    show : boolean
+        if True, the plot is shown immediately in an interactive session
+
+    Returns
+    -------
+    a matplotlib object
+
+    Notes
+    -----
+
+    Examples
+    --------
+
+        >>> plot_filter_set()
+        >>> plot_filter_set(cmap="viridis")
+        >>> plot_filter_set(filters="Ks")
+        >>> plot_filter_set(filters=("U","PaBeta","Ks"),savefig="filters.png")
+
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib import rcParams, cycler
+    from matplotlib.cm  import get_cmap
+
+    if np.size(filters) == 1:
+        filter_names = [filters,]
+    if  np.size(filters) > 1:
+        filter_names = filters
+
+    if filters == "All":
+        filter_names = get_filter_set(path)
+
+    cmap = get_cmap(cmap)
+    rcParams['axes.prop_cycle'] = \
+        cycler(color=cmap(np.linspace(0, 1, np.size(filter_names))))
+
+    peaks = np.zeros(np.size(filter_names))
+    i = 0
+    for filter_name in filter_names:
+        tcurve = get_filter_curve(filter_name)
+        wave = tcurve.lam[tcurve.val > 0.02]
+        tran = tcurve.val[tcurve.val > 0.02]
+        lam_peak = wave[tran == np.max(tran)]
+        peaks[i] = lam_peak[0]
+        i += 1
+
+
+    ordered_names = [x for _, x in sorted(zip(peaks, filter_names))]
+
+    for filter_name in ordered_names:
+        tcurve = get_filter_curve(filter_name)
+        wave = tcurve.lam[tcurve.val > 0.02]
+        tran = tcurve.val[tcurve.val > 0.02]
+        lmin = np.min(wave)
+        lmax = np.max(wave)
+        lam_peak = wave[tran == np.max(tran)]
+        if (lmax-lmin)/lam_peak[0] > 0.1:
+            plt.plot(wave, tran, "--", label=filter_name)
+        else:
+            plt.plot(wave, tran, "-", label=filter_name)
+
+    plt.xlabel(r"wavelength [$\mu$m]")
+    plt.ylabel("transmission")
+    lgd = plt.legend(loc=(1.03, 0))
+    if filename is not None:
+        plt.savefig(filename, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    if show:
+        plt.show()

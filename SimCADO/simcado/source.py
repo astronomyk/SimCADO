@@ -1522,7 +1522,6 @@ def zero_magnitude_photon_flux(filter_name):
     if isinstance(filter_name, TransmissionCurve):
         vlam = filter_name.lam
         vval = filter_name.val
-
     else:
         fname = find_file(filter_name, silent=True)
         if fname is None:

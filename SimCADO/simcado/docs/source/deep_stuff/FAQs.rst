@@ -10,15 +10,13 @@ The problem lies with Python 2.7. The noise cube code is 3rd party code
 that only works on Python 3 and I haven’t had a chance to dig into that
 code yet to find the problem
 
-Option 1
-~~~~~~~~
 
 Generate a noise cube in Python 3. First install python3
 ::
 
-    $ pip3 install <path-to-simcado.zip> 
+    $ pip3 install <path-to-simcado.zip>
     $ python3
-    
+
 Then create the noise cube
 
 ::
@@ -26,19 +24,13 @@ Then create the noise cube
     >>> import simcado
     >>> sim.detector.make_noise_cube(num_layers=25, filename='FPA_noise.fits', multicore=True)
 
-Option 2
-~~~~~~~~
 
-Download a 15 slice noise cube from my Google Drive folder and save it
-in the simcado/data folder.
-`https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing 
-<https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing>`__
 
 .. note::
     Your simcado/data folder can be found by printing the ``__pkg_dir__``
-    variable: 
+    variable:
     ::
-    
+
         >>> simcado.utils.__pkg_dir__
 
 Copy the new noise cube into the Python 2.7 simcado/data folder.
@@ -80,7 +72,7 @@ Surface brightness scaling in SimCADO
     the counts in each pixel then scaled according to their different
     surface area?
 
-    
+
 To answer the question on scaling we need look at docstring for
 ``source_from_image``:
 
@@ -142,7 +134,7 @@ RAM.
    it’s accurate though. I’ll put that on my list of things to do this
    week (22 Nov 2016)
 
-   
+
 I have many PSFs in a FITS Cube. How do I use just one layer
 ------------------------------------------------------------
 
@@ -157,7 +149,7 @@ want to extract
     psf = f[0].data[i, :,:]
     hdr = f[0].header
 
-    hdu = fits.PrimaryHDU(data=psf, header=hdr)   
+    hdu = fits.PrimaryHDU(data=psf, header=hdr)
 
     hdu.header["CDELT1"] = 0.002    # whatever the plate scale of the PSF file is in arcsec
     hdu.header["WAVELENG"] = 2.16   # whatever the wavelength of that layer is in micron
@@ -170,11 +162,32 @@ filename of the saved PSF slice
 
     simcado.run( ... , SCOPE_PSF_FILE="my_psf_layer.fits", ...)
 
-   
-   
+Accessing Filter Transmission curves
+------------------------------------
+
+To access the transmission curve
+
+    >>> import simcado as sim
+    >>> t_curve = sim.optics.get_filter_curve(FilterName)  # Returns a transmission curve object
+
+::
+
+To access the values as numpy arrays
+
+    >>> wavelength = t_curve.lam
+    >>> transmission = t_curve.val
+
+::
+
+To see which filters are available
+
+    >>> simcado.optics.get_filter_set()
+
+
+
 What SimCADO can do?
 --------------------
-Many things. Chances are it can do what you'd like, however you may need some 
+Many things. Chances are it can do what you'd like, however you may need some
 patience
 
 What SimCADO can’t yet do?

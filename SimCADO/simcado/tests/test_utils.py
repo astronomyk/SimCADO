@@ -64,19 +64,19 @@ class TestAirmassZendist():
 class TestParallacticAngle():
     '''Tests of function simcado.utils.parallactic_angle'''
 
-    def test_01(self):
+    def test_parallactic_angle_negative_east_of_meridian(self):
         '''Test: parallactic angle negative east of meridian'''
         assert parallactic_angle(-1, 0, -24) < 0
 
-    def test_02(self):
+    def test_parallactic_angle_positive_west_of_meridian(self):
         '''Test: parallactic angle positive west of meridian'''
         assert parallactic_angle(1, 0, -24) > 0
 
-    def test_03(self):
+    def test_parallactic_angle_zero_on_meridian(self):
         '''Test: parallactic angle zero on meridian'''
         assert parallactic_angle(0, 0, 24) == 0
 
-    def test_04(self):
+    def test_specific_example_from_Ball_1908(self):
         '''Test: Example from Ball (1908), p.92'''
         ha = -3                 # 3 hours east
         de = 38 + 9/60          # decl 38d09m
@@ -88,7 +88,7 @@ class TestParallacticAngle():
         # should agree to within 1 arcmin
         assert np.allclose(eta, eta0, atol=1/60)
 
-    def test_05(self):
+    def test_setting_object_on_the_equator_is_90_minus_latitude(self):
         '''Test parallactic angle
 
         For a setting object on the equator, the parallactic angle is 90 - lat'''
@@ -101,7 +101,7 @@ class TestParallacticAngle():
 class TestDerivPolynomial2D():
     '''Tests of simcado.utils.deriv_polynomial2d'''
 
-    def test_01(self):
+    def test_derivative_of_2D_polynomial_equal_to_analytical_derivative(self):
         '''Test simcado.utils.deriv_polynomial2d'''
         from astropy.modeling.models import Polynomial2D
 
