@@ -401,11 +401,12 @@ class TransmissionCurve(object):
         FilterTable = astropy.table.Table()
         keys = [k for k in cmts_dict.keys()]
 
-        if keys == ['author', 'source', 'date_created', 'date_modified', 'status', 
-                    'type', 'center', 'width', 'blue_cutoff', 'red_cutoff', 'filename']:
- 
-            for keyword in cmts_dict:
-                col = astropy.table.Column(name=keyword, data=(cmts_dict[keyword],))
+	req_keys = ['filename', 'center', 'width', 'blue_cutoff', 'red_cutoff', 
+		    'author', 'source', 'date_created', 'date_modified', 'status', 'type']
+	
+        if np.all([k in req_keys for k in keys]):
+            for keyword in req_keys:
+                col = astropy.table.Column(name=keyword, data=(cmts_dict[keyword]))
                 FilterTable.add_column(col)
 
         else:
