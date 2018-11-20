@@ -64,6 +64,8 @@ from astropy import constants as c
 from astropy.io import fits
 from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
 import matplotlib.pyplot as plt
+import astropy.table 
+import yaml
 
 #from .utils import __pkg_dir__    # not used
 
@@ -348,6 +350,67 @@ class TransmissionCurve(object):
         """
 
         plt.plot(self.lam, self.val, **kwargs)
+
+    def filter_info(self):
+        """
+        Returns the filter properties as a dictionary
+        """
+
+        tbl = astropy.table.Table.read(self.params["filename"],format="ascii",header_start=-1)
+        
+        meta = tbl.meta      
+
+        if not meta:
+            cmts_dict = {"comments": ""}
+
+        else:
+            cmts_list = meta["comments"]
+            cmts_str  = "\n".join(cmts_list)
+            cmts_dict = yaml.load(cmts_str)
+            if type(cmts_dict) is str:
+                cmts_dict={"comments":cmts_dict}
+
+        cmts_dict["filename"] = self.params["filename"]
+        return cmts_dict
+
+
+    def filter_table(self):
+        """
+        Returns the filter properties as a astropy.table
+
+        Notes
+        -----
+        ONLY works if filters which follow SimCADO format
+
+        The following keywords should be in the header 
+
+        author
+        source
+        date_created
+        date_modified
+        status 
+        type
+        center
+        width
+        blue_cutoff
+        red_cutoff
+
+        """
+        cmts_dict = self.filter_info()
+        
+        FilterTable = astropy.table.Table()
+        keys = [k for k in cmts_dict.keys()]
+
+        if keys == ['author', 'source', 'date_created', 'date_modified', 'status', 
+                    'type', 'center', 'width', 'blue_cutoff', 'red_cutoff', 'filename']:
+ 
+            for keyword in cmts_dict:
+                col = astropy.table.Column(name=keyword, data=(cmts_dict[keyword],))
+                FilterTable.add_column(col)
+
+        else:
+            raise ValueError(self.params["filename"] + " is not a SimCADO filter")
+        return FilterTable
 
 
     def __len__(self):
