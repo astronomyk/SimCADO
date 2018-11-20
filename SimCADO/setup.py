@@ -10,6 +10,7 @@ from distutils.core import setup
 MAJOR = 0
 MINOR = 5
 ATTR = 'dev1'
+
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
 
