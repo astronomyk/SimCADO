@@ -808,7 +808,7 @@ def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
         plt.show()
 
 
-def FilterTable(path=None, filters="All"):
+def get_filter_table(path=None, filters="all"):
 
     """
     Return an astropy.table for a list of filters
@@ -837,7 +837,7 @@ def FilterTable(path=None, filters="All"):
 
     Obtaining table for a set of filters::
 
-        >>> table= sim.optics.FilterTable(filters=["J","Ks","PaBeta","U","Br-gamma"])
+        >>> table = sim.optics.get_filter_table(filters=["J", "Ks", "PaBeta", "U", "Br-gamma"])
         >>> filter_centers = table["center].data
         >>> print(filter_centers)
 
@@ -855,7 +855,7 @@ def FilterTable(path=None, filters="All"):
         filter_names = [filters,]
     if np.size(filters) > 1:
         filter_names = filters
-    if filters == "All":
+    if filters == "all":
         filter_names = get_filter_set(path)
 
     for name in filter_names:
