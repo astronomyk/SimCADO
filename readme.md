@@ -1,5 +1,7 @@
 # SimCADO - the instrument data simulator for MICADO
 
+[![Documentation Status](https://readthedocs.org/projects/simcado/badge/?version=latest)](https://simcado.readthedocs.io/en/latest/?badge=latest)
+
 Documentation for SimCADO can be found here:
 
 [https://www.univie.ac.at/simcado/](https://www.univie.ac.at/simcado/)
