@@ -64,6 +64,8 @@ from astropy import constants as c
 from astropy.io import fits
 from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
 import matplotlib.pyplot as plt
+import astropy.table 
+import yaml
 
 #from .utils import __pkg_dir__    # not used
 
@@ -348,6 +350,68 @@ class TransmissionCurve(object):
         """
 
         plt.plot(self.lam, self.val, **kwargs)
+
+    def filter_info(self):
+        """
+        Returns the filter properties as a dictionary
+        """
+
+        tbl = astropy.table.Table.read(self.params["filename"],format="ascii",header_start=-1)
+        
+        meta = tbl.meta      
+
+        if not meta:
+            cmts_dict = {"comments": ""}
+
+        else:
+            cmts_list = meta["comments"]
+            cmts_str  = "\n".join(cmts_list)
+            cmts_dict = yaml.load(cmts_str)
+            if type(cmts_dict) is str:
+                cmts_dict={"comments":cmts_dict}
+
+        cmts_dict["filename"] = self.params["filename"]
+        return cmts_dict
+
+
+    def filter_table(self):
+        """
+        Returns the filter properties as a astropy.table
+
+        Notes
+        -----
+        ONLY works if filter files have the SimCADO header format
+
+        The following keywords should be in the header::
+
+            author
+            source
+            date_created
+            date_modified
+            status 
+            type
+            center
+            width
+            blue_cutoff
+            red_cutoff
+
+        """
+        cmts_dict = self.filter_info()
+        
+        filter_table = astropy.table.Table()
+        keys = [k for k in cmts_dict.keys()]
+
+        req_keys = ['filename', 'center', 'width', 'blue_cutoff', 'red_cutoff', 
+                    'author', 'source', 'date_created', 'date_modified', 'status', 'type']
+	
+        if np.all([k in req_keys for k in keys]):
+            for keyword in req_keys:
+                col = astropy.table.Column(name=keyword, data=(cmts_dict[keyword]))
+                filter_table.add_column(col)
+
+        else:
+            raise ValueError(self.params["filename"] + " is not a SimCADO filter")
+        return filter_table
 
 
     def __len__(self):
