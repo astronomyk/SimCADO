@@ -354,6 +354,32 @@ class TransmissionCurve(object):
     def filter_info(self):
         """
         Returns the filter properties as a dictionary
+
+        Examples:
+        ---------
+        Creating a Table with fake values::
+
+            >>> meta_dict =  {"comments": {"author : me" , "source : me", "date : today", "status : ready","center : 0.0",  "width : 1.1"}}
+            >>> T = astropy.table.Table(data=[ [1.1,1.2,1.3], [0.1,0.2,0.3] ], names=("wavelength","transmission"), meta=meta_dict,copy=True)
+            >>> T.write("tmp_table.dat",format="ascii",fast_writer=False)
+
+        Reading the transmission curve:: 
+            
+            >>> Tc = TransmissionCurve("tmp_table.dat")
+            >>> Tc.filter_info()
+
+            {'author': 'me',
+             'width': 1.1,
+             'status': 'ready',
+             'date': 'today',
+             'source': 'me',
+             'center': 0.0,
+             'filename': 'tmp_table.dat'}
+
+        Deleting the table::
+
+            >>> os.remove('tmp_table.dat')
+
         """
 
         tbl = astropy.table.Table.read(self.params["filename"],format="ascii",header_start=-1)
@@ -406,9 +432,8 @@ class TransmissionCurve(object):
 	
         if np.all([k in req_keys for k in keys]):
             for keyword in req_keys:
-                col = astropy.table.Column(name=keyword, data=(cmts_dict[keyword]))
+                col = astropy.table.Column(name=keyword, data=(cmts_dict[keyword],))
                 filter_table.add_column(col)
-
         else:
             raise ValueError(self.params["filename"] + " is not a SimCADO filter")
         return filter_table
