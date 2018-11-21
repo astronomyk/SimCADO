@@ -13,7 +13,7 @@ eggs/
 *.egg
 MANIFEST
 
-# win/max stuff
+# win/mac stuff
 .DS_Store
 
 # emacs backup files
@@ -26,3 +26,8 @@ old
 pdfs
 data_backup
 .cache
+
+# Documentation
+SimCADO/simcado/docs/build
+SimCADO/simcado/docs/source/_build
+SimCADO/simcado/docs/source/_static

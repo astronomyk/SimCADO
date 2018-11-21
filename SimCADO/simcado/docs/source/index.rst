@@ -1,33 +1,20 @@
 .. SimCADO documentation master file, created by
-   sphinx-quickstart on Mon Feb  6 14:19:34 2017.
+   sphinx-quickstart on Wed Nov 21 14:22:16 2018.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-Welcome to SimCADocs - Documentation for SimCADO
-================================================
-
-Contents:
+Welcome to SimCADO's documentation!
+===================================
 
 .. toctree::
-    :maxdepth: 3
+   :maxdepth: 2
+   :caption: Contents:
 
-    Home
-    GettingStarted
-    examples/Notebooks
-    examples/Source
-    examples/UserCommands
-    Download
-    Updates
-    examples/Gallery
-    Keywords
-    deep_stuff/SimCADO
-    deep_stuff/FAQs
-    API <API/simcado>
-    Workshop
-    
-    
+
+
 Indices and tables
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
