@@ -1,8 +1,8 @@
 """
 A description of the Chip noise properties and their positions on the Detector
 
-Summary
--------
+Module Summary
+--------------
 This module holds three classes: ``Detector``, ``Chip`` and ``HXRGNoise``.
 
 ``Chip``
@@ -166,7 +166,9 @@ class Detector(object):
         not yet implemented
         Save the Detector object into a FITS file
 
-    .. todo:: Open should be moved into a general function for detector.py which
+    .. todo::
+
+        Open should be moved into a general function for detector.py which
         returns a :class:`.Detector` object after reading in a saved detector
         file
 

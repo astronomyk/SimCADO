@@ -1,61 +1,61 @@
-"""
-This module contains classes which control how a simulation is run
-
-Summary
--------
-UserCommands is essentially a dictionary that holds all the variables that
-the user may wish to change. It also has some set variables like ``pix_res``
-that can be accessed directly, instead of from the dictionary.
-
-UserCommands is imported directly into the simmetis package and is accessible
-from the main package - ``simmetis.UserCommands``
-
-Classes
--------
-``UserCommands(filename, sim_data_dir=<path to data files>)``
-
-Routines
---------
-
-* ``dump_defaults(filename="./", selection="freq")``
-* ``dump_chip_layout(dir="./")``
-
-
-See Also
---------
-Classes that require a ``UserCommands`` object directly include:
-
-* ``Detector``
-* ``OpticalTrain``
-
-
-Notes
------
-
-References
-----------
-
-Examples
---------
-By default ``UserCommands`` contains the parameters needed to generate the MICADO
-optical train:
-
-    >>> my_cmds = simcado.UserCommands()
-
-To list the keywords that are available:
-
-    >>> my_cmds.keys()
-    ...
-
-
-The UserCommands object also contains smaller dictionaries for each category of
-keywords - e.g. for the keywords for the instrument:
-
-    >>> my_cmds.inst
-    ...
-
-
-"""
+# """
+# This module contains classes which control how a simulation is run
+#
+# Module Summary
+# --------------
+# UserCommands is essentially a dictionary that holds all the variables that
+# the user may wish to change. It also has some set variables like ``pix_res``
+# that can be accessed directly, instead of from the dictionary.
+#
+# UserCommands is imported directly into the simmetis package and is accessible
+# from the main package - ``simmetis.UserCommands``
+#
+# Classes
+# -------
+# ``UserCommands(filename, sim_data_dir=<path to data files>)``
+#
+# Routines
+# --------
+#
+# * ``dump_defaults(filename="./", selection="freq")``
+# * ``dump_chip_layout(dir="./")``
+#
+#
+# See Also
+# --------
+# Classes that require a ``UserCommands`` object directly include:
+#
+# * ``Detector``
+# * ``OpticalTrain``
+#
+#
+# Notes
+# -----
+#
+# References
+# ----------
+#
+# Examples
+# --------
+# By default ``UserCommands`` contains the parameters needed to generate the MICADO
+# optical train:
+#
+#     >>> my_cmds = simcado.UserCommands()
+#
+# To list the keywords that are available:
+#
+#     >>> my_cmds.keys()
+#     ...
+#
+#
+# The UserCommands object also contains smaller dictionaries for each category of
+# keywords - e.g. for the keywords for the instrument:
+#
+#     >>> my_cmds.inst
+#     ...
+#
+#
+# """
 
 import os
 import shutil

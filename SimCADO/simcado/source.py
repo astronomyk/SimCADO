@@ -2,9 +2,9 @@
 """
 The module that contains the functionality to create Source objects
 
-Summary
--------
-The source is essentially a list of spectra and a list of positions. The
+Module Summary
+--------------
+The Source is essentially a list of spectra and a list of positions. The
 list of positions contains a reference to the relevant spectra. The advantage
 here is that if there are repeated spectra in a data cube, we can reduce the
 amount of calculations needed. Furthermore, if the input is originally a list
