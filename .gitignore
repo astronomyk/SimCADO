@@ -26,3 +26,6 @@ old
 pdfs
 data_backup
 .cache
+
+# ReadTheDocs and Sphinx
+
