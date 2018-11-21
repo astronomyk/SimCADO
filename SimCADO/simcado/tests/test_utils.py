@@ -1,7 +1,65 @@
 '''Unit tests for module simcado.utils'''
 
-from simcado.utils import parallactic_angle, deriv_polynomial2d
+import pytest
 import numpy as np
+
+import simcado as sim
+from simcado.utils import parallactic_angle, deriv_polynomial2d
+from simcado.utils import find_file
+from simcado.utils import airmass2zendist
+from simcado.utils import zendist2airmass
+
+
+class TestFindFile():
+    '''Tests of function simcado.utils.find_file'''
+
+    def test_01(self):
+        '''Test: fail if not a string'''
+        with pytest.raises(TypeError):
+            find_file(1.2, sim.__search_path__)
+
+    def test_02(self):
+        '''Test: existing file'''
+        filename = 'utils.py'
+        assert find_file(filename, sim.__search_path__)
+
+    def test_03(self):
+        '''Test: non-extisting file'''
+        filename = 'utils987654.pz'
+        assert find_file(filename, sim.__search_path__) is None
+
+
+class TestAirmassZendist():
+    '''Tests conversion between airmass and zenith distance'''
+
+    def test_01(self):
+        '''Test for known values of airmass'''
+        assert np.allclose(airmass2zendist(1.0), 0)
+
+    def test_02(self):
+        '''Test for known values of airmass'''
+        assert np.allclose(airmass2zendist(np.sqrt(2)), 45)
+
+    def test_03(self):
+        '''Test for known values of zenith distance'''
+        assert np.allclose(zendist2airmass(0), 1.0)
+
+    def test_04(self):
+        '''Test for known values of zenith distance'''
+        assert np.allclose(zendist2airmass(60), 2.0)
+
+    def test_05(self):
+        '''Test compatibility of functions'''
+        airmass = 1.78974234
+        assert np.allclose(zendist2airmass(airmass2zendist(airmass)),
+                           airmass)
+
+    def test_06(self):
+        '''Test compatibility of functions'''
+        zendist = 12.31334
+        assert np.allclose(airmass2zendist(zendist2airmass(zendist)),
+                           zendist)
+
 
 class TestParallacticAngle():
     '''Tests of function simcado.utils.parallactic_angle'''
@@ -60,5 +118,5 @@ class TestDerivPolynomial2D():
         y_x_test = dpoly_x(ximg, yimg)
         y_y_test = dpoly_y(ximg, yimg)
 
-        assert(np.allclose(y_x, y_x_test))
-        assert(np.allclose(y_y, y_y_test))
+        assert np.allclose(y_x, y_x_test)
+        assert np.allclose(y_y, y_y_test)
