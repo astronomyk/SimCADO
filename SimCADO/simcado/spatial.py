@@ -43,10 +43,6 @@
 
 #from copy import deepcopy   ## Not used (OC)
 
-import os
-
-import warnings, logging
-
 import numpy as np
 import scipy.ndimage as spi
 from scipy.signal import fftconvolve
@@ -55,7 +51,6 @@ from astropy.convolution import convolve_fft, Gaussian2DKernel
 from astropy.io import fits
 
 from . import utils
-from .utils import __pkg_dir__
 
 #__all__ = []
 __all__ = ["tracking", "derotator", "wind_jitter", "adc_shift",
@@ -222,8 +217,9 @@ def adc_shift(cmds):
     effectiveness = cmds["INST_ADC_PERFORMANCE"] / 100.
 
     ## get the angle shift for each slice
+    zenith_distance = utils.airmass2zendist(cmds["ATMO_AIRMASS"])
     angle_shift = [utils.atmospheric_refraction(lam,
-                                                cmds["OBS_ZENITH_DIST"],
+                                                zenith_distance,
                                                 cmds["ATMO_TEMPERATURE"],
                                                 cmds["ATMO_REL_HUMIDITY"],
                                                 cmds["ATMO_PRESSURE"],

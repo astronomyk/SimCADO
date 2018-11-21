@@ -101,7 +101,7 @@ from astropy.wcs import WCS
 
 #from astropy.stats.funcs import median_absolute_deviation as mad
 
-from .utils import __pkg_dir__
+from .utils import find_file, airmass2zendist
 
 from . import spectral as sc
 from . import commands
@@ -181,9 +181,9 @@ class Detector(object):
     Create a :class:`Detector` object
     ::
 
-        >>> import simcado
-        >>> my_cmds = simcado.UserCommands()
-        >>> my_detector = simcado.Detector(my_cmds)
+        >>> import simcado as sim
+        >>> my_cmds = sim.UserCommands()
+        >>> my_detector = sim.Detector(my_cmds)
 
 
     Read out only the first :class:`.Chip`
@@ -393,7 +393,8 @@ class Detector(object):
             #                         "[s] Time between non-destructive readouts")
             thishdu.header["GAIN"] = (self.chips[i].gain, "[e-/ADU]")
             thishdu.header["AIRMASS"] = (self.cmds["ATMO_AIRMASS"], "")
-            thishdu.header["ZD"] = (self.cmds["OBS_ZENITH_DIST"], "[deg]")
+            thishdu.header["ZD"] = \
+                (airmass2zendist(self.cmds["ATMO_AIRMASS"]), "[deg]")
 
 
             for key in self.cmds.cmds:
@@ -987,11 +988,12 @@ class Chip(object):
 
         """
         image2 = image * dit
-        image2[image2 > 2.14E9] = 2.14E9   # limit to 2**31
+        ## does not seem to be necessary in numpy version 1.12.1 any more
+#        image2[image2 > 2.14E9] = 2.14E9
 
         im_st = np.zeros(np.shape(image))
-        for n in range(ndit):
-            im_st += np.random.poisson(image2) / ndit
+        for _ in range(ndit):
+            im_st += np.random.poisson(image2)
 
         return im_st.astype(np.float32)
 
@@ -1154,7 +1156,7 @@ class Chip(object):
 
 
 
-
+# TODO this ought to be renamed (redefined-builtin)
 def open(self, filename):
     """
     Opens a saved ``Detector`` file.
@@ -1208,12 +1210,12 @@ def open(self, filename):
 #        plt.xlabel("Distance [arcsec]", fontsize=14)
 #        plt.ylabel("Distance [arcsec]", fontsize=14)
 
-def plot_detector_layout(detector, plane="sky", clr='g'):
+def plot_detector_layout(detector, plane="sky", clr='g-', plot_origin=False):
     """Plot the detector layout"""
 
     from matplotlib import pyplot as plt
     npts = 101
-    for i, chip in enumerate(detector.chips):
+    for chip in detector.chips:
 
         if plane == 'sky':
             thewcs = chip.wcs
@@ -1240,13 +1242,13 @@ def plot_detector_layout(detector, plane="sky", clr='g'):
         xworld, yworld = thewcs.all_pix2world(xpix, ypix, 1)
         xworld -= thewcs.wcs.crval[0]
         yworld -= thewcs.wcs.crval[1]
-        plt.plot(xworld * scale, yworld * scale, 'k')
+        plt.plot(xworld * scale, yworld * scale, clr)
 
-        x0, y0 = thewcs.all_pix2world(1, 1, 1)
-        x0 -= thewcs.wcs.crval[0]
-        y0 -= thewcs.wcs.crval[1]
-        plt.plot(x0 * scale, y0 * scale, 'r.')
-
+        if plot_origin:
+            x0, y0 = thewcs.all_pix2world(1, 1, 1)
+            x0 -= thewcs.wcs.crval[0]
+            y0 -= thewcs.wcs.crval[1]
+            plt.plot(x0 * scale, y0 * scale, 'r.')
 
         xcen, ycen = thewcs.all_pix2world(chip.naxis1 / 2, chip.naxis2 / 2, 1)
         xcen -= thewcs.wcs.crval[0]
@@ -1258,8 +1260,6 @@ def plot_detector_layout(detector, plane="sky", clr='g'):
         plt.gca().invert_xaxis()
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-
-    plt.show()
 
 
 def plot_detector(detector):
@@ -1408,7 +1408,7 @@ def install_noise_cube(n=9):
     if sys.version_info.major >= 3:
         print("WARNING - this process can take up to 10 minutes. Fear not!")
         hdu = make_noise_cube(n, filename=None)
-        filename = os.path.join(__pkg_dir__, "data", "FPA_noise.fits")
+        filename = find_file("FPA_noise.fits")
         hdu.writeto(filename, overwrite=True, checksum=True)
         print("Saved noise cube with", n, "layers to the package directory:")
         print(filename)

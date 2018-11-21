@@ -109,10 +109,11 @@ from astropy.convolution import convolve
 import astropy.units as u
 import astropy.constants as c
 
-from .spectral import TransmissionCurve, EmissionCurve, UnityCurve, BlackbodyCurve
+from .spectral import TransmissionCurve, EmissionCurve,\
+    UnityCurve, BlackbodyCurve
 from . import psf as sim_psf
 from . import utils
-from .utils import __pkg_dir__
+from .utils import __pkg_dir__, find_file
 
 __all__ = ["Source",
            "star", "stars", "cluster",
@@ -603,7 +604,7 @@ class Source(object):
 
             for i in range(len(x_pix)):
                 psf_tmp = np.copy(psf_array)
-                #print(x_pix[i], y_pix[i])
+                print(x_pix[i], y_pix[i])
                 psf_tmp = spi.shift(psf_tmp, (x_pix[i], y_pix[i]), order=1)
                 slice_array += psf_tmp * slice_photons[i]
 
@@ -1172,8 +1173,7 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
     """
 
     if cat is None:
-        cat = ioascii.read(os.path.join(__pkg_dir__, "data",
-                                        "EC_all_stars.csv"))
+        cat = ioascii.read(find_file("EC_all_stars.csv"))
 
     if isinstance(spec_type, (list, tuple)):
         return [_get_stellar_properties(i, cat) for i in spec_type]
@@ -1273,7 +1273,7 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
 
     """
     if cat is None:
-        cat = fits.getdata(os.path.join(__pkg_dir__, "data", "EC_pickles.fits"))
+        cat = fits.getdata(find_file("EC_pickles.fits"))
 
     if isinstance(spec_type, (list, tuple)):
         return cat["lam"], [_get_pickles_curve(i, cat)[1] for i in spec_type]
@@ -1488,6 +1488,23 @@ def photons_to_mag(filter_name, photons=1):
 
 
 
+def _get_refstar_curve(filename=None,mag=0):
+    """
+    """
+    ## TODO: Can we pre-select a star based on the instrument we're simulating?
+    data = ioascii.read(find_file("vega.dat"))
+    #data = ioascii.read(find_file("sirius_downsampled.txt"))
+
+    mag_scale_factor = 10**(-mag/2.5)
+
+    ##
+    ## this function is expected to return the number of photons of a 0th mag star
+    ## for a star brighter than 0th mag, the number of photons needs to be reduced to match a 0th mag star
+    lam, spec = data[data.colnames[0]], data[data.colnames[1]]/mag_scale_factor
+    return lam, spec
+
+
+
 def zero_magnitude_photon_flux(filter_name):
     """
     Return the number of photons for a m=0 star for a certain filter
@@ -1503,30 +1520,25 @@ def zero_magnitude_photon_flux(filter_name):
     """
 
     if isinstance(filter_name, TransmissionCurve):
-        filter_name = filter_name.params["filename"]
-
-    if os.path.exists(filter_name):
-        fname = filter_name
-    elif os.path.exists(os.path.join(__pkg_dir__, "data", filter_name)):
-        fname = os.path.join(__pkg_dir__, "data", filter_name)
-    elif os.path.exists(os.path.join(__pkg_dir__, "data",
-                                        "TC_filter_" + filter_name + ".dat")):
-        fname = os.path.join(__pkg_dir__, "data",
-                             "TC_filter_" + filter_name + ".dat")
+        vlam = filter_name.lam
+        vval = filter_name.val
     else:
-            raise ValueError("File " + fname + " does not exist")
+        fname = find_file(filter_name, silent=True)
+        if fname is None:
+            fname = find_file("TC_filter_" + filter_name + ".dat",
+                              silent=True)
+            if fname is None:
+                raise ValueError("Filter " + filter_name + "cannot be found")
 
+        vraw = ioascii.read(fname)
+        vlam = vraw[vraw.colnames[0]]
+        vval = vraw[vraw.colnames[1]]
 
-
-    # Outdated
-    # if filter_name not in "UBVRIYzJHKKs":
-        # raise ValueError("Filter name must be one of UBVRIYzJHKKs: "+filter_name)
-
-    lam, vega = _scale_pickles_to_photons("A0V", mag=-0.58)
-
-    vraw = ioascii.read(fname)
-    vlam = vraw[vraw.colnames[0]]
-    vval = vraw[vraw.colnames[1]]
+    #lam, vega = _scale_pickles_to_photons("A0V", mag=-0.58)
+    ##
+    ## we refer here (SimCADO) to the Vega spectrum
+    ## (see _get_refstar_curve above).
+    lam, vega = _get_refstar_curve(mag=0.)
     filt = np.interp(lam, vlam, vval)
 
     n_ph = np.sum(vega*filt)
@@ -1694,7 +1706,7 @@ def SED(spec_type, filter_name="V", magnitude=0.):
     if np.any([i in gal_seds for i in spec_type]):
         galflux = []
         for gal in spec_type:
-            data = ioascii.read(__pkg_dir__+"/data/SED_"+gal+".dat")
+            data = ioascii.read(find_file("/data/SED_"+gal+".dat"))
             galflux += [data[data.colnames[1]]]
             galflux = np.asarray(galflux)
         lam = data[data.colnames[0]]
@@ -1972,7 +1984,7 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
     """
     # IMF is a realisation of stellar masses drawn from an initial mass
     # function (TODO: which one?) summing to 1e4 M_sol.
-    fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
+    fname = find_file("IMF_1E4.dat")
     imf = np.loadtxt(fname)
 
     # Assign stellar types to the masses in imf using list of average
@@ -2054,11 +2066,11 @@ def cluster(mass=1E3, distance=50000, half_light_radius=1):
     # IMF is a realisation of stellar masses drawn from an initial mass
     # function (TODO: which one?) summing to 1e4 M_sol.
     if mass <= 1E4:
-        fname = os.path.join(__pkg_dir__, "data", "IMF_1E4.dat")
+        fname = find_file("IMF_1E4.dat")
         imf = np.loadtxt(fname)
         imf = imf[0:int(mass/1E4 * len(imf))]
     elif mass > 1E4 and mass < 1E5:
-        fname = os.path.join(__pkg_dir__, "data", "IMF_1E5.dat")
+        fname = find_file("IMF_1E5.dat")
         imf = np.loadtxt(fname)
         imf = imf[0:int(mass/1E5 * len(imf))]
     else:
@@ -2126,7 +2138,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     .. note::
         ``plate_scale`` is the original plate scale of the images. If this is
-        not the same as the plate scale of the ``Detector`` (i.e. 4mas for MICADO)
+        not the same as the plate scale of the ``Detector``
         then you will need to specify oversample to interpolate between the two
         scales. I.e.  oversample = Image plate scale / Detector plate scale
 
@@ -2389,10 +2401,12 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
 
     if isinstance(filter_name, TransmissionCurve):
         filt = filter_name
-    elif os.path.exists(filter_name):
-        filt = TransmissionCurve(filename=filter_name)
     else:
-        filt = get_filter_curve(filter_name)
+        fname = find_file(filter_name)
+        if fname is not None:
+            filt = TransmissionCurve(filename=fname)
+        else:
+            filt = get_filter_curve(filter_name)
 
     # Rescale the spectra
     for i in range(len(curves)):
@@ -2483,7 +2497,7 @@ def flat_spectrum(mag, filter_name="Ks", return_ec=False):
         [ph/s/m2/arcsec] The spectrum scaled to the specified magnitude
 
     """
-    lam = np.arange(0.3, 2.51, 0.01)
+    lam = np.arange(0.3, 3.0, 0.01)
     spec = np.ones(len(lam))
 
     if return_ec:     # TODO: mag_per_arcsec undefined? (OC)
@@ -2522,7 +2536,7 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
         [ph/s/m2/arcsec] The spectrum scaled to the specified magnitude
 
     """
-    lam = np.arange(0.3, 2.51, 0.01)
+    lam = np.arange(0.3, 3.0, 0.01)
     spec = np.ones(len(lam))
 
     if return_ec:
@@ -2565,7 +2579,7 @@ def get_lum_class_params(lum_class="V", cat=None):
     import astropy.table as tbl
 
     if cat is None:
-        cat = ioascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
+        cat = ioascii.read(find_file("EC_all_stars.csv"))
 
     t = []
     for row in cat:
@@ -2614,7 +2628,7 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
     """
 
     if cat is None:
-        cat = ioascii.read(__pkg_dir__+"/data/EC_all_stars.csv")
+        cat = ioascii.read(find_file("EC_all_stars.csv"))
 
     if isinstance(value, (np.ndarray, list, tuple)):
         spt = []
@@ -3215,7 +3229,7 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
         [deg] Default = 30. Rotation anti-clockwise from the x-axis
 
     n : float
-        Sersic index, default = 1 (exponential disk)
+         Sersic index, default = 1 (exponential disk)
 
     width, height : int
         [arcsec] Dimensions of the image. Default: 512*plate_scale
