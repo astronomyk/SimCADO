@@ -4,6 +4,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+git-ignored/
 build/
 develop-eggs/
 dist/
@@ -12,6 +13,7 @@ eggs/
 *.egg-info/
 *.egg
 MANIFEST
+
 
 # win/max stuff
 .DS_Store
