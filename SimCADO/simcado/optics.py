@@ -23,6 +23,7 @@ import numpy as np
 
 from astropy.io import fits
 import astropy.units as u
+import astropy.table
 
 from . import psf as psf
 from . import spectral as sc
@@ -686,9 +687,9 @@ def get_filter_curve(filter_name):
 
     Examples
     --------
-    	>>> TransmissionCurve = get_filter_curve("Ks")
-    	>>> wavelength   = TransmissionCurve.lam
-    	>>> transmission = TransmissionCurve.val
+        >>> TransmissionCurve = get_filter_curve("Ks")
+        >>> wavelength   = TransmissionCurve.lam
+        >>> transmission = TransmissionCurve.val
     """
 
     if filter_name not in get_filter_set(path=None):
@@ -792,3 +793,64 @@ def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
         plt.savefig(filename, bbox_extra_artists=(lgd,), bbox_inches='tight')
     if show:
         plt.show()
+
+
+def FilterTable(path=None, filters="All"):
+
+    """
+    Return an astropy.table for a list of filters
+
+    Parameters
+    ----------
+    path : str
+        the location of the filters, set to None to use the default one, passed to get_filter_set
+    filters : str or list
+        a filter or a list of filters to be plotted, acceptable filters can be found calling
+        get_filter_set()
+    
+
+    Returns
+    -------
+    an astropy.table
+
+    Notes
+    -----
+
+    It will ONLY return values for filters that follow SimCADO format
+
+
+    Examples
+    --------
+
+    Obtaining table for a set of filters::
+
+        >>> table= sim.optics.FilterTable(filters=["J","Ks","PaBeta","U","Br-gamma"])
+        >>> filter_centers = table["center].data
+        >>> print(filter_centers)
+
+        [1.24794438 2.14487698 2.16986118]
+
+    Notice that only three values are printed as the U filter does not follow (yet) the SimCADO format
+
+    """
+    
+    #Obtaining format of the table
+    filter_table = get_filter_curve("Ks").filter_table()
+    filter_table.remove_row(0)
+
+    if np.size(filters) == 1:
+        filter_names = [filters,]
+    if np.size(filters) > 1:
+        filter_names = filters
+    if filters == "All":
+        filter_names = get_filter_set(path)
+
+    for name in filter_names:
+        try:
+            tcurve = get_filter_curve(name)
+            table = tcurve.filter_table()
+            filter_table.add_row(table[0])
+        except ValueError:
+            pass
+
+    return filter_table
