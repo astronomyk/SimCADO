@@ -380,38 +380,38 @@ class TransmissionCurve(object):
 
         Notes
         -----
-        ONLY works if filters which follow SimCADO format
+        ONLY works if filter files have the SimCADO header format
 
-        The following keywords should be in the header 
+        The following keywords should be in the header::
 
-        author
-        source
-        date_created
-        date_modified
-        status 
-        type
-        center
-        width
-        blue_cutoff
-        red_cutoff
+            author
+            source
+            date_created
+            date_modified
+            status 
+            type
+            center
+            width
+            blue_cutoff
+            red_cutoff
 
         """
         cmts_dict = self.filter_info()
         
-        FilterTable = astropy.table.Table()
+        filter_table = astropy.table.Table()
         keys = [k for k in cmts_dict.keys()]
 
-	req_keys = ['filename', 'center', 'width', 'blue_cutoff', 'red_cutoff', 
-		    'author', 'source', 'date_created', 'date_modified', 'status', 'type']
+        req_keys = ['filename', 'center', 'width', 'blue_cutoff', 'red_cutoff', 
+                    'author', 'source', 'date_created', 'date_modified', 'status', 'type']
 	
         if np.all([k in req_keys for k in keys]):
             for keyword in req_keys:
                 col = astropy.table.Column(name=keyword, data=(cmts_dict[keyword]))
-                FilterTable.add_column(col)
+                filter_table.add_column(col)
 
         else:
             raise ValueError(self.params["filename"] + " is not a SimCADO filter")
-        return FilterTable
+        return filter_table
 
 
     def __len__(self):
