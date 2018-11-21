@@ -24,7 +24,7 @@ copyright = '2018, Kieran Leschinski and Oliver Czoske'
 author = 'Kieran Leschinski and Oliver Czoske'
 
 # The short X.Y version
-version = ''
+version = '0.5dev1'
 # The full version, including alpha/beta/rc tags
 release = '0.5'
 
@@ -81,7 +81,7 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+# html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
