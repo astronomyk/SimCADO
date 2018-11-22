@@ -13,7 +13,6 @@ __pycache__
 MANIFEST
 
 *.py[co]
-version.py
 *.ipynb_checkpoints
 
 *.FITS
