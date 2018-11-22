@@ -14,7 +14,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('/SimCADO/'))
+sys.path.insert(0, os.path.abspath('../../..'))
 print(sys.path)
 
 # -- Project information -----------------------------------------------------
@@ -53,7 +53,7 @@ extensions = [
 
 apidoc_module_dir = '../../..'
 apidoc_output_dir = 'reference'
-apidoc_excluded_paths = ['/tests/', '../setup.py', 'version.py']
+apidoc_excluded_paths = ['../../tests/', '../../../setup.py', '../../version.py']
 apidoc_separate_modules = True
 
 print(os.getcwd())
