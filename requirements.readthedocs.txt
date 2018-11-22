@@ -1,6 +1,7 @@
 matplotlib
 sphinxcontrib-apidoc
 astropy
+pyyaml
 numpydoc ==0.6.0
 sphinx ==1.6.7
 
