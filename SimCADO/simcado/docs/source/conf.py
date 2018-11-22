@@ -53,7 +53,7 @@ extensions = [
 
 apidoc_module_dir = '../../..'
 apidoc_output_dir = 'reference'
-apidoc_excluded_paths = ['../../tests/', '../../setup.py', '../../simcado/version.py']
+apidoc_excluded_paths = ['../../tests/', '../../../setup.py', '../../simcado/version.py']
 apidoc_separate_modules = True
 
 # Add any paths that contain templates here, relative to this directory.
