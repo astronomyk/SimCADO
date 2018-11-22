@@ -13,7 +13,6 @@
 #
 
 import os
-
 import glob
 import warnings
 import logging
@@ -701,8 +700,8 @@ def get_filter_curve(filter_name):
         >>> wavelength   = TransmissionCurve.lam
         >>> transmission = TransmissionCurve.val
     """
-
-    fname = find_file(filter_name)
+    
+    fname = find_file(filter_name, silent=True) 
     if fname is None:
         fname = find_file("TC_filter_" + filter_name + ".dat")
         if fname is None:
