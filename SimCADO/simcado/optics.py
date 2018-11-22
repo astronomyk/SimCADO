@@ -696,12 +696,12 @@ def get_filter_curve(filter_name):
 
     Examples
     --------
-        >>> TransmissionCurve = get_filter_curve("Ks")
-        >>> wavelength   = TransmissionCurve.lam
-        >>> transmission = TransmissionCurve.val
+        >>> transmission_curve = get_filter_curve("TC_filter_Ks.dat")
+        >>> wavelength   = transmission_curve.lam
+        >>> transmission = transmission_curve.val
     """
-    
-    fname = find_file(filter_name, silent=True) 
+
+    fname = find_file(filter_name, silent=True)
     if fname is None:
         fname = find_file("TC_filter_" + filter_name + ".dat")
         if fname is None:
@@ -819,7 +819,7 @@ def get_filter_table(path=None, filters="all"):
     filters : str or list
         a filter or a list of filters to be plotted, acceptable filters can be found calling
         get_filter_set()
-    
+
 
     Returns
     -------
@@ -845,7 +845,7 @@ def get_filter_table(path=None, filters="all"):
     Notice that only three values are printed as the U filter does not follow (yet) the SimCADO format
 
     """
-    
+
     #Obtaining format of the table
     filter_table = get_filter_curve("Ks").filter_table()
     filter_table.remove_row(0)
