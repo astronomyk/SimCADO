@@ -13,3 +13,4 @@ Also, with the current directory tree the package path is three levels higher::
 
     sys.path.insert(0, os.path.abspath('../../..'))
 
+Make sure the version.py file isn't in the .gitignore

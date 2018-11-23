@@ -27,6 +27,7 @@ old
 pdfs
 data_backup
 .cache
+.idea/
 
 # Sphinx and ReadTheDocs
 SimCADO/simcado/docs/build/
