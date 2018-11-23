@@ -10,7 +10,7 @@ Welcome to SimCADO's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   test
+   user_docs/Home
    
 
 Indices and tables
