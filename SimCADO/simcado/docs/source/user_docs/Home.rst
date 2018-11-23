@@ -32,7 +32,7 @@ use SimCADO are available :doc:`here in the Notebooks <examples/Notebooks>` sect
     
     * `PDF version`_ or 
     * `Jupyter Notebook`_
-    * `Presentation for October 2017 Science Team Meeting`_
+..  * `Presentation for October 2017 Science Team Meeting`_
 
 
 .. _PDF version: ./_static/downloads/SimCADO_cheatsheet.pdf

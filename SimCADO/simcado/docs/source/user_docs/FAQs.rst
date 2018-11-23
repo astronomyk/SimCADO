@@ -10,34 +10,19 @@ The problem lies with Python 2.7. The noise cube code is 3rd party code
 that only works on Python 3 and I haven’t had a chance to dig into that
 code yet to find the problem
 
-Option 1
-~~~~~~~~
-
-Generate a noise cube in Python 3. First install python3
-::
+Generate a noise cube in Python 3. First install python3::
 
     $ pip3 install <path-to-simcado.tar.gz>
     $ python3
     
-Then create the noise cube
-
-::
+Then create the noise cube::
 
     >>> import simcado
     >>> sim.detector.make_noise_cube(num_layers=25, filename='FPA_noise.fits', multicore=True)
 
-Option 2
-~~~~~~~~
-
-Download a 15 slice noise cube from my Google Drive folder and save it
-in the simcado/data folder.
-`https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing 
-<https://drive.google.com/file/d/0B8SnQxFuNeltVVc1RTJ5ZFBDQ0k/view?usp=sharing>`__
-
 .. note::
     Your simcado/data folder can be found by printing the ``__pkg_dir__``
-    variable: 
-    ::
+    variable::
     
         >>> simcado.utils.__pkg_dir__
 
@@ -45,9 +30,7 @@ Copy the new noise cube into the Python 2.7 simcado/data folder.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default SimCADO looks for the noise cube in its data directory -
-``<Your Python 2.7 Directory>/lib/python/site-packages/simcado/data/``
-
-::
+``<Your Python 2.7 Directory>/lib/python/site-packages/simcado/data/``::
 
     $ cp ./FPA_noise.fits  <Your Python 2.7 Directory>/lib/python/site-packages/simcado/data/FPA_noise.fits
 
@@ -56,15 +39,11 @@ No access to the ``simcado/data`` folder?
 
 If you can’t save files into the simcado/data directory (or you can’t be
 bothered finding it), you can use the FPA\_NOISE\_PATH keyword when
-running a simulation to point simcado to the new noise cube file
-
-::
+running a simulation to point simcado to the new noise cube file::
 
     >>> simcado.run(my_source, ..... , FPA_NOISE_PATH="<path/to/new>/FPA_noise.fits")
 
-or if you’re using a UserCommands object to control the simulation:
-
-::
+or if you’re using a UserCommands object to control the simulation::
 
     >>> cmds = simcado.UserCommands()
     >>> cmds["FPA_NOISE_PATH"] = "<path/to/new>/FPA_noise.fits"
@@ -81,10 +60,8 @@ Surface brightness scaling in SimCADO
     surface area?
 
     
-To answer the question on scaling we need look at docstring for
-``source_from_image``:
-
-::
+To answer the question on scaling we need look at the docstring for
+``source_from_image``::
 
     source_from_image(images, lam, spectra, plate_scale, oversample=1,
                       units="ph/s/m2", flux_threshold=0,
@@ -124,9 +101,9 @@ Sub-pixel accuracy with SimCADO
 There are two ways to go about getting SimCADO to simulate at the
 sub-pixel level (Nov 2016, only one is working so far):
 
--  Turn on SimCADO’s oversample mode with the keyword SIM\_OVERSAMPLING
+-  Turn on SimCADO’s oversample mode with the keyword SIM\_OVERSAMPLING::
 
-               simcado.run(my\_src, ….. , SIM\_OVERSAMPLING=4)
+    simcado.run(my\_src, ... , SIM\_OVERSAMPLING=4)
 
 If SimCADO is using the 0.004 arcsec mode, then it will calculate
 everything based on a 0.001 arcsec grid. It resamples back up to 0.004
@@ -147,7 +124,7 @@ I have many PSFs in a FITS Cube. How do I use just one layer
 ------------------------------------------------------------
 
 To extract a slice from the cube, we use astropy. Here ``i`` is the layer we
-want to extract
+want to extract::
 
     from astropy.io import fits
 
@@ -166,12 +143,29 @@ want to extract
 
 
 To use this PSF with SimCADO, we use the keyword ``SCOPE_PSF_FILE`` and pass the
-filename of the saved PSF slice
+filename of the saved PSF slice::
 
     simcado.run( ... , SCOPE_PSF_FILE="my_psf_layer.fits", ...)
 
-   
-   
+
+
+Accessing Filter Transmission curves
+------------------------------------
+To access the transmission curve::
+
+    >>> import simcado as sim
+    >>> T_curve = sim.optics.get_filter_curve(FilterName)  # Returns a transmission curve object
+
+To access the values as numpy arrays::
+
+    >> wavelenght = Tcurve.lam
+    >> transmission = Tcurve.val
+
+To see which filters are available::
+
+    >> simcado.optics.get_filter_seet()
+
+
 What SimCADO can do?
 --------------------
 Many things. Chances are it can do what you'd like, however you may need some 
