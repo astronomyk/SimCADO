@@ -56,6 +56,8 @@ apidoc_output_dir = 'reference'
 apidoc_excluded_paths = ['**/tests/', '**/setup.py', '**/version.py']
 apidoc_separate_modules = True
 
+exclude_patterns = ['**/tests/', '**/setup.py', '**/version.py']
+
 print(os.getcwd())
 
 # Add any paths that contain templates here, relative to this directory.
