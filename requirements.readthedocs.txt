@@ -1,10 +1,10 @@
 numpy
 scipy
 matplotlib
-sphinxcontrib-apidoc
 astropy
 pyyaml
 wget
+sphinxcontrib-apidoc
 numpydoc ==0.6.0
 sphinx ==1.6.7
 

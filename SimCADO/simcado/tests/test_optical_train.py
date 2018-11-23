@@ -1,4 +1,3 @@
-import pytest
 # import numpy as np
 # import simcado as sim
 # from simcado.spectral import EmissionCurve, TransmissionCurve

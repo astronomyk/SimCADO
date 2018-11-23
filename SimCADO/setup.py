@@ -5,6 +5,7 @@ SimCADO: A python package to simulate MICADO
 
 from datetime import datetime
 from distutils.core import setup
+import pytest  # not needed, but stops setup being included by sphinx.apidoc
 
 # Version number
 MAJOR = 0

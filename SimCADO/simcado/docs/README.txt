@@ -14,3 +14,12 @@ Also, with the current directory tree the package path is three levels higher::
     sys.path.insert(0, os.path.abspath('../../..'))
 
 Make sure the version.py file isn't in the .gitignore
+
+To exclude modules that we don't want in the apidocs, just import a package
+that isn't in the ``requirements.readthedocs.txt`` file. E.g.
+
+    import pytest
+
+
+
+
