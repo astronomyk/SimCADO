@@ -53,12 +53,12 @@ extensions = [
 
 apidoc_module_dir = '../../..'
 apidoc_output_dir = 'reference'
-apidoc_excluded_paths = ['**/tests/', '**/setup.py', '**/version.py']
 apidoc_separate_modules = True
 
-exclude_patterns = ['**/tests/', '**/setup.py', '**/version.py']
+# Exclude statements - I can't work out how to use these
+# apidoc_excluded_paths = ['**/tests/', '**/setup.py', '**/version.py']
+# exclude_patterns = ['**/tests/', '**/setup.py', '**/version.py']
 
-print(os.getcwd())
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -169,7 +169,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'SimCADO', 'SimCADO Documentation',
-     author, 'SimCADO', 'One line description of project.',
+     author, 'SimCADO', 'Simulate observations with the ELT and MICADO',
      'Miscellaneous'),
 ]
 
@@ -200,7 +200,13 @@ epub_exclude_files = ['search.html']
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {'https://docs.python.org/': None,
+                       'python': ('http://docs.python.org/', None),
+                       'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+                       'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
+                       'matplotlib': ('http://matplotlib.org/', None),
+                       'astropy': ('http://docs.astropy.org/en/stable/', None)
+                       }
 
 # -- Options for todo extension ----------------------------------------------
 
