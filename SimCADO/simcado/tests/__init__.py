@@ -1,1 +1,1 @@
-import pytest
+import skycalc_cli

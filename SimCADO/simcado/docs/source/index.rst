@@ -11,6 +11,7 @@ Welcome to SimCADO's documentation!
    :caption: Contents:
 
    user_docs/Home
+   user_docs/GettingStarted
    
 
 Indices and tables

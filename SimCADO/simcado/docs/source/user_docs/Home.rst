@@ -6,11 +6,15 @@ The (slowly expanding) documentation base for SimCADO
 All Notebooks and API available on the University of Vienna's server:  
 www.univie.ac.at/simcado
 
-.. figure:: examples/gallery/Pulsar_light_curve_Davies.png
+.. figure:: ../_static/images/Pulsar_light_curve_Davies.png
     :figwidth: 600 px
     :align: center
 
-    This is the lightcurve that follows the shape of the Crab Pulsar, but scaled so that each pulse is easily visible in a 5ms windowed H-band exposure with MICADO. The star is H=15mag. The light curve has been extracted from the intermediate non-destructive reads from an up-the-ramp simulated exposure.
+    This is the lightcurve that follows the shape of the Crab Pulsar, but
+    scaled so that each pulse is easily visible in a 5ms windowed H-band
+    exposure with MICADO. The star is H=15mag. The light curve has been
+    extracted from the intermediate non-destructive reads from an up-the-ramp
+    simulated exposure.
 
 SimCADO in a nutshell
 ---------------------
@@ -24,7 +28,8 @@ iPython/Jupyter notebooks
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A (continualy expanding) series of iPython Notebooks detailing how to
-use SimCADO are available :doc:`here in the Notebooks <examples/Notebooks>` section.
+use SimCADO are available :doc:`here in the Notebooks <examples/Notebooks>`
+section.
 
 .. hint:: 
     Don't feel like sifting through documentation? Common commands and examples 
@@ -104,8 +109,7 @@ you do not specify a filename, the output will be returned to the
 console/notebook as an :class:`~.astropy.io.fits.hdu.hdulist.HDUList` object.
 
 To begin, we will import the simcado module (assuming it is already
-installed).
-::
+installed).::
 
     >>> import simcado
 
@@ -113,8 +117,7 @@ At the very least, we need to create a :class:`.Source` object which contains
 both spatial and spectral information on our object of interest. Here we
 use the built-in command :func:`simcado.source.cluster()` to create a
 :class:`.Source` object for a 10000-Msun stellar cluster. (:doc:`Creating
-Sources <example/Source>` for more information).
-::
+Sources <examples/Source>` for more information).::
 
     >>> src = simcado.source.cluster()
 
@@ -131,22 +134,33 @@ notebook.
 Changing simulation parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`.run` also takes any :doc:`configuration keywords <Keywords>` as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
+The :func:`.run` also takes any :doc:`configuration keywords <Keywords>` as
+parameters for running the simulation. For example, the default exposure time
+for the simulation is 60 seconds, however this can be increased of decreased by
+using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked
+6x 10 minute observation sequence would look like:
 
     >>> simcado.run(src, filename="my_first_sim.fits", OBS_EXPTIME=600, OBS_NDIT=6)
     
-That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the :doc:`API/simcado` documentation
+That's it. Of course SimCADO can also go in the other direction, providing many
+more levels of complexity, but for that the reader is directed to the examples
+pages and/or the :doc:`../reference/simcado` documentation
 
 SimCADO building blocks
 -----------------------
-For a brief explanation of how SimCADO works and which classes are relevant, please see either the :doc:`GettingStarted` or :doc:`SimCADO in depth <./deep_stuff/SimCADO>` section.
+For a brief explanation of how SimCADO works and which classes are relevant,
+please see either the :doc:`GettingStarted` or :doc:`SimCADO in depth
+<DeepStuff>` section.
 
 Bugs and Issues
 ---------------
 
-We freely admit that there may still be several bugs that we have not found. If you come across an buggy part of SimCADO, *please please* tell us. We can't make SimCADO better if we don't know about things.
+We freely admit that there may still be several bugs that we have not found.
+If you come across an buggy part of SimCADO, *please please* tell us. We can't
+ make SimCADO better if we don't know about things.
 
-The preferable option is to open an issue on our Github page: `gastronomyk/SimCADO/issues`_, or you can contact either one of us directly.
+The preferable option is to open an issue on our Github page:
+`gastronomyk/SimCADO/issues`_, or you can contact either one of us directly.
 
 .. _gastronomyk/SimCADO/issues: https://github.com/gastronomyk/SimCADO/issues,
 

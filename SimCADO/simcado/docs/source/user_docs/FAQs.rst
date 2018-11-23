@@ -149,8 +149,8 @@ filename of the saved PSF slice::
 
 
 
-Accessing Filter Transmission curves
-------------------------------------
+Plotting Filter Transmission curves
+-----------------------------------
 To access the transmission curve::
 
     >>> import simcado as sim

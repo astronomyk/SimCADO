@@ -4,3 +4,6 @@ astropy
 wget
 requests
 pyyaml
+
+# Just so that readthedocs doesn't include the tests module - yes it's hacky
+skycalc_cli
