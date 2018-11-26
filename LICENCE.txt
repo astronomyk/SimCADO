@@ -1,0 +1,4 @@
+We currently don't know anything about licences, nor have we thought about them. 
+No doubt, this will change in the future.
+For the moment though, we invoke the licence of honour. Ask yourself, what would
+Thor do?

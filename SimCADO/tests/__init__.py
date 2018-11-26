@@ -1,0 +1,1 @@
+import skycalc_cli
