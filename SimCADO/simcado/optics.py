@@ -776,9 +776,11 @@ def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
     peaks = np.zeros(np.size(filter_names))
     i = 0
     for filter_name in filter_names:
+
         tcurve = get_filter_curve(filter_name)
         wave = tcurve.lam[tcurve.val > 0.02]
         tran = tcurve.val[tcurve.val > 0.02]
+
         lam_peak = wave[tran == np.max(tran)]
         peaks[i] = lam_peak[0]
         i += 1

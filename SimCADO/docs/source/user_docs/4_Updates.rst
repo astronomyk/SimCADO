@@ -10,10 +10,13 @@ the newest information coming from the MICADO work packages.
 To update your version of SimCADO, use the ``simcado.get_extras()``
 command.
 
+
 2018-11-23
 ~~~~~~~~~~
 
 - Moved the documentation to ReadTheDocs (finally)
+- Added filter plotting functionality
+
 
 2017-01-31
 ~~~~~~~~~~

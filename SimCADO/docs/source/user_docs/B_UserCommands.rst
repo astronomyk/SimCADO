@@ -13,15 +13,14 @@ parameters. That said, SimCADO has a safety switch to stop you wasting
 10 minutes on a ``Source`` that will be invisible, or so bright that it
 saturates the detector completely.
 
-To get the full detector array, we set ``detector_array="full"``
-
-::
+To get the full detector array, we set ``detector_array="full"``::
 
     >>> im = sim.run(src, detector_array="full")
 
-\*\* Note, by patient! \*\* Simulating 9x 4k detectors is heavy lifting.
-Remeber to use the internals if you don’t plan on changing the optical
-train.
+.. note::
+    Note, by patient! Simulating 9x 4k detectors is heavy lifting.
+    Remember to use the internals if you don’t plan on changing the optical
+    train.
 
 Notes on simcado.run()
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -40,26 +39,20 @@ Viewing a full detector read out
 Each chip read-out is stored in a FITS extension. There are 3 options to
 view the images:
 
-1. Save the FITS object to disk and use DS9, etc
-
-   ::
+1. Save the FITS object to disk and use DS9, etc: ::
 
        >>> im.writeto("full_detector.fits")
 
 2. Use the ``filename=`` in ``simcado.run()`` to save directly to disk,
-   and bypass the console. This is useful for scripting with SimCADO.
-
-   ::
+   and bypass the console. This is useful for scripting with SimCADO. ::
 
        >>> simcado.run(src, filename="full_detector.fits")
 
 3. Use the SimCADO function ``.plot_detector()`` from the ``.detector``
-   module
-
-   ::
+   module: ::
 
        >>> im, (cmd, opt, fpa) = simcado.run(src, filename="full_detector.fits", 
-                                               return_internals=True)
+                                             return_internals=True)
        >>> simcado.detector.plot_detector(fpa)   
 
 The 3rd option is probably the least favourable as there are no options
@@ -75,17 +68,12 @@ MICADO** so changing them is *not* recommended if you want to simulate
 *MICADO* images. There are however some which are useful to play around
 with.
 
-!!! Note
-
-::
-
+.. note::
     SimCADO is CAsE sEnsiTIve**. All KEYWORDS are writen with capital letters.
 
 Similar to SExtractor, SimCADO provides a way to dump both commonly used
 and less-common keywords to a file with command
-``sim.commands.dump_defaults()``:
-
-::
+``sim.commands.dump_defaults()``: ::
 
     >>> sim.commands.dump_defaults()
     #########################################################
@@ -115,23 +103,20 @@ and less-common keywords to a file with command
     OBS_ZENITH_DIST         60          # [deg] from zenith
     INST_ADC_PERFORMANCE    100         # [%] how well the ADC does its job
 
-To list all keyword-value pairs, use:
-
-::
+To list all keyword-value pairs, use: ::
 
     >>>  sim.commands.dump_defaults(filename, type="all")
 
 Any of the KEYWORD=VALUE pairs can be passed as extras to `:func:`.run`.
 For example if we wanted to observe in J-band for 60 minutes, we would
-pass:
-
-::
+pass: ::
 
     src = sim.source.source_1E4_Msun_cluster()
     im = sim.run(src, OBS_EXPTIME=3600, INST_FILTER_TC="J")
 
 The jupyter notebook `my\_first\_sim.ipynb <my_first_sim.ipynb>`__ has
 more exmples of this.
+
 
 The UserCommands object
 -----------------------
@@ -155,9 +140,7 @@ train and detector for the simulation.
 A ``UserCommands`` object is created by reading in the defaults conifg
 file (``defaults.config``) and then updating any of the keywords that
 the user (or function) provides. For example, we can see all the default
-keyword-value pairs by calling:
-
-::
+keyword-value pairs by calling: ::
 
     >>> cmd = sim.UserCommands()
 
@@ -175,22 +158,18 @@ individually, however all are updated when a value changes.
 
 A ``UserCommands`` object can be used as a dictionary itself, although
 technically all that happens is that it references the general
-dictionary ``cmd.cmds``. For example
-
-::
+dictionary ``cmd.cmds``. For example ::
 
     >>> cmd["OBS_EXPTIME"] = 60
 
-is exactly the same as either of the following two expressions
-
-::
+is exactly the same as either of the following two expressions ::
 
     >>> cmd.cmds["OBS_EXPTIME"] = 60
     >>> cmd.obs["OBS_EXPTIME"] = 60
 
-Therefore for the sake of ease, we recommoned treating the
-``UserCommands`` object as a dictionary and just using the default
-syntax: ``cmd["..."] = xxx``
+Therefore for the sake of ease, we recommoned treating the ``UserCommands``
+object as a dictionary and just using the default syntax: ``cmd["..."] = xxx``
+
 
 Saving and loading a ``UserCommands`` object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -200,9 +179,7 @@ Saving
 
 In case you have made changes to the values in a ``UserCommands`` object
 that you would like to keep for next time, a ``UserCommands`` object can
-be saved to disk with the following command:
-
-::
+be saved to disk with the following command: ::
 
     >>> cmd = sim.UserCommands()
     >>> cmd.writeto(filename="my_cmds.txt")
@@ -213,9 +190,7 @@ Loading
 ^^^^^^^
 
 Creating a ``UserCommands`` object based on a text file is as simple as
-passing the file path:
-
-::
+passing the file path: ::
 
     >>> cmd = sim.UserCommands("my_cmds.txt")
 
@@ -247,9 +222,7 @@ The detector array
 ~~~~~~~~~~~~~~~~~~
 
 The detector array is described by a text file containing information on
-the plate scale and the positions of the detector chips:
-
-::
+the plate scale and the positions of the detector chips: ::
 
     >>> sim.commands.dump_chip_layout(path=None)
     #  id    x_cen    y_cen   x_len   y_len
@@ -266,17 +239,13 @@ the plate scale and the positions of the detector chips:
         
 
 This small file can be saved to disk by passing a filename to the
-``path=`` parameters
-
-::
+``path=`` parameters ::
 
     >>> sim.commands.dump_chip_layout(path="my_fpa.txt")
 
 Any detector array can be provided to SimCADO, as long as the text file
 follows this format. For example the HAWK-I detector array (4x
-HAWAII-2RG) would look like this:
-
-::
+HAWAII-2RG) would look like this: ::
 
     #  id    x_cen    y_cen    x_len   y_len
     #        arcsec   arcsec   pixel   pixel
@@ -287,26 +256,21 @@ HAWAII-2RG) would look like this:
         
 
 To pass a detector array description to SimCADO, use the
-``FPA_CHIP_LAYOUT`` keyword:
-
-::
+``FPA_CHIP_LAYOUT`` keyword: ::
 
     >>> cmd = sim.UserCommands()
     >>> cmd["FPA_CHIP_LAYOUT"] = "hawki_chip_layout.txt"
 
-or pass is directly to the `:func:`.run` command:
-
-::
+or pass is directly to the `:func:`.run` command: ::
 
     >>> sim.run(... , FPA_CHIP_LAYOUT="hawki_chip_layout.txt", ...)
+
 
 The mirror configurations
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The mirror configuration can be dumped either to the screen or to disk
-by using:
-
-::
+by using: ::
 
     >>> dump_mirror_config(path=None, what="scope")
     #Mirror     Outer   Inner   Temp
@@ -325,9 +289,7 @@ surfaces are introduced into the system.
 
 It is possible to specifiy different mirror configurations using a text
 file with the same format as above. For example the VLT unit telescope
-mirror config files would look like this:
-
-::
+mirror config files would look like this: ::
 
     #Mirror Outer   Inner   Temp
     M1      8.2     1.0     0.
@@ -335,9 +297,7 @@ mirror config files would look like this:
     M3      1.0     0.      0.
 
 To use this mirro config file in SimCADO use the keywords
-``SCOPE_MIRROR_LIST`` and ``INST_MIRROR_AO_LIST``
-
-::
+``SCOPE_MIRROR_LIST`` and ``INST_MIRROR_AO_LIST`` ::
 
     >>> cmd = sim.UserCommands()
     >>> cmd["SCOPE_MIRROR_LIST"] = "vlt_mirrors.txt"

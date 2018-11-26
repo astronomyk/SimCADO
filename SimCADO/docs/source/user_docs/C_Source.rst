@@ -25,24 +25,18 @@ To begin with it is probably easiest to let SimCADO generate a
 :class:`.Source` object. The convenience function ``simcado.source.star()``
 will generate a :class:`.Source` object containing a single star. In this
 case, we’ll choose an G2V star with a K-band magnitude of 20, placed 5
-arcsec above the centre of the focal plane:
-
-::
+arcsec above the centre of the focal plane: ::
 
     >>> star_1 = simcado.source.star(mag=20, filter_name="K", spec_type="G2V", x=5, y=0))
 
 ``star_1`` the coordinates of the star are held in the arrays ``.x`` and
-``.y``, and the G2V spectrum in \`.spectra´.
-
-::
+``.y``, and the G2V spectrum in \`.spectra´: ::
 
     >>> star_1.x[0], star_1.y[0]
     (5, 0)
 
 The spectrum for ``star_1`` is held in ``.spectra`` and the central
-wavelength of each of the spectral bins is in ``.lam``.
-
-::
+wavelength of each of the spectral bins is in ``.lam``. ::
 
     >>> star_1.lam, star_1.spectra[0]
     <insert output here>
@@ -50,13 +44,12 @@ wavelength of each of the spectral bins is in ``.lam``.
 .. note::
     `.lam` is a (1,n) array where as `.spectra` is a (m,n) array where n is the number of bins in the spectra and m is the number of unique spectra in the `Source` object. If the `Source` only contains a single unique spectrum, then `.spectra` will be a (1,n) array too.
 
+
 Combining :class:`.Source` objects
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Because a :class:`.Source` object is just a collection of arrays, it is easy
-to add many together with the ``+`` operator:
-
-::
+to add many together with the ``+`` operator: ::
 
     >>> star_2 = simcado.source.star(mag=22, filter_name="K", spec_type="A0V", x=2, y=-2)
     >>> two_stars = star_1 + star_2
@@ -69,6 +62,7 @@ to add many together with the ``+`` operator:
 .. note::
     if you are planning on creating sources for large numbers of stars (e.g. >>10 stars), using the plural function ``stars()`` will save you a lot of time.
 
+
 Point sources
 ~~~~~~~~~~~~~
 
@@ -80,6 +74,7 @@ information on how best to use them.
 -  ``simcado.source.stars()``
 -  ``simcado.source.star_grid()``
 -  ``simcado.source.cluster()``
+
 
 SimCADO’s in-built example spectra
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,6 +90,7 @@ Add a section on this
 
 Each of these functions returns two arrays: ``lam`` and ``spec``
 
+
 Using an image as a template for a :class:`.Source` object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -102,9 +98,7 @@ If we have an extended source that we wish to simulate, e.g. a galaxy, a
 nebula, etc. we can use the function
 ``simcado.source.source_from_image()``. The image must be a 2D
 ``numpy.ndarray``, but it can come from anywhere, e.g. a FITS file,
-generated my another function, or even a MS Paint bitmap image.
-
-::
+generated my another function, or even a MS Paint bitmap image. ::
 
     >>> image_1 = astropy.io.fits.getdata("orion.fits")
     >>> image_1
@@ -125,9 +119,7 @@ position.
 
 SimCADO provides the pickles library for stellar spectra. Unfortunately
 there aren’t any built-in galactic spectra yet - for this the user will
-need to provide their own spectrum.
-
-::
+need to provide their own spectrum. ::
 
     >>> lam, spec_1 = simcado.source.SED("G2V", "K", magnitude=20)
     >>> lam, spec_1
@@ -135,14 +127,13 @@ need to provide their own spectrum.
 
 With ``image_1``, ``lam`` and ``spec_1`` we can now build a :class:`.Source`
 object for an orion-like nebula that has the spectrum of a sun-like
-star.
-
-::
+star. ::
 
     >>> simcado.source.source_from_image(image_1, lam, spec_1, pix_res=0.004, flux_threshold=0)
 
 While this example is physically unrealistic, it serves the purpose of
 showing how to build a :class:`.Source` object from an image. The user is
+
 
 Images with multipe spectra
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -159,12 +150,10 @@ As a worked example, lets create a “first-order” approximation to a star
 forming galaxy. The two major components of this source are 1. the aged
 stellar population and, 2. the star forming regions.
 
-In our (very) crude model the aged stellar population can be approxiated
+In our (very) crude model the aged stellar population can be approximated
 by an ellipse with Gaussian light distribution. As M stars make up the
 majority of this population, we can assign a M0V spectrum to this
-population.
-
-::
+population. ::
 
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from simcado.source import SED
@@ -175,6 +164,7 @@ population.
 To illustrate (very crudely) the star forming regions we can create a
 random distribution of elliptical Gaussians using the ``astropy``
 function ``Gasussian2DKernel``:
+
 
 Creating a :class:`.Source` object from scratch
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -210,15 +200,14 @@ Optional keywords can be specified:
    phontons per second per spectral bin. The size of the spectral bins
    is resolution of the ``.lam`` array.
 
+
 Combining two (or more) :class:`.Source` objects
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :class:`.Source` objects can be created in different ways, but the underlying
 table-structure is the same. Therefore adding :class:`.Source` objects
 together means simply combining tables. The mathematical operator ``+``
-can be used to do this:
-
-::
+can be used to do this: ::
 
     >>> # ... create a A0V star at (0,0) and a G2V star at (5,-5)
     >>> star_A0V = sim.source.star(20, spec_type="A0V", x=0, y=0)
@@ -237,20 +226,17 @@ stars
 See `examples <examples/Source>`__ for how to use the ``*`` and ``-``
 operators with a :class:`.Source` object
 
+
 Saving a :class:`.Source` object to disk
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :class:`.Source` object is saved as a FITS file with two extensions. See
-`How SimCADO works <in_depth/SimCADO>`__ for more on the file structure.
-
-::
+`How SimCADO works <DeepStuff>`__ for more on the file structure. ::
 
     >>> src_combi.write("my_src.fits")
 
 The file can be read in at a later time by specifying ``filename=`` when
-initialising a :class:`.Source` object - as stated above
-
-::
+initialising a :class:`.Source` object - as stated above ::
 
     >>> my_src = sim.Source(filename="my_src.fits")
     
@@ -259,8 +245,7 @@ In-built :class:`.Source` object for a star cluster
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As a test object, SimCADO provides the function, with all distances in
-parsecs
-::
+parsecs ::
 
     sim.source.cluster(mass=1E4, distance=50000, half_light_radius=1)
     

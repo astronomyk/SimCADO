@@ -26,8 +26,8 @@ Doing this in iPython will call up the docstring: ::
 Source
 ------
 
-For full details, please see the :doc:`<API reference/simcado>` and examples of
-:doc:`Source Objects <user_docs/C_Source>`
+For full details, please see the :doc:`API<../reference/simcado>` and examples of
+:doc:`Source Objects <C_Source>`
 
 The :class:`~.Source` class is probably the most important class for testing
 science cases. Therefore spending time on creating accurate :class:`~.Source`
@@ -47,7 +47,7 @@ functions provided by SimCADO, or by loading in a pre-existing
     ``simcado.Source != simcado.source``.
 
 For a description of the :class:`~.Source` object, and the :mod:`.source` module,
-see :doc:`How SimCADO works <user_docs/A_DeepStuff#source>`.
+see :doc:`How SimCADO works <A_DeepStuff#Source>`.
 
 Loading a pre-existing :class:`.Source` object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,7 +118,7 @@ SimCADO also provides a series of spectra for stars and galaxies,
 however these are meant as a guide to those who are just starting out.
 For serious work, the user is encouraged to provide their own spectra.
 More information on the in-built spectra can be found in the
-:doc:`Source Objects example <user_docs/C_Source>` section.
+:doc:`Source Objects example <C_Source>` section.
 
 
 Simulating with SimCADO
@@ -127,7 +127,7 @@ Simulating with SimCADO
 The quick, the dirty and the ugly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As seen on the :doc:`index` page, a simulation can be run using 3
+As seen on the :doc:`index <../index>` page, a simulation can be run using 3
 lines of code: ::
 
     >>> import simcado
@@ -181,9 +181,9 @@ the detector - “small”, “wide”, “full”. The default is “small”.
    ``OpticalTrain`` object to ``opt_train`` and a custom ``Detector``
    object to ``fpa``. For more information see the relevant examples
    sections -
-   :class:`~.UserCommands` :doc:`examples <user_cods/B_UserCommands>`,
-   :class:`~.OpticalTrain` :doc:`examples <user_cods/D_OpticalTrain>`,
-   :class:`~.Detector` :doc:`examples <user_cods/E_Detector>`.
+   :class:`~.UserCommands` :doc:`examples <B_UserCommands>`,
+   :class:`~.OpticalTrain` :doc:`examples <D_OpticalTrain>`,
+   :class:`~.Detector` :doc:`examples <E_Detector>`.
 
 2. ``return_internals`` allows you to do the opposite of the previous
    three parameters. If you would like to save the :class:`~.UserCommands`,
@@ -203,7 +203,7 @@ the detector - “small”, “wide”, “full”. The default is “small”.
         simcado.run(src, … , OBS_EXPTIME=600, INST_FILTER_TC=“J”, …)
 
 A list of all the available keyword-value pairs can be found in the
-:doc:`Keywords section <user_docs/Z_Keywords>` .
+:doc:`Keywords section <Z_Keywords>` .
 .. and a description of the default values can be found in the
    `“MICADO with SimCADO section” <SimCADO_defaults>`__.
 
@@ -289,7 +289,7 @@ that you can keep track of everthing that is happening in a simulation. ::
     >>> simcado.run(my_src, cmds=my_cmds)
 
 When initialised the :class:`~.UserCommands` object contains all the default
-values for MICADO, as given in :doc:`Keywords <user_docs/Z_Keywords>`. The
+values for MICADO, as given in :doc:`Keywords <Z_Keywords>`. The
 :class:`~.UserCommands` object is used just like a normal python dictionary:
 
 ::

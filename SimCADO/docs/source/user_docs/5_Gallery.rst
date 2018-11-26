@@ -3,7 +3,7 @@ SimCADO Gallery
 Images from recent simulations with SimCADO
 
 
-.. figure:: ../../_static/images/Light_curve_Davies.jpg
+.. figure:: ../_static/images/Light_curve_Davies.jpg
     :figwidth: 600 px
     :align: center
 
@@ -14,7 +14,7 @@ Images from recent simulations with SimCADO
     simulated exposure.
 
     
-.. figure:: ../../_static/images/paper_figure.png
+.. figure:: ../_static/images/paper_figure.png
     :figwidth: 600 px
     :align: center
 
@@ -24,7 +24,7 @@ Images from recent simulations with SimCADO
     Anderson & van der Marel 2010 and augmented by all the faint stars
     that did not end up in the HST catalogue.
     
-.. figure:: ../../_static/images/galaxy_field.png
+.. figure:: ../_static/images/galaxy_field.png
     :figwidth: 600 px
     :align: center
 
@@ -33,4 +33,5 @@ Images from recent simulations with SimCADO
     generating input for SimCADO: importing intensity maps from real (HST)
     images, generating galaxies based on a sersic profile in memory, and basic
     stars as point sources with spectra from the Pickles (1998) catalogue. The
-    code to generate this image can be found in the :doc:`Notebooks` section.
+    code to generate this image can be found in the
+    :doc:`Notebooks <6_Notebooks>` section.

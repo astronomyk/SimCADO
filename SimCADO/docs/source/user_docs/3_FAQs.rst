@@ -4,7 +4,7 @@ SimCADO FAQs
 Here are some answers to known issues with SimCADO.
 
 Work around for failing :func:`~simcado.detector.install_noise_cube` with Python 2.7
--------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
 
 The problem lies with Python 2.7. The noise cube code is 3rd party code
 that only works on Python 3 and I haven’t had a chance to dig into that
@@ -37,7 +37,7 @@ By default SimCADO looks for the noise cube in its data directory -
 No access to the ``simcado/data`` folder?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you can’t save files into the simcado/data directory (or you can’t be
+If you can’t save files into the `simcado/data` directory (or you can’t be
 bothered finding it), you can use the FPA\_NOISE\_PATH keyword when
 running a simulation to point simcado to the new noise cube file::
 
@@ -149,27 +149,66 @@ filename of the saved PSF slice::
 
 
 
+Which filters are included in my version of SimCADO?
+----------------------------------------------------
+
+SimCADO provides a function to list all the filter curves contained in the
+`simcado/data` install directory::
+
+    >>> simcado.optics.get_filter_set()
+
+The files containing the spectral response of the curves are located in the
+`simcado/data` install directory, which can be found by calling::
+
+    >>> simcado.__data_dir__
+
+These files following the naming convention: `TC_filter_<name>.dat`. They
+contain two columns `Wavelength [um]` and `Transmission [0..1]`
+
+
 Plotting Filter Transmission curves
 -----------------------------------
-To access the transmission curve::
+To access a transmission curve, use the `get_filter_curve()` function::
 
-    >>> import simcado as sim
-    >>> T_curve = sim.optics.get_filter_curve(FilterName)  # Returns a transmission curve object
+    >>> T_curve = simcado.optics.get_filter_curve(<FilterName>)
 
-To access the values as numpy arrays::
+The returned :class:`TransmissionCurve` object contains two arrays:
+`.lam` (wavelength) and `.val` (transmission). To access the numpy arrays::
 
-    >> wavelenght = Tcurve.lam
-    >> transmission = Tcurve.val
+    >>> wavelength = Tcurve.lam
+    >>> transmission = Tcurve.val
 
-To see which filters are available::
+Each :class:`TransmissionCurve` object can be plotted by calling the internal
+method `.plot()`. The method uses `matplotlib`s current axis (`plt.gca()`), so if you are
+not using an `iPython` notebook, you will still need to call the `plt.show()`
+function afterwards. E.g.::
 
-    >> simcado.optics.get_filter_seet()
+    >>> import matplotlib.pyplot as plt
+    >>> T_curve.plot()
+    >>> plt.show()
+
+SimCADO also has a somewhat inflexible function to plot all filter transmission
+curves which are in the `simcado/data` directory. Basically it loops over all
+names returned by :func:`~simcado.optics.get_filter_set()` and plots them. It
+also applies a nice colour scheme.
+
+    >>> plot_filter_set()
+
+I can also accept a custom list of filter names, if you don't want to plot
+absolutely everything in the `simcado/data`directory (fyi, in early versions of
+simcado this includes many useless files - sorry)
+
+    >>> plot_filter_set(filters=("J","PaBeta","Ks"),savefig="filters.png")
+
 
 
 What SimCADO can do?
 --------------------
 Many things. Chances are it can do what you'd like, however you may need some 
-patience
+patience, and or help from the held desk - see
+:doc:`the contact section <../index#Contact>` for who to contact if you have any
+questions.
+
 
 What SimCADO can’t yet do?
 --------------------------
@@ -179,11 +218,6 @@ For the current version of the MICADO spectroscopy simulator see SpecCADO
 
 `<https://github.com/oczoske/SpecCADO/>`_
 
-
-What SimCADO will never do?
----------------------------
-Ray tracing
-
-I have useful instrument data, who do I give it to?
----------------------------------------------------
-Kieran
+We are still working on incorporating SpecCADO into SimCADO, however as the
+SimCADO <=0.5 was primarily focused on imaging, we need to refactor the core
+code somewhat in order to achieve this.

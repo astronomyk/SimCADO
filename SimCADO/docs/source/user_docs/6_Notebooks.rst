@@ -15,13 +15,13 @@ Cheat Sheet
     If you don't like sifting through documentation, try looking through the 
     cheat sheet at some common commands and examples. If you find what you need, 
     then you'll know exactly what to look for in the
-    :doc:`../../reference/simcado`
+    :doc:`../reference/simcado`
 
     * `PDF version`_ or 
     * `Jupyter Notebook`_
 
 
-.. _PDF version: ../_static/downloads/SimCADO_cheatsheet.pdf
+.. _PDF version: ../_static/pdfs/SimCADO_cheatsheet.pdf
 .. _Jupyter Notebook: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/SimCADO-cheat-sheet.ipynb
 
 

@@ -36,20 +36,20 @@ all wavelength bins. The first row in the second extension is the
 
 
 .. todo::
-    descript how ``Source`` is linked to ``OpticalTrain``, ``Detector`` and 
+    describe how ``Source`` is linked to ``OpticalTrain``, ``Detector`` and
     ``UserCommands``
 
 
 OpticalTrain
 ~~~~~~~~~~~~
 .. todo::
-    descript how ``OpticalTrain`` is linked to ``Source``, ``Detector`` and 
+    describe how ``OpticalTrain`` is linked to ``Source``, ``Detector`` and
     ``UserCommands``
 
 Detector
 ~~~~~~~~
 .. todo::
-    descript how ``Detector`` is linked to ``Source``, ``OpticalTrain`` and 
+    describe how ``Detector`` is linked to ``Source``, ``OpticalTrain`` and
     ``UserCommands``
 
 UserCommands
