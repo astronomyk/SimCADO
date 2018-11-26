@@ -1,6 +1,8 @@
 # SimCADO - the instrument data simulator for MICADO
 
 [![Documentation Status](https://readthedocs.org/projects/simcado/badge/?version=latest)](https://simcado.readthedocs.io/en/latest/?badge=latest)
+[![Testing Status](https://travis-ci.org/astronomyk/SimCADO.svg?branch=master)](https://travis-ci.org/astronomyk/SimCADO.svg?branch=master)
+
 
 Documentation for SimCADO can be found here:
 
