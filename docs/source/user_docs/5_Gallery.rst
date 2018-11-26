@@ -3,7 +3,7 @@ SimCADO Gallery
 Images from recent simulations with SimCADO
 
 
-.. figure:: ../_static/images/Light_curve_Davies.jpg
+.. figure:: ../_static/images/Pulsar_light_curve_Davies.png
     :figwidth: 600 px
     :align: center
 
@@ -14,7 +14,7 @@ Images from recent simulations with SimCADO
     simulated exposure.
 
     
-.. figure:: ../_static/images/paper_figure.png
+.. figure:: ../_static/images/paper_figure.jpg
     :figwidth: 600 px
     :align: center
 
