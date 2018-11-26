@@ -24,18 +24,17 @@ simulation package for MICADO at the ELT.
    :maxdepth: 2
    :caption: Contents:
 
-   user_docs/GettingStarted
-   user_docs/Download
-   user_docs/FAQs
-   user_docs/Updates
-   user_docs/examples/Gallery
-   user_docs/examples/Notebooks
+   user_docs/1_GettingStarted
+   user_docs/2_Download
+   user_docs/3_FAQs
+   user_docs/4_Updates
+   user_docs/5_Gallery
+   user_docs/6_Notebooks
 
-   user_docs/DeepStuff
-   user_docs/examples/UserCommands
-   user_docs/examples/Source
-   user_docs/Keywords
-
+   user_docs/A_DeepStuff
+   user_docs/B_UserCommands
+   user_docs/C_Source
+   user_docs/Z_Keywords
 
    reference/simcado
 
@@ -63,7 +62,7 @@ iPython/Jupyter notebooks
 
 A (continualy expanding) series of iPython Notebooks detailing how to
 use SimCADO are available :doc:`here in the Notebooks
-<user_docs/examples/Notebooks>`
+<user_docs/6_Notebooks>`
 section.
 
 .. hint::
@@ -94,7 +93,7 @@ Reference Material
 Downloading and Installing
 --------------------------
 
-For more information, see the :doc:`Download <user_docs/Download>` section
+For more information, see the :doc:`Download <user_docs/2_Download>` section
 
 **SimCADO has only been tested in Python 3.x**.
 
@@ -146,7 +145,7 @@ At the very least, we need to create a :class:`.Source` object which contains
 both spatial and spectral information on our object of interest. Here we
 use the built-in command :func:`simcado.source.cluster()` to create a
 :class:`.Source` object for a 10000-Msun stellar cluster. (:doc:`Creating
-Sources <user_docs/examples/Source>` for more information).::
+Sources <user_docs/C_Source>` for more information).::
 
     >>> src = simcado.source.cluster()
 
@@ -162,7 +161,7 @@ notebook.::
 Changing simulation parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`.run` also takes any :doc:`configuration keywords <user_docs/Keywords>` as
+The :func:`.run` also takes any :doc:`configuration keywords <user_docs/Z_Keywords>` as
 parameters for running the simulation. For example, the default exposure time
 for the simulation is 60 seconds, however this can be increased of decreased by
 using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked
@@ -177,8 +176,8 @@ pages and/or the :doc:`API documentation <reference/simcado>`.
 SimCADO building blocks
 -----------------------
 For a brief explanation of how SimCADO works and which classes are relevant,
-please see either the :doc:`GettingStarted <user_docs/GettingStarted>` or
-:doc:`SimCADO in depth <user_docs/DeepStuff>` section.
+please see either the :doc:`GettingStarted <user_docs/1_GettingStarted>` or
+:doc:`SimCADO in depth <user_docs/A_DeepStuff>` section.
 
 Bugs and Issues
 ---------------

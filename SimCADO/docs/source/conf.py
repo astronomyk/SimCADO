@@ -51,17 +51,19 @@ extensions = [
     'matplotlib.sphinxext.plot_directive',
 ]
 
-apidoc_module_dir = '../../'
+apidoc_module_dir = os.path.abspath('../../')
 apidoc_output_dir = 'reference'
 apidoc_separate_modules = True
 
 # Exclude statements - I can't work out how to use these
-apidoc_excluded_paths = ['**/tests/*.py', 'tests/*.py', '../tests/*.py',
-                         '../../tests/*.py', '../../../tests/*.py',
-                         '**/setup.py', '**/version.py']
-exclude_patterns = ['**/tests/*.py', 'tests/*.py', '../tests/*.py',
-                    '../../tests/*.py', '../../../tests/*.py',
-                    '**/setup.py', '**/version.py']
+f_abspath = os.path.abspath(os.path.dirname(__file__))
+apidoc_excluded_paths = [os.path.join(f_abspath, "../../../simcado/tests/*"),
+                         os.path.join(f_abspath, "../../simcado/tests/*"),
+                         os.path.join(f_abspath, "../simcado/tests/*"),
+                         os.path.join(f_abspath, "simcado/tests/*"),
+                         '**/tests/*.*',
+                         ]
+exclude_patterns = ['**/tests/*.*']
 
 
 # Add any paths that contain templates here, relative to this directory.
