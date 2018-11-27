@@ -1,4 +1,4 @@
-'''Unit tests for module simcado.utils'''
+"""Unit tests for module simcado.utils"""
 
 import pytest
 import numpy as np
@@ -10,8 +10,8 @@ from simcado.utils import airmass2zendist
 from simcado.utils import zendist2airmass
 
 
-class TestFindFile():
-    '''Tests of function simcado.utils.find_file'''
+class TestFindFile:
+    """Tests of function simcado.utils.find_file"""
 
     def test_fails_if_filename_not_a_string(self):
         with pytest.raises(TypeError):
@@ -26,8 +26,8 @@ class TestFindFile():
         assert find_file(filename, sim.__search_path__) is None
 
 
-class TestAirmassZendist():
-    '''Tests conversion between airmass and zenith distance'''
+class TestAirmassZendist:
+    """Tests conversion between airmass and zenith distance"""
 
     def test_airmass2zendist_pass_for_known_quanities_AM_1_equals_ZD_0(self):
         assert np.allclose(airmass2zendist(1.0), 0)
@@ -52,8 +52,8 @@ class TestAirmassZendist():
                            zendist)
 
 
-class TestParallacticAngle():
-    '''Tests of function simcado.utils.parallactic_angle'''
+class TestParallacticAngle:
+    """Tests of function simcado.utils.parallactic_angle"""
 
     def test_parallactic_angle_negative_east_of_meridian(self):
         assert parallactic_angle(-1, 0, -24) < 0
@@ -65,16 +65,16 @@ class TestParallacticAngle():
         assert parallactic_angle(0, 0, 24) == 0
 
     def test_specific_example_from_Ball_1908(self):
-        '''Test: Example from Ball (1908), p.92'''
-        ha = -3                 # 3 hours east
-        de = 38 + 9/60          # decl 38d09m
-        lat = 53 + 23/60        # lat  53d23m
-        eta0 = - (48 + 41/60)   # result -48d41m
+        """Test: Example from Ball (1908), p.92"""
+        ha = -3.                 # 3 hours east
+        de = 38 + 9/60.          # decl 38d09m
+        lat = 53 + 23/60.        # lat  53d23m
+        eta0 = - (48 + 41/60.)   # result -48d41m
 
         eta = parallactic_angle(ha, de, lat)
 
         # should agree to within 1 arcmin
-        assert np.allclose(eta, eta0, atol=1/60)
+        assert np.allclose(eta, eta0, atol=1/60.)
 
     def test_setting_object_on_the_equator_is_90_minus_latitude(self):
         """
@@ -87,8 +87,8 @@ class TestParallacticAngle():
         assert np.allclose(pa, 90. - lat)
 
 
-class TestDerivPolynomial2D():
-    '''Tests of simcado.utils.deriv_polynomial2d'''
+class TestDerivPolynomial2D:
+    """Tests of simcado.utils.deriv_polynomial2d"""
 
     def test_derivative_of_2D_polynomial_equal_to_analytical_derivative(self):
         from astropy.modeling.models import Polynomial2D
