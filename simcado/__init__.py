@@ -26,7 +26,10 @@ from . import source
 #from . import defaults
 from . import simulation
 
-from .version import version as __version__
+try:
+    from .version import version as __version__
+except:
+    __version__ == "none"   # No idea what to put here
 
 # import specific Classes from the modules to be accessible in the global
 # namespace
