@@ -23,7 +23,7 @@ For more information, see the the documentation
 
 **SimCADO has only been tested in Python 3.x**. 
 
-It is hightly recommended to use Python 3, however the basics of generating images will still work in Python 2.7. We cannot guarantee this though. See the [Features](Features.md) page for more info on which functions with which Python version.
+It is highly recommended to use Python 3, however the basics of generating images will still work in Python 2.7. We cannot guarantee this though. See the [Features](Features.md) page for more info on which functions with which Python version.
 
 The quick way:
 
