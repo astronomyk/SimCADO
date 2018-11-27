@@ -197,10 +197,9 @@ the detector - “small”, “wide”, “full”. The default is “small”.
    takes any keyword-value pair that exist in the SimCADO configuration
    file, and so you can control single aspects of the simulation by
    passing these keyword-value pairs to :func:`.run`. For example, you can
-   increase the exposure time of the image by passing
-   ::
+   increase the exposure time of the image by passing ::
 
-        simcado.run(src, … , OBS_EXPTIME=600, INST_FILTER_TC=“J”, …)
+       simcado.run(src, … , OBS_EXPTIME=600, INST_FILTER_TC=“J”, …)
 
 A list of all the available keyword-value pairs can be found in the
 :doc:`Keywords section <Z_Keywords>` .

@@ -190,7 +190,7 @@ so if you are not using an ``iPython`` notebook, you will still need to call the
 SimCADO also has a somewhat inflexible function to plot all filter transmission
 curves which are in the ``simcado/data`` directory. Basically it loops over all
 names returned by :func:`~simcado.optics.get_filter_set()` and plots them. It
-also applies a nice colour scheme.
+also applies a nice colour scheme. ::
 
     >>> plot_filter_set()
 

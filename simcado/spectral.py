@@ -63,7 +63,6 @@ from astropy import units as u
 from astropy import constants as c
 from astropy.io import fits
 from astropy.io import ascii as ioascii  # 'ascii' redefines built-in
-import matplotlib.pyplot as plt
 import astropy.table 
 import yaml
 
@@ -348,7 +347,7 @@ class TransmissionCurve(object):
 
         The method accepts matplotlib.pyplot keywords.
         """
-
+        import matplotlib.pyplot as plt
         plt.plot(self.lam, self.val, **kwargs)
 
     def filter_info(self):
