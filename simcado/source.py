@@ -74,7 +74,7 @@ Helper functions
 # - Generate the lists of spectra and positions
 # - Apply the transmission curves [SpectrumArray]
 # - shrink the 1D spectra to the resolution of the psf layers [SpectrumArray]
-# - apply any 2D spatials [PositionArray]
+# - apply any 2D spatial effects [PositionArray]
 # for i in len(slices)
 #   - generate a working slice [PositionArray, SpectrumArray, WorkingSlice]
 #   - apply the PSF for the appropriate wavelength [WorkingSlice]
@@ -83,7 +83,7 @@ Helper functions
 #   - add the WorkingSlice to the FPA [WorkingSlice, FPArray]
 
 
-## TODO implement conversions to Source object from:
+# TODO implement conversions to Source object from:
 # ascii
 #    x, y, mag, [temp]
 #    x, y, type
@@ -1329,7 +1329,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     - Pickles catalogue is in units of Flambda [erg/s/cm2/A]
     - Ergo we need to divide the pickels values by lam/0.5556[nm], then rescale
     Regarding the number of photons in the 1 Ang bin at 5556 Ang
-    - Bohlin (2014) says F(5556)=3.44x10−9 erg cm−2 s−1 A−1
+    - Bohlin (2014) says F(5556)=3.44x10-9 erg cm-2 s-1 A-1
     - Values range from 3.39 to 3.46 with the majority in range 3.44 to 3.46.
       Bohlin recommends 3.44
     - This results in a photon flux of 962 ph cm-2 s-1 A-1 at 5556 Ang

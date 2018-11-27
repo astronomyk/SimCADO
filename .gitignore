@@ -14,6 +14,7 @@ eggs/
 *.egg-info/
 *.egg
 MANIFEST
+version.py
 
 
 # win/max stuff
@@ -34,6 +35,7 @@ stable_dists
 old
 data_backup
 .cache
+.pytest_cache/
 .idea/
 *.log
 *.zip
