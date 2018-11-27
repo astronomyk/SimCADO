@@ -411,9 +411,9 @@ class Source(object):
             image += (opt_train.n_ph_atmo + opt_train.n_ph_mirror +
                       opt_train.n_ph_ao)
 
-            ## TODO: protected members should not be set by another class (OC)
-            ##       These could be added to info dictionary, if they're only
-            ##       informational.
+            # TODO: protected members should not be set by another class (OC)
+            #       These could be added to info dictionary, if they're only
+            #       informational.
             detector._n_ph_atmo = opt_train.n_ph_atmo
             detector._n_ph_mirror = opt_train.n_ph_mirror
             detector._n_ph_ao = opt_train.n_ph_ao
@@ -424,7 +424,6 @@ class Source(object):
         ######################################
         # CAUTION WITH THE PSF NORMALISATION #
         ######################################
-
 
     def project_onto_chip(self, image, chip):
         """
@@ -443,7 +442,6 @@ class Source(object):
         chip_arr = spi.zoom(image, scale_factor, order=1)
         chip_arr *= np.sum(image) / np.sum(chip_arr)
         chip.add_signal(chip_arr)
-
 
     def image_in_range(self, psf, lam_min, lam_max, chip, **kwargs):
         """
@@ -483,10 +481,10 @@ class Source(object):
 
         """
 
-        params = {"pix_res"     :0.004,
-                  "sub_pixel"   :False,
-                  "oversample"  :1,
-                  "verbose"     :False}
+        params = {"pix_res"     : 0.004,
+                  "sub_pixel"   : False,
+                  "oversample"  : 1,
+                  "verbose"     : False}
 
         params.update(kwargs)
 
@@ -1331,7 +1329,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     - Pickles catalogue is in units of Flambda [erg/s/cm2/A]
     - Ergo we need to divide the pickels values by lam/0.5556[nm], then rescale
     Regarding the number of photons in the 1 Ang bin at 5556 Ang
-    - Bohlin (2014) says F(5556)=3.44×10−9 erg cm−2 s−1 A−1
+    - Bohlin (2014) says F(5556)=3.44x10−9 erg cm−2 s−1 A−1
     - Values range from 3.39 to 3.46 with the majority in range 3.44 to 3.46.
       Bohlin recommends 3.44
     - This results in a photon flux of 962 ph cm-2 s-1 A-1 at 5556 Ang
@@ -1599,7 +1597,7 @@ def get_SED_names(path=None):
     Names returned here can be used with the function :func:`.SED` to call up
     ::
 
-        >>> from simcado import SED, get_SED_names
+        >>> from simcado.source import SED, get_SED_names
         >>> print(get_SED_names())
         ['elliptical', 'interacting', 'spiral', 'starburst', 'ulirg']
         >>> SED("spiral")
@@ -1891,7 +1889,7 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
         >>>
         >>> spec_types = ["A0V", "G2V", "K0III", "M5III", "O8I"]
         >>> ids = np.random.randint(0,5, size=100)
-        >>> star_list = [spec_type[i] for i in ids]
+        >>> star_list = [spec_types[i] for i in ids]
         >>> mags = np.random.normal(20, 3, size=100)
         >>>
         >>> src = stars(spec_types, mags, filter_name="Ks)
@@ -1902,7 +1900,7 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
     we can add them when generating the source full of stars
 
         >>> x, y = np.random.random(-20, 20, size=(100,2)).tolist()
-        >>> src = stars(star_list, mags, filter_name="Ks, x=x, y=y)
+        >>> src = stars(star_list, mags, filter_name="Ks", x=x, y=y)
 
     Or we can add them to the ``Source`` object directly (although, there are
     less checks to make sure the dimensions match here):
@@ -2782,7 +2780,7 @@ def sie_grad(x, y, par):
     yg = ytg * np.cos(phirad) + xtg * np.sin(phirad)
 
     # Return value:
-    return (xg, yg)
+    return xg, yg
 
 
 
@@ -2853,8 +2851,8 @@ def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
 
 
 def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
-           filter_name="Ks", normalization="total", spectrum="elliptical",
-           **kwargs):
+               filter_name="Ks", normalization="total", spectrum="elliptical",
+               **kwargs):
     """
     Create a extended :class:`.Source` object for a "Galaxy"
 
