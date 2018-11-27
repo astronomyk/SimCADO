@@ -28,8 +28,8 @@ from . import simulation
 
 try:
     from .version import version as __version__
-except:
-    __version__ = "none"   # No idea what to put here
+except ImportError:
+    __version__ = "Version number is not available"
 
 # import specific Classes from the modules to be accessible in the global
 # namespace
