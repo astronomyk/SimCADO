@@ -641,9 +641,6 @@ def find_file(filename, path=None, silent=False):
     '''
     import simcado as sim
 
-    if type(filename) is not str:
-        raise TypeError
-
     if path is None:
         path = sim.__search_path__
 
