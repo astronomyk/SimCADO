@@ -14,10 +14,12 @@ class TestFindFile:
     """Tests of function simcado.utils.find_file"""
 
     def test_fails_if_filename_not_a_string(self):
-        with pytest.raises(Exception):
+        # python 3.6: TypeError
+        # python 3.4, 3.5: AttributeError (change in os.path.isabs)
+        with pytest.raises((TypeError, AttributeError)):
             find_file(1.2, sim.__search_path__)
 
-    def test_passes_if_file_exits(self):
+    def test_passes_if_file_exists(self):
         filename = 'utils.py'
         assert find_file(filename, sim.__search_path__)
 
@@ -78,7 +80,7 @@ class TestParallacticAngle:
 
     def test_setting_object_on_the_equator_is_90_minus_latitude(self):
         """
-        For a setting object on the equator, the parallactic angle 
+        For a setting object on the equator, the parallactic angle
         is 90 - lat
         """
         lat = np.random.rand(10) * 180 - 90
