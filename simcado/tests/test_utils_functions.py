@@ -14,7 +14,7 @@ class TestFindFile:
     """Tests of function simcado.utils.find_file"""
 
     def test_fails_if_filename_not_a_string(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             find_file(1.2, sim.__search_path__)
 
     def test_passes_if_file_exits(self):
