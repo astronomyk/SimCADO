@@ -492,6 +492,10 @@ class Source(object):
         # psf cube given: extract layer for central wavelength
         if isinstance(psf, (sim_psf.PSFCube, sim_psf.UserPSFCube)):
             lam_cen = (lam_max + lam_min) / 2.
+            ##############################################################
+            # Bad coding - psf changes from PSFCube object to PSF object #
+            ##############################################################
+            # ..todo :: fix this
             psf = psf.nearest(lam_cen)
 
         # psf given as array: convert to PSF object
@@ -1469,7 +1473,7 @@ def photons_to_mag(filter_name, photons=1):
 
 
 
-def _get_refstar_curve(filename=None,mag=0):
+def _get_refstar_curve(filename=None, mag=0):
     """
     """
     ## TODO: Can we pre-select a star based on the instrument we're simulating?

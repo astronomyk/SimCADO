@@ -628,10 +628,9 @@ class OpticalTrain(object):
 
             psf_m1 = psf.UserPSFCube(hdulist, self.lam_bin_centers)
 
-
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], psf.PSFCube):
             psf_m1 = self.cmds["SCOPE_PSF_FILE"]
-            #logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
+            # logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
 
         elif isinstance(self.cmds["SCOPE_PSF_FILE"], str):
             if self.cmds.verbose:
