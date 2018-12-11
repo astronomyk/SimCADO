@@ -1,6 +1,7 @@
 import os
+import yaml
 import simcado as sim
-
+from .. import __pkg_dir__
 
 class TestBasicLoading:
 
@@ -19,3 +20,15 @@ class TestBasicLoading:
 
     def test_has_version_info(self):
         assert sim.__version__
+
+
+class TestRcFile:
+
+    def test_rcfile_exists(self):
+        assert os.path.exists(os.path.join(__pkg_dir__, ".simcadorc"))
+
+    def test_rc_file_readable_by_yaml(self):
+        with open(os.path.join(__pkg_dir__, ".simcadorc")) as rc_file:
+            rc_dict = yaml.load(rc_file)
+        assert isinstance(rc_dict, dict)
+        assert len(rc_dict) > 0
