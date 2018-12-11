@@ -21,7 +21,6 @@ Helper functions for SimCADO
 #
 import os
 import sys
-import inspect
 
 try:
     import wget
@@ -33,7 +32,7 @@ from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii as ioascii
 
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+from . import __pkg_dir__, __data_dir__
 
 #__all__ = []
 #__all__ = ["unify", "parallactic_angle", "poissonify",
@@ -321,7 +320,7 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
 
 
 ############# Check the server for data extras
-def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
+def download_file(url, save_dir=__data_dir__):
     """
     Download the extra data that aren't in the SimCADO package
     """
@@ -347,7 +346,7 @@ def get_extras():
     Downloads large files that SimCADO needs to simulate MICADO
     """
 
-    save_dir = os.path.join(__pkg_dir__, "data")
+    save_dir = __data_dir__
     fname = os.path.join(save_dir, "extras.dat")
 
     # check_replace = 0  ## unused (OC)
@@ -367,7 +366,7 @@ def get_extras():
         check_download = 1
 
         # does the file exist on the users disk?
-        fname = os.path.join(__pkg_dir__, "data", name)
+        fname = os.path.join(__data_dir__, name)
         if os.path.exists(fname):
 
             # is the new name in the old list of filenames
@@ -411,8 +410,8 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
 
     if file_out is None:
         if "SED_" not in file_name:
-            file_out = __pkg_dir__+"/data/SED_"+file_name+".dat"
-        else: file_out = __pkg_dir__+"/data/"+file_name+".dat"
+            file_out = __data_dir__ + "SED_" + file_name + ".dat"
+        else: file_out = __data_dir__ + file_name + ".dat"
 
     if file_ext.lower() in "fits":
         data = fits.getdata(file_in)

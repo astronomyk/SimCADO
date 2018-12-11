@@ -113,7 +113,8 @@ from .spectral import TransmissionCurve, EmissionCurve,\
     UnityCurve, BlackbodyCurve
 from . import psf as sim_psf
 from . import utils
-from .utils import __pkg_dir__, find_file
+from . import __pkg_dir__, __data_dir__
+from .utils import find_file
 
 __all__ = ["Source",
            "star", "stars", "cluster",
@@ -1598,7 +1599,7 @@ def get_SED_names(path=None):
 
     """
     if path is None:
-        path = os.path.join(__pkg_dir__, "data")
+        path = __data_dir__
     sed_names = [i.replace(".dat", "").split("SED_")[-1] \
                                 for i in glob(os.path.join(path, "SED_*.dat"))]
 
