@@ -40,21 +40,22 @@ SIM_LOGGING_FILE        : ./simcado.log
 ################################################################################
 
 # If not explicitly set, downloaded packages will be saved in your working dir
-FILE_LOCAL_DOWNLOADS_PATH       : ./simcado_downloads/
+FILE_LOCAL_DOWNLOADS_PATH       : D:/simcado_downloads/
 FILE_LOCAL_TEMP_FILES_PATH      : ./simcado_temp_files/
 
 # Data server paths
-FILE_INST_PKG_LOCAL_PATH        : inst_pkgs/
+FILE_SERVER_BASE_URL            : https://www.univie.ac.at/simcado/InstPkgSvr/
+
+FILE_SCOPE_PKG_LOCAL_PATH       : telescopes/
+
+FILE_INST_PKG_LOCAL_PATH        : instruments/
 FILE_INST_PKG_LOCAL_DB_NAME     : LocalInstPkgDB.dat
-FILE_INST_PKG_SERVER_PATH       : https://www.univie.ac.at/simcado/InstPkgSvr/
 FILE_INST_PKG_SERVER_DB_NAME    : InstPkgDB.dat
 
 FILE_PSF_LOCAL_PATH             : psfs/
 FILE_PSF_LOCAL_DB_NAME          : LocalPsfDB.dat
-FILE_PSF_SERVER_PATH            : https://www.univie.ac.at/simcado/InstPkgSvr/
 FILE_PSF_SERVER_DB_NAME         : PsfDB.dat
 
-FILE_SOURCE_LOCAL_PATH          : sources/
-FILE_SOURCE_LOCAL_DB_NAME       : LocalSourceDB.dat
-FILE_SOURCE_SERVER_PATH         : https://www.univie.ac.at/simcado/InstPkgSvr/
-FILE_SOURCE_SERVER_DB_NAME      : SourceDB.dat
+FILE_SRC_PKG_LOCAL_PATH         : sources/
+FILE_SRC_PKG_LOCAL_DB_NAME      : LocalSourceDB.dat
+FILE_SRC_PKG_SERVER_DB_NAME     : SourceDB.dat
