@@ -15,7 +15,6 @@ Write functions to:
 import os
 import requests
 import datetime as dt
-from copy import deepcopy
 
 from numpy import where as npwhere
 from numpy import array as nparray
@@ -32,6 +31,7 @@ def set_local_path_names(path):
     local_src_db = os.path.join(path, rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
 
     return local_inst_db, local_psf_db, local_src_db
+
 
 _local_paths = set_local_path_names(rc["FILE_LOCAL_DOWNLOADS_PATH"])
 LOCAL_INST_DB = _local_paths[0]
@@ -51,8 +51,7 @@ _svr_db_dict = {"inst" : SVR_INST_DB,
                 "src"  : SVR_SRC_DB}
 
 
-LOCAL_DB_HEADER_PATTERN = \
-"""# Date-created : {}
+LOCAL_DB_HEADER_PATTERN = """# Date-created : {}
 # Date-modified : {}
 # Description : Packages containing {} specific data files
 #
@@ -120,12 +119,12 @@ def get_local_packages(path=None):
     # If this throws an error, it's because the DB file is not formatted
     # correctly
     # The column row names should NOT be commented out
-    local_table = ioascii.read(path, "basic.fixed_width")
+    local_table = ioascii.read(path, format="basic")
     local_table = rename_table_colnames(local_table)
-    tbl = remove_dot_row(local_table)
+    local_table = remove_dot_row(local_table)
 
     # make sure all columns are strings
-    #for col in local_table.colnames:
+    # for col in local_table.colnames:
     #    local_table[col] = local_table[col].astype("str")
 
     return local_table
@@ -166,11 +165,7 @@ def rename_table_colnames(svr_table):
 def get_server_packages(path=None):
     svr_text = get_server_text(path)
     svr_table = ioascii.read(svr_text)
-
     svr_table = rename_table_colnames(svr_table)
-
-    #col = Column(name="origin", data=["server"] * len(svr_table))
-    #svr_table.add_column(col)
 
     return svr_table
 
@@ -235,8 +230,6 @@ def list_instruments(local_path=None, server_url=None, return_table=False):
 
     return list_packages(local_path, server_url, return_table,
                          "Instrument and Telescope packages")
-
-
 
 
 def list_psfs(local_path=None, server_url=None, return_table=False):
@@ -324,14 +317,13 @@ def get_server_package_path(pkg_name, svr_table):
     return pkg_path
 
 
-def get_package_table_entry(pkg_name, svr_table, multiple_entries="newest"):
+def get_package_table_entry(pkg_name, db_table):
     # ::todo implement multiple entry handling
-    if pkg_name in svr_table["name"]:
-        pkg_index = npwhere(svr_table["name"] == pkg_name)[0]
-        pkg_entry = svr_table[pkg_index[0]]
+    if pkg_name in db_table["name"]:
+        pkg_index = npwhere(db_table["name"] == pkg_name)[0]
+        pkg_entry = db_table[pkg_index[0]]
     else:
         pkg_entry = None
-        #raise ValueError(pkg_name+" was not found in the table")
 
     return pkg_entry
 
@@ -361,7 +353,7 @@ def download_package(pkg_name, save_dir=None, server_dbs=None):
     save_dir : str, optional
         Where to save the package on the local disk. Default INST_PKG_LOCAL_PATH
 
-    svr_db_path : str, optional
+    server_dbs : str, optional
         URL to the server
 
     """
@@ -369,6 +361,10 @@ def download_package(pkg_name, save_dir=None, server_dbs=None):
     pkg_entry, svr_db = find_package_on_server(pkg_name,
                                                server_dbs=server_dbs,
                                                return_db_filename=True)
+
+    if pkg_entry is None:
+        raise ValueError("{} wasn't found on the server".format(pkg_name))
+
     pkg_url  = rc["FILE_SERVER_BASE_URL"] + pkg_entry["path"]
     pkg_type = determine_type_of_package(svr_db)
 
@@ -383,7 +379,6 @@ def download_package(pkg_name, save_dir=None, server_dbs=None):
     local_filename = download_file(pkg_url, save_dir)
     print("Saved {} in {}".format(pkg_name, local_filename))
 
-    #pkg_entry["path"] = local_filename
     local_db_path = _local_db_dict[pkg_type]
     new_local_tbl = add_pkg_to_local_db(pkg_entry, local_db_path)
 
@@ -400,7 +395,7 @@ def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
     if server_dbs is None:
         server_dbs = [SVR_INST_DB, SVR_PSF_DB, SVR_SRC_DB]
 
-    pkg_entry = None
+    pkg_entry, svr_db = None, None
     for svr_db in server_dbs:
         svr_table = get_server_packages(svr_db)
         pkg_entry = get_package_table_entry(pkg_name, svr_table)
@@ -442,7 +437,6 @@ def add_pkg_to_local_db(new_row, local_db):
             tbl_to_add = vstack([new_tbl, new_tbl_2])
 
             local_table.remove_row(ii)
-
         else:
             dic = {col: new_row[col] for col in new_row.colnames}
             dic["name"] = dic["name"] + "_" + dic["date_modified"]
@@ -452,7 +446,6 @@ def add_pkg_to_local_db(new_row, local_db):
     else:
         tbl_to_add = Table(names=[col for col in new_row.colnames],
                            data=[[new_row[col]] for col in new_row.colnames])
-
 
     new_local_table = vstack([local_table, tbl_to_add])
     new_local_table.meta = local_table.meta
@@ -473,13 +466,4 @@ def change_table_entry(tbl, col_name, old_val, new_val):
     tbl.remove_column(col_name)
     tbl.add_column(fixed_col, index=ii)
 
-    return tbl #, fixed_col, offending_col, new_val, ii
-
-
-
-# check_local_directory_exists():
-
-
-# def add_pkg_to_table(pkg_name, local_filename, svr_table):
-#
-#
+    return tbl

@@ -1,15 +1,26 @@
+import os
+import shutil
 import pytest
 from astropy.table import Table
 import simcado.server.database as sim_db
 
 _parent_path = "./test_downloads_dir/"
-sim_db.set_up_local_package_directory(_parent_path, True)
-
-# for path in local_dbs:
-#     os.remove(path)
-# os.removedirs(parent_path)
 
 
+@pytest.fixture(scope="module")
+def temp_directory_structure():
+    # setup
+    sim_db.rc["FILE_LOCAL_DOWNLOADS_PATH"] = _parent_path
+    sim_db.set_up_local_package_directory(_parent_path, True)
+
+    # run tests
+    yield
+
+    # teardown
+    shutil.rmtree(_parent_path)
+
+
+@pytest.mark.usefixtures("temp_directory_structure")
 class TestGetLocalPackages:
     def test_returns_table_if_local_db_file_exists(self):
         local_dbs = sim_db.set_local_path_names(_parent_path)
@@ -24,6 +35,7 @@ class TestGetLocalPackages:
 
     def test_empty_table_has_column_type_string(self):
         pass
+
 
 class TestGetServerPackages:
     def test_throws_error_on_wrong_path(self):
@@ -61,9 +73,12 @@ class TestCheckPackageExists:
     def test_returns_true_for_package_name(self):
         assert sim_db.check_package_exists("test_package") is True
 
-    def test_returns_exception_for_bogus_pkg_name(self):
+    def test_returns_false_for_bogus_pkg_name(self):
+        assert sim_db.check_package_exists("bogus") is False
+
+    def test_returns_exception_if_package_path_is_broken(self):
         with pytest.raises(ValueError):
-            sim_db.check_package_exists("bogus")
+            sim_db.check_package_exists("non_existent_pkg")
 
 
 class TestGetServerPackagePath:
@@ -87,11 +102,10 @@ class TestGetPackageTableEntry:
         return_tbl = sim_db.get_package_table_entry("test_package", svr_table)
         assert return_tbl["path"] == "test_package.zip"
 
-    def test_returns_exception_with_wrong_data(self):
+    def test_returns_none_if_package_not_it_table(self):
         svr_table = Table(names=["name", "path"], data=[["test_package"],
                                                         ["test_package.zip"]])
-        with pytest.raises(ValueError):
-            assert sim_db.get_package_table_entry("bogus", svr_table)
+        assert sim_db.get_package_table_entry("bogus", svr_table) is None
 
     def test_returns_newest_with_multiple_entries(self):
         pass
@@ -100,6 +114,7 @@ class TestGetPackageTableEntry:
         pass
 
 
+@pytest.mark.usefixtures("temp_directory_structure")
 class TestDownloadPackage:
     def test_raise_error_when_pkg_not_in_db(self):
         with pytest.raises(ValueError):
@@ -109,12 +124,23 @@ class TestDownloadPackage:
         with pytest.raises(ValueError):
             sim_db.download_package("non_existent_pkg")
 
-# avoid a test that is dependent on the network
-# ::todo add this to the integration test suite
-# def test_download_package_no_error_when_package_exists_and_is_in_DB():
-#     pass
+    # avoid a test that is dependent on the network
+    # ::todo add this to the integration test suite
+
+    def test_package_added_to_local_db(self):
+        local_pkgs_before = sim_db.get_local_packages(sim_db.LOCAL_INST_DB)
+        sim_db.download_package("test_package")
+        local_pkgs_after = sim_db.get_local_packages(sim_db.LOCAL_INST_DB)
+        assert len(local_pkgs_after) == len(local_pkgs_before) + 1
+
+    def test_package_file_exists_on_local_drive(self):
+        local_tbl = sim_db.get_local_packages(sim_db.LOCAL_INST_DB)
+        filename = sim_db.get_server_package_path("test_package", local_tbl)
+        dirname = sim_db.rc["FILE_LOCAL_DOWNLOADS_PATH"]
+        assert os.path.exists(os.path.join(dirname, filename))
 
 
+@pytest.mark.usefixtures("temp_directory_structure")
 class TestAddPackageToLocalDb:
     def test_adds_row(self):
         local_table = Table(names=["name", "author", "date_added",
@@ -159,3 +185,18 @@ class TestChangeTableEntry:
         tbl = sim_db.change_table_entry(tbl, "name", "seb skelly",
                                         "seb skelly rocks")
         assert tbl[0]["name"] == "seb skelly rocks"
+
+
+@pytest.mark.usefixtures("temp_directory_structure")
+class TestSetUpLocalPackageDirectory:
+    def test_four_folders_exist(self):
+        rcnames = ["FILE_SCOPE_PKG_LOCAL_PATH", "FILE_INST_PKG_LOCAL_PATH",
+                   "FILE_PSF_LOCAL_PATH",       "FILE_SRC_PKG_LOCAL_PATH"]
+        for rcname in rcnames:
+            filename = os.path.join(_parent_path, sim_db.rc[rcname])
+            assert os.path.exists(filename)
+
+    def test_three_db_files_exist(self):
+        for db_path in sim_db._local_paths:
+            assert os.path.exists(db_path)
+
