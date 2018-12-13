@@ -2682,9 +2682,15 @@ def spectrum_sum_over_range(lam, flux, lam_min=None, lam_max=None):
     # Treat edge bins: Since lam[imin] < lam_min < lam_max < lam[imax], we have to
     # subtract part of the outer bins
     dlam = lam[1] - lam[0]
-    spec_photons = np.sum(flux[:, imin:(imax + 1)], axis=1) \
-                   - flux[:, imin] * (0.5 + (lam_min - lam[imin])/dlam) \
-                   - flux[:, imax] * (0.5 - (lam_max - lam[imax])/dlam)
+    if np.size(np.shape(flux)) == 1: # 1D case
+        spec_photons = np.sum(flux[imin:(imax + 1)]) \
+                        - flux[imin] * (0.5 + (lam_min - lam[imin])/dlam) \
+                        - flux[imax] * (0.5 - (lam_max - lam[imax])/dlam)
+
+    if np.size(np.shape(flux)) == 2: # 2D case
+        spec_photons = np.sum(flux[:, imin:(imax + 1)], axis=1) \
+                        - flux[:, imin] * (0.5 + (lam_min - lam[imin])/dlam) \
+                        - flux[:, imax] * (0.5 - (lam_max - lam[imax])/dlam)
 
     return spec_photons
 
