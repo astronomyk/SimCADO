@@ -15,54 +15,22 @@ Write functions to:
 import os
 import requests
 import datetime as dt
+import zipfile as zf
 
 from numpy import where as npwhere
 from numpy import array as nparray
 from astropy.table import Table, Column, Row, vstack
 from astropy.io import ascii as ioascii
 
+from ..utils import download_file
 from .. import __rc__
 rc = __rc__
 
 
-def set_local_path_names(path):
-    local_inst_db = os.path.join(path, rc["FILE_INST_PKG_LOCAL_DB_NAME"])
-    local_psf_db = os.path.join(path, rc["FILE_PSF_LOCAL_DB_NAME"])
-    local_src_db = os.path.join(path, rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
-
-    return local_inst_db, local_psf_db, local_src_db
-
-def _local_inst_db():
-    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
-                        rc["FILE_INST_PKG_LOCAL_DB_NAME"])
-
-def _local_psf_db():
-    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
-                        rc["FILE_PSF_LOCAL_DB_NAME"])
-
-def _local_src_db():
-    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
-                        rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
-
-def _local_paths():
-    return set_local_path_names(rc["FILE_LOCAL_DOWNLOADS_PATH"])
-
-def _svr_inst_db():
-    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_INST_PKG_SERVER_DB_NAME"]
-
-def _svr_psf_db():
-    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_PSF_SERVER_DB_NAME"]
-
-def _svr_src_db():
-    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_SRC_PKG_SERVER_DB_NAME"]
-
-def _local_db_dict():
-    return {"inst" : _local_inst_db(), "psf" : _local_psf_db(),
-            "src" : _local_src_db()}
-
-def _svr_db_dict():
-    return {"inst" : _svr_inst_db(), "psf" : _svr_psf_db(),
-            "src" : _svr_src_db()}
+__all__ = ["list_all", "list_instruments", "list_psfs", "list_source_packages",
+           "get_local_packages", "get_server_packages",
+           "download_package", "set_up_local_package_directory",
+           "rc", "local_db_paths", "server_db_urls"]
 
 
 LOCAL_DB_HEADER_PATTERN = """# Date-created : {}
@@ -73,7 +41,118 @@ name   author   date_added  date_modified   path
 """
 
 
+def _local_inst_db():
+    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc["FILE_INST_PKG_LOCAL_DB_NAME"])
+
+
+def _local_psf_db():
+    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc["FILE_PSF_LOCAL_DB_NAME"])
+
+
+def _local_src_db():
+    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
+
+
+def set_local_path_names(path):
+    local_inst_db = os.path.join(path, rc["FILE_INST_PKG_LOCAL_DB_NAME"])
+    local_psf_db = os.path.join(path, rc["FILE_PSF_LOCAL_DB_NAME"])
+    local_src_db = os.path.join(path, rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
+
+    return local_inst_db, local_psf_db, local_src_db
+
+
+def _local_paths():
+    return set_local_path_names(rc["FILE_LOCAL_DOWNLOADS_PATH"])
+
+
+def _svr_inst_db():
+    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_INST_PKG_SERVER_DB_NAME"]
+
+
+def _svr_psf_db():
+    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_PSF_SERVER_DB_NAME"]
+
+
+def _svr_src_db():
+    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_SRC_PKG_SERVER_DB_NAME"]
+
+
+def local_db_paths(name=None):
+    """
+    Return the paths for the local database files
+
+    Parameters
+    ----------
+    name : str, optional
+        None, "inst", "psf", "src"
+
+    Returns
+    -------
+    svr_dict : dict or str
+
+    """
+
+    local_dict = {"inst" : _local_inst_db(), "psf" : _local_psf_db(),
+                  "src" : _local_src_db()}
+    if name is None:
+        return local_dict
+    else:
+        return local_dict[name]
+
+
+def server_db_urls(name=None):
+    """
+    Return the URLs for the server side database files
+
+    Parameters
+    ----------
+    name : str, optional
+        None, "inst", "psf", "src"
+
+    Returns
+    -------
+    svr_dict : dict or str
+
+    """
+
+    svr_dict = {"inst": _svr_inst_db(), "psf": _svr_psf_db(),
+                "src": _svr_src_db()}
+    if name is None:
+        return svr_dict
+    else:
+        return svr_dict[name]
+
+
 def set_up_local_package_directory(dirname=None, overwrite=False):
+    """
+    Sets up the directory structure for a set of locally stored package files
+
+    Parameters
+    ----------
+    dirname : str, optional
+        Path to where you would like to store downloaded packages.
+        If ``None``, the value from the SimCADO RC file is taken
+
+    overwrite : bool, optional
+        Default False. Whether to overwrite an existing directory structure
+
+
+    Examples
+    --------
+    ::
+
+        >>> import simcado.server as svr
+        >>> svr.set_up_local_package_directory("./simcado_downloads/")
+
+
+    See Also
+    --------
+    Using the SimCADO RC file
+
+    """
 
     if dirname is None:
         dirname = rc["FILE_LOCAL_DOWNLOADS_PATH"]
@@ -107,19 +186,33 @@ def set_up_local_package_directory(dirname=None, overwrite=False):
 
 def get_local_packages(path=None):
     """
-    Returns a table of packages from a database file
+    Return a list of packages on the local disk
+
+    By default returns only the instrument package server database
+    To get the PSF or source databases, pass relevant file path.
+    These can be found under::
+
+        simcado.server.local_db_paths(<name>)
+
+    where ``name`` can be ``None``,``inst``, ``psf``, or ``src``
+
 
     Parameters
     ----------
     path : str
-        Path to package database file. Use the following functions:
-        `simcado.server._local_inst_db()`
-        `simcado.server._local_psf_db()`
-        `simcado.server._local_src_db()`
+        URL to package database file on the server. See above.
 
     Returns
     -------
     local_table : `astropy.Table`
+
+    Examples
+    --------
+    ::
+
+        >>> import simcado.server as svr
+        >>> psf_local_path = svr.local_db_paths("psf")
+        >>> svr_pkgs = svr.get_server_packages(psf_local_path)
 
     """
 
@@ -168,6 +261,37 @@ def rename_table_colnames(svr_table):
 
 
 def get_server_packages(path=None):
+    """
+    Return a list of packages on the server
+
+    By default returns only the instrument package server database
+    To get the PSF or source databases, pass relevant url. These can be found
+    under::
+
+        simcado.server.svr_db_dict(<name>)
+
+    where ``name`` can be ``None``,``inst``, ``psf``, or ``src``
+
+
+    Parameters
+    ----------
+    path : str
+        URL to package database file on the server. See above.
+
+    Returns
+    -------
+    local_table : `astropy.Table`
+
+    Examples
+    --------
+    ::
+
+        >>> import simcado.server as svr
+        >>> psf_server_url = svr.server_db_urls("psf")
+        >>> svr_pkgs = svr.get_server_packages(psf_server_url)
+
+    """
+
     svr_text = get_server_text(path)
     svr_table = ioascii.read(svr_text)
     svr_table = rename_table_colnames(svr_table)
@@ -189,9 +313,7 @@ def list_packages(local_path=None, server_url=None, return_table=False,
         Default `simcado.server._svr_psf_db()`
 
     return_table : bool, optional
-
     msg : str
-
 
     Returns
     -------
@@ -219,8 +341,8 @@ def list_instruments(local_path=None, server_url=None, return_table=False):
 
     By default `list_instruments` looks in
 
-    * `simcado.server._local_inst_db()`
-    * `simcado.server._svr_inst_db()`
+    * `simcado.server.local_db_paths("inst")`
+    * `simcado.server.server_db_urls("inst")`
 
     See Also
     --------
@@ -243,8 +365,8 @@ def list_psfs(local_path=None, server_url=None, return_table=False):
 
     By default `list_psfs` looks in
 
-    * `simcado.server._local_psf_db()`
-    * `simcado.server._svr_psf_db()`
+    * `simcado.server.local_db_paths("psf")`
+    * `simcado.server.server_db_urls("psf")`
 
     See Also
     --------
@@ -261,14 +383,14 @@ def list_psfs(local_path=None, server_url=None, return_table=False):
                          "PSF files")
 
 
-def list_source_pkgs(local_path=None, server_url=None, return_table=False):
+def list_source_packages(local_path=None, server_url=None, return_table=False):
     """
     Prints to screen (returns) a list of all available source packages
 
     By default `list_source_pkgs` looks in
 
-    * `simcado.server._local_src_db()`
-    * `simcado.server._svr_src_db()`
+    * `simcado.server.local_db_paths("src")`
+    * `simcado.server.server_db_urls("src")`
 
     See Also
     --------
@@ -286,9 +408,19 @@ def list_source_pkgs(local_path=None, server_url=None, return_table=False):
 
 
 def list_all():
+    """
+    Lists all the packages on the server and on the local disk
+
+    See Also
+    --------
+    :func:`.list_instruments`
+    :func:`.list_psfs`
+    :func:`.list_source_packages`
+
+    """
     list_instruments()
     list_psfs()
-    list_source_pkgs()
+    list_source_packages()
 
 
 def check_package_exists(pkg_name, svr_path=None):
@@ -323,6 +455,7 @@ def get_server_package_path(pkg_name, svr_table):
 
 
 def get_package_table_entry(pkg_name, db_table):
+
     # ::todo implement multiple entry handling
     if pkg_name in db_table["name"]:
         pkg_index = npwhere(db_table["name"] == pkg_name)[0]
@@ -346,20 +479,80 @@ def determine_type_of_package(svr_db_filename):
     return pkg_type
 
 
-def download_package(pkg_name, save_dir=None, server_dbs=None):
+def extract_package(pkg_name, overwrite=True):
+
+    if os.path.exists(pkg_name) and ".zip" in pkg_name:
+        file_path = pkg_name
+    else:
+        pkg_entry = find_package_on_disk(pkg_name)
+        if not isinstance(pkg_entry, Row):
+            raise ValueError("{} wasn't found on disk".format(pkg_name))
+
+        file_path = os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+                                 pkg_entry["path"])
+
+    new_dir = file_path.replace(".zip", "")
+    if os.path.exists(new_dir) and not overwrite:
+        pass
+    else:
+        if os.path.exists(new_dir):
+            print("{} exists, but overwriting anyway".format(pkg_name))
+        with zf.ZipFile(file_path) as pkg_zip:
+            pkg_zip.extractall(new_dir)
+
+
+def download_package(pkg_name, unzip_package=True, save_dir=None,
+                     server_dbs=None):
     """
-    Download a package from the server
+    Download a package from the server and extract into the downloads folder
+
+    .. warning::
+        By default ``unzip_package=True``. This will overwrite an
+        existing package with the same **FILENAME**, not of the same package
+        name. (Files are named ``INSTRUMENT_YYYY-MM-DD.zip``). If you have
+        altered any individual files in the package directory, these will be
+        overwritten if you re-download the same package zip file.
+
 
     Parameters
     ----------
     pkg_name : str
         Name of the package to download
 
+    unzip_package : bool, optional
+        Default True. If True, the package is automatically extracted into a
+        folder with the same name as the zip file. If False, only the zip file
+        is downloaded
+
     save_dir : str, optional
         Where to save the package on the local disk. Default INST_PKG_LOCAL_PATH
 
     server_dbs : str, optional
         URL to the server
+
+
+    Returns
+    -------
+    local_filename : str
+        The path and filename of the saved zip file
+
+
+    Examples
+    --------
+    ``download_package`` queries all the database files on the server and
+    downloads the first package it finds which matched ``pkg_name``::
+
+        >>> # Get the 'MICADO' package from the list of instruments
+        >>> download_package("MICADO")
+        >>> # Get the 'NIR_Sources' package from the list of source spectra
+        >>> download_package("NIR_Sources")
+
+    By default ``download_package`` extracts the zip file after downloading.
+    If we just want to download the package and save it somewhere else, we can
+    set the ``unzip_package`` flag to False::
+
+        >>> download_package("MICADO", unzip_package=False,
+        ...                  save_dir="./random/folder/")
 
     """
 
@@ -373,18 +566,21 @@ def download_package(pkg_name, save_dir=None, server_dbs=None):
     pkg_url  = rc["FILE_SERVER_BASE_URL"] + pkg_entry["path"]
     pkg_type = determine_type_of_package(svr_db)
 
-    if not check_package_exists(pkg_name, _svr_db_dict()[pkg_type]):
+    if not check_package_exists(pkg_name, server_db_urls()[pkg_type]):
         raise ValueError("Package is missing: " + pkg_name)
 
     if save_dir is None:
         stem = os.path.dirname(pkg_entry["path"])
         save_dir = os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"], stem)
 
-    from ..utils import download_file
     local_filename = download_file(pkg_url, save_dir)
     print("Saved {} in {}".format(pkg_name, local_filename))
+    if unzip_package:
+        extract_package(local_filename, overwrite=True)
+        unzip_dir = local_filename.replace(".zip", "")
+        print("Unzipped {} to {}".format(pkg_name, unzip_dir))
 
-    local_db_path = _local_db_dict()[pkg_type]
+    local_db_path = local_db_paths()[pkg_type]
     new_local_tbl = add_pkg_to_local_db(pkg_entry, local_db_path)
 
     write_table_to_disk(new_local_tbl, local_db_path)
@@ -398,6 +594,19 @@ def write_table_to_disk(tbl, path):
 
 
 def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
+    """
+    Returns the first match for ``pkg_name`` in the server database files
+
+    Parameters
+    ----------
+    pkg_name : str
+    server_dbs : list
+    return_db_filename : bool
+
+    Returns
+    -------
+
+    """
 
     if server_dbs is None:
         server_dbs = [_svr_inst_db(), _svr_inst_db(), _svr_src_db()]
@@ -416,6 +625,19 @@ def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
 
 
 def find_package_on_disk(pkg_name, local_dbs=None, return_db_filename=False):
+    """
+    Returns the first match for ``pkg_name`` in the server database files
+
+    Parameters
+    ----------
+    pkg_name : str
+    server_dbs : list
+    return_db_filename : bool
+
+    Returns
+    -------
+
+    """
 
     if local_dbs is None:
         local_dbs = [_local_inst_db(), _local_inst_db(), _local_src_db()]
@@ -492,17 +714,3 @@ def change_table_entry(tbl, col_name, old_val, new_val):
     tbl.add_column(fixed_col, index=ii)
 
     return tbl
-
-
-def extract_package(pkg_name):
-    pkg_entry = find_package_on_disk(pkg_name)
-    if not isinstance(pkg_entry, Row):
-        raise ValueError("{} wasn't found on disk".format(pkg_name))
-
-    file_path = os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"], pkg_entry["path"])
-
-    import zipfile as zf
-    with zf.ZipFile(file_path) as pkg_zip:
-        pkg_zip.extractall(file_path.replace(".zip", ""))
-
-
