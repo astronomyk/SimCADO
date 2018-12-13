@@ -1,3 +1,4 @@
+import sys
 import os
 import yaml
 import simcado as sim
@@ -12,8 +13,12 @@ class TestBasicLoading:
         assert sim.__data_dir__ in sim.__search_path__
 
     def test_data_dir_in_pkg_dir(self):
-        assert os.path.commonpath([sim.__pkg_dir__,
-                                   sim.__data_dir__]) == sim.__pkg_dir__
+        if sys.version_info >= (3,5):
+            cpath = os.path.commonpath([sim.__pkg_dir__, sim.__data_dir__])
+            assert cpath == sim.__pkg_dir__
+        else:
+            cpath = os.path.commonprefix([sim.__pkg_dir__, sim.__data_dir__])
+            assert cpath == sim.__pkg_dir__
 
     def test_rc_file_is_read_in(self):
         assert "SIM_LOGGING" in sim.__rc__
