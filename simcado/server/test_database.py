@@ -44,11 +44,11 @@ class TestGetServerPackages:
             sim_db.get_server_packages(svr_db_url)
 
     def test_returns_table_if_path_correct(self):
-        svr_path = sim_db.SVR_INST_DB
+        svr_path = sim_db._svr_inst_db()
         assert type(sim_db.get_server_packages(svr_path)) == Table
-        svr_path = sim_db.SVR_PSF_DB
+        svr_path = sim_db._svr_psf_db()
         assert type(sim_db.get_server_packages(svr_path)) == Table
-        svr_path = sim_db.SVR_SRC_DB
+        svr_path = sim_db._svr_src_db()
         assert type(sim_db.get_server_packages(svr_path)) == Table
 
 
@@ -128,15 +128,18 @@ class TestDownloadPackage:
     # ::todo add this to the integration test suite
 
     def test_package_added_to_local_db(self):
-        local_pkgs_before = sim_db.get_local_packages(sim_db.LOCAL_INST_DB)
+        local_pkgs_before = sim_db.get_local_packages(sim_db._local_inst_db())
         sim_db.download_package("test_package")
-        local_pkgs_after = sim_db.get_local_packages(sim_db.LOCAL_INST_DB)
+        local_pkgs_after = sim_db.get_local_packages(sim_db._local_inst_db())
         assert len(local_pkgs_after) == len(local_pkgs_before) + 1
 
     def test_package_file_exists_on_local_drive(self):
-        local_tbl = sim_db.get_local_packages(sim_db.LOCAL_INST_DB)
+        sim_db.download_package("test_package")
+        local_tbl = sim_db.get_local_packages(sim_db._local_inst_db())
         filename = sim_db.get_server_package_path("test_package", local_tbl)
         dirname = sim_db.rc["FILE_LOCAL_DOWNLOADS_PATH"]
+        print(filename, dirname, local_tbl)
+
         assert os.path.exists(os.path.join(dirname, filename))
 
 
@@ -197,6 +200,6 @@ class TestSetUpLocalPackageDirectory:
             assert os.path.exists(filename)
 
     def test_three_db_files_exist(self):
-        for db_path in sim_db._local_paths:
+        for db_path in sim_db._local_paths():
             assert os.path.exists(db_path)
 

@@ -32,23 +32,37 @@ def set_local_path_names(path):
 
     return local_inst_db, local_psf_db, local_src_db
 
+def _local_inst_db():
+    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc["FILE_INST_PKG_LOCAL_DB_NAME"])
 
-_local_paths = set_local_path_names(rc["FILE_LOCAL_DOWNLOADS_PATH"])
-LOCAL_INST_DB = _local_paths[0]
-LOCAL_PSF_DB  = _local_paths[1]
-LOCAL_SRC_DB  = _local_paths[2]
+def _local_psf_db():
+    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc["FILE_PSF_LOCAL_DB_NAME"])
 
-SVR_INST_DB = rc["FILE_SERVER_BASE_URL"] + rc["FILE_INST_PKG_SERVER_DB_NAME"]
-SVR_PSF_DB  = rc["FILE_SERVER_BASE_URL"] + rc["FILE_PSF_SERVER_DB_NAME"]
-SVR_SRC_DB  = rc["FILE_SERVER_BASE_URL"] + rc["FILE_SRC_PKG_SERVER_DB_NAME"]
+def _local_src_db():
+    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
 
-_local_db_dict = {"inst" : LOCAL_INST_DB,
-                  "psf"  : LOCAL_PSF_DB,
-                  "src"  : LOCAL_SRC_DB}
+def _local_paths():
+    return set_local_path_names(rc["FILE_LOCAL_DOWNLOADS_PATH"])
 
-_svr_db_dict = {"inst" : SVR_INST_DB,
-                "psf"  : SVR_PSF_DB,
-                "src"  : SVR_SRC_DB}
+def _svr_inst_db():
+    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_INST_PKG_SERVER_DB_NAME"]
+
+def _svr_psf_db():
+    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_PSF_SERVER_DB_NAME"]
+
+def _svr_src_db():
+    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_SRC_PKG_SERVER_DB_NAME"]
+
+def _local_db_dict():
+    return {"inst" : _local_inst_db(), "psf" : _local_psf_db(),
+            "src" : _local_src_db()}
+
+def _svr_db_dict():
+    return {"inst" : _svr_inst_db(), "psf" : _svr_psf_db(),
+            "src" : _svr_src_db()}
 
 
 LOCAL_DB_HEADER_PATTERN = """# Date-created : {}
@@ -99,10 +113,10 @@ def get_local_packages(path=None):
     Parameters
     ----------
     path : str
-        Path to package database file. Use the following local variables:
-        `simcado.server.LOCAL_INST_DB`
-        `simcado.server.LOCAL_PSF_DB`
-        `simcado.server.LOCAL_SRC_DB`
+        Path to package database file. Use the following functions:
+        `simcado.server._local_inst_db()`
+        `simcado.server._local_psf_db()`
+        `simcado.server._local_src_db()`
 
     Returns
     -------
@@ -111,7 +125,7 @@ def get_local_packages(path=None):
     """
 
     if path is None:
-        path = LOCAL_INST_DB
+        path = _local_inst_db()
 
     if not os.path.exists(path):
         raise ValueError(path + " doesn't exist")
@@ -139,7 +153,7 @@ def remove_dot_row(tbl):
 
 def get_server_text(path=None):
     if path is None:
-        path = SVR_INST_DB
+        path = _svr_inst_db()
 
     server_db_text = requests.get(path).text
     server_db_text = server_db_text.replace("\r", "")
@@ -178,10 +192,10 @@ def list_packages(local_path=None, server_url=None, return_table=False,
     Parameters
     ----------
     local_path : str, optional
-        Default `simcado.server.LOCAL_PSF_DB`
+        Default `simcado.server._local_psf_db()`
 
     server_url : str, optional
-        Default `simcado.server.SVR_PSF_DB`
+        Default `simcado.server._svr_psf_db()`
 
     return_table : bool, optional
 
@@ -214,8 +228,8 @@ def list_instruments(local_path=None, server_url=None, return_table=False):
 
     By default `list_instruments` looks in
 
-    * `simcado.server.LOCAL_INST_DB`
-    * `simcado.server.SVR_INST_DB`
+    * `simcado.server._local_inst_db()`
+    * `simcado.server._svr_inst_db()`
 
     See Also
     --------
@@ -224,9 +238,9 @@ def list_instruments(local_path=None, server_url=None, return_table=False):
     """
 
     if local_path is None:
-        local_path = LOCAL_INST_DB
+        local_path = _local_inst_db()
     if server_url is None:
-        server_url = SVR_INST_DB
+        server_url = _svr_inst_db()
 
     return list_packages(local_path, server_url, return_table,
                          "Instrument and Telescope packages")
@@ -238,8 +252,8 @@ def list_psfs(local_path=None, server_url=None, return_table=False):
 
     By default `list_psfs` looks in
 
-    * `simcado.server.LOCAL_PSF_DB`
-    * `simcado.server.SVR_PSF_DB`
+    * `simcado.server._local_psf_db()`
+    * `simcado.server._svr_psf_db()`
 
     See Also
     --------
@@ -248,9 +262,9 @@ def list_psfs(local_path=None, server_url=None, return_table=False):
     """
 
     if local_path is None:
-        local_path = LOCAL_PSF_DB
+        local_path = _local_psf_db()
     if server_url is None:
-        server_url = SVR_PSF_DB
+        server_url = _svr_psf_db()
 
     return list_packages(local_path, server_url, return_table,
                          "PSF files")
@@ -262,8 +276,8 @@ def list_source_pkgs(local_path=None, server_url=None, return_table=False):
 
     By default `list_source_pkgs` looks in
 
-    * `simcado.server.LOCAL_SRC_DB`
-    * `simcado.server.SVR_SRC_DB`
+    * `simcado.server._local_src_db()`
+    * `simcado.server._svr_src_db()`
 
     See Also
     --------
@@ -272,9 +286,9 @@ def list_source_pkgs(local_path=None, server_url=None, return_table=False):
     """
 
     if local_path is None:
-        local_path = LOCAL_SRC_DB
+        local_path = _local_src_db()
     if server_url is None:
-        server_url = SVR_SRC_DB
+        server_url = _svr_src_db()
 
     return list_packages(local_path, server_url, return_table,
                          "Source packages")
@@ -288,7 +302,7 @@ def list_all():
 
 def check_package_exists(pkg_name, svr_path=None):
     if svr_path is None:
-        svr_path = SVR_INST_DB
+        svr_path = _svr_inst_db()
 
     svr_base_url = os.path.dirname(svr_path)
     svr_table = get_server_packages(svr_path)
@@ -368,7 +382,7 @@ def download_package(pkg_name, save_dir=None, server_dbs=None):
     pkg_url  = rc["FILE_SERVER_BASE_URL"] + pkg_entry["path"]
     pkg_type = determine_type_of_package(svr_db)
 
-    if not check_package_exists(pkg_name, _svr_db_dict[pkg_type]):
+    if not check_package_exists(pkg_name, _svr_db_dict()[pkg_type]):
         raise ValueError("Package is missing: " + pkg_name)
 
     if save_dir is None:
@@ -379,7 +393,7 @@ def download_package(pkg_name, save_dir=None, server_dbs=None):
     local_filename = download_file(pkg_url, save_dir)
     print("Saved {} in {}".format(pkg_name, local_filename))
 
-    local_db_path = _local_db_dict[pkg_type]
+    local_db_path = _local_db_dict()[pkg_type]
     new_local_tbl = add_pkg_to_local_db(pkg_entry, local_db_path)
 
     write_table_to_disk(new_local_tbl, local_db_path)
@@ -393,7 +407,7 @@ def write_table_to_disk(tbl, path):
 def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
 
     if server_dbs is None:
-        server_dbs = [SVR_INST_DB, SVR_PSF_DB, SVR_SRC_DB]
+        server_dbs = [_svr_inst_db(), _svr_inst_db(), _svr_src_db()]
 
     pkg_entry, svr_db = None, None
     for svr_db in server_dbs:
@@ -467,3 +481,4 @@ def change_table_entry(tbl, col_name, old_val, new_val):
     tbl.add_column(fixed_col, index=ii)
 
     return tbl
+
