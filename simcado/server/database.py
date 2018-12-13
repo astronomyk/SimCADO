@@ -69,8 +69,7 @@ LOCAL_DB_HEADER_PATTERN = """# Date-created : {}
 # Date-modified : {}
 # Description : Packages containing {} specific data files
 #
-name   author   date_added  date_modified   path
-.      .        .           .               .     
+name   author   date_added  date_modified   path     
 """
 
 
@@ -133,22 +132,14 @@ def get_local_packages(path=None):
     # If this throws an error, it's because the DB file is not formatted
     # correctly
     # The column row names should NOT be commented out
-    local_table = ioascii.read(path, format="basic")
+    local_table = ioascii.read(path, format="basic", fast_reader=False)
     local_table = rename_table_colnames(local_table)
-    local_table = remove_dot_row(local_table)
 
     # make sure all columns are strings
-    # for col in local_table.colnames:
-    #    local_table[col] = local_table[col].astype("str")
+    for col in local_table.colnames:
+        local_table[col] = local_table[col].astype("str")
 
     return local_table
-
-
-def remove_dot_row(tbl):
-    if "." in tbl["name"]:
-        ii = npwhere(tbl["name"] == ".")[0][0]
-        tbl.remove_row(ii)
-    return tbl
 
 
 def get_server_text(path=None):
@@ -398,6 +389,8 @@ def download_package(pkg_name, save_dir=None, server_dbs=None):
 
     write_table_to_disk(new_local_tbl, local_db_path)
 
+    return local_filename
+
 
 def write_table_to_disk(tbl, path):
 
@@ -418,6 +411,24 @@ def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
 
     if return_db_filename:
         return pkg_entry, os.path.basename(svr_db)
+    else:
+        return pkg_entry
+
+
+def find_package_on_disk(pkg_name, local_dbs=None, return_db_filename=False):
+
+    if local_dbs is None:
+        local_dbs = [_local_inst_db(), _local_inst_db(), _local_src_db()]
+
+    pkg_entry, local_db = None, None
+    for local_db in local_dbs:
+        local_table = get_local_packages(local_db)
+        pkg_entry = get_package_table_entry(pkg_name, local_table)
+        if pkg_entry is not None:
+            break
+
+    if return_db_filename:
+        return pkg_entry, os.path.basename(local_db)
     else:
         return pkg_entry
 
@@ -481,4 +492,17 @@ def change_table_entry(tbl, col_name, old_val, new_val):
     tbl.add_column(fixed_col, index=ii)
 
     return tbl
+
+
+def extract_package(pkg_name):
+    pkg_entry = find_package_on_disk(pkg_name)
+    if not isinstance(pkg_entry, Row):
+        raise ValueError("{} wasn't found on disk".format(pkg_name))
+
+    file_path = os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"], pkg_entry["path"])
+
+    import zipfile as zf
+    with zf.ZipFile(file_path) as pkg_zip:
+        pkg_zip.extractall(file_path.replace(".zip", ""))
+
 

@@ -19,6 +19,10 @@ def temp_directory_structure():
     # teardown
     shutil.rmtree(_parent_path)
 
+@pytest.fixture(scope="class")
+def download_test_package():
+    return sim_db.download_package("test_package")
+
 
 @pytest.mark.usefixtures("temp_directory_structure")
 class TestGetLocalPackages:
@@ -127,20 +131,15 @@ class TestDownloadPackage:
     # avoid a test that is dependent on the network
     # ::todo add this to the integration test suite
 
+    def test_package_file_exists_on_local_drive(self):
+        local_filename = sim_db.download_package("test_package")
+        assert os.path.exists(local_filename)
+
     def test_package_added_to_local_db(self):
         local_pkgs_before = sim_db.get_local_packages(sim_db._local_inst_db())
         sim_db.download_package("test_package")
         local_pkgs_after = sim_db.get_local_packages(sim_db._local_inst_db())
         assert len(local_pkgs_after) == len(local_pkgs_before) + 1
-
-    def test_package_file_exists_on_local_drive(self):
-        sim_db.download_package("test_package")
-        local_tbl = sim_db.get_local_packages(sim_db._local_inst_db())
-        filename = sim_db.get_server_package_path("test_package", local_tbl)
-        dirname = sim_db.rc["FILE_LOCAL_DOWNLOADS_PATH"]
-        print(filename, dirname, local_tbl)
-
-        assert os.path.exists(os.path.join(dirname, filename))
 
 
 @pytest.mark.usefixtures("temp_directory_structure")
@@ -203,3 +202,16 @@ class TestSetUpLocalPackageDirectory:
         for db_path in sim_db._local_paths():
             assert os.path.exists(db_path)
 
+
+@pytest.mark.usefixtures("temp_directory_structure", "download_test_package")
+class TestUnpackZipFile:
+    def test_unzipped_folder_exists(self, download_test_package):
+        local_filename = download_test_package
+        sim_db.extract_package("test_package")
+        assert os.path.exists(local_filename.replace(".zip", ""))
+
+    def test_unzipped_folder_contains_files(self, download_test_package):
+        local_filename = download_test_package
+        sim_db.extract_package("test_package")
+        num_files = len(os.listdir(local_filename.replace(".zip", "")))
+        assert num_files > 0
