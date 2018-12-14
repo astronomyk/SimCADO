@@ -68,7 +68,6 @@ import yaml
 
 from .utils import find_file
 
-__all__ = []
 __all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve",
            "get_sky_spectrum"]
 

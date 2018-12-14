@@ -30,7 +30,7 @@ from . import spatial as pe
 from .source import flat_spectrum_sb, scale_spectrum_sb
 from .commands import UserCommands
 from .utils import find_file
-from . import __pkg_dir__, __data_dir__
+from . import rc
 
 
 __all__ = ["OpticalTrain", "get_filter_curve", "get_filter_set"]
@@ -715,7 +715,7 @@ def get_filter_set(path=None):
     Return a list of the filters installed in the package directory
     """
     if path is None:
-        path = os.path.join(__data_dir__, "data")
+        path = os.path.join(rc.__data_dir__, "data")
     lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
                     for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst

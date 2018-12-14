@@ -1,42 +1,22 @@
 """
 Helper functions for SimCADO
 """
-###############################################################################
-# utils.py
-#
-# DESCRIPTION
-#
-#
-# Classes:
-#
-#
-# Functions:
-#  read_config(config_file)
-#  update_config(config_file, config_dict)
-#  unify(x, unit, length=1)
-#  parallactic_angle(ha, de, lat=-24.589167)
-#  parallactic_angle_2(ha, de, lat=-24.589167)
-#  moffat(r, alpha, beta)
-#
-#
+
 import os
 import sys
 
 try:
     import wget
 except ImportError:
-    print("Package wget is not available. simcado.get_extras() will not work.")
+    print("Package wget is not available. simcado.get_extras() will not work."
+          "try pip install wget")
 
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii as ioascii
 
-from . import __pkg_dir__, __data_dir__
-
-#__all__ = []
-#__all__ = ["unify", "parallactic_angle", "poissonify",
-#           "atmospheric_refraction", "nearest", "add_keyword"]
+from . import rc
 
 
 def msg(cmds, message, level=3):
@@ -268,7 +248,7 @@ def nearest(arr, val):
 
 
 def deriv_polynomial2d(poly):
-    '''Derivatives (gradient) of a Polynomial2D model
+    """Derivatives (gradient) of a Polynomial2D model
 
     Parameters
     ----------
@@ -277,7 +257,7 @@ def deriv_polynomial2d(poly):
     Output
     ------
     gradient : tuple of Polynomial2d
-    '''
+    """
     import re
     from astropy.modeling.models import Polynomial2D
     degree = poly.degree
@@ -320,7 +300,7 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
 
 
 ############# Check the server for data extras
-def download_file(url, save_dir=__data_dir__):
+def download_file(url, save_dir=rc.__data_dir__):
     """
     Download the extra data that aren't in the SimCADO package
     """
@@ -346,7 +326,7 @@ def get_extras():
     Downloads large files that SimCADO needs to simulate MICADO
     """
 
-    save_dir = __data_dir__
+    save_dir = rc.__data_dir__
     fname = os.path.join(save_dir, "extras.dat")
 
     # check_replace = 0  ## unused (OC)
@@ -366,7 +346,7 @@ def get_extras():
         check_download = 1
 
         # does the file exist on the users disk?
-        fname = os.path.join(__data_dir__, name)
+        fname = os.path.join(rc.__data_dir__, name)
         if os.path.exists(fname):
 
             # is the new name in the old list of filenames
@@ -399,7 +379,7 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
         Column 1 is the wavelength, column 2 is the flux
     file_out : str, optional
         Default is None. The file path to save the ASCII file. If ``None``, the SED
-        is saved to the SimCADO data directory i.e. to ``<utils.__pkg_dir__>/data/``
+        is saved to the SimCADO data directory i.e. to ``rc.__data_dir__``
     lam_units : str, astropy.Units
         Units for the wavelength column, either as a string or as astropy units
         Default is [um]
@@ -410,8 +390,8 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
 
     if file_out is None:
         if "SED_" not in file_name:
-            file_out = __data_dir__ + "SED_" + file_name + ".dat"
-        else: file_out = __data_dir__ + file_name + ".dat"
+            file_out = rc.__data_dir__ + "SED_" + file_name + ".dat"
+        else: file_out = rc.__data_dir__ + file_name + ".dat"
 
     if file_ext.lower() in "fits":
         data = fits.getdata(file_in)
@@ -445,7 +425,7 @@ def zenith_dist_to_airmass(zenith_dist):
 
 
 def seq(start, stop, step=1):
-    '''Replacement for numpy.arange modelled after R's seq function
+    """Replacement for numpy.arange modelled after R's seq function
 
     Returns an evenly spaced sequence from start to stop. stop is included if the difference
     between start and stop is an integer multiple of step.
@@ -462,7 +442,7 @@ def seq(start, stop, step=1):
     step : [int, float]
         increment of the sequence, defaults to 1
 
-    '''
+    """
     feps = 1e-10     # value used in R seq.default
 
     delta = stop - start
@@ -591,7 +571,7 @@ def angle_in_arcseconds(distance, width):
 
 
 def bug_report():
-    '''Get versions of dependencies for inclusion in bug report'''
+    """Get versions of dependencies for inclusion in bug report"""
 
     try:
         from importlib import import_module
@@ -623,7 +603,7 @@ def bug_report():
 
 
 def find_file(filename, path=None, silent=False):
-    '''Find a file in search path
+    """Find a file in search path
 
     Parameters
     ----------
@@ -637,11 +617,10 @@ def find_file(filename, path=None, silent=False):
     Returns
     -------
     Absolute path of the file
-    '''
-    import simcado as sim
+    """
 
     if path is None:
-        path = sim.__search_path__
+        path = rc.__search_path__
 
     if os.path.isabs(filename):
         # absolute path: only path to try
@@ -667,7 +646,7 @@ def find_file(filename, path=None, silent=False):
 
 
 def zendist2airmass(zendist):
-    '''Convert zenith distance to airmass
+    """Convert zenith distance to airmass
 
     Parameters
     ----------
@@ -677,12 +656,13 @@ def zendist2airmass(zendist):
     Returns
     -------
     airmass in sec(z) approximation
-    '''
+    """
+
     return 1. / np.cos(np.deg2rad(zendist))
 
 
 def airmass2zendist(airmass):
-    '''Convert airmass to zenith distance
+    """Convert airmass to zenith distance
 
     Parameters
     ----------
@@ -691,6 +671,6 @@ def airmass2zendist(airmass):
     Returns
     -------
     zenith distance in degrees
-    '''
+    """
 
     return np.rad2deg(np.arccos(1/airmass))

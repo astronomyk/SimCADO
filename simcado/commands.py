@@ -73,9 +73,8 @@ from . import spectral as sc
 from .utils import atmospheric_refraction, find_file
 from .psf import PSFCube
 
-from . import __pkg_dir__, __data_dir__
+from . import rc
 
-#__all__ = []
 __all__ = ["UserCommands", "dump_defaults", "dump_chip_layout",
            "dump_mirror_config", "read_config", "update_config"]
 
@@ -233,9 +232,9 @@ class UserCommands(object):
 
         logging.info("UserCommands object created")
 
-        self.pkg_dir = __pkg_dir__
-        self.data_dir = __data_dir__
-        default = os.path.join(__data_dir__, "default.config")
+        self.pkg_dir = rc.__pkg_dir__
+        self.data_dir = rc.__data_dir__
+        default = os.path.join(rc.__data_dir__, "default.config")
 
         # read in the default keywords
         self.cmds = read_config(default)
@@ -751,7 +750,7 @@ def dump_defaults(filename=None, selection="freq"):
         fname = "default.config"
 
     if filename is None:
-        gname = os.path.join(__data_dir__, fname)
+        gname = os.path.join(rc.__data_dir__, fname)
         with open(gname, "r") as fd1:
             print(fd1.read())
         return None
@@ -762,7 +761,7 @@ def dump_defaults(filename=None, selection="freq"):
 
         if gname == "":
             gname = fname
-        shutil.copy(os.path.join(__data_dir__, fname),
+        shutil.copy(os.path.join(rc.__data_dir__, fname),
                     os.path.join(path, gname))
 
 

@@ -16,17 +16,7 @@ warnings.simplefilter('ignore', category=AstropyWarning)
 #                         PACKAGE GLOBAL VARIABLES                             #
 ################################################################################
 
-import os
-import inspect
-import yaml
-
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
-__data_dir__ = os.path.join(__pkg_dir__, "data")
-__search_path__ = ['./', __pkg_dir__, __data_dir__]     # For utils.find_file()
-
-# load in settings from rc file ".simcadorc"
-with open(os.path.join(__pkg_dir__, ".simcadorc"), "r") as rc_file:
-    __rc__ = yaml.load(rc_file)
+from . import rc
 
 
 ################################################################################
@@ -35,10 +25,10 @@ with open(os.path.join(__pkg_dir__, ".simcadorc"), "r") as rc_file:
 
 import logging
 
-if __rc__["SIM_LOGGING"]:
-    logging.basicConfig(filename=__rc__["SIM_LOGGING_FILE"],
+if rc.__rc__["SIM_LOGGING"]:
+    logging.basicConfig(filename=rc.__rc__["SIM_LOGGING_FILE"],
                         filemode='w',
-                        level=logging.getLevelName(__rc__["SIM_LOGGING_LEVEL"]),
+                        level=logging.getLevelName(rc.__rc__["SIM_LOGGING_LEVEL"]),
                         format='%(asctime)s %(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p')
     logging.info("SimCADO imported, logging initiated")

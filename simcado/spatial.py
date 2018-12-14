@@ -52,7 +52,6 @@ from astropy.io import fits
 
 from . import utils
 
-#__all__ = []
 __all__ = ["tracking", "derotator", "wind_jitter", "adc_shift",
            "make_distortion_maps", "get_distorion_offsets"]
 
