@@ -589,7 +589,6 @@ def download_package(pkg_name, unzip_package=True, save_dir=None,
 
 
 def write_table_to_disk(tbl, path):
-
     tbl.write(path, format="ascii.fixed_width", overwrite=True, delimiter="")
 
 
