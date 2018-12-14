@@ -223,8 +223,7 @@ class Source(object):
             x *= 3600.
             y *= 3600.
 
-
-        self.info = dict([])
+        self.info = {}
         self.info['description'] = "List of spectra and their positions"
 
         self.units = u.Unit(self.params["units"])
@@ -234,8 +233,10 @@ class Source(object):
         self.x = None
         self.y = None  # set later
 
-        # A file can contain a previously saved Source object; in this case the header keyword
-        # "SIMCADO" is set to "SOURCE". If this is not the case, we assume that the file
+        # A file can contain a previously saved Source object; in this case the
+        # header keyword
+        # "SIMCADO" is set to "SOURCE". If this is not the case, we assume that
+        # the file
         # contains a data cube with dimensions x, y, lambda.
         # If no filename is given, we build the Source from the arrays.
         if filename is not None:
@@ -256,22 +257,19 @@ class Source(object):
 
         self.bg_spectrum = None
 
-
     @classmethod
     def load(cls, filename):
-        '''Load :class:'Source' object from filename'''
+        """Load :class:'.Source' object from filename"""
         import pickle
         with open(filename, 'rb') as fp1:
             src = pickle.load(fp1)
         return src
 
-
     def dump(self, filename):
-        '''Save to filename as a pickle'''
+        """Save to filename as a pickle"""
         import pickle
         with open(filename, 'wb') as fp1:
             pickle.dump(self, fp1)
-
 
     def apply_optical_train(self, opt_train, detector, chips="all",
                             sub_pixel=False, **kwargs):
@@ -367,13 +365,11 @@ class Source(object):
 
                 # include any other shifts here
 
-
                 # apply the psf (get_slice_photons is called within)
                 lam_min, lam_max = opt_train.lam_bin_edges[i:i+2]
                 psf_i = utils.nearest(opt_train.psf.lam_bin_centers,
                                       opt_train.lam_bin_centers[i])
                 psf = opt_train.psf[psf_i]
-
 
                 oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                 sub_pixel = params["sub_pixel"]
@@ -464,7 +460,7 @@ class Source(object):
         Optional parameters (**kwargs)
         ------------------------------
         sub_pixel : bool
-            if sub-pixel accuracy is needed, each source is shifted individually.
+            if sub-pixel accuracy is needed, each source is shifted individually
             Default is False
         pix_res : float
             [arcsec] the field of view of each pixel. Default is 0.004 arcsec
@@ -506,8 +502,7 @@ class Source(object):
             psf = sim_psf.PSF(size, pix_res)
             psf.set_array(arr)
 
-
-        # TODO: There is no provision for chip rotation wrt (x, y) system (OC)
+        # .. TODO: There is no provision for chip rotation wrt (x,y) system (OC)
         # Create Chip object if chip described by a string
         if isinstance(chip, str):
             if chip.lower() == "small":
@@ -581,8 +576,8 @@ class Source(object):
 
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array
-            #x_int, y_int = np.floor(x_pix), np.floor(y_pix)
-            #dx, dy = src.x - x_int, src.y - y_int
+            # x_int, y_int = np.floor(x_pix), np.floor(y_pix)
+            # dx, dy = src.x - x_int, src.y - y_int
 
             if bx == ax and by == ay:
                 pass
@@ -637,7 +632,6 @@ class Source(object):
 
         return slice_array
 
-
     def photons_in_range(self, lam_min=None, lam_max=None):
         """
 
@@ -662,7 +656,6 @@ class Source(object):
 
         slice_photons = spec_photons[self.ref] * self.weight
         return slice_photons
-
 
     def scale_spectrum(self, idx=0, mag=20, filter_name="Ks"):
         """
@@ -1057,14 +1050,6 @@ class Source(object):
     def __str__(self):
         return "A photon source object"
 
-
-    def __array__(self):
-        if self.array is None:
-            return np.zeros((self.naxis1, self.naxis2))
-        else:
-            return self.array
-
-
     def __getitem__(self, i):
         return (self.x[i], self.y[i],
                 self.spectra[self.ref[i], :] * self.weight[i])
@@ -1076,15 +1061,14 @@ class Source(object):
                           UnityCurve, BlackbodyCurve)):
             newsrc._apply_transmission_curve(x)
         else:
-            newsrc.array *= x
+            newsrc.spectra *= x
         return newsrc
-
 
     def __add__(self, x):
         newsrc = deepcopy(self)
         if isinstance(x, Source):
             if self.units != x.units:
-                raise ValueError("units are not compatible: " + \
+                raise ValueError("units are not compatible: " +
                                  str(self.units) + ", " + str(x.units))
 
             newsrc.lam = self.lam
@@ -1098,14 +1082,15 @@ class Source(object):
             newsrc.spectra_orig = newsrc.spectra
             newsrc.x = np.array((list(self.x) + list(x.x)))
             newsrc.y = np.array((list(self.y) + list(x.y)))
-            newsrc.ref = np.array((list(self.ref) + list(x.ref + self.spectra.shape[0])))
+            newsrc.ref = np.array((list(self.ref) +
+                                   list(x.ref + self.spectra.shape[0])))
             newsrc.weight = np.array((list(self.weight) + list(x.weight)))
 
             newsrc.x_orig = deepcopy(newsrc.x)
             newsrc.y_orig = deepcopy(newsrc.y)
 
         else:
-            newsrc.array += x
+            newsrc.spectra += x
 
         newsrc.info["object"] = "combined"
 
@@ -1114,7 +1099,7 @@ class Source(object):
 
     def __sub__(self, x):
         newsrc = deepcopy(self)
-        newsrc.array -= x
+        newsrc.spectra -= x
         return newsrc
 
 
@@ -1143,8 +1128,6 @@ class Source(object):
 
 
 ##############################################################################
-
-
 
 
 def _get_stellar_properties(spec_type, cat=None, verbose=False):
@@ -1380,7 +1363,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     # if isinstance(ec, (list, tuple)):
     #     for i in range(len(ec)):
     if type(ec) == (list, tuple):
-        for i in len(range(ec)):
+        for i in range(len(ec)):
             ec[i] *= (lam/0.5556) * ph_factor[i] * 1E4
     else:
         ec *= (lam/0.5556) * ph_factor[0] * 1E4
@@ -1892,7 +1875,7 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
         >>> star_list = [spec_types[i] for i in ids]
         >>> mags = np.random.normal(20, 3, size=100)
         >>>
-        >>> src = stars(spec_types, mags, filter_name="Ks)
+        >>> src = stars(spec_types, mags, filter_name="Ks")
 
     If we don't specify any coordinates all stars have the position (0, 0).
     **All positions are in arcsec.**
@@ -1932,10 +1915,12 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
 
     # assign absolute magnitudes to stellar types in cluster
     unique_types = np.unique(spec_types)
-    lam, spec = SED(unique_types, filter_name=filter_name, magnitude=[0]*len(unique_types))
+    lam, spec = SED(unique_types, filter_name=filter_name,
+                    magnitude=[0]*len(unique_types))
 
     # get the references to the unique stellar types
-    ref_dict = {i : j for i, j in zip(unique_types, np.arange(len(unique_types)))}
+    ref_dict = {i : j for i, j in zip(unique_types,
+                                      np.arange(len(unique_types)))}
     if isinstance(spec_types, (list, tuple, np.ndarray)):
         ref = np.array([ref_dict[i] for i in spec_types])
     else:
@@ -2144,25 +2129,33 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
     Parameters
     ----------
     images : np.ndarray, list
-        A single or list of np.ndarrays describing where the flux is coming from.
+        A single or list of np.ndarrays describing where the flux is coming from
         The spectrum for each pixel in the image is weighted by the pixel value.
+
     lam : np.ndarray
         An array contains the centres of the wavelength bins for the spectra
+
     spectra : np.ndarray
         A (n,m) array with n spectra, each with m bins
+
     plate_scale : float
         [arcsec] The plate scale of the images in arcseconds (e.g. 0.004"/pixel)
+
     oversample : int
         The factor with which to oversample the image. Each image pixel is split
         into (oversample)^2 individual point sources.
+
     units : str, optional
         The energy units of the spectra. Default is [ph/s/m2]
+
     flux_threshold : float, optional
         If there is noise in the image, set threshold to the noise limit so that
         only real photon sources are extracted. Default is 0.
+
     center_offset : (float, float)
         [arcsec] If the centre of the image is offset, add this offset to (x,y)
         coordinates.
+
     conserve_flux : bool, optional
         If True, when the image is rescaled, flux is conserved
         i.e. np.sum(image) remains constant
@@ -2176,6 +2169,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     pix_unit : str
         Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
+
     pix_res : float
         [arcsec] The pixel resolution of the detector. Useful for surface
         brightness calculations
@@ -2183,19 +2177,18 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     Returns
     -------
-    src : source.Source object
+    src : :class:`.Source` object
 
 
     Examples
     --------
-
-    To create a ``Source`` object we need an image that describes the spatial
-    distribution of the object of interest and spectrum. For the sake of ease we
-    will assign a generic elliptical galaxy spectrum to the image.
+    To create a :class:`.Source` object we need an image that describes the
+    spatial distribution of the object of interest and spectrum. For the sake of
+    ease we will assign a generic elliptical galaxy spectrum to the image.::
 
         >>> from astropy.io import fits
         >>> from simcado.source import SED, source_from_image
-
+        >>>
         >>> im = fits.getdata("galaxy.fits")
         >>> lam, spec = SED("elliptical")
         >>> src = source_from_image(im, lam, spec,
@@ -2204,7 +2197,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
     **Note** Here we have assumed that the plate scale of the image is the same
     as the MICADO wide-field mode, i.e. 0.004 arcseconds. If the image is from a
     real observation, or it was generated with a different pixel scale, we will
-    need to tell SimCADO about this:
+    need to tell SimCADO about this::
 
         >>> src = source_from_image(im, lam, spec,
                                     plate_scale=0.01,
@@ -2212,7 +2205,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     If the image is from real observations, chances are good that the background
     flux is higher than zero. We can set a ``threshold`` in order to tell
-    SimCADO to ignore all pixel with values below the background level:
+    SimCADO to ignore all pixel with values below the background level::
 
         >>> src = source_from_image(im, lam, spec,
                                     plate_scale=0.01,
@@ -2221,14 +2214,13 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     Finally, if the image centre is not the centre of the observation, we can
     shift the image relative to the MICADO field of view. The units for the
-    offset are [arcsec]
+    offset are [arcsec]::
 
         >>> src = source_from_image(im, lam, spec,
                                     plate_scale=0.01,
                                     oversample=2.5,
                                     flux_threshold=0.2,
                                     center_offset=(10,-15))
-
 
     """
 
@@ -2243,7 +2235,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         return fullsrc
 
     else:
-        #if not isinstance(oversample, int):
+        # if not isinstance(oversample, int):
         #    raise ValueError("Oversample must be of type 'int'")
 
         if isinstance(images, str) and images.split(".")[-1].lower() == "fits":
@@ -2298,7 +2290,6 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
         return src
 
 
-
 def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     """
     Scale a spectrum to be a certain magnitude
@@ -2339,12 +2330,12 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     Examples
     --------
 
-    Scale the spectrum of a G2V star to J=25:
+    Scale the spectrum of a G2V star to J=25::
 
         >>> lam, spec = simcado.source.SED("G2V")
         >>> lam, spec = simcado.source.scale_spectrum(lam, spec, 25, "J")
 
-    Scale the spectra for many stars to different H-band magnitudes:
+    Scale the spectra for many stars to different H-band magnitudes::
 
         >>> from simcado.source import SED, scale_spectrum
         >>>
@@ -2353,18 +2344,17 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
         >>> lam, spec = SED(star_list)
         >>> lam, spec = scale_spectrum(lam, spec, magnitudes, "H")
 
-    Re-scale the above spectra to the same magnitudes in Pa-Beta
+    Re-scale the above spectra to the same magnitudes in Pa-Beta::
 
         >>> # Find which filters are in the simcado/data directory
         >>>
         >>> import simcado.optics as sim_op
-        >>> print(sim_op.get_filter_set()       )
+        >>> print(sim_op.get_filter_set())
         ['B', 'BrGamma', 'CH4_169', 'CH4_227', 'FeII_166', 'H', 'H2O_204',
             'H2_212', 'Hcont_158', 'I', 'J', 'K', 'Ks', 'NH3_153', 'PaBeta',
             'R', 'U', 'V', 'Y', 'z']
         >>>
         >>> lam, spec = scale_spectrum(lam, spec, magnitudes, "PaBeta")
-
 
     """
     # The following was part of docstring. The example does not work, because
@@ -2372,7 +2362,7 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     #
     # Create a tophat filter and rescale to magnitudes in that band:
     #
-    #     >>> # first make a tranmsission curve for the filter
+    #     >>> # first make a transmission curve for the filter
     #     >>>
     #     >>> from simcado.spectral import TransmissionCurve
     #     >>> filt_lam   = np.array([0.3, 1.09, 1.1, 1.15, 1.16, 3.])
@@ -2390,7 +2380,7 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     if isinstance(ideal_phs, (int, float)):
         ideal_phs = [ideal_phs]
 
-    if len(spec.shape) == 1:
+    if len(np.shape(spec)) == 1:
         spec = [spec]
 
     # Convert spectra to EmissionCurves
@@ -2498,7 +2488,8 @@ def flat_spectrum(mag, filter_name="Ks", return_ec=False):
     lam = np.arange(0.3, 3.0, 0.01)
     spec = np.ones(len(lam))
 
-    if return_ec:     # TODO: mag_per_arcsec undefined? (OC)
+    # .. todo: mag_per_arcsec undefined? (OC)
+    if return_ec:
         curve = scale_spectrum(lam, spec, mag, filter_name,
                                return_ec)
         return curve
@@ -2534,6 +2525,7 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
         [ph/s/m2/arcsec] The spectrum scaled to the specified magnitude
 
     """
+
     lam = np.arange(0.3, 3.0, 0.01)
     spec = np.ones(len(lam))
 
@@ -2547,21 +2539,6 @@ def flat_spectrum_sb(mag_per_arcsec, filter_name="Ks", pix_res=0.004,
         return lam, spec
 
 
-def _rebin(img, bpix):
-    '''Rebin image img by block averaging bpix x bpix pixels'''
-
-    xedge = np.shape(img)[0] % bpix
-    yedge = np.shape(img)[1] % bpix
-    img_block = img[xedge:, yedge:]
-
-    binim = np.reshape(img_block,
-                       (int(img_block.shape[0]/bpix), bpix,
-                        int(img_block.shape[1]/bpix), bpix))
-    binim = np.mean(binim, axis=3)
-    binim = np.mean(binim, axis=1)
-    return binim
-
-
 def get_lum_class_params(lum_class="V", cat=None):
     """
     Returns a table with parameters for a certain luminosity class
@@ -2571,9 +2548,12 @@ def get_lum_class_params(lum_class="V", cat=None):
     lum_class : str, optional
         Default is the main sequence ("V")
 
-    Returns : astropy.Table object
+    Returns
+    -------
+    :class:`astropy.table.Table` object
 
     """
+
     import astropy.table as tbl
 
     if cat is None:
@@ -2596,9 +2576,9 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
     """
     Return the spectral type of the star with the closest parameter value
 
-    Compares values given for a certain stellar parameter and returns the spectral type
-    which matches the best. In case several spectral types have the same value, only the first
-    sectral type is returned
+    Compares values given for a certain stellar parameter and returns the
+    spectral type which matches the best. In case several spectral types have
+    the same value, only the first spectral type is returned
 
     Acceptable parameters are:
     "Mass" : [Msun]
@@ -2621,7 +2601,9 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
 
     Returns
     -------
-    a value/list of strings corresponding to the spectral types which best fit to the given values
+    spec_type : str, list
+        a value/list of strings corresponding to the spectral types which best
+        fit to the given values
 
     """
 
@@ -2643,22 +2625,29 @@ def get_nearest_spec_type(value, param="B-V", cat=None):
 
 
 def spectrum_sum_over_range(lam, flux, lam_min=None, lam_max=None):
-    """Sum spectrum over range lam_min to lam_max
+    """
+    Sum spectrum over range lam_min to lam_max
 
     Parameters
     ----------
     lam : float, array
         wavelength array of spectrum
+
     flux : float, array
         flux array of spectrum [ph/s/m2/bin]
+
     lam_min, lam_max : float
         wavelength limits of range over which the spectrum is summed. If None,
         the spectrum is summed over its definition range
 
+
     Returns
     -------
-    number of photons within lam_min and lam_max [ph/s/m2]
+    spec_photons : float
+        number of photons within lam_min and lam_max [ph/s/m2]
+
     """
+
     if lam_min is None:
         lam_min = lam[0]
     if lam_max is None:
@@ -2679,34 +2668,32 @@ def spectrum_sum_over_range(lam, flux, lam_min=None, lam_max=None):
     imin = np.argmin(np.abs(lam - lam_min))
     imax = np.argmin(np.abs(lam - lam_max))
 
-    # Treat edge bins: Since lam[imin] < lam_min < lam_max < lam[imax], we have to
-    # subtract part of the outer bins
+    # Treat edge bins: Since lam[imin] < lam_min < lam_max < lam[imax], we have
+    # to subtract part of the outer bins
     dlam = lam[1] - lam[0]
     if np.size(np.shape(flux)) == 1: # 1D case
         spec_photons = np.sum(flux[imin:(imax + 1)]) \
                         - flux[imin] * (0.5 + (lam_min - lam[imin])/dlam) \
                         - flux[imax] * (0.5 - (lam_max - lam[imax])/dlam)
 
-    if np.size(np.shape(flux)) == 2: # 2D case
+    elif np.size(np.shape(flux)) == 2: # 2D case
         spec_photons = np.sum(flux[:, imin:(imax + 1)], axis=1) \
                         - flux[:, imin] * (0.5 + (lam_min - lam[imin])/dlam) \
                         - flux[:, imax] * (0.5 - (lam_max - lam[imax])/dlam)
+    else:
+        spec_photons = 0
 
     return spec_photons
 
 
 def load(filename):
-    '''Load :class:'Source' object from filename'''
+    """Load :class:'Source' object from filename"""
     return Source.load(filename)
 
 
-
-###############################################################
-
-
-"""
-A bunch of helper functions to generate galaxies in SimCADO
-"""
+################################################################################
+#        A bunch of helper functions to generate galaxies in SimCADO           #
+################################################################################
 
 
 def sie_grad(x, y, par):
@@ -2774,7 +2761,7 @@ def sie_grad(x, y, par):
     qfact = np.sqrt(1./q - q)
 
     # (r_ell == 0) terms prevent divide-by-zero problems
-    if (qfact >= eps):
+    if qfact >= eps:
         xtg = (b/qfact) * np.arctan(qfact * xsie / (r_ell + (r_ell == 0)))
         ytg = (b/qfact) * np.arctanh(qfact * ysie / (r_ell + (r_ell == 0)))
     else:
@@ -2787,7 +2774,6 @@ def sie_grad(x, y, par):
 
     # Return value:
     return xg, yg
-
 
 
 def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
@@ -2821,12 +2807,12 @@ def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
 
     Example
     -------
+    ::
 
         >>> from astropy.io import fits
         >>> im = fits.getdata("my_galaxy.fits")
         >>> im2 = apply_grav_lens(im, x_cen=30, rotation=-45, eccentricity=0.5,
                                   r_einstein=300)
-
 
     """
 
@@ -2853,7 +2839,6 @@ def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
                                  i.flatten()].reshape(shifted_image.shape)
 
     return lensed_image
-
 
 
 def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
@@ -2916,7 +2901,7 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
 
     Returns
     -------
-    galaxy_src : simcado.Source
+    galaxy_src : :class:`.Source`
 
 
     See Also
@@ -2924,7 +2909,6 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
     source.sersic_profile()
     optics.get_filter_set(), source.get_SED_names()
     spectral.TransmissionCurve, spectral.EmissionCurve
-
 
     """
 
@@ -3007,6 +2991,7 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
         Factor of oversampling, default factor = 1. If > 1, the model is
         discretized by taking the average of an oversampled grid.
 
+
     Returns
     -------
     img : 2D array
@@ -3056,8 +3041,9 @@ def sersic_profile(r_eff=100, n=4, ellipticity=0.5, angle=30,
 
 
 def spiral_profile(r_eff, ellipticity=0.5, angle=45,
-                   n_arms=2, tightness=4., arms_width=0.1, central_brightness=10,
-                   normalization='total', width=1024, height=1024, oversample=1,
+                   n_arms=2, tightness=4., arms_width=0.1,
+                   central_brightness=10, normalization='total',
+                   width=1024, height=1024, oversample=1,
                    **kwargs):
     """
     Creates a spiral profile with arbitary parameters
@@ -3172,7 +3158,6 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
     return img
 
 
-
 def spiral(half_light_radius, plate_scale, magnitude=10,
            filter_name="Ks", normalization="total", spectrum="spiral",
            **kwargs):
@@ -3270,10 +3255,8 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
                             ellipticity       =params["ellipticity"],
                             angle             =-params["angle"],
                             normalization     =normalization,
-                            #width             =params["width"],
-                            #height            =params["height"],
-                            width             =2*pixular_hlr,
-                            height            =2*pixular_hlr,
+                            width             =int(2*pixular_hlr),
+                            height            =int(2*pixular_hlr),
                             n_arms            =params["n_arms"],
                             tightness         =params["tightness"],
                             arms_width        =params["arms_width"],
@@ -3290,7 +3273,6 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
     thresh = np.max((disk[0,:].max(), disk[-1,:].max(),
                      disk[:,0].max(), disk[:,-1].max()))
     disk[disk < thresh] = 0
-
 
     if isinstance(spectrum, EmissionCurve):
         lam, spec = spectrum.lam, spectrum.val
@@ -3311,9 +3293,8 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
     return galaxy_src
 
 
-
 def _rebin(img, bpix):
-    '''Rebin image img by block averaging bpix x bpix pixels'''
+    """Rebin image img by block averaging bpix x bpix pixels"""
 
     xedge = np.shape(img)[0] % bpix
     yedge = np.shape(img)[1] % bpix
