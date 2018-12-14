@@ -47,7 +47,7 @@ from . import psf
 
 from . import detector
 from . import optics
-from . import commands
+from simcado.commands import commands
 from . import source
 
 from . import simulation
@@ -58,7 +58,7 @@ from .utils import bug_report
 from .utils import get_extras
 from .source import Source
 from .optics import OpticalTrain
-from .commands import UserCommands
+from simcado.commands.commands import UserCommands
 from .detector import Detector, Chip
 
 # don't import these ones just yet

@@ -104,7 +104,7 @@ from astropy.wcs import WCS
 from .utils import find_file, airmass2zendist
 
 from . import spectral as sc
-from . import commands
+from simcado.commands import commands
 from .nghxrg import HXRGNoise
 
 __all__ = ["Detector", "Chip", "open", "plot_detector", "plot_detector_layout",

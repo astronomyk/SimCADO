@@ -22,13 +22,12 @@ import numpy as np
 
 from astropy.io import fits
 import astropy.units as u
-import astropy.table
 
 from . import psf as psf
 from . import spectral as sc
 from . import spatial as pe
 from .source import flat_spectrum_sb, scale_spectrum_sb
-from .commands import UserCommands
+from simcado.commands.commands import UserCommands
 from .utils import find_file
 from . import rc
 

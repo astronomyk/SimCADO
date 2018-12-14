@@ -23,8 +23,7 @@ from astropy.table import Table, Column, Row, vstack
 from astropy.io import ascii as ioascii
 
 from ..utils import download_file
-from ..rc import __rc__
-rc = __rc__
+from ..rc import __rc__ as rc
 
 
 __all__ = ["list_all", "list_instruments", "list_psfs", "list_source_packages",

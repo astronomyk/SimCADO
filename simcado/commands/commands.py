@@ -69,11 +69,11 @@ import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
 #from astropy.io import fits  # unused
 
 import simcado as sim
-from . import spectral as sc
-from .utils import atmospheric_refraction, find_file
-from .psf import PSFCube
+from simcado import spectral as sc
+from simcado.utils import atmospheric_refraction, find_file
+from simcado.psf import PSFCube
 
-from . import rc
+from simcado import rc
 
 __all__ = ["UserCommands", "dump_defaults", "dump_chip_layout",
            "dump_mirror_config", "read_config", "update_config"]
@@ -85,10 +85,10 @@ class UserCommands(object):
 
     Summary
     -------
-    A :class:`.UserCommands` object contains a dictionary which holds all the keywords
-    from the ``default.config`` file. It also has attributes which represent the
-    frequently used variables, i.e. ``pix_res``, ``lam_bin_edges``, ``exptime``,
-    etc
+    A :class:`.UserCommands` object contains a dictionary which holds all the
+    keywords from the ``default.config`` file. It also has attributes which
+    represent the frequently used variables, i.e. ``pix_res``, ``lam_bin_edges``
+    , ``exptime``, etc
 
     ``<UserCommands>.cmds`` is a dictionary that holds all the variables
     the user may wish to change. It also has some set variables like
@@ -188,27 +188,23 @@ class UserCommands(object):
     Examples
     --------
     By default ``UserCommands`` contains the parameters needed to generate the
-    MICADO optical train:
+    MICADO optical train::
 
         >>> import simcado
         >>> my_cmds = simcado.UserCommands()
 
-
-    To list the keywords that are available:
+    To list the keywords that are available::
 
         >>> my_cmds.keys()
         ...
 
-
-    The ``UserCommands`` object also contains smaller dictionaries for each category
-    of keywords - e.g. for the keywords describing the instrument:
+    The ``UserCommands`` object also contains smaller dictionaries for each
+    category of keywords - e.g. for the keywords describing the instrument::
 
         >>> my_cmds.inst
         ...
 
-
     """
-
 
     def __init__(self, filename=None, sim_data_dir=None):
 
@@ -228,6 +224,7 @@ class UserCommands(object):
         configuration file does not include a valid sim_data_dir, hence at
         least one of the parameters `filename` or `sim_data_dir` must be
         provided.
+
         """
 
         logging.info("UserCommands object created")
