@@ -69,6 +69,7 @@ from ..utils import atmospheric_refraction, find_file, \
 from .. import server as svr
 
 from . import commands_utils as cutils
+
 __all__ = ["UserCommands"]
 
 class UserCommands(object):

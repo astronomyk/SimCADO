@@ -1,2 +1,2 @@
-from .user_commands import *
+from .user_commands import UserCommands
 from .commands_utils import *
