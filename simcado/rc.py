@@ -1,14 +1,11 @@
 import os
 import inspect
-import yaml
+from .commands.commands_utils import read_config
 
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 __data_dir__ = os.path.join(__pkg_dir__, "data")
+__search_path__ = ['./', __pkg_dir__, __data_dir__]   # For utils.find_file()
 
-# For utils.find_file()
-__search_path__ = ['./', __pkg_dir__, __data_dir__]
-
-# load in settings from rc file ".simcadorc"
-with open(os.path.join(__pkg_dir__, ".simcadorc"), "r") as rc_file:
-    __rc__ = yaml.load(rc_file)
-
+# load in settings from config files
+__rc__ = read_config(os.path.join(__pkg_dir__, ".simcadorc"))
+__config__ = read_config(os.path.join(__pkg_dir__, ".default.config"))

@@ -4,35 +4,22 @@
 
 
 ################################################################################
-#                        CURRENT INSTRUMENT DATA                               #
-################################################################################
-
-# Where to find the data for the current package
-SIM_DATA_DIR            : None            # path to data files
-
-
-################################################################################
 #                           SIMULATION PARAMETERS                              #
 ################################################################################
 
-SIM_PSF_RADIUS          : 1.024             # [arcsec] radius of PSF used in convolutions
-SIM_PSF_OVERSAMPLE      : no                # use astropy's inbuilt oversampling technique when generating the PSFs. Kills memory for PSFs over 511 x 511
-SIM_OVERSAMPLING        : 1                 # The factor of oversampling inside the simulation
-SIM_PIXEL_THRESHOLD     : 1                 # photons per pixel summed over the wavelength range. Values less than this are assumed to be zero
+SIM_PSF_RADIUS            1.024             # [arcsec] radius of PSF used in convolutions
+SIM_PSF_OVERSAMPLE        no                # use astropy's inbuilt oversampling technique when generating the PSFs. Kills memory for PSFs over 511 x 511
+SIM_OVERSAMPLING          1                 # The factor of oversampling inside the simulation
+SIM_PIXEL_THRESHOLD       1                 # photons per pixel summed over the wavelength range. Values less than this are assumed to be zero
 
-SIM_SPEC_BIN_WIDTH      : 0.001             # [um] wavelength resolution of spectral curves
-SIM_FILTER_THRESHOLD    : 1E-6              # transmission below this threshold is assumed to be 0
-SIM_USE_FILTER_LAM      : yes               # [yes/no] to basing the wavelength range off the filter non-zero range - if no, specify LAM_MIN, LAM_MAX
-# if  no
-SIM_LAM_MIN             :                   # [um] lower wavelength range of observation
-SIM_LAM_MAX             :                   # [um] upper wavelength range of observation
+SIM_FILTER_THRESHOLD      1E-6              # transmission below this threshold is assumed to be 0
+SIM_USE_FILTER_LAM        yes               # [yes/no] to basing the wavelength range off the filter non-zero range - if no, specify LAM_MIN, LAM_MAX
 
-SIM_VERBOSE             : no                # [yes/no] print information on the simulation run
-SIM_SIM_MESSAGE_LEVEL   : 3                 # the amount of information printed [5-everything, 0-nothing]
-SIM_LOGGING             : False
-SIM_LOGGING_LEVEL       : INFO              # Use the python.logging levels
-SIM_LOGGING_FILE        : ./simcado.log
-
+SIM_VERBOSE               no                # [yes/no] print information on the simulation run
+SIM_SIM_MESSAGE_LEVEL     3                 # the amount of information printed [5-everything, 0-nothing]
+SIM_LOGGING               False
+SIM_LOGGING_LEVEL         INFO              # Use the python.logging levels
+SIM_LOGGING_FILE          ./simcado.log
 
 
 ################################################################################
@@ -40,22 +27,22 @@ SIM_LOGGING_FILE        : ./simcado.log
 ################################################################################
 
 # If not explicitly set, downloaded packages will be saved in your working dir
-FILE_LOCAL_DOWNLOADS_PATH       : D:/simcado_downloads/
-FILE_LOCAL_TEMP_FILES_PATH      : ./simcado_temp_files/
+FILE_LOCAL_DOWNLOADS_PATH         D:/simcado_downloads/
+FILE_LOCAL_TEMP_FILES_PATH        ./simcado_temp_files/
 
 # Data server paths
-FILE_SERVER_BASE_URL            : https://www.univie.ac.at/simcado/InstPkgSvr/
+FILE_SERVER_BASE_URL              https://www.univie.ac.at/simcado/InstPkgSvr/
 
-FILE_SCOPE_PKG_LOCAL_PATH       : telescopes/
+FILE_SCOPE_PKG_LOCAL_PATH         telescopes/
 
-FILE_INST_PKG_LOCAL_PATH        : instruments/
-FILE_INST_PKG_LOCAL_DB_NAME     : LocalInstPkgDB.dat
-FILE_INST_PKG_SERVER_DB_NAME    : InstPkgDB.dat
+FILE_INST_PKG_LOCAL_PATH          instruments/
+FILE_INST_PKG_LOCAL_DB_NAME       LocalInstPkgDB.dat
+FILE_INST_PKG_SERVER_DB_NAME      InstPkgDB.dat
 
-FILE_PSF_LOCAL_PATH             : psfs/
-FILE_PSF_LOCAL_DB_NAME          : LocalPsfDB.dat
-FILE_PSF_SERVER_DB_NAME         : PsfDB.dat
+FILE_PSF_LOCAL_PATH               psfs/
+FILE_PSF_LOCAL_DB_NAME            LocalPsfDB.dat
+FILE_PSF_SERVER_DB_NAME           PsfDB.dat
 
-FILE_SRC_PKG_LOCAL_PATH         : sources/
-FILE_SRC_PKG_LOCAL_DB_NAME      : LocalSourceDB.dat
-FILE_SRC_PKG_SERVER_DB_NAME     : SourceDB.dat
+FILE_SRC_PKG_LOCAL_PATH           sources/
+FILE_SRC_PKG_LOCAL_DB_NAME        LocalSourceDB.dat
+FILE_SRC_PKG_SERVER_DB_NAME       SourceDB.dat

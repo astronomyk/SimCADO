@@ -18,7 +18,6 @@ warnings.simplefilter('ignore', category=AstropyWarning)
 
 from . import rc
 
-
 ################################################################################
 #                         ENABLE/DISABLE LOGGING                               #
 ################################################################################
@@ -28,7 +27,8 @@ import logging
 if rc.__rc__["SIM_LOGGING"]:
     logging.basicConfig(filename=rc.__rc__["SIM_LOGGING_FILE"],
                         filemode='w',
-                        level=logging.getLevelName(rc.__rc__["SIM_LOGGING_LEVEL"]),
+                        level=logging.getLevelName(
+                            rc.__rc__["SIM_LOGGING_LEVEL"]),
                         format='%(asctime)s %(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p')
     logging.info("SimCADO imported, logging initiated")
@@ -47,7 +47,7 @@ from . import psf
 
 from . import detector
 from . import optics
-from simcado.commands import commands
+from . import commands
 from . import source
 
 from . import simulation
@@ -58,7 +58,7 @@ from .utils import bug_report
 from .utils import get_extras
 from .source import Source
 from .optics import OpticalTrain
-from simcado.commands.commands import UserCommands
+from .commands.user_commands import UserCommands
 from .detector import Detector, Chip
 
 # don't import these ones just yet

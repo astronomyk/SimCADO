@@ -10,7 +10,7 @@ import numpy as np
 
 #import simmetis as sim
 from . import source
-from simcado.commands.commands import UserCommands
+from simcado.commands.user_commands import UserCommands
 from .optics import OpticalTrain
 from .detector import Detector
 

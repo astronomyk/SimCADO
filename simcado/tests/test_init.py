@@ -1,7 +1,9 @@
 import sys
 import os
 import yaml
-from simcado import rc, __version__
+from simcado import __version__, rc
+from simcado.commands.commands_utils import read_config
+
 
 class TestBasicLoading:
 
@@ -30,8 +32,8 @@ class TestRcFile:
     def test_rcfile_exists(self):
         assert os.path.exists(os.path.join(rc.__pkg_dir__, ".simcadorc"))
 
-    def test_rc_file_readable_by_yaml(self):
-        with open(os.path.join(rc.__pkg_dir__, ".simcadorc")) as rc_file:
-            rc_dict = yaml.load(rc_file)
+    def test_rc_file_readable_by_simcado_parser(self):
+        rc_file =  os.path.join(rc.__pkg_dir__, ".simcadorc")
+        rc_dict = read_config(rc_file)
         assert isinstance(rc_dict, dict)
         assert len(rc_dict) > 0

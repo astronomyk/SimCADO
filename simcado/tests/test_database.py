@@ -6,11 +6,10 @@ import simcado.server.database as sim_db
 
 _parent_path = "./test_downloads_dir/"
 
-
 @pytest.fixture(scope="module")
 def temp_directory_structure():
     # setup
-    sim_db.rc["FILE_LOCAL_DOWNLOADS_PATH"] = _parent_path
+    sim_db.rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"] = _parent_path
     sim_db.set_up_local_package_directory(_parent_path, True)
 
     # run tests
@@ -195,7 +194,7 @@ class TestSetUpLocalPackageDirectory:
         rcnames = ["FILE_SCOPE_PKG_LOCAL_PATH", "FILE_INST_PKG_LOCAL_PATH",
                    "FILE_PSF_LOCAL_PATH",       "FILE_SRC_PKG_LOCAL_PATH"]
         for rcname in rcnames:
-            filename = os.path.join(_parent_path, sim_db.rc[rcname])
+            filename = os.path.join(_parent_path, sim_db.rc.__rc__[rcname])
             assert os.path.exists(filename)
 
     def test_three_db_files_exist(self):

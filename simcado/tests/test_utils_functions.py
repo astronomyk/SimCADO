@@ -10,6 +10,7 @@ from simcado.utils import zendist2airmass
 
 from simcado import rc
 
+
 class TestFindFile:
     """Tests of function simcado.utils.find_file"""
 
@@ -26,6 +27,11 @@ class TestFindFile:
     def test_fails_if_file_doesnt_exist(self):
         filename = 'utils987654.pz'
         assert find_file(filename, rc.__search_path__) is None
+
+    def test_ignores_none_objects_in_search_path_list(self):
+        filename = 'utils.py'
+        new_filename = find_file(filename, [None] + rc.__search_path__)
+        assert filename in new_filename
 
 
 class TestAirmassZendist:

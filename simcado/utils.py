@@ -300,10 +300,13 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
 
 
 ############# Check the server for data extras
-def download_file(url, save_dir=rc.__data_dir__):
+def download_file(url, save_dir=None):
     """
     Download the extra data that aren't in the SimCADO package
     """
+
+    if save_dir is None:
+        save_dir = rc.__data_dir__
 
     local_filename = os.path.join(save_dir, url.split('/')[-1])
     try:
@@ -628,7 +631,7 @@ def find_file(filename, path=None, silent=False):
     else:
         # try to find the file in a search path
         trynames = [os.path.join(trydir, filename)
-                    for trydir in path]
+                    for trydir in path if trydir is not None]
 
     for fname in trynames:
         if os.path.exists(fname):   # success

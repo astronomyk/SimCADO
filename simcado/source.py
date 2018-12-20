@@ -113,7 +113,7 @@ from .spectral import TransmissionCurve, EmissionCurve,\
     UnityCurve, BlackbodyCurve
 from . import psf as sim_psf
 from . import utils
-from . import rc
+from simcado import rc
 from .utils import find_file
 
 __all__ = ["Source",

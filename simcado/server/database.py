@@ -23,13 +23,13 @@ from astropy.table import Table, Column, Row, vstack
 from astropy.io import ascii as ioascii
 
 from ..utils import download_file
-from ..rc import __rc__ as rc
-
+from .. import rc
 
 __all__ = ["list_all", "list_instruments", "list_psfs", "list_source_packages",
            "get_local_packages", "get_server_packages",
            "download_package", "set_up_local_package_directory",
-           "rc", "local_db_paths", "server_db_urls"]
+           "local_db_paths", "server_db_urls",
+           "find_package_on_disk", "find_package_on_server", "get_path"]
 
 
 LOCAL_DB_HEADER_PATTERN = """# Date-created : {}
@@ -41,42 +41,45 @@ name   author   date_added  date_modified   path
 
 
 def _local_inst_db():
-    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
-                        rc["FILE_INST_PKG_LOCAL_DB_NAME"])
+    return os.path.join(rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc.__rc__["FILE_INST_PKG_LOCAL_DB_NAME"])
 
 
 def _local_psf_db():
-    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
-                        rc["FILE_PSF_LOCAL_DB_NAME"])
+    return os.path.join(rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc.__rc__["FILE_PSF_LOCAL_DB_NAME"])
 
 
 def _local_src_db():
-    return os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
-                        rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
+    return os.path.join(rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"],
+                        rc.__rc__["FILE_SRC_PKG_LOCAL_DB_NAME"])
 
 
 def set_local_path_names(path):
-    local_inst_db = os.path.join(path, rc["FILE_INST_PKG_LOCAL_DB_NAME"])
-    local_psf_db = os.path.join(path, rc["FILE_PSF_LOCAL_DB_NAME"])
-    local_src_db = os.path.join(path, rc["FILE_SRC_PKG_LOCAL_DB_NAME"])
+    local_inst_db = os.path.join(path, rc.__rc__["FILE_INST_PKG_LOCAL_DB_NAME"])
+    local_psf_db = os.path.join(path, rc.__rc__["FILE_PSF_LOCAL_DB_NAME"])
+    local_src_db = os.path.join(path, rc.__rc__["FILE_SRC_PKG_LOCAL_DB_NAME"])
 
     return local_inst_db, local_psf_db, local_src_db
 
 
 def _local_paths():
-    return set_local_path_names(rc["FILE_LOCAL_DOWNLOADS_PATH"])
+    return set_local_path_names(rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"])
 
 
 def _svr_inst_db():
-    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_INST_PKG_SERVER_DB_NAME"]
+    return rc.__rc__["FILE_SERVER_BASE_URL"] + \
+           rc.__rc__["FILE_INST_PKG_SERVER_DB_NAME"]
 
 
 def _svr_psf_db():
-    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_PSF_SERVER_DB_NAME"]
+    return rc.__rc__["FILE_SERVER_BASE_URL"] + \
+           rc.__rc__["FILE_PSF_SERVER_DB_NAME"]
 
 
 def _svr_src_db():
-    return rc["FILE_SERVER_BASE_URL"] + rc["FILE_SRC_PKG_SERVER_DB_NAME"]
+    return rc.__rc__["FILE_SERVER_BASE_URL"] + \
+           rc.__rc__["FILE_SRC_PKG_SERVER_DB_NAME"]
 
 
 def local_db_paths(name=None):
@@ -154,14 +157,14 @@ def set_up_local_package_directory(dirname=None, overwrite=False):
     """
 
     if dirname is None:
-        dirname = rc["FILE_LOCAL_DOWNLOADS_PATH"]
+        dirname = rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"]
 
     # set up downloads directory and sub directories
     for dname in [dirname,
-                  os.path.join(dirname, rc["FILE_SCOPE_PKG_LOCAL_PATH"]),
-                  os.path.join(dirname, rc["FILE_INST_PKG_LOCAL_PATH"]),
-                  os.path.join(dirname, rc["FILE_PSF_LOCAL_PATH"]),
-                  os.path.join(dirname, rc["FILE_SRC_PKG_LOCAL_PATH"])]:
+                  os.path.join(dirname, rc.__rc__["FILE_SCOPE_PKG_LOCAL_PATH"]),
+                  os.path.join(dirname, rc.__rc__["FILE_INST_PKG_LOCAL_PATH"]),
+                  os.path.join(dirname, rc.__rc__["FILE_PSF_LOCAL_PATH"]),
+                  os.path.join(dirname, rc.__rc__["FILE_SRC_PKG_LOCAL_PATH"])]:
         if not os.path.exists(dname):
             os.makedirs(dname)
         elif not overwrite:
@@ -487,7 +490,7 @@ def extract_package(pkg_name, overwrite=True):
         if not isinstance(pkg_entry, Row):
             raise ValueError("{} wasn't found on disk".format(pkg_name))
 
-        file_path = os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"],
+        file_path = os.path.join(rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"],
                                  pkg_entry["path"])
 
     new_dir = file_path.replace(".zip", "")
@@ -562,7 +565,7 @@ def download_package(pkg_name, unzip_package=True, save_dir=None,
     if pkg_entry is None:
         raise ValueError("{} wasn't found on the server".format(pkg_name))
 
-    pkg_url  = rc["FILE_SERVER_BASE_URL"] + pkg_entry["path"]
+    pkg_url  = rc.__rc__["FILE_SERVER_BASE_URL"] + pkg_entry["path"]
     pkg_type = determine_type_of_package(svr_db)
 
     if not check_package_exists(pkg_name, server_db_urls()[pkg_type]):
@@ -570,11 +573,11 @@ def download_package(pkg_name, unzip_package=True, save_dir=None,
 
     if save_dir is None:
         stem = os.path.dirname(pkg_entry["path"])
-        save_dir = os.path.join(rc["FILE_LOCAL_DOWNLOADS_PATH"], stem)
+        save_dir = os.path.join(rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"], stem)
 
     local_filename = download_file(pkg_url, save_dir)
     print("Saved {} in {}".format(pkg_name, local_filename))
-    if unzip_package:
+    if unzip_package and ".fits" not in local_filename:
         extract_package(local_filename, overwrite=True)
         unzip_dir = local_filename.replace(".zip", "")
         print("Unzipped {} to {}".format(pkg_name, unzip_dir))
@@ -607,7 +610,7 @@ def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
     """
 
     if server_dbs is None:
-        server_dbs = [_svr_inst_db(), _svr_inst_db(), _svr_src_db()]
+        server_dbs = [_svr_inst_db(), _svr_psf_db(), _svr_src_db()]
 
     pkg_entry, svr_db = None, None
     for svr_db in server_dbs:
@@ -624,21 +627,23 @@ def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
 
 def find_package_on_disk(pkg_name, local_dbs=None, return_db_filename=False):
     """
-    Returns the first match for ``pkg_name`` in the server database files
+    Returns the first match for ``pkg_name`` in the local database files
 
     Parameters
     ----------
     pkg_name : str
-    server_dbs : list
+    local_dbs : list
     return_db_filename : bool
 
     Returns
     -------
+    pkg_entry : :class:`astropy.Table`, None
+        Returns ``None`` if package not found
 
     """
 
     if local_dbs is None:
-        local_dbs = [_local_inst_db(), _local_inst_db(), _local_src_db()]
+        local_dbs = [_local_inst_db(), _local_psf_db(), _local_src_db()]
 
     pkg_entry, local_db = None, None
     for local_db in local_dbs:
@@ -712,3 +717,15 @@ def change_table_entry(tbl, col_name, old_val, new_val):
     tbl.add_column(fixed_col, index=ii)
 
     return tbl
+
+
+def get_path(pkg_name):
+    """Returns the absolute path of package ``pkg_name``"""
+
+    abs_path = None
+    pkg_entry = find_package_on_disk(pkg_name)
+    if pkg_entry is not None:
+        downloads_path = rc.__rc__["FILE_LOCAL_DOWNLOADS_PATH"]
+        abs_path = os.path.join(downloads_path, pkg_entry["path"])
+
+    return abs_path

@@ -27,10 +27,9 @@ from . import psf as psf
 from . import spectral as sc
 from . import spatial as pe
 from .source import flat_spectrum_sb, scale_spectrum_sb
-from simcado.commands.commands import UserCommands
+from simcado.commands.user_commands import UserCommands
 from .utils import find_file
-from . import rc
-
+from simcado import rc
 
 __all__ = ["OpticalTrain", "get_filter_curve", "get_filter_set"]
 
