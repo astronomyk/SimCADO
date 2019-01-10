@@ -6,6 +6,9 @@ import simcado.server.database as sim_db
 
 _parent_path = "./test_downloads_dir/"
 
+# .. todo:: add test for what happens when there is no connection to the server
+
+
 @pytest.fixture(scope="module")
 def temp_directory_structure():
     # setup

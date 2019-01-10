@@ -299,7 +299,7 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
     f.close()
 
 
-############# Check the server for data extras
+# ############ Check the server for data extras
 def download_file(url, save_dir=None):
     """
     Download the extra data that aren't in the SimCADO package
