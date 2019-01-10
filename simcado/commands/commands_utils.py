@@ -92,8 +92,8 @@ def lines_to_dict(lines):
         if iscomment.match(line):
             continue
 
-        line = line.rstrip()             # remove trailing \n
-        content = line.split('#', 1)[0]  # remove comment
+        line = line.rstrip()                      # remove trailing \n
+        content = line.split('#', 1)[0].rstrip()  # remove comment
         try:
             param, value = content.split(None, 1)
         except:
@@ -212,7 +212,13 @@ def str_to_python_type(input_str):
             else:
                 output_str = input_str
 
-    return output_str
+        return output_str
+
+    else:
+        return input_str
+
+        #raise ValueError("input_str must be string type. "
+        #                 "Given type: {}".format(type(input_str)))
 
 
 def convert_dict_strings_to_python_types(dic):

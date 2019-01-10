@@ -102,3 +102,15 @@ class TestConvertDictStringsToPythonTypes:
         for key in dic:
             assert dic[key] is None
 
+
+class TestStrToPythonType:
+    def test_conversion_works(self):
+        assert cmd_utils.str_to_python_type("none") is None
+        assert cmd_utils.str_to_python_type("True") is True
+        assert cmd_utils.str_to_python_type("42") == 42.
+        assert cmd_utils.str_to_python_type("Geronimo!") == "Geronimo!"
+
+    def test_throws_error_if_input_is_not_string(self):
+        assert cmd_utils.str_to_python_type(True) is True
+        assert cmd_utils.str_to_python_type(None) is None
+        assert cmd_utils.str_to_python_type(42) is 42

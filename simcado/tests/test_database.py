@@ -44,10 +44,9 @@ class TestGetLocalPackages:
 
 
 class TestGetServerPackages:
-    def test_throws_error_on_wrong_path(self):
+    def test_returns_none_for_wrong_path(self):
         svr_db_url = "www.my-server.bogus"
-        with pytest.raises(ValueError):
-            sim_db.get_server_packages(svr_db_url)
+        assert sim_db.get_server_packages(svr_db_url) is None
 
     def test_returns_table_if_path_correct(self):
         svr_path = sim_db._svr_inst_db()
