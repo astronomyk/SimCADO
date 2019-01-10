@@ -16,6 +16,7 @@ import os
 import requests
 import datetime as dt
 import zipfile as zf
+import warnings
 
 from numpy import where as npwhere
 from numpy import array as nparray
@@ -238,16 +239,24 @@ def get_local_packages(path=None):
 
 
 def get_server_text(path=None):
+    """Returns the text response from the server for a DB file"""
+
     if path is None:
         path = _svr_inst_db()
 
-    server_db_text = requests.get(path).text
-    server_db_text = server_db_text.replace("\r", "")
+    try:
+        server_db_text = requests.get(path).text
+        server_db_text = server_db_text.replace("\r", "")
+    except:
+        warnings.warn("Connection could not be established to "
+                      "{}".format(_svr_inst_db()))
+        server_db_text = None
 
     return server_db_text
 
 
 def rename_table_colnames(svr_table):
+    """Reinstated column names if they where accidentally parsed to comments"""
     if svr_table.colnames[0] != "col0":
         return svr_table
 
@@ -295,6 +304,8 @@ def get_server_packages(path=None):
     """
 
     svr_text = get_server_text(path)
+    if svr_text is None:
+        return None
     svr_table = ioascii.read(svr_text)
     svr_table = rename_table_colnames(svr_table)
 
@@ -326,7 +337,10 @@ def list_packages(local_path=None, server_url=None, return_table=False,
 
     local_table = get_local_packages(local_path)
     svr_table = get_server_packages(server_url)
-    all_table = vstack(local_table, svr_table)
+    if svr_table is None:
+        all_table = local_table
+    else:
+        all_table = vstack(local_table, svr_table)
 
     print("\n{} saved offline\n".format(msg) + "="*(len(msg)+14))
     print(local_table)
@@ -345,6 +359,23 @@ def list_instruments(local_path=None, server_url=None, return_table=False):
 
     * `simcado.server.local_db_paths("inst")`
     * `simcado.server.server_db_urls("inst")`
+
+    Parameters
+    ----------
+    local_path : str, optional
+        Default `simcado.server._local_psf_db()`
+
+    server_url : str, optional
+        Default `simcado.server._svr_psf_db()`
+
+    return_table : bool, optional
+    msg : str
+
+    Returns
+    -------
+    all_table : `astropy.Table`
+        Only if `return_table` is `True`
+
 
     See Also
     --------
@@ -370,6 +401,23 @@ def list_psfs(local_path=None, server_url=None, return_table=False):
     * `simcado.server.local_db_paths("psf")`
     * `simcado.server.server_db_urls("psf")`
 
+    Parameters
+    ----------
+    local_path : str, optional
+        Default `simcado.server._local_psf_db()`
+
+    server_url : str, optional
+        Default `simcado.server._svr_psf_db()`
+
+    return_table : bool, optional
+    msg : str
+
+    Returns
+    -------
+    all_table : `astropy.Table`
+        Only if `return_table` is `True`
+
+
     See Also
     --------
     :func:`.list_packages`
@@ -394,6 +442,25 @@ def list_source_packages(local_path=None, server_url=None, return_table=False):
     * `simcado.server.local_db_paths("src")`
     * `simcado.server.server_db_urls("src")`
 
+
+    Parameters
+    ----------
+    local_path : str, optional
+        Default `simcado.server._local_psf_db()`
+
+    server_url : str, optional
+        Default `simcado.server._svr_psf_db()`
+
+    return_table : bool, optional
+    msg : str
+
+
+    Returns
+    -------
+    all_table : `astropy.Table`
+        Only if `return_table` is `True`
+
+
     See Also
     --------
     :func:`.list_packages`
@@ -411,7 +478,8 @@ def list_source_packages(local_path=None, server_url=None, return_table=False):
 
 def list_all():
     """
-    Lists all the packages on the server and on the local disk
+    Prints all the packages on the server and on the local disk to screen
+
 
     See Also
     --------
@@ -426,6 +494,7 @@ def list_all():
 
 
 def check_package_exists(pkg_name, svr_path=None):
+    """Checks on the server that a certain package name exists"""
     if svr_path is None:
         svr_path = _svr_inst_db()
 
@@ -447,6 +516,7 @@ def check_package_exists(pkg_name, svr_path=None):
 
 
 def get_server_package_path(pkg_name, svr_table):
+    """Find the url to a package ZIP file on the server"""
 
     pkg_path = None
     if pkg_name in svr_table["name"]:
@@ -457,6 +527,7 @@ def get_server_package_path(pkg_name, svr_table):
 
 
 def get_package_table_entry(pkg_name, db_table):
+    """Returns an astropy.table.Row object with the package data"""
 
     # ::todo implement multiple entry handling
     if pkg_name in db_table["name"]:
@@ -469,6 +540,7 @@ def get_package_table_entry(pkg_name, db_table):
 
 
 def determine_type_of_package(svr_db_filename):
+    """Guess what the package type is: 'inst', 'psf', 'src'"""
 
     pkg_type = None
     if "inst" in svr_db_filename.lower():
@@ -482,6 +554,19 @@ def determine_type_of_package(svr_db_filename):
 
 
 def extract_package(pkg_name, overwrite=True):
+    """
+    Extracts the files from the ZIP archive for a downloaded instrument package
+
+    Parameters
+    ----------
+    pkg_name : str
+        the name of the zip file containing instrument package data
+
+    overwrite : bool
+        Flag to overwrite already extracted data. Only set to True if you are
+        sure you don't mind losing any changes to the package data
+
+    """
 
     if os.path.exists(pkg_name) and ".zip" in pkg_name:
         file_path = pkg_name
@@ -591,6 +676,7 @@ def download_package(pkg_name, unzip_package=True, save_dir=None,
 
 
 def write_table_to_disk(tbl, path):
+    """Write an database file back to disk. Overwrite existing DB file"""
     tbl.write(path, format="ascii.fixed_width", overwrite=True, delimiter="")
 
 
@@ -606,6 +692,12 @@ def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
 
     Returns
     -------
+    pkg_entry : :class:`astropy.table.Row`
+        The row data for the package from the server database tabl
+
+    svr_db_basename : str
+        If ``return_db_filename==True``, the database file name, so that the
+        type of package can be determined
 
     """
 
@@ -615,6 +707,8 @@ def find_package_on_server(pkg_name, server_dbs=None, return_db_filename=False):
     pkg_entry, svr_db = None, None
     for svr_db in server_dbs:
         svr_table = get_server_packages(svr_db)
+        if svr_table is None:
+            break
         pkg_entry = get_package_table_entry(pkg_name, svr_table)
         if pkg_entry is not None:
             break
@@ -659,6 +753,22 @@ def find_package_on_disk(pkg_name, local_dbs=None, return_db_filename=False):
 
 
 def add_pkg_to_local_db(new_row, local_db):
+    """
+    Adds a package entry to the local database file
+
+    Parameters
+    ----------
+    new_row : ``astropy.table.Row``
+        The package entry data
+
+    local_db : str, ``astropy.Table``
+        Eith
+
+
+    Returns
+    -------
+
+    """
 
     if isinstance(local_db, str):
         local_table = get_local_packages(local_db)
