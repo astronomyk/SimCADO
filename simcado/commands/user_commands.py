@@ -165,18 +165,6 @@ class UserCommands(object):
     values()
         returns the values in the ``UserCommands.cmds`` dictionary
 
-    Raises
-    ------
-
-    See Also
-    --------
-    Detector, OpticalTrain
-
-    Notes
-    -----
-
-    References
-    ----------
 
     Examples
     --------
@@ -184,18 +172,21 @@ class UserCommands(object):
     MICADO optical train::
 
         >>> import simcado
-        >>> my_cmds = simcado.UserCommands()
+        >>> empty_cmds = simcado.UserCommands()
+        >>> micado_cmds = simcado.UserCommands(instrument="MICADO")
+        >>> mcao_wide_cmds = simcado.UserCommands(instrument="MICADO",
+        ...                                       mode="MODE_MCAO_WISE")
 
-    To list the keywords that are available::
+    To list the keywords that are available and their values::
 
-        >>> my_cmds.keys()
-        ...
+        >>> mcao_wide_cmds.keys
+        >>> mcao_wide_cmds.values
 
     The ``UserCommands`` object also contains smaller dictionaries for each
     category of keywords - e.g. for the keywords describing the instrument::
 
-        >>> my_cmds.inst
-        ...
+        >>> mcao_wide_cmds.atmo
+        >>> mcao_wide_cmds.inst
 
     """
 
@@ -323,6 +314,18 @@ class UserCommands(object):
             self[key] = tmp_cmds[key]
 
     def validate(self):
+        """
+        Checks to see if all files exist and can be found by SimCADO
+
+        Also forces any other overriding behaviour like:
+            - OBS_ZENITH_DIST overrides ATMO_AIRMASS
+
+        Returns
+        -------
+        valid : Bool
+            True if all files are found.
+
+        """
 
         # Update filenames to absolute paths
         missing_files = self._find_files()
@@ -360,7 +363,32 @@ class UserCommands(object):
             fd1.write(outstr)
 
     def set_instrument(self, instrument_name):
-        """Takes the name of an INSTRUMENT package"""
+        """
+        Takes the name of an INSTRUMENT package and reads the config file
+
+        Parameters
+        ----------
+        instrument_name : str
+            The name of a locally saved instrument package.
+            Use :func:`simcado.server.get_local_packages` to list local packages
+
+        Examples
+        --------
+        ::
+
+            >>> import simcado as sim
+            >>> cmd = sim.UserCommands()
+            >>> cmd.set_instrument("MICADO")
+
+        See Also
+        --------
+        :func:`simcado.server.get_local_packages`
+        :func:`simcado.server.get_server_packages`
+        :func:`simcado.server.download_package`
+        :func:`simcado.server.list_instruments`
+        :func:`simcado.server.list_psfs`
+
+        """
 
         pkg_dir = self._find_package_path(instrument_name)
         if pkg_dir is None:
@@ -372,7 +400,25 @@ class UserCommands(object):
         self._find_files()
 
     def set_mode(self, mode_name):
-        """Takes the name of an MODE configuration file"""
+        """
+        Takes the name of an instrument MODE and reads appropriate config file
+
+        Parameters
+        ----------
+        mode_name : str
+            The name of a mode config file inside the instrument package
+            Use ``<UserCommands>.list("modes")`` to list the available modes
+
+        Examples
+        --------
+        ::
+
+            >>> import simcado as sim
+            >>> cmd_micado = sim.UserCommands(instrument="MICADO")
+            >>> cmd_micado.set_mode("MODE_MCAO_WIDE")
+            >>> cmd_micado.list("modes")
+
+        """
 
         if ".config" not in mode_name:
             mode_name += ".config"
@@ -388,7 +434,31 @@ class UserCommands(object):
         self._find_files()
 
     def select_filter(self, new_filter):
-        """Takes the name of an FILTER file"""
+        """
+        Sets the filter to be used by the optical train.
+
+        Filters can be provided in several formats:
+        - TransmissionCurve object
+        - full file path : using the pattern "./TC_filter_<name>.dat"
+        - filter name string : providing only the <name> part of the file name
+            Note: this only works if an instrument config file has been read
+
+        Acceptable filter names for an instrument package can be found by using
+        ``<UserCommands>.list("filters")``
+
+        Filter file names follow the TC_filter_<name>.dat convention and should
+        consist of the two columns ``wavelength`` and ``transmission``
+
+        Parameters
+        ----------
+        new_filter : str, TransmissionCurve
+            The new filter : filename, acceptable filter name, or preloaded
+            TransmissionCurve object
+
+        See Also
+        ``.list("filters")``
+
+        """
 
         if isinstance(new_filter, sc.TransmissionCurve):
             self.cmds["INST_FILTER_TC"] = new_filter
@@ -411,7 +481,31 @@ class UserCommands(object):
         self._find_files()
 
     def list(self, what="modes", pattern=None):
-        """List available choices for: 'modes', 'filters' """
+        """
+        List available choices for instrument 'modes' and 'filters'
+
+        Parameters
+        ----------
+        what : str
+            What aspect to list. Currently accepts:
+            - "modes",
+            - "filters"
+
+        pattern : str, optional
+            A specific glob pattern to search for in the instrument package
+            directory: e.g. ``pattern=".TER_*.dat" `` will return the list
+            of non-filter transmission curves included in the package directory
+
+        Examples
+        --------
+        ::
+
+            >>> import simcado as sim
+            >>> cmd_micado = sim.UserCommands(instrument="MICADO")
+            >>> modes_list = cmd_micado.list("modes")
+            >>> print(cmd_micado.list("filters"))
+
+        """
 
         if "mode" in what and pattern is None:
             pattern = ".config"
@@ -499,6 +593,13 @@ class UserCommands(object):
         return broken_paths
 
     def _get_psf_path(self):
+        """
+        Find the path to the specified PSF
+
+        Checks first if the path exists. If not, it looks in the local psf
+        database for anything matching the current name in SCOPE_PSF_FILE
+
+        """
 
         if self["SCOPE_PSF_FILE"] is None:
             psf_path = None
@@ -519,6 +620,7 @@ class UserCommands(object):
         return psf_path
 
     def _update_lam_extremes(self):
+        """Gets the current lam_min and lam_max"""
         # if SIM_USE_FILTER_LAM is true, then use the filter curve to set the
         # wavelength boundaries where the filter is < SIM_FILTER_THRESHOLD
 
@@ -629,6 +731,7 @@ class UserCommands(object):
         return lam_bin_edges
 
     def _find_package_path(self, pkg_name):
+        """Looks in local package DB for path to the package data"""
 
         pkg_entry = svr.find_package_on_disk(pkg_name)
         if pkg_entry is None:

@@ -8,25 +8,38 @@ from collections import OrderedDict
 
 def read_config(config_str):
     """
-    Read in a SimCADO configuration file
+    Read in a SimCADO configuration file from disk or from a (multi-line) string
 
-    The configuration file is in SExtractor format:
+    The format of the file or string must follow the SExtractor format:
        'PARAMETER    Value    # Comment'
 
     Parameters
     ----------
     config_str : str
-        the filename of the .config file
+        Either a filename to an ascii file, or a (multi-line) string following
+        the SExtractor format (see above)
 
     Returns
     -------
     config_dict : dict (collections.OrderedDict)
         A dictionary with keys 'PARAMETER' and values 'Value'.
 
+    Examples
+    --------
+    From file::
+
+        >>> import simcado.commands.commands_utils as cutils
+        >>> my_dict = cutils.read_config("../.default.config")
+
+    From a string::
+
+        >>> my_dict = cutils.read_config("OBS_RA   25.15   # A random RA value")
+
     Notes
     -----
     The values of the dictionary are strings and will have to be converted to
     the appropriate data type as they are needed.
+
     """
 
     if isinstance(config_str, str):
@@ -47,13 +60,16 @@ def lines_to_dict(lines):
     """
     Create a OrderedDict from a list of lines
 
+    Primarily used as an internal method of :func:`.read_config`
+
     Parameters
     ----------
     lines : list
         A list of strings read in from a multi-line string or a file-like object
+
     Returns
     -------
-    config_dict : OrderedDict
+    config_dict : :class:`OrderedDict`
 
     """
 
@@ -91,7 +107,7 @@ def lines_to_dict(lines):
 
 def update_config(new_config, old_config):
     """
-    Update a SimCADO configuration dictionary
+    Update a dictionary using a string, a filename, or a dictionary
 
     A configuration file in the SExtractor format::
 
@@ -99,13 +115,40 @@ def update_config(new_config, old_config):
 
     Parameters
     ----------
-    new_config : str
-        the filename of the .config file
+    new_config : str, dict
+        dictionary parameters in either one of the following formats:
+        - filename : to an ASCII file in Sextractor format
+        - string : (multi-line) string in Sextractor format
+        - dict : a normal dictionary with keyword-value pairs
+
+    old_config : dict
+        The dictionary to be updated
 
     Returns
     -------
     config_dict : dict
         A dictionary with keys 'PARAMETER' and values 'Value'.
+
+    Examples
+    --------
+    From file::
+
+        >>> import simcado.commands.commands_utils as cutils
+        >>> my_dict = {}
+        >>> new_file = "../.default.config"
+        >>> cutils.update_config(new_file, my_dict)
+
+    From a (multi-line) string::
+
+        >>> my_dict = {}
+        >>> new_str = "Life   42   # The meaning thereof"
+        >>> cutils.update_config(new_str, my_dict)
+
+    From a dictionary::
+
+        >>> my_dict = {}
+        >>> new_dict = {"Life" : 42}
+        >>> cutils.update_config(new_dict, my_dict)
 
     Notes
     -----
@@ -125,27 +168,62 @@ def update_config(new_config, old_config):
 
 
 def str_to_python_type(input_str):
+    """
+    Converts strings to python built-in types ("None" -> ``None``)
+
+    Currently only supports NoneTypes, Booleans, Floats
+
+    Parameters
+    ----------
+    input_str : str
+        String to be converted. E.g: "None", "True", "False", "42"
+
+    Returns
+    -------
+    output_str : ``None``, ``Bool``, ``Float``, ``str``
+
+    Examples
+    --------
+    ::
+
+        >>> import simcado.commands.commands_utils as cutils
+        >>> cutils.str_to_python_type("true")
+        True
+        >>> cutils.str_to_python_type("42")
+        42.0
+
+    """
+
     if isinstance(input_str, str):
         # Convert to number if possible
         try:
-            input_str = float(input_str.strip())
+            output_str = float(input_str.strip())
         except ValueError:
-            input_str = input_str.strip()
+            output_str = input_str.strip()
 
             # Convert string "none" to python None
             if input_str.strip().lower() == "none":
-                input_str = None
+                output_str = None
             # Convert string booleans to python booleans
             elif input_str.strip().lower() == "true":
-                input_str = True
+                output_str = True
             elif input_str.strip().lower() == "false":
-                input_str = False
+                output_str = False
+            else:
+                output_str = input_str
 
-    return input_str
+    return output_str
 
 
 def convert_dict_strings_to_python_types(dic):
-    """Converts all str python types to corresponding python type """
+    """
+    Converts all str python types to corresponding python type in a dictionary
+
+    See Also
+    --------
+    :func:`.str_to_python_type`
+
+    """
 
     for key in dic:
         dic[key] = str_to_python_type(dic[key])
@@ -153,15 +231,18 @@ def convert_dict_strings_to_python_types(dic):
     return dic
 
 
-def is_item_subcategory(item, dic):
-    return item.upper() in set([key.split("_")[0] for key in dic])
+def is_item_subcategory(name, dic):
+    """Test if ``name`` is a subcategory of a :class:`.UserCommands` class"""
+    return name.upper() in set([key.split("_")[0] for key in dic])
 
 
 def get_subcategory(item, dic):
+    """Returns the subcategories of a :class:`.UserCommands` class"""
     return {key : dic[key] for key in dic if item.upper() in key.split("_")[0]}
 
 
 def extract_filter_name(path_name):
+    """Returns the name of a filter from the name of the file"""
     filt_name = os.path.basename(path_name).split(".")[0]
     return filt_name.replace("TC_filter_", "")
 
