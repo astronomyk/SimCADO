@@ -2376,7 +2376,7 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
     #     >>>
     #     >>> lam, spec = scale_spectrum(lam, spec, magnitudes, new_filt)
 
-    from simcado.optics import get_filter_curve
+    from simcado.optics.imager import get_filter_curve
 
     mag = np.asarray(mag)
 

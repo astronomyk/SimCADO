@@ -1,4 +1,4 @@
-"""optics.py"""
+"""imager.py"""
 ###############################################################################
 # OpticalTrain
 #
@@ -23,15 +23,16 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 
-from . import psf as psf
-from . import spectral as sc
-from . import spatial as pe
-from .source import flat_spectrum_sb, scale_spectrum_sb
-from simcado.commands.user_commands import UserCommands
-from .utils import find_file
-from simcado import rc
+from .. import psf as psf
+from .. import spectral as sc
+from .. import spatial as pe
+from ..source import flat_spectrum_sb, scale_spectrum_sb
+from ..commands.user_commands import UserCommands
+from ..utils import find_file
 
-__all__ = ["OpticalTrain", "get_filter_curve", "get_filter_set"]
+from . import optics_utils as opt_utils
+
+__all__ = ["OpticalTrain"]
 
 class OpticalTrain(object):
     """
@@ -124,22 +125,14 @@ class OpticalTrain(object):
         self.tc_master = None   # set in separate method
         self.psf_size = None   # set in separate method
 
-        fname = self.cmds["SIM_OPT_TRAIN_IN_PATH"]
-        if fname is not None:
-            if not os.path.exists(fname):
-                raise ValueError(fname+" doesn't exist")
+        self.lam_bin_edges = cmds.lam_bin_edges
+        self.lam_bin_centers = cmds.lam_bin_centers
+        self.pix_res = cmds.pix_res
 
-            self.read(fname)
-        else:
-            self.lam_bin_edges = cmds.lam_bin_edges
-            self.lam_bin_centers = cmds.lam_bin_centers
-            self.pix_res = cmds.pix_res
+        self.lam = cmds.lam
+        self.lam_res = cmds.lam_res
 
-            self.lam = cmds.lam
-            self.lam_res = cmds.lam_res
-
-            self._make()
-
+        self._make()
 
     def _make(self, cmds=None):
         """
@@ -183,15 +176,13 @@ class OpticalTrain(object):
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
         self.jitter_psf = self._gen_telescope_shake()
-        #self.field_rot = self._gen_field_rotation_angle()
-
+        # self.field_rot = self._gen_field_rotation_angle()
 
     def replace_psf(self, new_psf, lam_bin_centers):
         """
         Change the PSF of the optical train
         """
         pass
-
 
     def update_filter(self, trans=None, lam=None, filter_name=None):
         """
@@ -216,11 +207,11 @@ class OpticalTrain(object):
         :func:`simcado.optics.get_filter_set`
 
         """
-        if filter_name == lam == trans == None:
+        if filter_name is None and lam is None and trans is None:
             raise ValueError("At least one parameter must be specified")
 
         if filter_name is not None:
-            filt = get_filter_curve(filter_name)
+            filt = opt_utils.get_filter_curve(filter_name)
         elif trans is not None:
             if isinstance(trans, (sc.TransmissionCurve,
                                   sc.EmissionCurve,
@@ -235,13 +226,11 @@ class OpticalTrain(object):
         self.cmds["INST_FILTER_TC"] = filt
         self._gen_all_tc()
 
-
     def read(self, filename):
         pass
 
     def save(self, filename):
         pass
-
 
     def apply_tracking(self, arr):
         return pe.tracking(arr, self.cmds)
@@ -273,7 +262,7 @@ class OpticalTrain(object):
                 self.cmds[cur_tc] = sc.UnityCurve()
 
         # see Rics email from 22.11.2016
-        wfe = self.cmds["INST_TOTAL_WFE"]
+        wfe = self.cmds.total_wfe
         lam = self.lam
         val = np.exp(-(2 * np.pi * (wfe*u.nm) / (lam*u.um))**2)
         self.cmds.cmds["INST_SURFACE_FACTOR"] = sc.TransmissionCurve(lam=lam,
@@ -676,193 +665,3 @@ class OpticalTrain(object):
                                      pix_res=self.cmds.pix_res)
         return jitter_psf
 
-
-## note: 'filter' redefines a built-in and should not be used
-def get_filter_curve(filter_name):
-    """
-    Return a Vis/NIR broadband filter TransmissionCurve object
-
-    Parameters
-    ----------
-    filter_name : str
-
-    Notes
-    -----
-    Acceptable filters can be found be calling get_filter_set()
-
-    To access the values use TransmissionCurve.lam and TransmissionCurve.val
-
-    Examples
-    --------
-        >>> transmission_curve = get_filter_curve("TC_filter_Ks.dat")
-        >>> wavelength   = transmission_curve.lam
-        >>> transmission = transmission_curve.val
-    """
-
-    fname = find_file(filter_name, silent=True)
-    if fname is None:
-        fname = find_file("TC_filter_" + filter_name + ".dat")
-        if fname is None:
-            raise ValueError("filter not recognised: " + filter_name)
-
-    return sc.TransmissionCurve(filename=fname)
-
-
-def get_filter_set(path=None):
-    """
-    Return a list of the filters installed in the package directory
-    """
-    if path is None:
-        path = os.path.join(rc.__data_dir__, "data")
-    lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
-                    for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
-    return lst
-
-
-
-def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
-                    show=True):
-    """
-    Plot a filter transmision curve or transmision curve for a list of filters
-
-    Parameters
-    ----------
-    path : str
-        the location of the filters, set to None to use the default one, passed to get_filter_set
-    filters : str or list
-        a filter or a list of filters to be plotted, acceptable filters can be found calling
-        get_filter_set()
-    cmap : str
-        any matplotlib colormap, defaulted to rainbow
-    filename : str
-        a filename to save the figure if necessary
-    show : boolean
-        if True, the plot is shown immediately in an interactive session
-
-    Returns
-    -------
-    a matplotlib object
-
-    Notes
-    -----
-
-    Examples
-    --------
-
-        >>> plot_filter_set()
-        >>> plot_filter_set(cmap="viridis")
-        >>> plot_filter_set(filters="Ks")
-        >>> plot_filter_set(filters=("U","PaBeta","Ks"),savefig="filters.png")
-
-    """
-    import matplotlib.pyplot as plt
-    from matplotlib import rcParams, cycler
-    from matplotlib.cm  import get_cmap
-
-    if np.size(filters) == 1:
-        filter_names = [filters,]
-    if  np.size(filters) > 1:
-        filter_names = filters
-
-    if filters == "All":
-        filter_names = get_filter_set(path)
-
-    cmap = get_cmap(cmap)
-    rcParams['axes.prop_cycle'] = \
-        cycler(color=cmap(np.linspace(0, 1, np.size(filter_names))))
-
-    peaks = np.zeros(np.size(filter_names))
-    i = 0
-    for filter_name in filter_names:
-
-        tcurve = get_filter_curve(filter_name)
-        wave = tcurve.lam[tcurve.val > 0.02]
-        tran = tcurve.val[tcurve.val > 0.02]
-
-        lam_peak = wave[tran == np.max(tran)]
-        peaks[i] = lam_peak[0]
-        i += 1
-
-
-    ordered_names = [x for _, x in sorted(zip(peaks, filter_names))]
-
-    for filter_name in ordered_names:
-        tcurve = get_filter_curve(filter_name)
-        wave = tcurve.lam[tcurve.val > 0.02]
-        tran = tcurve.val[tcurve.val > 0.02]
-        lmin = np.min(wave)
-        lmax = np.max(wave)
-        lam_peak = wave[tran == np.max(tran)]
-        if (lmax-lmin)/lam_peak[0] > 0.1:
-            plt.plot(wave, tran, "--", label=filter_name)
-        else:
-            plt.plot(wave, tran, "-", label=filter_name)
-
-    plt.xlabel(r"wavelength [$\mu$m]")
-    plt.ylabel("transmission")
-    lgd = plt.legend(loc=(1.03, 0))
-    if filename is not None:
-        plt.savefig(filename, bbox_extra_artists=(lgd,), bbox_inches='tight')
-    if show:
-        plt.show()
-
-
-def get_filter_table(path=None, filters="all"):
-
-    """
-    Return an astropy.table for a list of filters
-
-    Parameters
-    ----------
-    path : str
-        the location of the filters, set to None to use the default one, passed to get_filter_set
-    filters : str or list
-        a filter or a list of filters to be plotted, acceptable filters can be found calling
-        get_filter_set()
-
-
-    Returns
-    -------
-    an astropy.table
-
-    Notes
-    -----
-
-    It will ONLY return values for filters that follow SimCADO format
-
-
-    Examples
-    --------
-
-    Obtaining table for a set of filters::
-
-        >>> table = sim.optics.get_filter_table(filters=["J", "Ks", "PaBeta", "U", "Br-gamma"])
-        >>> filter_centers = table["center].data
-        >>> print(filter_centers)
-
-        [1.24794438 2.14487698 2.16986118]
-
-    Notice that only three values are printed as the U filter does not follow (yet) the SimCADO format
-
-    """
-
-    #Obtaining format of the table
-    filter_table = get_filter_curve("Ks").filter_table()
-    filter_table.remove_row(0)
-
-    if np.size(filters) == 1:
-        filter_names = [filters,]
-    if np.size(filters) > 1:
-        filter_names = filters
-    if filters == "all":
-        filter_names = get_filter_set(path)
-
-    for name in filter_names:
-        try:
-            tcurve = get_filter_curve(name)
-            table = tcurve.filter_table()
-            filter_table.add_row(table[0])
-        except ValueError:
-            pass
-
-    return filter_table

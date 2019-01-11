@@ -2,6 +2,9 @@ import pytest
 
 from simcado.commands import user_commands as usr_cmds
 
+# .. todo:: finish the tests for checking instrument and filter
+
+
 @pytest.fixture(scope="class")
 def empty_cmds():
     cmd = usr_cmds.UserCommands()
@@ -73,6 +76,14 @@ class TestUserCommandsUpdate:
         pass
 
 
+@pytest.mark.usefixtures("empty_cmds")
+class TestDeepcopyObject:
+    def test_object_returned_is_not_old_object(self, empty_cmds):
+        from copy import deepcopy
+        new_cmd = deepcopy(empty_cmds)
+        assert new_cmd is not empty_cmds
+
+
 class TestSetInstrument:
     pass
 
@@ -83,3 +94,7 @@ class TestSetMode:
 
 class TestSetFilterName:
     pass
+
+
+
+

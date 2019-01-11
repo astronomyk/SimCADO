@@ -11,7 +11,7 @@ import numpy as np
 #import simmetis as sim
 from . import source
 from simcado.commands.user_commands import UserCommands
-from .optics import OpticalTrain
+from simcado.optics.imager import OpticalTrain
 from .detector import Detector
 
 __all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]

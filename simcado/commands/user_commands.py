@@ -760,7 +760,10 @@ class UserCommands(object):
         return self.cmds.__next__()
 
     def __getitem__(self, key):
-        return self.cmds[key]
+        if cutils.is_item_subcategory(key, self.cmds):
+            return cutils.get_subcategory(key, self.cmds)
+        else:
+            return self.cmds[key]
 
     def __setitem__(self, key, val):
         if key not in self.cmds:
@@ -769,24 +772,26 @@ class UserCommands(object):
 
         self.cmds[key] = cutils.str_to_python_type(val)
 
-    def __getattr__(self, item):
-        """For things like subcategories, e.g. self.atmo """
-        if cutils.is_item_subcategory(item, self.cmds):
-            attr = cutils.get_subcategory(item, self.cmds)
-        elif item in self.cmds:
-            attr = self.cmds[item]
-        else:
-            raise ValueError("{} doesn't exist. Capital letters?". format(item))
-        return attr
+    # # Doesn't work because of a recursion error with copy.deepcopy
+    # def __getattr__(self, item):
+    #     """For things like subcategories, e.g. self.atmo """
+    #     if item in self.cmds:
+    #         attr = self.cmds[item]
+    #     elif cutils.is_item_subcategory(item, self.cmds):
+    #         attr = cutils.get_subcategory(item, self.cmds)
+    #     else:
+    #         warnings.warn("{} doesn't exist. Capital letters?". format(item))
+    #         raise AttributeError(item)
+    #     return attr
 
     @property
     def keys(self):
-        """Return the keys in the `UserCommands.cmds` dictionary"""
+        """Return the keys in the ``UserCommands.cmds`` dictionary"""
         return self.cmds.keys()
 
     @property
     def values(self):
-        """Return the values in the `UserCommands.cmds` dictionary """
+        """Return the values in the ``UserCommands.cmds`` dictionary"""
         return self.cmds.values()
 
     # All the convenience attributes from the update_attributes function
@@ -808,13 +813,17 @@ class UserCommands(object):
         if self.cmds["INST_WFE"] is not None:
             if isinstance(self.cmds["INST_WFE"], str):
                 wfe_list = ioascii.read(self.cmds["INST_WFE"])
-                wfe = wfe_list[wfe_list.colnames[0]]
-                num = wfe_list[wfe_list.colnames[1]]
+                wfe = wfe_list["wfe_rms"]
+                num = wfe_list["no_surfaces"]
             elif isinstance(self.cmds["INST_WFE"], (float, int)):
                 wfe, num = float(self.cmds["INST_WFE"]), 1
-
+            print(num, wfe)
             tot_wfe = np.sqrt(np.sum(num * wfe**2))
-            return tot_wfe
+        else:
+            warnings.warn("INST_WFE is None. Returning zero wavefront error")
+            tot_wfe = 0
+
+        return tot_wfe
 
     @property
     def mirrors_telescope(self):

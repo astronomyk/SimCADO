@@ -194,31 +194,28 @@ def str_to_python_type(input_str):
 
     """
 
-    if isinstance(input_str, str):
-        # Convert to number if possible
-        try:
-            output_str = float(input_str.strip())
-        except ValueError:
-            output_str = input_str.strip()
-
-            # Convert string "none" to python None
-            if input_str.strip().lower() == "none":
-                output_str = None
-            # Convert string booleans to python booleans
-            elif input_str.strip().lower() == "true":
-                output_str = True
-            elif input_str.strip().lower() == "false":
-                output_str = False
-            else:
-                output_str = input_str
-
-        return output_str
-
-    else:
+    if not isinstance(input_str, str):
         return input_str
+    # Convert to number if possible
+    try:
+        output_str = float(input_str.strip())
+    except ValueError:
+        output_str = input_str.strip()
 
-        #raise ValueError("input_str must be string type. "
-        #                 "Given type: {}".format(type(input_str)))
+        # Convert string "none" to python None
+        if input_str.strip().lower() == "none":
+            output_str = None
+        # Convert string booleans to python booleans
+        elif input_str.strip().lower() == "true":
+            output_str = True
+        elif input_str.strip().lower() == "false":
+            output_str = False
+        else:
+            output_str = input_str
+
+    return output_str
+
+
 
 
 def convert_dict_strings_to_python_types(dic):
