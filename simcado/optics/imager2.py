@@ -24,8 +24,6 @@ class Imager:
         return surf_tbl
 
 
-
-
 def make_surfaces_table(filenames=()):
 
     if isinstance(filenames, str):
