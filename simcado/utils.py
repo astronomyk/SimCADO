@@ -4,6 +4,9 @@ Helper functions for SimCADO
 
 import os
 import sys
+import warnings
+
+import yaml
 
 try:
     import wget
@@ -677,3 +680,18 @@ def airmass2zendist(airmass):
     """
 
     return np.rad2deg(np.arccos(1/airmass))
+
+
+def convert_table_comments_to_dict(tbl):
+
+    comments_dict = None
+    if "comments" in tbl.meta:
+        try:
+            comments_dict = yaml.load("\n".join(tbl.meta["comments"]))
+        except:
+            warnings.warn("Couldn't convert <table>.meta['comments'] to dict")
+            comments_dict = tbl.meta["comments"]
+    else:
+        warnings.warn("No comments in table")
+
+    return comments_dict
