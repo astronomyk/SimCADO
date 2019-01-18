@@ -2,11 +2,14 @@
 
 import pytest
 import numpy as np
+from astropy.io import ascii as ioascii
 
+import simcado.utils
 from simcado.utils import parallactic_angle, deriv_polynomial2d
 from simcado.utils import find_file
 from simcado.utils import airmass2zendist
 from simcado.utils import zendist2airmass
+from simcado.utils import convert_table_comments_to_dict
 
 from simcado import rc
 
@@ -116,3 +119,32 @@ class TestDerivPolynomial2D:
 
         assert np.allclose(y_x, y_x_test)
         assert np.allclose(y_y, y_y_test)
+
+
+class TestConvertCommentsToDict:
+    def test_converts_list_of_strings_to_dict_if_comments_in_table_meta(self):
+        tbl = ioascii.read("""
+                         # key1 : val 1 
+                         # key2 : extra long entry
+                         col1    col2
+                         0       1 """)
+        dic = convert_table_comments_to_dict(tbl)
+        assert dic["key1"] == "val 1"
+        assert len(dic) == 2
+
+    def test_returns_none_if_comments_not_in_table_meta(self):
+        tbl = ioascii.read("""col1    col2
+                              0       1 """)
+        dic = convert_table_comments_to_dict(tbl)
+        assert dic is None
+
+    def test_returns_input_if_conversion_doesnt_work(self):
+        tbl_str = """
+        # key1 : val 1 
+        # 
+        # key2
+        col1    col2
+        0       1 """
+        tbl = ioascii.read(tbl_str)
+        dic = convert_table_comments_to_dict(tbl)
+        assert dic == tbl.meta["comments"]
