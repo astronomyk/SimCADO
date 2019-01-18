@@ -1,3 +1,5 @@
+import os
+import inspect
 import pytest
 
 from simcado import UserCommands
@@ -16,6 +18,13 @@ from synphot import SpectralElement
 # make a combined
 
 
+@pytest.fixture(scope="module")
+def mock_dir():
+    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    rel_dirname = "../tests/mocks/MICADO_SCAO_WIDE/"
+    return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+
+
 @pytest.fixture(scope="class")
 def opt_empty():
     cmd = UserCommands()
@@ -23,11 +32,15 @@ def opt_empty():
     opt = imager.Imager(cmd)
     return opt
 
+
 @pytest.fixture(scope="class")
 def opt_scao_wide():
-    cmd = UserCommands(sim_data_dir="mocks/MICADO_SCAO_WIDE/",
-                       filename="mocks/MICADO_SCAO_WIDE/"
-                                "mock_MICADO_SCAO_WIDE.config")
+    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    rel_dirname = "../tests/mocks/MICADO_SCAO_WIDE/"
+    abs_dirname = os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+    fname = os.path.join(abs_dirname, "mock_MICADO_SCAO_WIDE.config")
+    print(fname)
+    cmd = UserCommands(sim_data_dir=abs_dirname, filename=fname)
     cmd.validate()
     opt = imager.Imager(cmd)
     return opt
@@ -88,17 +101,17 @@ class TestMakeSurfacesTable:
 class TestMakeSpectralCurveFromFile:
     def test_throw_exception_when_file_doesnt_exist(self, opt_scao_wide):
         with pytest.raises(ValueError):
-            imager.make_spectral_curve_from_file("bogus.dat")
+            imager.import_spectral_curve_from_file("bogus.dat")
 
     def test_reads_ok_for_existing_file(self):
         file = "mocks/MICADO_SCAO_WIDE/TC_filter_Ks.dat"
-        curve = imager.make_spectral_curve_from_file(file)
+        curve = imager.import_spectral_curve_from_file(file)
         assert type(curve) == SpectralElement
 
     def test_reads_reflectivity_if_exists(self):
         file = "mocks/MICADO_SCAO_WIDE/TER_dichroic.dat"
-        curve = imager.make_spectral_curve_from_file(file,
-                                                     val_name="reflectivity")
+        curve = imager.import_spectral_curve_from_file(file,
+                                                       val_name="reflectivity")
         assert type(curve) == SpectralElement
 
     def test_raises_error_if_colname_doesnt_exist(self):
