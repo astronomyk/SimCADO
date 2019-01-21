@@ -115,6 +115,8 @@ from . import psf as sim_psf
 from . import utils
 from .utils import __pkg_dir__, find_file
 
+import synphot
+
 __all__ = ["Source",
            "star", "stars", "cluster",
            "spiral", "spiral_profile", "elliptical", "sersic_profile"
@@ -712,7 +714,7 @@ class Source(object):
             >>>
             >>> curr_dist = 50000  # pc, i.e. LMC
             >>> new_dist = 770000  # pc, i.e. M31
-            >>> src = cluster(distance=curr_dist)
+           >>> src = cluster(distance=curr_dist)
             >>> src.scale_with_distance( new_dist/curr_dist )
 
         """
@@ -1471,6 +1473,7 @@ def photons_to_mag(filter_name, photons=1):
 
 def _get_refstar_curve(filename=None,mag=0):
     """
+    TODO: Obsolete? We now use synphot
     """
     ## TODO: Can we pre-select a star based on the instrument we're simulating?
     data = ioascii.read(find_file("vega.dat"))
@@ -1485,15 +1488,77 @@ def _get_refstar_curve(filename=None,mag=0):
     return lam, spec
 
 
+# Using synphot to get the vega spectrum
+
+def get_vega_spectrum():
+    """
+    Retrieve the Vega spectrum from stsci and return it to the user in synphot format
+    TODO: Should it be in get_extras?
+
+    Notes
+    -----
+    To access wavelength and fluxes use: wave, flux = vega_sp._get_arrays(wavelengths=None)
+    """
+
+    remote = synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",cache=True)
+    header = remote[0]
+    wave = remote[1]
+    flux = remote[2]
+    meta = {'header': header, 'expr': 'Vega from ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits'  }
+    vega_sp = synphot.SourceSpectrum(synphot.models.Empirical1D, points=wave, lookup_table=flux, meta=meta)
+    return vega_sp
+
+
+def synphot_to_simcado(spectrum):
+    """
+    Convert a synphot spectrum to the simcado format (photons/s/um/m2)
+
+    Parameters
+    ---------
+    spectrum: A synphot spectrum
+
+    Returns
+    -------
+    lam: wavelenght in micros
+    val: flux in simcado photlam (photons/s/um/m2)
+    """
+    
+    wave, flux = spectrum._get_arrays(wavelengths=None)
+    new_flux  = synphot.units.convert_flux(wave, flux, area =1 , out_flux_unit="photlam")
+    lam = wave.to_value(u.um)
+    val = new_flux.value * 1e4 * 1e4   # <- to convert to /um/m2
+    return lam, val
+
+
+def synphot_to_EC(spectrum):
+    '''
+    Convert a synphot spectrum to a SimCADO Emission Curve
+
+    Parameters
+    ---------
+    spectrum: A synphot spectrum, must contain wavelenghts
+
+    Returns
+    -------
+
+    A SimCADO Emission Curve object
+
+    '''
+
+    lam, val = synphot_to_simcado(spectrum)
+    ec = simcado.spectral.EmissionCurve(lam=lam, val=val)
+    return ec
+
 
 def zero_magnitude_photon_flux(filter_name):
     """
-    Return the number of photons for a m=0 star for a certain filter
+    Return the number of photons for a m=0 star for a certain filter using synphot
 
     Parameters
     ----------
     filter_name : str
-        filter name. See simcado.optics.get_filter_set()
+
+    filter name. See simcado.optics.get_filter_set()
 
     Notes
     -----
@@ -1515,18 +1580,14 @@ def zero_magnitude_photon_flux(filter_name):
         vlam = vraw[vraw.colnames[0]]
         vval = vraw[vraw.colnames[1]]
 
-    #lam, vega = _scale_pickles_to_photons("A0V", mag=-0.58)
-    ##
-    ## we refer here (SimCADO) to the Vega spectrum
-    ## (see _get_refstar_curve above).
-    lam, vega = _get_refstar_curve(mag=0.)
-    filt = np.interp(lam, vlam, vval)
+    vega_sp = get_vega_spectrum()
+    bp = synphot.SpectralElement(synphot.models.Empirical1D, points=vlam*u.um, lookup_table=vval)
+    obs = synphot.Observation(vega_sp, bp)
+    area = 100 * 100 # 1m^2
+    syn_nph = obs.countrate(area=area)
+    return syn_nph.value
 
-    n_ph = np.sum(vega*filt)
-
-    #print("units in [ph/s/m2]")
-    return n_ph
-
+#
 
 def value_at_lambda(lam_i, lam, val, return_index=False):
     """
