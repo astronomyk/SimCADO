@@ -7,7 +7,7 @@ import inspect
 import os
 
 import numpy as np
-from astropy.table import Table
+from astropy.table import Table, Column
 from astropy import units as u
 from synphot import SpectralElement, SourceSpectrum
 
@@ -108,8 +108,7 @@ class TestComplimentArray:
     @pytest.mark.parametrize("colname1, colname2, col1, col2, expected",
                              [("A", "B", [0.8]*u.um, [0.1]*u.um, [0.1]*u.um),
                               ("A", "B", [0.8]*u.um, None,       [0.2]*u.um),
-                              ("A", "B", None,       [0.8]*u.um, [0.2]*u.um)
-                              ])
+                              ("A", "B", None,       [0.8]*u.um, [0.2]*u.um)])
     def test_the_right_answers_for_valid_input(self, colname1, colname2,
                                                col1, col2, expected):
         srf = opt_surf.SpectralSurface()
@@ -128,6 +127,19 @@ class TestComplimentArray:
         srf.meta[colname2] = col2
         col3 = srf._compliment_array(colname1, colname2)
         assert col3 is None
+
+    @pytest.mark.parametrize("col2_arr, expected",
+                             [([0.1],   [0.1]),
+                              ([0.1, 0.1],   [0.1, 0.1]),
+                              (None,    [0.2])])
+    def test_returns_right_answers_for_valid_table(self, col2_arr, expected):
+        srf = opt_surf.SpectralSurface()
+        srf.table.add_column(Column(name="col1", data=[0.8]*len(expected)))
+        if col2_arr:
+            srf.table.add_column(Column(name="col2", data=col2_arr))
+
+        col3 = srf._compliment_array("col1", "col2")
+        assert np.all(np.isclose(col3.data, np.array(expected)))
 
 
 class TestQuantify:

@@ -86,6 +86,8 @@ class SpectralSurface:
         col_a = self._get_array(colname_a)
         col_b = self._get_array(colname_b)
 
+        print(col_a, col_b)
+
         if col_a is not None and col_b is not None:
             col_c = 1*col_a.unit - (col_a + col_b)
         elif col_a is not None and col_b is None:
@@ -120,7 +122,7 @@ class SpectralSurface:
         elif isinstance(val, (list, tuple, np.ndarray)):
             val_out = val * units
         elif val is None:
-            val_out = val
+            val_out = None
         else:
             raise ValueError("{} must be of type: Quantity, array, list, tuple"
                              "".format(colname))
