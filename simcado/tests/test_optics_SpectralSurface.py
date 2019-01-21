@@ -11,9 +11,26 @@ import warnings
 import numpy as np
 from astropy.table import Table, Column
 from astropy import units as u
+from astropy.io import ascii as ioascii
+
 from synphot import SpectralElement, SourceSpectrum
 
 from simcado.optics import surface as opt_surf
+from simcado import utils
+
+
+def mock_dir():
+    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    rel_dirname = "mocks/MICADO_SCAO_WIDE/"
+
+    return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+
+MOCK_DIR = mock_dir()
+
+
+@pytest.fixture(scope="class")
+def ter_table():
+    return ioascii.read(os.path.join(MOCK_DIR, "TER_dichroic.dat"))
 
 
 @pytest.fixture(scope="module")
@@ -198,10 +215,82 @@ class TestMakeEmissionFromArray:
         assert isinstance(out, SourceSpectrum)
 
 
+class TestMakeEmissionFromEmissivity:
+    # .. todo:: write this test class
+    pass
+
+
 class TestNormaliseBinnedFlux:
+    # .. todo:: write this test class
     def test_returns_correct_normalisation(self):
-
-
-
         pass
+
+
+@pytest.mark.usefixtures("ter_table")
+class TestIntegration:
+    @pytest.mark.parametrize("col_name",
+                             ["transmission", "emissivity", "reflection"])
+    def test_ter_property_of_spectral_element_object_from_file(self, col_name,
+                                                               ter_table):
+        filename = os.path.join(MOCK_DIR, "TER_dichroic.dat")
+        surf = opt_surf.SpectralSurface(filename=filename)
+
+        tbl_ter_prop = ter_table[col_name]
+        surf_ter_prop = getattr(surf, col_name).model.lookup_table
+
+        assert isinstance(surf, opt_surf.SpectralSurface)
+        assert np.all(surf_ter_prop == tbl_ter_prop)
+
+    @pytest.mark.parametrize("col_name",
+                             ["transmission", "emissivity", "reflection"])
+    def test_ter_property_of_spectral_element_object_from_arrays(self, col_name,
+                                                                 ter_table):
+        surf = opt_surf.SpectralSurface(wavelength=ter_table["wavelength"],
+                                        wavelength_unit="um")
+        surf.meta[col_name] = ter_table[col_name]
+
+        tbl_ter_prop = ter_table[col_name]
+        surf_ter_prop = getattr(surf, col_name).model.lookup_table
+
+        assert isinstance(surf, opt_surf.SpectralSurface)
+        assert np.all(surf_ter_prop == tbl_ter_prop)
+
+    def test_return_emission_curve_from_file(self):
+        filename = os.path.join(MOCK_DIR, "emission_file.dat")
+        surf = opt_surf.SpectralSurface(filename=filename)
+        integal = surf.emission.integrate().to(u.Unit("ph s-1 m-2"))
+        assert np.isclose(integal.value, 2)   # ph s-1 m-2
+
+    def test_return_emission_curve_from_basic_arrays(self):
+        surf = opt_surf.SpectralSurface(wavelength=[0.5, 2.5],
+                                        emission=[1., 1.],
+                                        wavelength_unit="um",
+                                        emission_unit="ph s-1 m-2 um-1")
+        integal = surf.emission.integrate().to(u.Unit("ph s-1 m-2"))
+        assert np.isclose(integal.value, 2)  # ph s-1 m-2
+
+    @pytest.mark.parametrize("n, expected",
+                             [(2, 2 * u.Unit("ph s-1 m-2")),
+                              (10, 2 * u.Unit("ph s-1 m-2")),
+                              (100, 2 * u.Unit("ph s-1 m-2"))])
+    def test_return_emission_curve_from_array_quantities(self, n, expected):
+        wavelength = np.linspace(0.5, 2.5, n)*u.um
+        emission = [1] * n * u.Unit("ph s-1 m-2 um-1")
+        surf = opt_surf.SpectralSurface(wavelength=wavelength,
+                                        emission=emission)
+        integal = surf.emission.integrate().to(u.Unit("ph s-1 m-2"))
+        assert np.isclose(integal.value, expected.value)  # ph s-1 m-2
+
+    @pytest.mark.parametrize("n, unit_str, expected",
+                             [(2, "ph s-1 m-2 bin-1", 2 * u.Unit("ph s-1 m-2")),
+                              (10, "ph s-1 m-2",     10 * u.Unit("ph s-1 m-2")),
+                              (100, "ph s-1 m-2",  100 * u.Unit("ph s-1 m-2"))])
+    def test_return_emission_curve_from_binned_quantities(self, n, unit_str,
+                                                         expected):
+        wavelength = np.linspace(0.5, 2.5, n)*u.um
+        emission = [1] * n * u.Unit(unit_str)
+        surf = opt_surf.SpectralSurface(wavelength=wavelength,
+                                        emission=emission)
+        integal = surf.emission.integrate().to(u.Unit("ph s-1 m-2"))
+        assert np.isclose(integal.value, expected.value)  # ph s-1 m-2
 

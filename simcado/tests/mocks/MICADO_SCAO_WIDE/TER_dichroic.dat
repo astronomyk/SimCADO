@@ -6,7 +6,7 @@
 # type : window:transmission
 # wavelength_unit : um
 #
-wavelength  transmission    reflectivity    emissivity
+wavelength  transmission    reflection      emissivity
 0.5         0               1               0
 0.7         0               1               0
 0.8         0.95            0               0.05

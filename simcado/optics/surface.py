@@ -9,7 +9,6 @@ from astropy.table import Table
 
 from synphot import SpectralElement, SourceSpectrum
 from synphot.models import Empirical1D, BlackBody1D
-from synphot.units import PHOTLAM
 
 from .. import utils
 
@@ -53,7 +52,7 @@ class SpectralSurface:
         flux = self._get_array("emission")
         if flux is not None:
             wave = self._get_array("wavelength")
-            flux = make_emission_from_array(flux, wave)
+            flux = make_emission_from_array(flux, wave, meta=self.meta)
         elif "temperature" in self.meta:
             emiss = self.emissivity                # SpectralElement
             temp = self.meta["temperature"] + 273  # BlackBody1D --> Kelvin
@@ -103,17 +102,17 @@ class SpectralSurface:
         if colname in self.meta:
             val = self.meta[colname]
         elif colname in self.table.colnames:
-            val = self.table[colname].data
+            val = self.table[colname]
         else:
             warnings.warn("{} not found in either '.meta' or '.table'"
                           "".format(colname))
             return None
 
         col_units = colname+"_unit"
-        if col_units in self.meta:
-            units = u.Unit(self.meta[col_units])
-        elif isinstance(val, u.Quantity):
+        if isinstance(val, u.Quantity):
             units = val.unit
+        elif col_units in self.meta:
+            units = u.Unit(self.meta[col_units])
         else:
             units = u.Unit("")
 
@@ -150,13 +149,13 @@ def make_emission_from_emissivity(temp, emiss_src_spec):
 
 
 def make_emission_from_array(flux, wave, meta):
-    if "emission_unit" not in meta and \
-            not isinstance(flux, u.Quantity):
-        warnings.warn("emission_unit must be set, or emission must"
-                      "be an astropy.Quantity")
-        flux = None
-    elif "emission_unit" in meta:
-        flux = quantify(flux, meta["emission_unit"])
+    if not isinstance(flux, u.Quantity):
+        if "emission_unit" in meta:
+            flux = quantify(flux, meta["emission_unit"])
+        else:
+            warnings.warn("emission_unit must be set, or emission must"
+                          "be an astropy.Quantity")
+            flux = None
 
     if isinstance(wave, u.Quantity) and isinstance(flux, u.Quantity):
         flux_unit, angle = extract_type_from_unit(flux.unit, "angle")

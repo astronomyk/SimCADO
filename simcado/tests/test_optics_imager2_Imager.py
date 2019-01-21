@@ -12,11 +12,10 @@ import os
 import inspect
 import pytest
 
-from simcado import UserCommands
-from simcado.optics import imager2 as imager
-
 from synphot import SpectralElement
 
+from simcado import UserCommands
+from simcado.optics import imager2 as imager
 import simcado as sim
 
 
@@ -120,7 +119,6 @@ class TestMakeSpectralCurveFromFile:
 
     def test_raises_error_if_colname_doesnt_exist(self):
         pass
-
 
 
 
