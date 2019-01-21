@@ -129,9 +129,10 @@ class TestComplimentArray:
         assert col3 is None
 
     @pytest.mark.parametrize("col2_arr, expected",
-                             [([0.1],   [0.1]),
-                              ([0.1, 0.1],   [0.1, 0.1]),
-                              (None,    [0.2])])
+                             [([0.1],      [0.1]),
+                              ([0.1, 0.1], [0.1, 0.1]),
+                              ([0.1, 0.1, 0.1], [0.1, 0.1, 0.1]),
+                              (None,       [0.2])])
     def test_returns_right_answers_for_valid_table(self, col2_arr, expected):
         srf = opt_surf.SpectralSurface()
         srf.table.add_column(Column(name="col1", data=[0.8]*len(expected)))
