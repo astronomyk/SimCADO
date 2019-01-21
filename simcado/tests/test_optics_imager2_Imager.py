@@ -52,7 +52,7 @@ def opt_scao_wide():
 class TestImagerInit:
     def test_initialises_with_nothing(self):
         opt = imager.Imager()
-        assert type(opt) == imager.Imager
+        assert isinstance(opt, imager.Imager)
 
     def test_accepts_usercommands(self, opt_scao_wide):
         assert opt_scao_wide.cmds["INST_FILTER_TC"] == "Ks"
