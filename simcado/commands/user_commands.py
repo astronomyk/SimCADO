@@ -327,20 +327,21 @@ class UserCommands(object):
 
         """
 
+        # If OBS_ZENITH_DIST is specified it overrides ATMO_AIRMASS,
+        if self.cmds["OBS_ZENITH_DIST"] is not None:
+            airmass = zendist2airmass(self.cmds["OBS_ZENITH_DIST"])
+            self.cmds["ATMO_AIRMASS"] = airmass
+
         # Update filenames to absolute paths
         try:
             missing_files = self._find_files()
         except ValueError:
             warnings.warn("Local package database couldn't be found")
             missing_files = -1
-
-        # If OBS_ZENITH_DIST is specified it overrides ATMO_AIRMASS,
-        if self.cmds["OBS_ZENITH_DIST"] is not None:
-            self.cmds["ATMO_AIRMASS"] = zendist2airmass(self.cmds["OBS_ZENITH_DIST"])
+        files_exist = len(missing_files) == 0
 
         # .. todo:: implement a method to check that the file formats are happy
         data_format_ok = True
-        files_exist = len(missing_files) == 0
 
         return files_exist and data_format_ok
 
