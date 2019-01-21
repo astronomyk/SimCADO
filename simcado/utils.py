@@ -625,6 +625,9 @@ def find_file(filename, path=None, silent=False):
     Absolute path of the file
     """
 
+    if filename is None or filename.lower() == "none":
+        return None
+
     if path is None:
         path = rc.__search_path__
 

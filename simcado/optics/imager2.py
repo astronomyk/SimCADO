@@ -9,6 +9,7 @@ from astropy import units as u
 from synphot import SpectralElement
 from synphot.models import Empirical1D
 
+from ..utils import find_file
 
 class Imager:
     def __init__(self, cmds=None):
@@ -19,7 +20,8 @@ class Imager:
         files = [self.cmds["SCOPE_MIRROR_LIST"],
                  self.cmds["INST_MIRROR_AO_LIST"],
                  self.cmds["INST_MIRROR_LIST"]]
-        surf_tbl = make_surfaces_table(filenames=files)
+        file_paths = [find_file(fname) for fname in files]
+        surf_tbl = make_surfaces_table(filenames=file_paths)
 
         return surf_tbl
 
@@ -33,7 +35,8 @@ def make_surfaces_table(filenames=()):
     if len(filenames) == 0:
         warnings.warn("'filenames' was empty. No tables were read")
 
-    lst = [ioascii.read(fname) for fname in filenames
+    abs_paths = [find_file(fname) for fname in filenames]
+    lst = [ioascii.read(fname) for fname in abs_paths
            if fname is not None and os.path.exists(fname)]
 
     if len(lst) > 0:
@@ -51,7 +54,8 @@ def import_spectral_curve_from_file(filename,
                                     wave_name="wavelength", wave_unit="um",
                                     val_name="transmission", val_unit=""):
 
-    if not os.path.exists(filename):
+    filename = find_file(filename)
+    if filename is None:
         raise ValueError("{} doesn't exist".format(filename))
 
     tbl = ioascii.read(filename)

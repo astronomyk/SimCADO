@@ -328,7 +328,11 @@ class UserCommands(object):
         """
 
         # Update filenames to absolute paths
-        missing_files = self._find_files()
+        try:
+            missing_files = self._find_files()
+        except ValueError:
+            warnings.warn("Local package database couldn't be found")
+            missing_files = -1
 
         # If OBS_ZENITH_DIST is specified it overrides ATMO_AIRMASS,
         if self.cmds["OBS_ZENITH_DIST"] is not None:

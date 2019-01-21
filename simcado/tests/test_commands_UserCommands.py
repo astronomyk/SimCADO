@@ -55,7 +55,7 @@ class TestUserCommandsGettersAndSetters:
 
     def test_subcategory_dicts_are_updated_when_called(self, empty_cmds):
         empty_cmds["OBS_SEEING"] = "1.2"
-        assert empty_cmds.obs["OBS_SEEING"] == 1.2
+        assert empty_cmds["OBS_SEEING"] == 1.2
 
     def test_foreign_keywords_returns_warning_and_are_ignored(self, empty_cmds):
         empty_cmds["BOGUS"] = "bogus.txt"

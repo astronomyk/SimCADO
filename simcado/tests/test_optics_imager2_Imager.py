@@ -1,12 +1,3 @@
-import os
-import inspect
-import pytest
-
-from simcado import UserCommands
-from simcado.optics import imager2 as imager
-
-from synphot import SpectralElement
-
 # things that the imager needs to dc
 # exist with nothing
 # accept a UserCommands object
@@ -17,32 +8,43 @@ from synphot import SpectralElement
 # make an OpticalTrain
 # make a combined
 
+import os
+import inspect
+import pytest
 
-@pytest.fixture(scope="module")
+from simcado import UserCommands
+from simcado.optics import imager2 as imager
+
+from synphot import SpectralElement
+
+import simcado as sim
+
+
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    rel_dirname = "../tests/mocks/MICADO_SCAO_WIDE/"
+    rel_dirname = "mocks/MICADO_SCAO_WIDE/"
+
     return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+
+
+MOCK_DIR = mock_dir()
+sim.rc.__search_path__.insert(0, MOCK_DIR)
 
 
 @pytest.fixture(scope="class")
 def opt_empty():
     cmd = UserCommands()
-    cmd.validate()
     opt = imager.Imager(cmd)
+
     return opt
 
 
 @pytest.fixture(scope="class")
 def opt_scao_wide():
-    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    rel_dirname = "../tests/mocks/MICADO_SCAO_WIDE/"
-    abs_dirname = os.path.abspath(os.path.join(cur_dirname, rel_dirname))
-    fname = os.path.join(abs_dirname, "mock_MICADO_SCAO_WIDE.config")
-    print(fname)
-    cmd = UserCommands(sim_data_dir=abs_dirname, filename=fname)
-    cmd.validate()
+    fname = os.path.join(MOCK_DIR, "mock_MICADO_SCAO_WIDE.config")
+    cmd = UserCommands(sim_data_dir=MOCK_DIR, filename=fname)
     opt = imager.Imager(cmd)
+
     return opt
 
 
@@ -59,10 +61,12 @@ class TestImagerInit:
 @pytest.mark.usefixtures("opt_scao_wide", "opt_empty")
 class TestImagerSurfacesAttr:
     def test_returns_empty_table_when_opt_is_empty(self, opt_empty):
-        assert len(opt_empty.surfaces) == 0
+        srf_table = opt_empty.surfaces
+        assert len(srf_table) == 0
 
     def test_returns_full_table_for_existing_table_files(self, opt_scao_wide):
-        assert len(opt_scao_wide.surfaces) == 19
+        srf_table = opt_scao_wide.surfaces
+        assert len(srf_table) == 19
 
 
 class TestMakeSurfacesTable:
@@ -72,15 +76,15 @@ class TestMakeSurfacesTable:
         assert len(surf_tbl) == 0
 
     def test_returns_single_table_when_only_one_filename_is_passed(self):
-        files = ["mocks/MICADO_SCAO_WIDE/EC_mirrors_ELT.tbl"]
+        files = ["EC_mirrors_ELT.tbl"]
         surf_tbl = imager.make_surfaces_table(files)
         assert len(surf_tbl) == 5
         assert "Mirror" in surf_tbl.colnames
 
     def test_returns_combined_table(self):
-        files = ["mocks/MICADO_SCAO_WIDE/EC_mirrors_ELT.tbl",
-                 "mocks/MICADO_SCAO_WIDE/EC_mirrors_SCAO_relay.tbl",
-                 "mocks/MICADO_SCAO_WIDE/EC_mirrors_MICADO_Wide.tbl"]
+        files = ["EC_mirrors_ELT.tbl",
+                 "EC_mirrors_SCAO_relay.tbl",
+                 "EC_mirrors_MICADO_Wide.tbl"]
         surf_tbl = imager.make_surfaces_table(files)
         assert len(surf_tbl) == 19
         assert "Mirror" in surf_tbl.colnames
@@ -90,7 +94,7 @@ class TestMakeSurfacesTable:
         assert len(surf_tbl) == 0
 
     def test_ignores_tables_which_dont_exist_but_doesnt_throw_error(self):
-        files = ["mocks/MICADO_SCAO_WIDE/EC_mirrors_ELT.tbl",
+        files = ["EC_mirrors_ELT.tbl",
                  "bogus.tbl"]
         surf_tbl = imager.make_surfaces_table(files)
         assert len(surf_tbl) == 5
@@ -104,12 +108,12 @@ class TestMakeSpectralCurveFromFile:
             imager.import_spectral_curve_from_file("bogus.dat")
 
     def test_reads_ok_for_existing_file(self):
-        file = "mocks/MICADO_SCAO_WIDE/TC_filter_Ks.dat"
+        file = "TC_filter_Ks.dat"
         curve = imager.import_spectral_curve_from_file(file)
         assert type(curve) == SpectralElement
 
     def test_reads_reflectivity_if_exists(self):
-        file = "mocks/MICADO_SCAO_WIDE/TER_dichroic.dat"
+        file = "TER_dichroic.dat"
         curve = imager.import_spectral_curve_from_file(file,
                                                        val_name="reflectivity")
         assert type(curve) == SpectralElement
