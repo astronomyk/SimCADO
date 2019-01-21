@@ -2,12 +2,12 @@ import numpy as np
 import astropy
 import simcado
 import astropy.units as u
+import os
 
 
 #### Helper functions to check against tabulated values
 def create_vega_table():
     """
-
     Returns astropy.table with tabulated values for Vega star
     Data taken from http://www.astronomy.ohio-state.edu/~martini/usefuldata.html
     -------
@@ -32,11 +32,10 @@ def create_vega_table():
                                 unit=u.Unit("photon / (s cm2 angstrom)"))
     vega_table = astropy.table.Table((filters,lambda_eff,delta_lambda,f_nu,f_lambda,n_ph),
                                      meta={"source" :"http://www.astronomy.ohio-state.edu/~martini/usefuldata.html"})
-
     return vega_table
 
 
-def test_returning_numbers(filter_name="TC_filter_Ks2.dat"):
+def test_returning_numbers(filter_name="TC_filter_K.dat"):
     """
     Check that zero_magnitude_photon returns a positive number
     Parameters
@@ -47,11 +46,13 @@ def test_returning_numbers(filter_name="TC_filter_Ks2.dat"):
     -------
 
     """
-    nph = simcado.source.zero_magnitude_photon_flux(filter_name)
+
+    filter_file = os.path.join("mocks", filter_name)
+    nph = simcado.source.zero_magnitude_photon_flux(filter_file)
     assert nph > 0
 
 
-def test_nph_from_sources(filter_name="TC_filter_Ks2.dat"):
+def test_nph_from_sources(filter_name="TC_filter_K.dat"):
     """
     Check that differences are below 1% level if a file or a transmission curve is passed
 
@@ -64,13 +65,14 @@ def test_nph_from_sources(filter_name="TC_filter_Ks2.dat"):
 
     """
 
-    nph_from_filter = simcado.source.zero_magnitude_photon_flux(filter_name)
+    filter_file = os.path.join("mocks", filter_name)
+    nph_from_filter = simcado.source.zero_magnitude_photon_flux(filter_file)
     tc = simcado.optics.get_filter_curve(filter_name)
     nph_from_tc = simcado.source.zero_magnitude_photon_flux(tc)
     assert np.abs((nph_from_filter / nph_from_tc) - 1) < 0.01
 
 
-def test_mag_to_photons_to_mag(filter_name="TC_filter_Ks2.dat", magnitude=0):
+def test_mag_to_photons_to_mag(filter_name="TC_filter_K.dat", magnitude=0):
     """
     Test that photons_to_mag and mag_to_photons return the original value
     (as they use zero_magnitude_photon_flux for their calculations)
@@ -82,8 +84,10 @@ def test_mag_to_photons_to_mag(filter_name="TC_filter_Ks2.dat", magnitude=0):
     Returns
     -------
     """
-    nph = simcado.source.mag_to_photons(filter_name, magnitude)
-    mag = simcado.source.photons_to_mag(filter_name, nph)
+
+    filter_file = os.path.join("mocks", filter_name)
+    nph = simcado.source.mag_to_photons(filter_file, magnitude)
+    mag = simcado.source.photons_to_mag(filter_file, nph)
     assert magnitude == mag
 
 def test_create_vega_table():
@@ -103,7 +107,7 @@ def test_photon_flux_in_filter(filter_name="K"):
     -------
 
     """
-    filter_file = "TC_filter_" + filter_name + ".dat"
+    filter_file = os.path.join("mocks", "TC_filter_" + filter_name + ".dat")
     n_photons_simcado = simcado.source.zero_magnitude_photon_flux(filter_file)
     tabulated_fluxes = create_vega_table()
     mask = tabulated_fluxes["filters"] == filter_name
@@ -114,8 +118,8 @@ def test_photon_flux_in_filter(filter_name="K"):
     assert np.abs((n_photons_simcado / n_photons_tab[0].value) - 1) < 0.1
 
 
-test_returning_numbers("TC_filter_Pa-beta.dat")
-test_nph_from_sources("TC_filter_H.dat")
-test_mag_to_photons_to_mag("TC_filter_H.dat", -10)
-test_create_vega_table()
-test_photon_flux_in_filter("I")
+# test_returning_numbers("TC_filter_Pa-beta.dat")
+# test_nph_from_sources("TC_filter_H.dat")
+# test_mag_to_photons_to_mag("TC_filter_H.dat", -10)
+# test_create_vega_table()
+# test_photon_flux_in_filter("I")
