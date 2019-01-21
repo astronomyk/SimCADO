@@ -220,6 +220,3 @@ def is_flux_binned(unit):
     return flag
 
 
-
-
-

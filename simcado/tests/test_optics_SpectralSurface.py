@@ -151,7 +151,7 @@ class TestComplimentArray:
             assert len(col3.data) == len(expected)
         else:
             warnings.warn("Data equality isn't tested for 2.7")
-            assert len(col3.data) == len(expected)
+
 
 class TestQuantify:
     @pytest.mark.parametrize("item, unit, expected",
@@ -196,4 +196,12 @@ class TestMakeEmissionFromArray:
         meta = {"emission_unit": emission_unit}
         out = opt_surf.make_emission_from_array(*unity_flux, meta=meta)
         assert isinstance(out, SourceSpectrum)
+
+
+class TestNormaliseBinnedFlux:
+    def test_returns_correct_normalisation(self):
+
+
+
+        pass
 
