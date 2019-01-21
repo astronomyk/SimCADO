@@ -3,6 +3,17 @@ import astropy
 import simcado
 import astropy.units as u
 import os
+import inspect
+
+def mock_dir():
+    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    rel_dirname = "mocks"
+    return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+
+
+MOCK_DIR = mock_dir()
+
+
 
 
 #### Helper functions to check against tabulated values
@@ -10,6 +21,7 @@ def create_vega_table():
     """
     Returns astropy.table with tabulated values for Vega star
     Data taken from http://www.astronomy.ohio-state.edu/~martini/usefuldata.html
+
     -------
 
     """
@@ -47,7 +59,7 @@ def test_returning_numbers(filter_name="TC_filter_K.dat"):
 
     """
 
-    filter_file = os.path.join("mocks", filter_name)
+    filter_file = os.path.join(MOCK_DIR, filter_name)
     nph = simcado.source.zero_magnitude_photon_flux(filter_file)
     assert nph > 0
 
@@ -65,7 +77,7 @@ def test_nph_from_sources(filter_name="TC_filter_K.dat"):
 
     """
 
-    filter_file = os.path.join("mocks", filter_name)
+    filter_file = os.path.join(MOCK_DIR, filter_name)
     nph_from_filter = simcado.source.zero_magnitude_photon_flux(filter_file)
     tc = simcado.optics.get_filter_curve(filter_name)
     nph_from_tc = simcado.source.zero_magnitude_photon_flux(tc)
@@ -85,7 +97,7 @@ def test_mag_to_photons_to_mag(filter_name="TC_filter_K.dat", magnitude=0):
     -------
     """
 
-    filter_file = os.path.join("mocks", filter_name)
+    filter_file = os.path.join(MOCK_DIR, filter_name)
     nph = simcado.source.mag_to_photons(filter_file, magnitude)
     mag = simcado.source.photons_to_mag(filter_file, nph)
     assert magnitude == mag
@@ -107,7 +119,7 @@ def test_photon_flux_in_filter(filter_name="K"):
     -------
 
     """
-    filter_file = os.path.join("mocks", "TC_filter_" + filter_name + ".dat")
+    filter_file = os.path.join(MOCK_DIR, "TC_filter_" + filter_name + ".dat")
     n_photons_simcado = simcado.source.zero_magnitude_photon_flux(filter_file)
     tabulated_fluxes = create_vega_table()
     mask = tabulated_fluxes["filters"] == filter_name
