@@ -1,5 +1,6 @@
 from astropy import table
-import synphot
+
+from .surface import SpectralSurface
 
 
 class RadiometryTable:

@@ -16,7 +16,6 @@ from astropy.io import ascii as ioascii
 from synphot import SpectralElement, SourceSpectrum
 
 from simcado.optics import surface as opt_surf
-from simcado import utils
 
 
 def mock_dir():
@@ -24,6 +23,7 @@ def mock_dir():
     rel_dirname = "mocks/MICADO_SCAO_WIDE/"
 
     return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+
 
 MOCK_DIR = mock_dir()
 
@@ -230,8 +230,7 @@ class TestNormaliseBinnedFlux:
 class TestIntegration:
     @pytest.mark.parametrize("col_name",
                              ["transmission", "emissivity", "reflection"])
-    def test_ter_property_of_spectral_element_object_from_file(self, col_name,
-                                                               ter_table):
+    def test_ter_property_of_object_from_file(self, col_name, ter_table):
         filename = os.path.join(MOCK_DIR, "TER_dichroic.dat")
         surf = opt_surf.SpectralSurface(filename=filename)
 
@@ -243,8 +242,7 @@ class TestIntegration:
 
     @pytest.mark.parametrize("col_name",
                              ["transmission", "emissivity", "reflection"])
-    def test_ter_property_of_spectral_element_object_from_arrays(self, col_name,
-                                                                 ter_table):
+    def test_ter_property_of_object_from_arrays(self, col_name, ter_table):
         surf = opt_surf.SpectralSurface(wavelength=ter_table["wavelength"],
                                         wavelength_unit="um")
         surf.meta[col_name] = ter_table[col_name]
@@ -261,7 +259,7 @@ class TestIntegration:
         integal = surf.emission.integrate().to(u.Unit("ph s-1 m-2"))
         assert np.isclose(integal.value, 2)   # ph s-1 m-2
 
-    def test_return_emission_curve_from_basic_arrays(self):
+    def test_return_emission_curve_from_basic_arrays_with_all_keywords(self):
         surf = opt_surf.SpectralSurface(wavelength=[0.5, 2.5],
                                         emission=[1., 1.],
                                         wavelength_unit="um",
@@ -273,7 +271,7 @@ class TestIntegration:
                              [(2, 2 * u.Unit("ph s-1 m-2")),
                               (10, 2 * u.Unit("ph s-1 m-2")),
                               (100, 2 * u.Unit("ph s-1 m-2"))])
-    def test_return_emission_curve_from_array_quantities(self, n, expected):
+    def test_return_emission_curve_from_quantity_arrays(self, n, expected):
         wavelength = np.linspace(0.5, 2.5, n)*u.um
         emission = [1] * n * u.Unit("ph s-1 m-2 um-1")
         surf = opt_surf.SpectralSurface(wavelength=wavelength,
@@ -285,8 +283,9 @@ class TestIntegration:
                              [(2, "ph s-1 m-2 bin-1", 2 * u.Unit("ph s-1 m-2")),
                               (10, "ph s-1 m-2",     10 * u.Unit("ph s-1 m-2")),
                               (100, "ph s-1 m-2",  100 * u.Unit("ph s-1 m-2"))])
-    def test_return_emission_curve_from_binned_quantities(self, n, unit_str,
-                                                         expected):
+    def test_return_emission_curve_from_binned_quantity_arrays(self, n,
+                                                               unit_str,
+                                                               expected):
         wavelength = np.linspace(0.5, 2.5, n)*u.um
         emission = [1] * n * u.Unit(unit_str)
         surf = opt_surf.SpectralSurface(wavelength=wavelength,

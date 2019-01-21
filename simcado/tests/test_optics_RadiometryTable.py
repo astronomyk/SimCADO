@@ -4,15 +4,23 @@
 #
 import pytest
 import os
+import inspect
+
+
+def mock_dir():
+    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    rel_dirname = "mocks/MICADO_SCAO_WIDE/"
+
+    return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+
+
+MOCK_DIR = mock_dir()
+
 
 @pytest.fixture(scope="module")
 def input_tables():
-    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    rel_dirname = "../tests/mocks/MICADO_SCAO_WIDE/"
-    abs_dirname = os.path.abspath(os.path.join(cur_dirname, rel_dirname))
-
     filenames = ["EC_mirrors_ELT.tbl",
                  "EC_mirrors_MICADO_Wide.tbl",
                  "EC_mirrors_SCAO_relay.tbl"]
 
-    return [os.path.join(abs_dirname, fname) for fname in filenames]
+    return [os.path.join(MOCK_DIR, fname) for fname in filenames]

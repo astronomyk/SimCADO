@@ -114,7 +114,7 @@ class TestMakeSpectralCurveFromFile:
     def test_reads_reflectivity_if_exists(self):
         file = "TER_dichroic.dat"
         curve = imager.import_spectral_curve_from_file(file,
-                                                       val_name="reflectivity")
+                                                       val_name="reflection")
         assert type(curve) == SpectralElement
 
     def test_raises_error_if_colname_doesnt_exist(self):
