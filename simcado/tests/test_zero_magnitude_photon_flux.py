@@ -79,7 +79,7 @@ def test_nph_from_sources(filter_name="TC_filter_K.dat"):
 
     filter_file = os.path.join(MOCK_DIR, filter_name)
     nph_from_filter = simcado.source.zero_magnitude_photon_flux(filter_file)
-    tc = simcado.optics.get_filter_curve(filter_name)
+    tc = simcado.optics.get_filter_curve(filter_file)
     nph_from_tc = simcado.source.zero_magnitude_photon_flux(tc)
     assert np.abs((nph_from_filter / nph_from_tc) - 1) < 0.01
 
