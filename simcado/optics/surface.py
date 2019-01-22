@@ -15,6 +15,7 @@ from .. import utils
 
 class SpectralSurface:
     def __init__(self, filename=None, **kwargs):
+        filename = utils.find_file(filename)
         self.meta = {"filename"   : filename,
                      "area"       : 0,      # m2
                      "etendue"    : 0,      # arcsec2 * m2
@@ -48,14 +49,17 @@ class SpectralSurface:
 
     @property
     def emission(self):
+        """
+        Assumption is that self.meta["temp"] is in deg_C
+        """
 
         flux = self._get_array("emission")
         if flux is not None:
             wave = self._get_array("wavelength")
             flux = make_emission_from_array(flux, wave, meta=self.meta)
-        elif "temperature" in self.meta:
-            emiss = self.emissivity                # SpectralElement
-            temp = self.meta["temperature"] + 273  # BlackBody1D --> Kelvin
+        elif "temp" in self.meta:
+            emiss = self.emissivity                     # SpectralElement [0..1]
+            temp = self.meta["temp"] + 273  # BlackBody1D --> Kelvin
             flux = make_emission_from_emissivity(temp, emiss)
         else:
             flux = None
@@ -138,11 +142,15 @@ def quantify(item, unit):
 
 
 def make_emission_from_emissivity(temp, emiss_src_spec):
+    if isinstance(temp, u.Quantity):
+        temp = temp.to(u.deg_C)
+
     if emiss_src_spec is None:
         warnings.warn("Either emission or emissivity must be set")
         flux = None
     else:
-        flux = SourceSpectrum(BlackBody1D, temp) / u.sr
+        flux = SourceSpectrum(BlackBody1D, temperature=temp)
+        flux.meta["angle_unit"] = u.sr**-1
         flux = flux * emiss_src_spec
 
     return flux

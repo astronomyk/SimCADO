@@ -215,9 +215,15 @@ class TestMakeEmissionFromArray:
         assert isinstance(out, SourceSpectrum)
 
 
+@pytest.mark.usefixtures("input_tables")
 class TestMakeEmissionFromEmissivity:
     # .. todo:: write this test class
-    pass
+    @pytest.mark.parametrize("temp", [273, 273*u.deg_C])
+    def test_source_spectrum_returned_for_temp(self, input_tables, temp):
+        srf = opt_surf.SpectralSurface(filename=input_tables[0])
+        out = opt_surf.make_emission_from_emissivity(273, srf.emissivity)
+        assert isinstance(out, SourceSpectrum)
+        assert out.model.temperature_0 == 273
 
 
 class TestNormaliseBinnedFlux:

@@ -78,7 +78,7 @@ class TestMakeSurfacesTable:
         files = ["EC_mirrors_ELT.tbl"]
         surf_tbl = imager.make_surfaces_table(files)
         assert len(surf_tbl) == 5
-        assert "Mirror" in surf_tbl.colnames
+        assert "Temp" in surf_tbl.colnames
 
     def test_returns_combined_table(self):
         files = ["EC_mirrors_ELT.tbl",
@@ -86,7 +86,7 @@ class TestMakeSurfacesTable:
                  "EC_mirrors_MICADO_Wide.tbl"]
         surf_tbl = imager.make_surfaces_table(files)
         assert len(surf_tbl) == 19
-        assert "Mirror" in surf_tbl.colnames
+        assert "Temp" in surf_tbl.colnames
 
     def test_returns_none_for_bogus_table(self):
         surf_tbl = imager.make_surfaces_table(["bogus.tbl"])
@@ -97,7 +97,7 @@ class TestMakeSurfacesTable:
                  "bogus.tbl"]
         surf_tbl = imager.make_surfaces_table(files)
         assert len(surf_tbl) == 5
-        assert "Mirror" in surf_tbl.colnames
+        assert "Temp" in surf_tbl.colnames
 
 
 @pytest.mark.usefixtures("opt_scao_wide")
