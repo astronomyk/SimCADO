@@ -4,6 +4,7 @@ import simcado
 import astropy.units as u
 import os
 import inspect
+import synphot
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -13,7 +14,7 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
-
+synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits", cache=True)
 
 
 #### Helper functions to check against tabulated values
