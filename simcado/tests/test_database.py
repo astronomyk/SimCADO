@@ -183,11 +183,24 @@ class TestAddPackageToLocalDb:
 
 
 class TestChangeTableEntry:
-    def test_string_changed_successfully(self):
+    def test_string_changed_successfully_for_pattern(self):
         tbl = Table(names=["id", "name"], data=[[0], ["seb skelly"]])
-        tbl = sim_db.change_table_entry(tbl, "name", "seb skelly",
-                                        "seb skelly rocks")
+        tbl = sim_db.change_table_entry(tbl, "name", "seb skelly rocks",
+                                        "seb skelly")
         assert tbl[0]["name"] == "seb skelly rocks"
+
+    def test_string_changed_successfully_for_position(self):
+        tbl = Table(names=["id", "name"], data=[[0], ["seb skelly"]])
+        tbl = sim_db.change_table_entry(tbl, "name", "seb skelly rocks",
+                                        position=0)
+        assert tbl[0]["name"] == "seb skelly rocks"
+
+    def test_raise_error_for_neither_position_or_pattern_given(self):
+        tbl = Table(names=["id", "name"], data=[[0], ["seb skelly"]])
+        with pytest.raises(ValueError):
+            sim_db.change_table_entry(tbl, "name", "seb skelly rocks")
+
+
 
 
 @pytest.mark.usefixtures("temp_directory_structure")

@@ -14,8 +14,8 @@ from synphot import SpectralElement, SourceSpectrum
 
 from simcado.optics import radiometry as opt_rad
 from simcado.optics import surface as opt_surf
-from simcado import utils
 import simcado as sim
+from simcado import utils
 
 
 def mock_dir():
@@ -138,13 +138,16 @@ class TestMakeSurfaceFromRow:
         assert isinstance(surf.emission, SourceSpectrum)
 
 
-class TestGetRealColname:
+class TestRealColname:
     @pytest.mark.parametrize("name, colnames", [
                              ("yahoo", ["Yahoo", "Bogus"]),
                              ("yahoo", ["yahoo", "Bogus"]),
                              ("yahoo", ["YAHOO", "Bogus"])])
     def test_returns_real_name(self, name, colnames):
         assert opt_rad.real_colname(name, colnames) == colnames[0]
+
+    def test_returns_none_if_name_not_in_colname(self):
+        assert opt_rad.real_colname("yahoo", ["Bogus"]) is None
 
 
 @pytest.mark.usefixtures("input_tables")
@@ -153,5 +156,50 @@ class TestMakeSurfaceDictFromTable:
         tbl = ioascii.read(input_tables[0])
         surf_dict = opt_rad.make_surface_dict_from_table(tbl)
         assert isinstance(surf_dict, dict)
+        assert "M1" in surf_dict
+
+
+class TestInsertIntoOrderedDict:
+    @pytest.mark.parametrize("dic, new_entry, pos",
+                             [({}, ["a", 1], 0),
+                              ({"x": 42, "y": 3.14}, {"a": 1}, 0),
+                              ({"x": 42, "y": 3.14}, {"a": 1, "b": 2}, 1),
+                              ({"x": 42, "y": 3.14}, ("a", 1), 2),
+                              ({"x": 42, "y": 3.14}, [("b", 2), ("a", 1)], -1)])
+    def test_works_as_prescribed(self, dic, new_entry, pos):
+        new_dic = opt_rad.insert_into_ordereddict(dic, new_entry, pos)
+        print(new_dic)
+        assert list(new_dic.keys())[pos] == "a"
+        assert list(new_dic.values())[pos] == 1
+        assert new_dic["a"] == 1
+        if "x" in new_dic:
+            assert new_dic["x"] == 42
+        if "b" in new_dic:
+            assert new_dic["b"] == 2
+
+
+class TestEmptyType:
+    @pytest.mark.parametrize("x, expected",
+                             [(int, 0), (float, 0.), (bool, False), (str, "")])
+    def test_works_for_all_common_types(self, x, expected):
+        assert opt_rad.empty_type(x) == expected
+
+
+@pytest.mark.usefixtures("input_tables")
+class TestAddSurfaceToTable:
+    @pytest.mark.parametrize("position", [0, 2, 5])
+    def test_(self, input_tables, position):
+        tbl = ioascii.read(input_tables[0])
+        surf = opt_surf.SpectralSurface(tbl[0]["Filename"])
+        tbl = opt_rad.add_surface_to_table(tbl, surf, "new_row", position)
+        assert tbl[position]["Filename"] == surf.meta["filename"]
+        assert tbl[position]["Name"] == "new_row"
+
+
+
+
+
+
+
 
 

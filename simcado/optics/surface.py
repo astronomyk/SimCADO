@@ -22,7 +22,6 @@ class SpectralSurface:
                      "temp"       : -270,   # deg C
                      "emission_unit" : "",
                      "wavelength_unit" : "um"}
-        self.meta.update(kwargs)
 
         self.table = Table()
         if filename is not None and os.path.exists(filename):
@@ -30,6 +29,8 @@ class SpectralSurface:
             tbl_meta = utils.convert_table_comments_to_dict(self.table)
             if isinstance(tbl_meta, dict):
                 self.meta.update(tbl_meta)
+
+        self.meta.update(kwargs)
 
     @property
     def wavelength(self):
