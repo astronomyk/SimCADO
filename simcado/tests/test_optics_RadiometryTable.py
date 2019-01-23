@@ -180,7 +180,7 @@ class TestInsertIntoOrderedDict:
 
 class TestEmptyType:
     @pytest.mark.parametrize("x, expected",
-                             [(int, 0), (float, 0.), (bool, False), (str, "")])
+                             [(int, 0), (float, 0.), (bool, False), (str, " ")])
     def test_works_for_all_common_types(self, x, expected):
         assert opt_rad.empty_type(x) == expected
 
