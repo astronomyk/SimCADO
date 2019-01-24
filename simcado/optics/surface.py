@@ -69,7 +69,7 @@ class SpectralSurface:
 
     def _get_ter_property(self, ter_property):
         compliment_names = ["transmission", "emissivity", "reflection"]
-        ii = np.where(ter_property == np.array([compliment_names]))[0][0]
+        ii = np.where([ter_property == name for name in compliment_names])[0][0]
         compliment_names.pop(ii)
 
         wave = self._get_array("wavelength")
@@ -89,8 +89,6 @@ class SpectralSurface:
     def _compliment_array(self, colname_a, colname_b):
         col_a = self._get_array(colname_a)
         col_b = self._get_array(colname_b)
-
-        print(col_a, col_b)
 
         if col_a is not None and col_b is not None:
             col_c = 1*col_a.unit - (col_a + col_b)

@@ -9,6 +9,7 @@ import inspect
 import numpy as np
 from astropy.table import Table
 from astropy.io import ascii as ioascii
+from astropy import units as u
 
 from synphot import SpectralElement, SourceSpectrum
 
@@ -38,7 +39,7 @@ def input_tables():
 
 
 @pytest.mark.usefixtures("input_tables")
-class TestInit:
+class TestRadiometryTableInit:
     def test_initialises_with_no_input(self):
         rt = opt_rad.RadiometryTable()
         assert isinstance(rt, opt_rad.RadiometryTable)
@@ -56,7 +57,7 @@ class TestInit:
 
 
 @pytest.mark.usefixtures("input_tables")
-class TestAddSurfaceList:
+class TestRadiometryTableAddSurfaceList:
     def test_append_single_table_from_filename(self, input_tables):
         rad_table = opt_rad.RadiometryTable()
         rad_table.add_surface_list(input_tables[0])
@@ -71,6 +72,57 @@ class TestAddSurfaceList:
         rad_table = opt_rad.RadiometryTable()
         rad_table.add_surface_list(input_tables)
         assert len(rad_table.table) == 19
+
+    def test_all_surfaces_where_added_to_dict_surface(self, input_tables):
+        rad_table = opt_rad.RadiometryTable()
+        rad_table.add_surface_list(input_tables)
+        names = rad_table.table["Name"]
+        assert np.all(name in rad_table.surface for name in names)
+
+
+@pytest.mark.usefixtures("input_tables")
+class TestRadiometryTableAddSurface:
+    @pytest.mark.parametrize("position", (0, 2, 5))
+    def test_add_empty_surface_to_full_table(self, input_tables, position):
+        rt = opt_rad.RadiometryTable(tables=(input_tables[0]))
+        surf = opt_surf.SpectralSurface()
+        rt.add_surface(surf, "new_surf", position)
+        colname = opt_rad.real_colname("name", rt.table.colnames)
+        assert rt.table[colname][position] == "new_surf"
+        assert "new_surf" in rt.surfaces
+        assert isinstance(rt.surfaces["new_surf"], opt_surf.SpectralSurface)
+
+    def test_add_empty_surface_to_empty_table(self):
+        rt = opt_rad.RadiometryTable()
+        surf = opt_surf.SpectralSurface()
+        with pytest.raises(ValueError):
+            rt.add_surface(surf, "new_surf", 0)
+
+
+
+@pytest.mark.usefixtures("input_tables")
+class TestCombineThroughputs:
+    def test_returns_spectral_element(self, input_tables):
+        rt = opt_rad.RadiometryTable(tables=(input_tables))
+        row_list = np.arange(len(rt.table))
+        comb_throughput = opt_rad.combine_throughputs(rt.table, rt.surfaces,
+                                                      rows_list=row_list)
+        print(comb_throughput)
+        assert isinstance(comb_throughput, SpectralElement)
+
+    def test_super_simple(self):
+        n = 10
+        surf = opt_surf.SpectralSurface(wavelength=np.linspace(1, 2, n)*u.um,
+                                        transmission=np.ones(n))
+        dic = {"surf"+str(i+1): surf for i in range(3)}
+        tbl = ioascii.read("""
+        name action
+        surf1 reflection
+        surf2 transmission
+        surf3 transmission
+        """)
+        combi = opt_rad.combine_throughputs(tbl, dic, [0, 1, 2])
+        assert isinstance(combi, SpectralElement)
 
 
 @pytest.mark.usefixtures("input_tables")
@@ -168,7 +220,6 @@ class TestInsertIntoOrderedDict:
                               ({"x": 42, "y": 3.14}, [("b", 2), ("a", 1)], -1)])
     def test_works_as_prescribed(self, dic, new_entry, pos):
         new_dic = opt_rad.insert_into_ordereddict(dic, new_entry, pos)
-        print(new_dic)
         assert list(new_dic.keys())[pos] == "a"
         assert list(new_dic.values())[pos] == 1
         assert new_dic["a"] == 1
@@ -194,9 +245,6 @@ class TestAddSurfaceToTable:
         tbl = opt_rad.add_surface_to_table(tbl, surf, "new_row", position)
         assert tbl[position]["Filename"] == surf.meta["filename"]
         assert tbl[position]["Name"] == "new_row"
-
-
-
 
 
 

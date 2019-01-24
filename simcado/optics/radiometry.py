@@ -2,8 +2,13 @@ import os
 import warnings
 from collections import OrderedDict
 
+import numpy as np
+
 from astropy.table import Table, Row, vstack
 from astropy.io import ascii as ioascii
+
+from synphot import SpectralElement, SourceSpectrum
+from synphot import Empirical1D
 
 from .surface import SpectralSurface
 from ..server.database import change_table_entry
@@ -12,7 +17,7 @@ from .. import utils
 
 class RadiometryTable:
 
-    def __init__(self, tables=(), surfaces=(), **kwargs):
+    def __init__(self, tables=(), **kwargs):
         self.meta = {}
         self.meta.update(kwargs)
 
@@ -22,17 +27,32 @@ class RadiometryTable:
         if len(tables) > 0:
             self.add_surface_list(tables)
 
-    def add_surface(self, surface, name, position):
-        self.surfaces = add_surface_to_dict(self.surfaces, surface,
-                                            name, position)
-        add_surface_to_table(self.surfaces, surface,
-                                            name, position)
-
     def add_surface_list(self, surface_lists, prepend=False):
         self.table = combine_tables(surface_lists, self.table, prepend=prepend)
 
-    def get_transmission(self, rows):
-        pass
+        r_name = real_colname("name", self.table.colnames)
+        for row in self.table:
+            if row[r_name] not in self.surfaces:
+                surf = make_surface_from_row(row)
+                self.add_surface(surf, row[r_name], position=-1,
+                                 add_to_table=False)
+
+    def add_surface(self, surface, name, position=-1, add_to_table=True):
+        if self.table is None:
+            raise ValueError("Cannot add surface without <self>.table template."
+                             "Please add an empty table to define column names")
+
+        self.surfaces = add_surface_to_dict(self.surfaces, surface,
+                                            name  , position)
+        if add_to_table:
+            self.table = add_surface_to_table(self.table, surface,
+                                              name, position)
+
+    def get_throughput(self, rows=None, start=0, end=-1):
+        if rows is None:
+            rows = np.arange(start, end)
+
+        return combine_throughputs(self.table, self.surfaces, rows)
 
     def get_emission(self, rows=None, ):
         pass
@@ -45,6 +65,27 @@ class RadiometryTable:
 
     def __getitem__(self, item):
         pass
+
+
+def combine_throughputs(tbl, surfaces, rows_list):
+    r_name = real_colname("name", tbl.colnames)
+    r_action = real_colname("action", tbl.colnames)
+
+    for ii, row_num in enumerate(rows_list):
+        row = tbl[row_num]
+        surf = surfaces[row[r_name]]
+        action_attr = row[r_action]
+
+        if isinstance(surf, SpectralSurface):
+            print(row)
+            surf_throughput = getattr(surf, action_attr)
+
+            if ii > 0:
+                throughput = throughput * surf_throughput
+            else:
+                throughput = surf_throughput
+
+    return throughput
 
 
 def combine_tables(new_tables, old_table=None, prepend=False):
@@ -84,13 +125,13 @@ def add_surface_to_table(tbl, surf, name, position):
             surf_val = surf.meta[surf_col]
             tbl = change_table_entry(tbl, colname, surf_val, position=position)
 
-    tbl_name_col = real_colname("name", tbl.colnames)
-    tbl[tbl_name_col][position] = name
+    colname = real_colname("name", tbl.colnames)
+    tbl = change_table_entry(tbl, colname, name, position=position)
 
     return tbl
 
 
-def add_surface_to_dict(dic, surf, name, position=-1):
+def add_surface_to_dict(dic, surf, name, position=0):
     new_entry = OrderedDict({name : surf})
     dic = insert_into_ordereddict(dic, new_entry, position)
 
