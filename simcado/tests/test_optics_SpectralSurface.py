@@ -14,6 +14,8 @@ from astropy import units as u
 from astropy.io import ascii as ioascii
 
 from synphot import SpectralElement, SourceSpectrum
+from synphot.models import BlackBody1D
+from synphot.units import PHOTLAM
 
 from simcado.optics import surface as opt_surf
 
@@ -54,7 +56,7 @@ def unity_flux():
 
 
 @pytest.mark.usefixtures("input_tables")
-class TestInit:
+class TestSpectralSurfaceInit:
     def test_can_exist_with_no_input(self):
         srf = opt_surf.SpectralSurface()
         assert isinstance(srf, opt_surf.SpectralSurface)
@@ -70,7 +72,7 @@ class TestInit:
 
 
 @pytest.mark.usefixtures("input_tables")
-class TestWavelengthProperty:
+class TestSpectralSurfaceWavelengthProperty:
     def test_returns_quantity_array_from_file(self, input_tables):
         srf = opt_surf.SpectralSurface(filename=input_tables[0])
         assert isinstance(srf.wavelength, u.Quantity)
@@ -99,7 +101,7 @@ class TestWavelengthProperty:
 
 
 @pytest.mark.usefixtures("input_tables")
-class TestTransmissionProperty:
+class TestSpectralSurfaceTransmissionProperty:
     def test_returns_synphot_object_array_from_file(self, input_tables):
         srf = opt_surf.SpectralSurface(filename=input_tables[0])
         assert isinstance(srf.transmission, SpectralElement)
@@ -123,7 +125,34 @@ class TestTransmissionProperty:
         assert srf.transmission is None
 
 
-class TestComplimentArray:
+class TestSpectralSurfaceEmissionProperty:
+    def test_returns_synphot_object_per_arcsec2_scaled_to_per_arcsec2(self):
+        srf = opt_surf.SpectralSurface(wavelength=[0.3, 3.0] * u.um,
+                                       emission=[1, 1] * PHOTLAM * u.arcsec**-2)
+        assert isinstance(srf.emission, SourceSpectrum)
+        assert np.all(srf.emission([0.3, 3.0] * u.um) == [1, 1] * PHOTLAM)
+
+    def test_returns_synphot_object_per_steradian_scaled_to_per_arcsec2(self):
+        sr2arcsec = u.sr.to(u.arcsec**2)
+        srf = opt_surf.SpectralSurface(wavelength=[0.3, 3.0] * u.um,
+                                       emission=[sr2arcsec]*2 * PHOTLAM / u.sr)
+        assert isinstance(srf.emission, SourceSpectrum)
+        assert np.all(srf.emission([0.3, 3.0] * u.um) == [1, 1] * PHOTLAM)
+
+    def test_returned_bb_curve_is_scaled_to_per_arcsec2(self):
+        n = 11
+        sr2arcsec = u.sr.to(u.arcsec ** 2)
+        wave = np.logspace(-1, 3, n) * u.um
+        srf = opt_surf.SpectralSurface(wavelength=wave,
+                                       transmission=np.zeros(n),
+                                       temp=0*u.deg_C)
+        emission_raw = SourceSpectrum(BlackBody1D, temperature=273)
+        assert isinstance(srf.emission, SourceSpectrum)
+        assert np.all(np.isclose(emission_raw(wave) /  srf.emission(wave),
+                                 np.array([sr2arcsec]*n)))
+
+
+class TestSpectralSurfaceComplimentArray:
     @pytest.mark.parametrize("colname1, colname2, col1, col2, expected",
                              [("A", "B", [0.8]*u.um, [0.1]*u.um, [0.1]*u.um),
                               ("A", "B", [0.8]*u.um, None,       [0.2]*u.um),
@@ -170,6 +199,24 @@ class TestComplimentArray:
             warnings.warn("Data equality isn't tested for 2.7")
 
 
+class TestSpectralSurfaceAreaProperty:
+    def test_returns_area_when_area_in_meta_dict(self):
+        srf = opt_surf.SpectralSurface(area=1*u.m**2)
+        assert srf.area == 1 * u.m**2
+
+    def test_returns_area_for_only_outer_in_meta_dict(self):
+        srf = opt_surf.SpectralSurface(outer=1*u.m)
+        assert srf.area == (1/4.) * np.pi * u.m ** 2
+
+    def test_returns_area_for_outer_and_inner_in_meta_dict(self):
+        srf = opt_surf.SpectralSurface(outer=1*u.m, inner=0.5*u.m)
+        assert srf.area == (1/4. - 1/16.) * np.pi * u.m ** 2
+
+    def test_returns_none_when_no_info_in_meta(self):
+        srf = opt_surf.SpectralSurface()
+        assert srf.area is None
+
+
 class TestQuantify:
     @pytest.mark.parametrize("item, unit, expected",
                              [(1, "m", 1*u.m),
@@ -207,7 +254,7 @@ class TestMakeEmissionFromArray:
                              ["ph s-1 m-2",
                               "ph s-1 m-2 bin-1",
                               "erg s-1 m-2 arcsec-2",
-                              "erg s-1 m-2 bin-1 sr-2"])
+                              "erg s-1 m-2 bin-1 sr-1"])
     def test_source_spectrum_returned_for_bin_units(self, emission_unit,
                                                     unity_flux):
         meta = {"emission_unit": emission_unit}
@@ -298,4 +345,21 @@ class TestIntegration:
                                         emission=emission)
         integal = surf.emission.integrate().to(u.Unit("ph s-1 m-2"))
         assert np.isclose(integal.value, expected.value)  # ph s-1 m-2
+
+
+class TestGetMetaQuantity:
+    @pytest.mark.parametrize("dic, unit, expected",
+                 [({"area": 1},                               "m2", 1*u.m**2),
+                  ({"area": 1,         "area_unit": u.cm**2}, "m2", 1*u.cm**2),
+                  ({"area": 1,         "area_unit": "cm2"},   "m2", 1*u.cm**2),
+                  ({"area": 1*u.mm**2, "area_unit": "m2"},    "m2", 1*u.mm**2)])
+    def test_returns_quantity_for_all_valid_inputs(self, dic, unit, expected):
+        quant = opt_surf.get_meta_quantity(dic, "area", unit)
+        assert quant == expected
+
+    def test_raise_error_when_key_not_in_dict(self):
+        with pytest.raises(KeyError):
+            opt_surf.get_meta_quantity({}, "area", u.um**2)
+
+
 

@@ -1,16 +1,16 @@
 import os
 import warnings
 from collections import OrderedDict
+from copy import deepcopy
 
 import numpy as np
-
 from astropy.table import Table, Row, vstack
 from astropy.io import ascii as ioascii
-
+from astropy import units as u
 from synphot import SpectralElement, SourceSpectrum
 from synphot import Empirical1D
 
-from .surface import SpectralSurface
+from .surface import SpectralSurface, quantify
 from ..server.database import change_table_entry
 from .. import utils
 
@@ -54,7 +54,7 @@ class RadiometryTable:
 
         return combine_throughputs(self.table, self.surfaces, rows)
 
-    def get_emission(self, rows=None, ):
+    def get_emission(self, rows=None):
         pass
 
     def list(self, what="all"):
@@ -67,23 +67,64 @@ class RadiometryTable:
         pass
 
 
-def combine_throughputs(tbl, surfaces, rows_list):
+def combine_emissions(tbl, surfaces, row_indexes, etendue):
+    if len(tbl) == 0:
+        return None
+
+    etendue = quantify(etendue, "m2 arcsec2")
+
     r_name = real_colname("name", tbl.colnames)
     r_action = real_colname("action", tbl.colnames)
 
-    for ii, row_num in enumerate(rows_list):
+    emission = None
+    for ii, row_num in enumerate(row_indexes):
         row = tbl[row_num]
         surf = surfaces[row[r_name]]
         action_attr = row[r_action]
 
         if isinstance(surf, SpectralSurface):
-            print(row)
             surf_throughput = getattr(surf, action_attr)
 
-            if ii > 0:
-                throughput = throughput * surf_throughput
+            surf_emission = surf.emission
+            surf_eff_area = surf.area * np.cos(surf.mirror_angle)
+            surf_eff_solid_angle = (etendue / surf_eff_area).to(u.arcsec**2)
+            surf_emission *= surf_eff_solid_angle.value
+
+            surf_emission.meta["solid_angle"] = None
+            surf_emission.meta["history"] += ["Etendue scale factor applied. "
+                                              "Effective pixel solid angle for "
+                                              "surface is {}"
+                                              "".format(surf_eff_solid_angle)]
+
+            if ii == 0:
+                emission = deepcopy(surf_emission)
             else:
-                throughput = surf_throughput
+                emission = emission * surf_throughput
+                emission = emission + surf_emission
+
+    return emission
+
+
+def combine_throughputs(tbl, surfaces, rows_indexes):
+    if len(tbl) == 0:
+        return None
+
+    r_name = real_colname("name", tbl.colnames)
+    r_action = real_colname("action", tbl.colnames)
+
+    throughput = None
+    for ii, row_num in enumerate(rows_indexes):
+        row = tbl[row_num]
+        surf = surfaces[row[r_name]]
+        action_attr = row[r_action]
+
+        if isinstance(surf, SpectralSurface):
+            surf_throughput = getattr(surf, action_attr)
+
+            if ii == 0:
+                throughput = deepcopy(surf_throughput)
+            else:
+                throughput = throughput * surf_throughput
 
     return throughput
 

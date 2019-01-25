@@ -99,30 +99,63 @@ class TestRadiometryTableAddSurface:
             rt.add_surface(surf, "new_surf", 0)
 
 
+@pytest.mark.usefixtures("input_tables")
+class TestCombineEmissions:
+    def test_super_simple_case(self):
+        n = 11
+        surf = opt_surf.SpectralSurface(wavelength=np.linspace(1, 2, n) * u.um,
+                                        transmission=0.5*np.ones(n),
+                                        area=2*u.m**2,
+                                        angle=0*u.deg)
+        dic = {"surf" + str(i + 1): surf for i in range(3)}
+        tbl = ioascii.read(""" name action
+                surf1 reflection
+                surf2 transmission
+                surf3 transmission """)
+        etendue = 1 * u.m**2 * u.arcsec**2
+        combi = opt_rad.combine_emissions(tbl, dic, [0, 1, 2], etendue)
+        assert isinstance(combi, SourceSpectrum)
+
+    def test_returns_source_spectrum_for_full_path(self, input_tables):
+        rt = opt_rad.RadiometryTable(tables=(input_tables))
+        row_list = np.arange(len(rt.table))
+        etendue = (996*u.m**2) * (0.004*u.arcsec)**2
+        comb_emission = opt_rad.combine_emissions(rt.table, rt.surfaces,
+                                                  row_indexes=row_list,
+                                                  etendue=etendue)
+        print(comb_emission)
+        assert isinstance(comb_emission, SourceSpectrum)
+
 
 @pytest.mark.usefixtures("input_tables")
 class TestCombineThroughputs:
-    def test_returns_spectral_element(self, input_tables):
+    def test_returns_spectral_element_containing_everything(self, input_tables):
         rt = opt_rad.RadiometryTable(tables=(input_tables))
         row_list = np.arange(len(rt.table))
         comb_throughput = opt_rad.combine_throughputs(rt.table, rt.surfaces,
-                                                      rows_list=row_list)
-        print(comb_throughput)
+                                                      rows_indexes=row_list)
         assert isinstance(comb_throughput, SpectralElement)
 
-    def test_super_simple(self):
+    def test_super_simple_combine_3_surfaces(self):
         n = 10
         surf = opt_surf.SpectralSurface(wavelength=np.linspace(1, 2, n)*u.um,
                                         transmission=np.ones(n))
         dic = {"surf"+str(i+1): surf for i in range(3)}
-        tbl = ioascii.read("""
-        name action
+        tbl = ioascii.read(""" name action
         surf1 reflection
         surf2 transmission
-        surf3 transmission
-        """)
+        surf3 transmission """)
         combi = opt_rad.combine_throughputs(tbl, dic, [0, 1, 2])
         assert isinstance(combi, SpectralElement)
+
+    def test_return_none_if_table_is_empty(self):
+        n = 10
+        surf = opt_surf.SpectralSurface(wavelength=np.linspace(1, 2, n) * u.um,
+                                        transmission=np.ones(n))
+        dic = {"surf" + str(i + 1): surf for i in range(3)}
+        tbl = Table()
+        combi = opt_rad.combine_throughputs(tbl, dic, [0, 1, 2])
+        assert combi is None
 
 
 @pytest.mark.usefixtures("input_tables")

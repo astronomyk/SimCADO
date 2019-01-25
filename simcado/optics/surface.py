@@ -17,11 +17,9 @@ class SpectralSurface:
     def __init__(self, filename=None, **kwargs):
         filename = utils.find_file(filename)
         self.meta = {"filename"   : filename,
-                     "area"       : 0,      # m2
-                     "etendue"    : 0,      # arcsec2 * m2
-                     "temp"       : -270,   # deg C
+                     "temp"       : -270*u.deg_C,  # deg C
                      "emission_unit" : "",
-                     "wavelength_unit" : "um"}
+                     "wavelength_unit" : u.um}
 
         self.table = Table()
         if filename is not None and os.path.exists(filename):
@@ -31,6 +29,28 @@ class SpectralSurface:
                 self.meta.update(tbl_meta)
 
         self.meta.update(kwargs)
+
+    @property
+    def area(self):
+        if "area" in self.meta:
+            the_area = self.from_meta("area", u.m**2)
+        elif "outer" in self.meta:
+            outer_diameter = self.from_meta("outer", u.m)
+            the_area = np.pi * (0.5 * outer_diameter)**2
+            if "inner" in self.meta:
+                inner_diameter = self.from_meta("inner", u.m)
+                the_area -= np.pi * (0.5 * inner_diameter) ** 2
+        else:
+            the_area = None
+        return the_area
+
+    @property
+    def mirror_angle(self):
+        if "angle" in self.meta:
+            mirr_angle = self.from_meta("angle", u.deg)
+        else:
+            mirr_angle = 0
+        return mirr_angle
 
     @property
     def wavelength(self):
@@ -52,6 +72,8 @@ class SpectralSurface:
     def emission(self):
         """
         Assumption is that self.meta["temp"] is in deg_C
+        Return units are in PHOTLAM arcsec^-2, even though arcsec^-2 is not
+        given
         """
 
         flux = self._get_array("emission")
@@ -60,12 +82,26 @@ class SpectralSurface:
             flux = make_emission_from_array(flux, wave, meta=self.meta)
         elif "temp" in self.meta:
             emiss = self.emissivity                     # SpectralElement [0..1]
-            temp = self.meta["temp"] + 273  # BlackBody1D --> Kelvin
+            temp = quantify(self.meta["temp"], u.deg_C).value + 273.
             flux = make_emission_from_emissivity(temp, emiss)
         else:
             flux = None
 
+        has_solid_angle = extract_type_from_unit(flux.meta["solid_angle"],
+                                                 "solid angle")[1] != u.Unit("")
+        if flux is not None and has_solid_angle:
+            conversion_factor = flux.meta["solid_angle"].to(u.arcsec ** -2)
+            flux = flux * conversion_factor
+            flux.meta["solid_angle"] = u.arcsec**-2
+            flux.meta["history"] += ["Converted to arcsec-2: {}"
+                                     "".format(conversion_factor)]
+
         return flux
+
+    def from_meta(self, key, default_unit=None):
+        if default_unit is None:
+            default_unit = ""
+        return get_meta_quantity(self.meta, key, u.Unit(default_unit))
 
     def _get_ter_property(self, ter_property):
         compliment_names = ["transmission", "emissivity", "reflection"]
@@ -132,6 +168,18 @@ class SpectralSurface:
         return val_out
 
 
+def get_meta_quantity(meta_dict, name, fallback_unit=""):
+    if isinstance(meta_dict[name], u.Quantity):
+        unit = meta_dict[name].unit
+    elif name + "_unit" in meta_dict:
+        unit = meta_dict[name + "_unit"]
+    else:
+        unit = u.Unit(fallback_unit)
+    quant = quantify(meta_dict[name], unit)
+
+    return quant
+
+
 def quantify(item, unit):
     if isinstance(item, u.Quantity):
         quant = item.to(u.Unit(unit))
@@ -149,8 +197,10 @@ def make_emission_from_emissivity(temp, emiss_src_spec):
         flux = None
     else:
         flux = SourceSpectrum(BlackBody1D, temperature=temp)
-        flux.meta["angle_unit"] = u.sr**-1
+        flux.meta["solid_angle"] = u.sr**-1
         flux = flux * emiss_src_spec
+        flux.meta["history"] = ["Created from Blackbody curve. Units are to be"
+                                "understood as per steradian"]
 
     return flux
 
@@ -160,24 +210,28 @@ def make_emission_from_array(flux, wave, meta):
         if "emission_unit" in meta:
             flux = quantify(flux, meta["emission_unit"])
         else:
-            warnings.warn("emission_unit must be set, or emission must"
-                          "be an astropy.Quantity")
+            warnings.warn("emission_unit must be set in self.meta, "
+                          "or emission must be an astropy.Quantity")
             flux = None
 
     if isinstance(wave, u.Quantity) and isinstance(flux, u.Quantity):
-        flux_unit, angle = extract_type_from_unit(flux.unit, "angle")
+        flux_unit, angle = extract_type_from_unit(flux.unit, "solid angle")
         flux = flux / angle
 
         if is_flux_binned(flux.unit):
             flux = normalise_binned_flux(flux, wave)
 
+        orig_unit = flux.unit
         flux = SourceSpectrum(Empirical1D, points=wave,
                               lookup_table=flux)
-        flux.meta["angle_unit"] = angle
+        flux.meta["solid_angle"] = angle
+        flux.meta["history"] = ["Created from emission array with units {}"
+                                "".format(orig_unit)]
     else:
         warnings.warn("wavelength and emission must be "
                       "astropy.Quantity objects")
         flux = None
+
     return flux
 
 
@@ -185,7 +239,7 @@ def extract_type_from_unit(unit, unit_type):
     unit = unit**1
     extracted_units = u.Unit("")
     for base, power in zip(unit._bases, unit._powers):
-        if unit_type in base.physical_type:
+        if unit_type == (base**abs(power)).physical_type:
             extracted_units *= base**power
 
     new_unit = unit / extracted_units
