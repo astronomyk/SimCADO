@@ -48,23 +48,52 @@ class RadiometryTable:
             self.table = add_surface_to_table(self.table, surface,
                                               name, position)
 
-    def get_throughput(self, rows=None, start=0, end=-1):
+    def get_throughput(self, start=0, end=None, rows=None):
+        if self.table is None:
+            return None
+
+        if end is None:
+            end = len(self.table)
+        elif end < 0:
+            end += len(self.table)
         if rows is None:
             rows = np.arange(start, end)
 
         return combine_throughputs(self.table, self.surfaces, rows)
 
-    def get_emission(self, rows=None):
-        pass
+    def get_emission(self, etendue, start=0, end=None, rows=None):
+        if self.table is None:
+            return None
 
-    def list(self, what="all"):
-        pass
+        if end is None:
+            end = len(self.table)
+        elif end < 0:
+            end += len(self.table)
+        if rows is None:
+            rows = np.arange(start, end)
+
+        return combine_emissions(self.table, self.surfaces, rows, etendue)
+
+    @property
+    def emission(self):
+        if "etendue" not in self.meta["etendue"]:
+            raise ValueError("self.meta['etendue'] must be set")
+        etendue = quantify(self.meta["etendue"], u.Unit("m2 arcsec2"))
+
+        return self.get_emission(etendue)
+
+    @property
+    def throughput(self):
+        return self.get_throughput()
 
     def plot(self, what="all", rows=None):
-        pass
+        raise NotImplemented
 
     def __getitem__(self, item):
-        pass
+        return self.surfaces[item]
+
+    def __repr__(self):
+        print(self.table)
 
 
 def combine_emissions(tbl, surfaces, row_indexes, etendue):
@@ -114,6 +143,7 @@ def combine_throughputs(tbl, surfaces, rows_indexes):
 
     throughput = None
     for ii, row_num in enumerate(rows_indexes):
+
         row = tbl[row_num]
         surf = surfaces[row[r_name]]
         action_attr = row[r_action]
@@ -164,6 +194,8 @@ def add_surface_to_table(tbl, surf, name, position):
         surf_col = real_colname(colname, surf.meta)
         if surf_col:
             surf_val = surf.meta[surf_col]
+            if isinstance(surf_val, u.Quantity):
+                surf_val = surf_val.value
             tbl = change_table_entry(tbl, colname, surf_val, position=position)
 
     colname = real_colname("name", tbl.colnames)
@@ -231,4 +263,3 @@ def empty_type(x):
         x = str
 
     return type_dict[x]
-

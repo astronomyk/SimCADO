@@ -100,6 +100,46 @@ class TestRadiometryTableAddSurface:
 
 
 @pytest.mark.usefixtures("input_tables")
+class TestRadiometryTableGetThroughput:
+    def test_return_spectral_element_from_get_throughput(self, input_tables):
+        rt = opt_rad.RadiometryTable(input_tables)
+        thru = rt.get_throughput()
+        assert isinstance(thru, SpectralElement)
+
+    def test_return_spectral_element_for_only_2_rows(self, input_tables):
+        rt = opt_rad.RadiometryTable(input_tables)
+        thru = rt.get_throughput(start=1, end=3)
+        assert isinstance(thru, SpectralElement)
+        assert thru.model.n_submodels() == 2
+
+    def test_return_none_for_empty_radimetry_table(self):
+        rt = opt_rad.RadiometryTable()
+        thru = rt.get_throughput()
+        assert thru is None
+
+
+@pytest.mark.usefixtures("input_tables")
+class TestRadiometryTableGetEmission:
+    def test_return_spectral_element_from_get_throughput(self, input_tables):
+        rt = opt_rad.RadiometryTable(input_tables)
+        etendue = 996*u.m**2 * (0.004*u.arcsec)**2
+        emiss = rt.get_emission(etendue=etendue)
+        assert isinstance(emiss, SourceSpectrum)
+
+    def test_return_spectral_element_for_only_2_rows(self, input_tables):
+        rt = opt_rad.RadiometryTable(input_tables)
+        etendue = 996 * u.m ** 2 * (0.004 * u.arcsec) ** 2
+        emiss = rt.get_emission(etendue=etendue, start=1, end=3)
+        assert isinstance(emiss, SourceSpectrum)
+        assert emiss.model.n_submodels() == 9
+
+    def test_return_none_for_empty_radimetry_table(self):
+        rt = opt_rad.RadiometryTable()
+        emiss = rt.get_throughput()
+        assert emiss is None
+
+
+@pytest.mark.usefixtures("input_tables")
 class TestCombineEmissions:
     def test_super_simple_case(self):
         n = 11
@@ -117,13 +157,12 @@ class TestCombineEmissions:
         assert isinstance(combi, SourceSpectrum)
 
     def test_returns_source_spectrum_for_full_path(self, input_tables):
-        rt = opt_rad.RadiometryTable(tables=(input_tables))
+        rt = opt_rad.RadiometryTable(tables=input_tables)
         row_list = np.arange(len(rt.table))
         etendue = (996*u.m**2) * (0.004*u.arcsec)**2
         comb_emission = opt_rad.combine_emissions(rt.table, rt.surfaces,
                                                   row_indexes=row_list,
                                                   etendue=etendue)
-        print(comb_emission)
         assert isinstance(comb_emission, SourceSpectrum)
 
 
