@@ -10,6 +10,7 @@ import pytest
 
 import numpy as np
 from astropy.table import Table
+from astropy import units as u
 
 from simcado.optics.data_container import DataContainer
 
@@ -48,6 +49,13 @@ class TestDataContainerInit:
         assert isinstance(dat, DataContainer)
         assert dat.is_fits is False
 
+    def test_initialised_with_arrays_dict_input(self):
+        array_dict = {"wavelength" : np.linspace(1, 2, 11)*u.um,
+                      "transmission" : np.ones(11)}
+        dat = DataContainer(array_dict=array_dict)
+        assert isinstance(dat, DataContainer)
+        assert dat.is_fits is False
+
 
 @pytest.mark.usefixtures("data_files")
 class TestDataContainerGetData:
@@ -71,5 +79,12 @@ class TestDataContainerGetData:
     def test_ascii_input_returns_table(self, data_files):
         datc = DataContainer(data_files[1])
         data = datc.get_data()
-        print(datc.meta)
         assert isinstance(data, Table)
+
+    def test_array_input_returns_table(self):
+        array_dict = {"wavelength" : np.linspace(1, 2, 11)*u.um,
+                      "transmission" : np.ones(11)}
+        datc = DataContainer(array_dict=array_dict)
+        data = datc.get_data()
+        assert isinstance(data, Table)
+
