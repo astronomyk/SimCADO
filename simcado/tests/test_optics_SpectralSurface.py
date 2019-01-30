@@ -18,6 +18,8 @@ from synphot.models import BlackBody1D
 from synphot.units import PHOTLAM
 
 from simcado.optics import surface as opt_surf
+from simcado.optics import surface_utils as surf_utils
+from simcado import utils
 
 
 def mock_dir():
@@ -37,12 +39,8 @@ def ter_table():
 
 @pytest.fixture(scope="module")
 def input_tables():
-    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    rel_dirname = "../tests/mocks/MICADO_SCAO_WIDE/"
-    abs_dirname = os.path.abspath(os.path.join(cur_dirname, rel_dirname))
-
     filenames = ["TER_dichroic.dat", "TC_filter_Ks.dat"]
-    abs_paths = [os.path.join(abs_dirname, fname) for fname in filenames]
+    abs_paths = [os.path.join(MOCK_DIR, fname) for fname in filenames]
 
     return abs_paths
 
@@ -225,7 +223,7 @@ class TestQuantify:
                               (1 * u.m, u.m, 1 * u.m),
                               ([1] * u.m, u.m, [1] * u.m)])
     def test_return_quantity_for_valid_data(self, item, unit, expected):
-        assert opt_surf.quantify(item, unit) == expected
+        assert utils.quantify(item, unit) == expected
 
 
 @pytest.mark.usefixtures("unity_flux")
@@ -238,7 +236,7 @@ class TestMakeEmissionFromArray:
     def test_source_spectrum_returned_for_synphot_units(self, emission_unit,
                                                         unity_flux):
         meta = {"emission_unit": emission_unit}
-        out = opt_surf.make_emission_from_array(*unity_flux, meta=meta)
+        out = surf_utils.make_emission_from_array(*unity_flux, meta=meta)
         assert isinstance(out, SourceSpectrum)
 
     @pytest.mark.parametrize("emission_unit",
@@ -247,7 +245,7 @@ class TestMakeEmissionFromArray:
     def test_source_spectrum_returned_for_solid_angles(self, emission_unit,
                                                        unity_flux):
         meta = {"emission_unit": emission_unit}
-        out = opt_surf.make_emission_from_array(*unity_flux, meta=meta)
+        out = surf_utils.make_emission_from_array(*unity_flux, meta=meta)
         assert isinstance(out, SourceSpectrum)
 
     @pytest.mark.parametrize("emission_unit",
@@ -258,7 +256,7 @@ class TestMakeEmissionFromArray:
     def test_source_spectrum_returned_for_bin_units(self, emission_unit,
                                                     unity_flux):
         meta = {"emission_unit": emission_unit}
-        out = opt_surf.make_emission_from_array(*unity_flux, meta=meta)
+        out = surf_utils.make_emission_from_array(*unity_flux, meta=meta)
         assert isinstance(out, SourceSpectrum)
 
 
@@ -268,7 +266,7 @@ class TestMakeEmissionFromEmissivity:
     @pytest.mark.parametrize("temp", [273, 273*u.deg_C])
     def test_source_spectrum_returned_for_temp(self, input_tables, temp):
         srf = opt_surf.SpectralSurface(filename=input_tables[0])
-        out = opt_surf.make_emission_from_emissivity(273, srf.emissivity)
+        out = surf_utils.make_emission_from_emissivity(273, srf.emissivity)
         assert isinstance(out, SourceSpectrum)
         assert out.model.temperature_0 == 273
 
@@ -354,12 +352,12 @@ class TestGetMetaQuantity:
                   ({"area": 1,         "area_unit": "cm2"},   "m2", 1*u.cm**2),
                   ({"area": 1*u.mm**2, "area_unit": "m2"},    "m2", 1*u.mm**2)])
     def test_returns_quantity_for_all_valid_inputs(self, dic, unit, expected):
-        quant = opt_surf.get_meta_quantity(dic, "area", unit)
+        quant = utils.get_meta_quantity(dic, "area", unit)
         assert quant == expected
 
     def test_raise_error_when_key_not_in_dict(self):
         with pytest.raises(KeyError):
-            opt_surf.get_meta_quantity({}, "area", u.um**2)
+            utils.get_meta_quantity({}, "area", u.um ** 2)
 
 
 

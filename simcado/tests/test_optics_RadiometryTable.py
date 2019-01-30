@@ -13,10 +13,12 @@ from astropy import units as u
 
 from synphot import SpectralElement, SourceSpectrum
 
+import simcado.optics.optics_utils as opt_utils
+import simcado.optics.radiometry_utils as rad_utils
+import simcado.utils
 from simcado.optics import radiometry as opt_rad
 from simcado.optics import surface as opt_surf
 import simcado as sim
-from simcado import utils
 
 
 def mock_dir():
@@ -87,7 +89,7 @@ class TestRadiometryTableAddSurface:
         rt = opt_rad.RadiometryTable(tables=(input_tables[0]))
         surf = opt_surf.SpectralSurface()
         rt.add_surface(surf, "new_surf", position)
-        colname = opt_rad.real_colname("name", rt.table.colnames)
+        colname = simcado.utils.real_colname("name", rt.table.colnames)
         assert rt.table[colname][position] == "new_surf"
         assert "new_surf" in rt.surfaces
         assert isinstance(rt.surfaces["new_surf"], opt_surf.SpectralSurface)
@@ -153,16 +155,16 @@ class TestCombineEmissions:
                 surf2 transmission
                 surf3 transmission """)
         etendue = 1 * u.m**2 * u.arcsec**2
-        combi = opt_rad.combine_emissions(tbl, dic, [0, 1, 2], etendue)
+        combi = rad_utils.combine_emissions(tbl, dic, [0, 1, 2], etendue)
         assert isinstance(combi, SourceSpectrum)
 
     def test_returns_source_spectrum_for_full_path(self, input_tables):
         rt = opt_rad.RadiometryTable(tables=input_tables)
         row_list = np.arange(len(rt.table))
         etendue = (996*u.m**2) * (0.004*u.arcsec)**2
-        comb_emission = opt_rad.combine_emissions(rt.table, rt.surfaces,
-                                                  row_indexes=row_list,
-                                                  etendue=etendue)
+        comb_emission = rad_utils.combine_emissions(rt.table, rt.surfaces,
+                                                    row_indexes=row_list,
+                                                    etendue=etendue)
         assert isinstance(comb_emission, SourceSpectrum)
 
 
@@ -171,8 +173,8 @@ class TestCombineThroughputs:
     def test_returns_spectral_element_containing_everything(self, input_tables):
         rt = opt_rad.RadiometryTable(tables=(input_tables))
         row_list = np.arange(len(rt.table))
-        comb_throughput = opt_rad.combine_throughputs(rt.table, rt.surfaces,
-                                                      rows_indexes=row_list)
+        comb_throughput = rad_utils.combine_throughputs(rt.table, rt.surfaces,
+                                                        rows_indexes=row_list)
         assert isinstance(comb_throughput, SpectralElement)
 
     def test_super_simple_combine_3_surfaces(self):
@@ -184,7 +186,7 @@ class TestCombineThroughputs:
         surf1 reflection
         surf2 transmission
         surf3 transmission """)
-        combi = opt_rad.combine_throughputs(tbl, dic, [0, 1, 2])
+        combi = rad_utils.combine_throughputs(tbl, dic, [0, 1, 2])
         assert isinstance(combi, SpectralElement)
 
     def test_return_none_if_table_is_empty(self):
@@ -193,7 +195,7 @@ class TestCombineThroughputs:
                                         transmission=np.ones(n))
         dic = {"surf" + str(i + 1): surf for i in range(3)}
         tbl = Table()
-        combi = opt_rad.combine_throughputs(tbl, dic, [0, 1, 2])
+        combi = rad_utils.combine_throughputs(tbl, dic, [0, 1, 2])
         assert combi is None
 
 
@@ -202,12 +204,12 @@ class TestCombineTables:
     def test_adds_two_tables(self):
         tblA = Table(names=["colA", "colB"], data=[[0, 1], [0, 1]])
         tblB = Table(names=["colA", "colB"], data=[[2, 3], [2, 3]])
-        tblC = opt_rad.combine_tables(tblB, tblA)
+        tblC = rad_utils.combine_tables(tblB, tblA)
         assert np.all(tblC["colB"] == np.array([0, 1, 2, 3]))
 
     def test_adds_single_table(self):
         tblA = Table(names=["colA", "colB"], data=[[0, 1], [0, 1]])
-        tblC = opt_rad.combine_tables(tblA)
+        tblC = rad_utils.combine_tables(tblA)
         assert np.all(tblC["colA"] == np.array([0, 1]))
 
     def test_adds_three_tables_to_old_table(self):
@@ -215,34 +217,34 @@ class TestCombineTables:
         tblB = Table(names=["colA", "colB"], data=[[2, 3], [2, 3]])
         tblC = Table(names=["colA", "colB"], data=[[4, 5], [4, 5]])
         tblD = Table(names=["colA", "colB"], data=[[6, 7], [6, 7]])
-        tblE = opt_rad.combine_tables([tblB, tblC, tblD], tblA)
+        tblE = rad_utils.combine_tables([tblB, tblC, tblD], tblA)
         assert np.all(tblE["colA"] == np.arange(8))
 
     def test_adds_table_from_filename_to_nothing(self, input_tables):
         tblA = ioascii.read(input_tables[0])
-        tblC = opt_rad.combine_tables(tblA)
+        tblC = rad_utils.combine_tables(tblA)
         assert len(tblC) == 5
 
     def test_adds_table_from_filename_to_table_object(self, input_tables):
         tblA = ioascii.read(input_tables[0])
         tblB = input_tables[1]
-        tblC = opt_rad.combine_tables(tblB, tblA)
+        tblC = rad_utils.combine_tables(tblB, tblA)
         assert len(tblC) == 6
 
     def test_adds_table_from_filename_to_table_from_file(self, input_tables):
         tblA = input_tables[0]
         tblB = input_tables[1]
-        tblC = opt_rad.combine_tables(tblB, tblA)
+        tblC = rad_utils.combine_tables(tblB, tblA)
         assert len(tblC) == 6
 
     def test_adds_3_tables_from_filename_to_nothing(self, input_tables):
-        tblC = opt_rad.combine_tables(input_tables)
+        tblC = rad_utils.combine_tables(input_tables)
         assert len(tblC) == 19
 
     def test_prepend_table(self):
         tblA = Table(names=["colA", "colB"], data=[[0, 1], [0, 1]])
         tblB = Table(names=["colA", "colB"], data=[[2, 3], [2, 3]])
-        tblC = opt_rad.combine_tables(tblB, tblA, prepend=True)
+        tblC = rad_utils.combine_tables(tblB, tblA, prepend=True)
         assert np.all(tblC["colB"] == np.array([2, 3, 0, 1]))
 
 
@@ -250,12 +252,12 @@ class TestCombineTables:
 class TestMakeSurfaceFromRow:
     def test_return_none_from_empty_row(self, input_tables):
         tblA = ioascii.read(input_tables[0])
-        surf = opt_rad.make_surface_from_row(tblA[0])
+        surf = rad_utils.make_surface_from_row(tblA[0])
         assert isinstance(surf, opt_surf.SpectralSurface)
 
     def test_surface_has_processed_ter_filename_in_row(self, input_tables):
         tblA = ioascii.read(input_tables[0])
-        surf = opt_rad.make_surface_from_row(tblA[0])
+        surf = rad_utils.make_surface_from_row(tblA[0])
         assert isinstance(surf.transmission, SpectralElement)
         assert isinstance(surf.reflection, SpectralElement)
         assert isinstance(surf.emissivity, SpectralElement)
@@ -268,17 +270,17 @@ class TestRealColname:
                              ("yahoo", ["yahoo", "Bogus"]),
                              ("yahoo", ["YAHOO", "Bogus"])])
     def test_returns_real_name(self, name, colnames):
-        assert opt_rad.real_colname(name, colnames) == colnames[0]
+        assert simcado.utils.real_colname(name, colnames) == colnames[0]
 
     def test_returns_none_if_name_not_in_colname(self):
-        assert opt_rad.real_colname("yahoo", ["Bogus"]) is None
+        assert simcado.utils.real_colname("yahoo", ["Bogus"]) is None
 
 
 @pytest.mark.usefixtures("input_tables")
 class TestMakeSurfaceDictFromTable:
     def test_return_dict_from_table(self, input_tables):
         tbl = ioascii.read(input_tables[0])
-        surf_dict = opt_rad.make_surface_dict_from_table(tbl)
+        surf_dict = rad_utils.make_surface_dict_from_table(tbl)
         assert isinstance(surf_dict, dict)
         assert "M1" in surf_dict
 
@@ -291,7 +293,7 @@ class TestInsertIntoOrderedDict:
                               ({"x": 42, "y": 3.14}, ("a", 1), 2),
                               ({"x": 42, "y": 3.14}, [("b", 2), ("a", 1)], -1)])
     def test_works_as_prescribed(self, dic, new_entry, pos):
-        new_dic = opt_rad.insert_into_ordereddict(dic, new_entry, pos)
+        new_dic = simcado.utils.insert_into_ordereddict(dic, new_entry, pos)
         assert list(new_dic.keys())[pos] == "a"
         assert list(new_dic.values())[pos] == 1
         assert new_dic["a"] == 1
@@ -305,7 +307,7 @@ class TestEmptyType:
     @pytest.mark.parametrize("x, expected",
                              [(int, 0), (float, 0.), (bool, False), (str, " ")])
     def test_works_for_all_common_types(self, x, expected):
-        assert opt_rad.empty_type(x) == expected
+        assert simcado.utils.empty_type(x) == expected
 
 
 @pytest.mark.usefixtures("input_tables")
@@ -314,7 +316,7 @@ class TestAddSurfaceToTable:
     def test_(self, input_tables, position):
         tbl = ioascii.read(input_tables[0])
         surf = opt_surf.SpectralSurface(tbl[0]["Filename"])
-        tbl = opt_rad.add_surface_to_table(tbl, surf, "new_row", position)
+        tbl = rad_utils.add_surface_to_table(tbl, surf, "new_row", position)
         assert tbl[position]["Filename"] == surf.meta["filename"]
         assert tbl[position]["Name"] == "new_row"
 

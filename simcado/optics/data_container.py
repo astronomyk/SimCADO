@@ -59,7 +59,8 @@ class DataContainer:
     @property
     def is_fits(self):
         flag = False
-        if self.meta["filename"].split(".")[-1].lower() in "fits":
-            flag = True
+        if self.meta["filename"] is not None:
+            if self.meta["filename"].split(".")[-1].lower() in "fits":
+                flag = True
 
         return flag

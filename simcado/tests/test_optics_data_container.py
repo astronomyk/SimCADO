@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 from astropy.table import Table
 
-from ..optics.data_container import DataContainer
+from simcado.optics.data_container import DataContainer
 
 
 def mock_dir():

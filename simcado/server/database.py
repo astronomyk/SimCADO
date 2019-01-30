@@ -19,8 +19,7 @@ import zipfile as zf
 import warnings
 
 from numpy import where as npwhere
-from numpy import array as nparray
-from astropy.table import Table, Column, Row, vstack
+from astropy.table import Table, Row, vstack
 from astropy.io import ascii as ioascii
 
 from ..utils import download_file
@@ -30,8 +29,7 @@ __all__ = ["list_all", "list_instruments", "list_psfs", "list_source_packages",
            "get_local_packages", "get_server_packages",
            "download_package", "set_up_local_package_directory",
            "local_db_paths", "server_db_urls",
-           "find_package_on_disk", "find_package_on_server", "get_path",
-           "change_table_entry"]
+           "find_package_on_disk", "find_package_on_server", "get_path"]
 
 
 LOCAL_DB_HEADER_PATTERN = """# Date-created : {}
@@ -812,27 +810,6 @@ def add_pkg_to_local_db(new_row, local_db):
     new_local_table.meta = local_table.meta
 
     return new_local_table
-
-
-def change_table_entry(tbl, col_name, new_val, old_val=None, position=None):
-
-    offending_col = list(tbl[col_name].data)
-
-    if old_val is not None:
-        for ii in npwhere(old_val in offending_col)[0]:
-            offending_col[ii] = new_val
-    elif position is not None:
-        offending_col[position] = new_val
-    else:
-        raise ValueError("Either old_val or position must be given")
-
-    fixed_col = Column(name=col_name, data=offending_col)
-
-    ii = npwhere(nparray(tbl.colnames) == col_name)[0][0]
-    tbl.remove_column(col_name)
-    tbl.add_column(fixed_col, index=ii)
-
-    return tbl
 
 
 def get_path(pkg_name):

@@ -7,10 +7,13 @@ from astropy import units as u
 from astropy.io import ascii as ioascii
 from astropy.table import Table
 
-from synphot import SpectralElement, SourceSpectrum
-from synphot.models import Empirical1D, BlackBody1D
+from synphot import SpectralElement
+from synphot.models import Empirical1D
 
-from .. import utils
+from ..utils import get_meta_quantity, quantify, extract_type_from_unit, \
+    convert_table_comments_to_dict, find_file
+from .surface_utils import make_emission_from_emissivity,\
+    make_emission_from_array
 
 
 class SpectralSurface:
@@ -23,7 +26,7 @@ class SpectralSurface:
 
     """
     def __init__(self, filename=None, **kwargs):
-        filename = utils.find_file(filename)
+        filename = find_file(filename)
         self.meta = {"filename"   : filename,
                      "temp"       : -270*u.deg_C,  # deg C
                      "emission_unit" : "",
@@ -32,7 +35,7 @@ class SpectralSurface:
         self.table = Table()
         if filename is not None and os.path.exists(filename):
             self.table = ioascii.read(filename)
-            tbl_meta = utils.convert_table_comments_to_dict(self.table)
+            tbl_meta = convert_table_comments_to_dict(self.table)
             if isinstance(tbl_meta, dict):
                 self.meta.update(tbl_meta)
 
@@ -245,243 +248,3 @@ class SpectralSurface:
         return val_out
 
 
-def get_meta_quantity(meta_dict, name, fallback_unit=""):
-    """
-    Extract a Quantity from a dictionary
-
-    Parameters
-    ----------
-    meta_dict : dict
-    name : str
-    fallback_unit : Quantity
-
-    Returns
-    -------
-    quant : Quantity
-
-    """
-
-    if isinstance(meta_dict[name], u.Quantity):
-        unit = meta_dict[name].unit
-    elif name + "_unit" in meta_dict:
-        unit = meta_dict[name + "_unit"]
-    else:
-        unit = u.Unit(fallback_unit)
-    quant = quantify(meta_dict[name], unit)
-
-    return quant
-
-
-def quantify(item, unit):
-    """
-    Ensure an item is a Quantity
-
-    Parameters
-    ----------
-    item : int, float, array, list, Quantity
-    unit : str, Unit
-
-    Returns
-    -------
-    quant : Quantity
-
-    """
-
-    if isinstance(item, u.Quantity):
-        quant = item.to(u.Unit(unit))
-    else:
-        quant = item * u.Unit(unit)
-    return quant
-
-
-def make_emission_from_emissivity(temp, emiss_src_spec):
-    """
-    Create an emission SourceSpectrum using a blackbody and an emissivity curve
-
-    Parameters
-    ----------
-    temp : float, Quantity
-        [deg_C] If float, then must be in degrees Celsius
-    emiss_src_spec : synphot.SpectralElement
-        An emissivity response curve in the range [0..1]
-
-    Returns
-    -------
-    flux : synphot.SourceSpectrum
-
-    """
-
-    if isinstance(temp, u.Quantity):
-        temp = temp.to(u.deg_C)
-
-    if emiss_src_spec is None:
-        warnings.warn("Either emission or emissivity must be set")
-        flux = None
-    else:
-        flux = SourceSpectrum(BlackBody1D, temperature=temp)
-        flux.meta["solid_angle"] = u.sr**-1
-        flux = flux * emiss_src_spec
-        flux.meta["history"] = ["Created from Blackbody curve. Units are to be"
-                                "understood as per steradian"]
-
-    return flux
-
-
-def make_emission_from_array(flux, wave, meta):
-    """
-    Create an emission SourceSpectrum using array.
-
-    Takes care of bins and solid angles. The solid_angle is kept in the returned
-    SourceSpectrum meta dictionary under self.meta["solid_angle"]
-
-    Parameters
-    ----------
-    flux : array-like, Quantity
-        if flux is not an array, the ``emission_unit`` must be in meta dict
-    wave : array-like, Quantity
-        if flux is not an array, the ``wavelength_unit`` must be in meta dict
-    meta : dict
-
-    Returns
-    -------
-    flux : synphot.SourceSpectrum
-
-    """
-
-    if not isinstance(flux, u.Quantity):
-        if "emission_unit" in meta:
-            flux = quantify(flux, meta["emission_unit"])
-        else:
-            warnings.warn("emission_unit must be set in self.meta, "
-                          "or emission must be an astropy.Quantity")
-            flux = None
-
-    if isinstance(wave, u.Quantity) and isinstance(flux, u.Quantity):
-        flux_unit, angle = extract_type_from_unit(flux.unit, "solid angle")
-        flux = flux / angle
-
-        if is_flux_binned(flux.unit):
-            flux = normalise_binned_flux(flux, wave)
-
-        orig_unit = flux.unit
-        flux = SourceSpectrum(Empirical1D, points=wave,
-                              lookup_table=flux)
-        flux.meta["solid_angle"] = angle
-        flux.meta["history"] = ["Created from emission array with units {}"
-                                "".format(orig_unit)]
-    else:
-        warnings.warn("wavelength and emission must be "
-                      "astropy.Quantity objects")
-        flux = None
-
-    return flux
-
-
-def extract_type_from_unit(unit, unit_type):
-    """
-    Extract ``astropy`` physical type from a compound unit
-
-    Parameters
-    ----------
-    unit : astropy.Unit
-    unit_type : str
-        The physical type of the unit as given by ``astropy``
-
-    Returns
-    -------
-    new_unit : Unit
-        The input unit minus any base units corresponding to ``unit_type``
-    extracted_units : Unit
-        Any base units corresponding to ``unit_type``
-
-    """
-
-    unit = unit**1
-    extracted_units = u.Unit("")
-    for base, power in zip(unit._bases, unit._powers):
-        if unit_type == (base**abs(power)).physical_type:
-            extracted_units *= base**power
-
-    new_unit = unit / extracted_units
-
-    return new_unit, extracted_units
-
-
-def extract_base_from_unit(unit, base_unit):
-    """
-    Extract ``astropy`` base unit from a compound unit
-
-    Parameters
-    ----------
-    unit : astropy.Unit
-    base_unit : Unit, str
-
-   Returns
-    -------
-    new_unit : Unit
-        The input unit minus any base units corresponding to ``base_unit``
-    extracted_units : Unit
-        Any base units corresponding to ``base_unit``
-
-    """
-
-    unit = unit**1
-    extracted_units = u.Unit("")
-    for base, power in zip(unit._bases, unit._powers):
-        if base == base_unit:
-            extracted_units *= base**power
-
-    new_unit = unit * extracted_units**-1
-
-    return new_unit, extracted_units
-
-
-def normalise_binned_flux(flux, wave):
-    """
-    Convert a binned flux Quantity array back into flux density
-
-    The flux density normalising unit is taken from the wavelength Quantity unit
-
-    Parameters
-    ----------
-    flux : array-like Quantity
-        flux unit must include ``bin``, e.g. ``ph s-1 m-2 bin-1``
-    wave : array-like Quantity
-
-    Returns
-    -------
-    flux : array-like Quantity
-
-    """
-
-    bins = np.zeros(len(wave)) * wave.unit
-    bins[:-1] = 0.5 * np.diff(wave)
-    bins[1:] += 0.5 * np.diff(wave)
-    # bins[0] *= 2.   # edge bins only have half the flux of other bins
-    # bins[-1] *= 2.
-
-    bin_unit = extract_base_from_unit(flux.unit, u.bin)[1]
-    flux = flux / bins / bin_unit
-
-    return flux
-
-
-def is_flux_binned(unit):
-    """
-    Checks if the (flux) unit is a binned unit
-
-    Parameters
-    ----------
-    unit : Unit
-
-    Returns
-    -------
-    flag : bool
-
-    """
-    unit = unit**1
-    flag = False
-    if u.bin in unit._bases or "flux density" not in unit.physical_type:
-        flag = True
-
-    return flag

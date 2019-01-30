@@ -197,3 +197,5 @@ def get_filter_table(path=None, filters="all"):
             pass
 
     return filter_table
+
+

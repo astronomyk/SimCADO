@@ -5,8 +5,12 @@ Helper functions for SimCADO
 import os
 import sys
 import warnings
+from collections.__init__ import OrderedDict
 
 import yaml
+from astropy.table import Column
+from numpy import where as npwhere
+from numpy.core._multiarray_umath import array as nparray
 
 try:
     import wget
@@ -698,3 +702,169 @@ def convert_table_comments_to_dict(tbl):
         warnings.warn("No comments in table")
 
     return comments_dict
+
+
+def change_table_entry(tbl, col_name, new_val, old_val=None, position=None):
+
+    offending_col = list(tbl[col_name].data)
+
+    if old_val is not None:
+        for ii in npwhere(old_val in offending_col)[0]:
+            offending_col[ii] = new_val
+    elif position is not None:
+        offending_col[position] = new_val
+    else:
+        raise ValueError("Either old_val or position must be given")
+
+    fixed_col = Column(name=col_name, data=offending_col)
+
+    ii = npwhere(nparray(tbl.colnames) == col_name)[0][0]
+    tbl.remove_column(col_name)
+    tbl.add_column(fixed_col, index=ii)
+
+    return tbl
+
+
+def real_colname(name, colnames):
+    names = [name.lower(), name.upper(), name[0].upper() + name[1:].lower()]
+    real_name = [name for name in names if name in colnames]
+    if len(real_name) == 0:
+        real_name = None
+    else:
+        real_name = real_name[0]
+
+    return real_name
+
+
+def insert_into_ordereddict(dic, new_entry, pos):
+    if isinstance(new_entry, dict):
+        new_entry = [[key, val] for key, val in new_entry.items()]
+    elif isinstance(new_entry, (list, tuple)) and \
+            not isinstance(new_entry[0], (list, tuple)):
+        new_entry = [new_entry]
+
+    if pos < 0:
+        pos += len(dic) + len(new_entry)
+
+    new_dic = list(OrderedDict(dic).items())
+    new_dic = new_dic[:pos] + new_entry + new_dic[pos:]
+    new_dic = OrderedDict(new_dic)
+
+    return new_dic
+
+
+def empty_type(x):
+    type_dict = {int: 0, float: 0., bool: False, str: " ",
+                 list: [], tuple: (), dict: {}}
+    if "<U" in str(x):
+        x = str
+
+    return type_dict[x]
+
+
+def get_meta_quantity(meta_dict, name, fallback_unit=""):
+    """
+    Extract a Quantity from a dictionary
+
+    Parameters
+    ----------
+    meta_dict : dict
+    name : str
+    fallback_unit : Quantity
+
+    Returns
+    -------
+    quant : Quantity
+
+    """
+
+    if isinstance(meta_dict[name], u.Quantity):
+        unit = meta_dict[name].unit
+    elif name + "_unit" in meta_dict:
+        unit = meta_dict[name + "_unit"]
+    else:
+        unit = u.Unit(fallback_unit)
+    quant = quantify(meta_dict[name], unit)
+
+    return quant
+
+
+def quantify(item, unit):
+    """
+    Ensure an item is a Quantity
+
+    Parameters
+    ----------
+    item : int, float, array, list, Quantity
+    unit : str, Unit
+
+    Returns
+    -------
+    quant : Quantity
+
+    """
+
+    if isinstance(item, u.Quantity):
+        quant = item.to(u.Unit(unit))
+    else:
+        quant = item * u.Unit(unit)
+    return quant
+
+
+def extract_type_from_unit(unit, unit_type):
+    """
+    Extract ``astropy`` physical type from a compound unit
+
+    Parameters
+    ----------
+    unit : astropy.Unit
+    unit_type : str
+        The physical type of the unit as given by ``astropy``
+
+    Returns
+    -------
+    new_unit : Unit
+        The input unit minus any base units corresponding to ``unit_type``
+    extracted_units : Unit
+        Any base units corresponding to ``unit_type``
+
+    """
+
+    unit = unit**1
+    extracted_units = u.Unit("")
+    for base, power in zip(unit._bases, unit._powers):
+        if unit_type == (base**abs(power)).physical_type:
+            extracted_units *= base**power
+
+    new_unit = unit / extracted_units
+
+    return new_unit, extracted_units
+
+
+def extract_base_from_unit(unit, base_unit):
+    """
+    Extract ``astropy`` base unit from a compound unit
+
+    Parameters
+    ----------
+    unit : astropy.Unit
+    base_unit : Unit, str
+
+   Returns
+    -------
+    new_unit : Unit
+        The input unit minus any base units corresponding to ``base_unit``
+    extracted_units : Unit
+        Any base units corresponding to ``base_unit``
+
+    """
+
+    unit = unit**1
+    extracted_units = u.Unit("")
+    for base, power in zip(unit._bases, unit._powers):
+        if base == base_unit:
+            extracted_units *= base**power
+
+    new_unit = unit * extracted_units**-1
+
+    return new_unit, extracted_units
