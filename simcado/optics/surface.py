@@ -14,6 +14,14 @@ from .. import utils
 
 
 class SpectralSurface:
+    """
+    Initialised by a file containing one or more of the following columns:
+    transmission, emissivity, reflection. The column wavelength must be given.
+    Alternatively kwargs for the above mentioned quantities can be passed as
+    arrays. If they aren't Quantities, then a unit should also be passed with
+    the <array_name>_unit syntax (i.e. emission_unit or wavelength_unit)
+
+    """
     def __init__(self, filename=None, **kwargs):
         filename = utils.find_file(filename)
         self.meta = {"filename"   : filename,
@@ -71,6 +79,8 @@ class SpectralSurface:
     @property
     def emission(self):
         """
+        Looks for an emission array in self.meta. If it doesn't find this, it
+        defaults to creating a blackbody and multiplies this by the emissivity.
         Assumption is that self.meta["temp"] is in deg_C
         Return units are in PHOTLAM arcsec^-2, even though arcsec^-2 is not
         given
@@ -99,11 +109,43 @@ class SpectralSurface:
         return flux
 
     def from_meta(self, key, default_unit=None):
+        """
+        Converts a specific value in the meta dict to a ``Quantity``
+
+        Parameters
+        ----------
+        key : str
+            Which key to pull from self.meta
+        default_unit : str, Unit
+            In case self.meta doesn't contain a unit for the desired key
+
+        Returns
+        -------
+        meta_quantity : Quantity
+
+        """
+
         if default_unit is None:
             default_unit = ""
-        return get_meta_quantity(self.meta, key, u.Unit(default_unit))
+        meta_quantity = get_meta_quantity(self.meta, key, u.Unit(default_unit))
+
+        return meta_quantity
 
     def _get_ter_property(self, ter_property):
+        """
+        Looks for arrays for transmission, emissivity, or reflection
+
+        Parameters
+        ----------
+        ter_property : str
+            ``transmission``, ``emissivity``, ``reflection``
+
+        Returns
+        -------
+            response_curve : ``synphot.SpectralElement``
+
+        """
+
         compliment_names = ["transmission", "emissivity", "reflection"]
         ii = np.where([ter_property == name for name in compliment_names])[0][0]
         compliment_names.pop(ii)
@@ -123,6 +165,25 @@ class SpectralSurface:
         return response_curve
 
     def _compliment_array(self, colname_a, colname_b):
+        """
+        Returns an complimentary array using: ``a + b + c = 1``
+
+        E.g. ``Emissivity = 1 - (Transmission + Reflection)``
+
+        Parameters
+        ----------
+        colname_a : str
+            Name of the first TER property to look for
+        colname_b
+            Name of the second TER property to look for
+
+        Returns
+        -------
+        col_c : ``synphot.SpectralElement``
+            Complimentary spectrum to those given
+
+        """
+
         col_a = self._get_array(colname_a)
         col_b = self._get_array(colname_b)
 
@@ -138,6 +199,22 @@ class SpectralSurface:
         return col_c
 
     def _get_array(self, colname):
+        """
+        Looks for an array in either the self.meta or self.table attributes
+
+        Order of search goes: 1. self.meta, 2. self.table
+
+        Parameters
+        ----------
+        colname : str
+            Array column (or key) name
+
+        Returns
+        -------
+            val_out : array-like Quantity
+
+        """
+
         if colname in self.meta:
             val = self.meta[colname]
         elif colname in self.table.colnames:
@@ -169,6 +246,21 @@ class SpectralSurface:
 
 
 def get_meta_quantity(meta_dict, name, fallback_unit=""):
+    """
+    Extract a Quantity from a dictionary
+
+    Parameters
+    ----------
+    meta_dict : dict
+    name : str
+    fallback_unit : Quantity
+
+    Returns
+    -------
+    quant : Quantity
+
+    """
+
     if isinstance(meta_dict[name], u.Quantity):
         unit = meta_dict[name].unit
     elif name + "_unit" in meta_dict:
@@ -181,6 +273,20 @@ def get_meta_quantity(meta_dict, name, fallback_unit=""):
 
 
 def quantify(item, unit):
+    """
+    Ensure an item is a Quantity
+
+    Parameters
+    ----------
+    item : int, float, array, list, Quantity
+    unit : str, Unit
+
+    Returns
+    -------
+    quant : Quantity
+
+    """
+
     if isinstance(item, u.Quantity):
         quant = item.to(u.Unit(unit))
     else:
@@ -189,6 +295,22 @@ def quantify(item, unit):
 
 
 def make_emission_from_emissivity(temp, emiss_src_spec):
+    """
+    Create an emission SourceSpectrum using a blackbody and an emissivity curve
+
+    Parameters
+    ----------
+    temp : float, Quantity
+        [deg_C] If float, then must be in degrees Celsius
+    emiss_src_spec : synphot.SpectralElement
+        An emissivity response curve in the range [0..1]
+
+    Returns
+    -------
+    flux : synphot.SourceSpectrum
+
+    """
+
     if isinstance(temp, u.Quantity):
         temp = temp.to(u.deg_C)
 
@@ -206,6 +328,26 @@ def make_emission_from_emissivity(temp, emiss_src_spec):
 
 
 def make_emission_from_array(flux, wave, meta):
+    """
+    Create an emission SourceSpectrum using array.
+
+    Takes care of bins and solid angles. The solid_angle is kept in the returned
+    SourceSpectrum meta dictionary under self.meta["solid_angle"]
+
+    Parameters
+    ----------
+    flux : array-like, Quantity
+        if flux is not an array, the ``emission_unit`` must be in meta dict
+    wave : array-like, Quantity
+        if flux is not an array, the ``wavelength_unit`` must be in meta dict
+    meta : dict
+
+    Returns
+    -------
+    flux : synphot.SourceSpectrum
+
+    """
+
     if not isinstance(flux, u.Quantity):
         if "emission_unit" in meta:
             flux = quantify(flux, meta["emission_unit"])
@@ -236,6 +378,24 @@ def make_emission_from_array(flux, wave, meta):
 
 
 def extract_type_from_unit(unit, unit_type):
+    """
+    Extract ``astropy`` physical type from a compound unit
+
+    Parameters
+    ----------
+    unit : astropy.Unit
+    unit_type : str
+        The physical type of the unit as given by ``astropy``
+
+    Returns
+    -------
+    new_unit : Unit
+        The input unit minus any base units corresponding to ``unit_type``
+    extracted_units : Unit
+        Any base units corresponding to ``unit_type``
+
+    """
+
     unit = unit**1
     extracted_units = u.Unit("")
     for base, power in zip(unit._bases, unit._powers):
@@ -248,16 +408,51 @@ def extract_type_from_unit(unit, unit_type):
 
 
 def extract_base_from_unit(unit, base_unit):
+    """
+    Extract ``astropy`` base unit from a compound unit
+
+    Parameters
+    ----------
+    unit : astropy.Unit
+    base_unit : Unit, str
+
+   Returns
+    -------
+    new_unit : Unit
+        The input unit minus any base units corresponding to ``base_unit``
+    extracted_units : Unit
+        Any base units corresponding to ``base_unit``
+
+    """
+
     unit = unit**1
     extracted_units = u.Unit("")
     for base, power in zip(unit._bases, unit._powers):
         if base == base_unit:
             extracted_units *= base**power
 
-    return unit * extracted_units**-1, extracted_units
+    new_unit = unit * extracted_units**-1
+
+    return new_unit, extracted_units
 
 
 def normalise_binned_flux(flux, wave):
+    """
+    Convert a binned flux Quantity array back into flux density
+
+    The flux density normalising unit is taken from the wavelength Quantity unit
+
+    Parameters
+    ----------
+    flux : array-like Quantity
+        flux unit must include ``bin``, e.g. ``ph s-1 m-2 bin-1``
+    wave : array-like Quantity
+
+    Returns
+    -------
+    flux : array-like Quantity
+
+    """
 
     bins = np.zeros(len(wave)) * wave.unit
     bins[:-1] = 0.5 * np.diff(wave)
@@ -272,11 +467,21 @@ def normalise_binned_flux(flux, wave):
 
 
 def is_flux_binned(unit):
+    """
+    Checks if the (flux) unit is a binned unit
+
+    Parameters
+    ----------
+    unit : Unit
+
+    Returns
+    -------
+    flag : bool
+
+    """
     unit = unit**1
     flag = False
     if u.bin in unit._bases or "flux density" not in unit.physical_type:
         flag = True
 
     return flag
-
-

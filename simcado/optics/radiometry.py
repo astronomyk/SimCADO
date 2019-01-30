@@ -7,8 +7,6 @@ import numpy as np
 from astropy.table import Table, Row, vstack
 from astropy.io import ascii as ioascii
 from astropy import units as u
-from synphot import SpectralElement, SourceSpectrum
-from synphot import Empirical1D
 
 from .surface import SpectralSurface, quantify
 from ..server.database import change_table_entry
@@ -16,6 +14,9 @@ from .. import utils
 
 
 class RadiometryTable:
+    """
+
+    """
 
     def __init__(self, tables=(), **kwargs):
         self.meta = {}
