@@ -85,12 +85,7 @@ class DataContainer:
 
     @property
     def is_fits(self):
-        flag = False
-        if self.meta["filename"] is not None:
-            if self.meta["filename"].split(".")[-1].lower() in "fits":
-                flag = True
-
-        return flag
+        return utils.is_fits(self.meta["filename"])
 
     @property
     def data(self):
@@ -106,6 +101,7 @@ class DataContainer:
         return data_set
 
     def validate(self, etype):
-        return self.meta["ETYPE"] == etype
+        etype_colname = utils.real_colname("ETYPE", self.meta.colnames)
+        return self.meta[etype_colname] == etype
 
 

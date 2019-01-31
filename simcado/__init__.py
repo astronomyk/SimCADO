@@ -48,7 +48,7 @@ from . import psf
 from . import detector
 from . import optics
 from . import commands
-from . import source
+from .source import source
 
 from . import simulation
 
@@ -57,7 +57,7 @@ from . import simulation
 from .utils import bug_report
 from .utils import get_extras
 
-from .source import Source
+from .source.source import Source
 
 from .optics.imager import OpticalTrain
 # from .optics.spectrograph import OpticalTrain

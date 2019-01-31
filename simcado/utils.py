@@ -5,25 +5,22 @@ Helper functions for SimCADO
 import os
 import sys
 import warnings
-from collections.__init__ import OrderedDict
+from collections import OrderedDict
 
 import yaml
+import numpy as np
+from astropy import units as u
+from astropy.io import fits
+from astropy.io import ascii as ioascii
 from astropy.table import Column
-from numpy import where as npwhere
-from numpy.core._multiarray_umath import array as nparray
+
+from . import rc
 
 try:
     import wget
 except ImportError:
     print("Package wget is not available. simcado.get_extras() will not work."
           "try pip install wget")
-
-import numpy as np
-from astropy import units as u
-from astropy.io import fits
-from astropy.io import ascii as ioascii
-
-from . import rc
 
 
 def msg(cmds, message, level=3):
@@ -42,7 +39,6 @@ def msg(cmds, message, level=3):
     """
     if cmds["SIM_VERBOSE"] == "yes" and level <= cmds["SIM_MESSAGE_LEVEL"]:
         print(message)
-
 
 
 def unify(x, unit, length=1):
@@ -709,7 +705,7 @@ def change_table_entry(tbl, col_name, new_val, old_val=None, position=None):
     offending_col = list(tbl[col_name].data)
 
     if old_val is not None:
-        for ii in npwhere(old_val in offending_col)[0]:
+        for ii in np.where(old_val in offending_col)[0]:
             offending_col[ii] = new_val
     elif position is not None:
         offending_col[position] = new_val
@@ -718,7 +714,7 @@ def change_table_entry(tbl, col_name, new_val, old_val=None, position=None):
 
     fixed_col = Column(name=col_name, data=offending_col)
 
-    ii = npwhere(nparray(tbl.colnames) == col_name)[0][0]
+    ii = np.where(np.array(tbl.colnames) == col_name)[0][0]
     tbl.remove_column(col_name)
     tbl.add_column(fixed_col, index=ii)
 
@@ -730,6 +726,7 @@ def real_colname(name, colnames):
     real_name = [name for name in names if name in colnames]
     if len(real_name) == 0:
         real_name = None
+        warnings.warn("None of {} were found in {}".format(names, colnames))
     else:
         real_name = real_name[0]
 
@@ -868,3 +865,12 @@ def extract_base_from_unit(unit, base_unit):
     new_unit = unit * extracted_units**-1
 
     return new_unit, extracted_units
+
+
+def is_fits(filename):
+    flag = False
+    if filename is not None:
+        if filename.split(".")[-1].lower() in "fits":
+            flag = True
+
+    return flag

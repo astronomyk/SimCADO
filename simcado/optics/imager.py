@@ -13,7 +13,6 @@
 #
 
 import os
-import glob
 import warnings
 import logging
 from copy import deepcopy
@@ -26,7 +25,8 @@ import astropy.units as u
 from .. import psf as psf
 from .. import spectral as sc
 from .. import spatial as pe
-from ..source import flat_spectrum_sb, scale_spectrum_sb
+from simcado.source.templates import flat_spectrum_sb
+from simcado.source.source_utils import scale_spectrum_sb
 from ..commands.user_commands import UserCommands
 from ..utils import find_file
 
