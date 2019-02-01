@@ -4,6 +4,8 @@ import pytest
 import os
 import inspect
 
+import numpy as np
+
 from astropy.io import fits
 from astropy.io import ascii as ioascii
 from astropy.table import Table
@@ -78,15 +80,20 @@ class TestSourceInit:
         src = Source()
         assert isinstance(src, Source)
 
-    @pytest.mark.parametrize("table", input_tables())
-    def test_initialises_with_table_and_2_spectrum(self, table, input_spectra):
+    @pytest.mark.parametrize("ii", [0, 1, 2])
+    def test_initialises_with_table_and_2_spectrum(self, ii,
+                                                   input_tables,
+                                                   input_spectra):
+        table = input_tables[0]
         src = Source(table=table, spectra=input_spectra)
         assert isinstance(src, Source)
         assert isinstance(src.spectra[0], SourceSpectrum)
         assert isinstance(src.positions[0], Table)
 
-    # @pytest.mark.parametrize("fname", input_files()[:3])
-    # def test_initialises_with_filename_and_spectrum(self, fname, input_spectra):
+    # @pytest.mark.parametrize("ii", [0, 1, 2])
+    # def test_initialises_with_filename_and_spectrum(self, ii, input_files,
+    #                                                 input_spectra):
+    #     fname = input_files[ii]
     #     src = Source(filename=fname, spectra=input_spectra)
     #     assert isinstance(src, Source)
     #     assert isinstance(src.spectra[0], SourceSpectrum)

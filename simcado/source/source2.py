@@ -70,6 +70,7 @@ class Source:
             self._from_arrays(x, y, ref, weight, lam, spectra)
 
     def _from_file(self, filename, spectra):
+        filename = utils.find_file(filename)
         if isinstance(spectra, SourceSpectrum):
             spectra = [spectra]
 
@@ -77,13 +78,23 @@ class Source:
             data = fits.getdata(filename)
             hdr = fits.getheader(filename)
             if isinstance(data, np.ndarray):
-                hdu = fits.ImageHDU(data=data, header=hdr)
-                hdu.header["ref"] += len(self.spectra)
+                position = fits.ImageHDU(data=data, header=hdr)
+                position.header["ref"] += len(self.spectra)
             else:
                 hdr1 = fits.getheader(filename, 1)
                 hdr.update(hdr1)
                 hdu = fits.BinTableHDU(data=data, header=hdr)
                 hdu.data["ref"] += len(self.spectra)
+                position = Table(hdu)
+        else:
+            position = ioascii.read(filename)
+            position.meta.update(utils.convert_table_comments_to_dict(position))
+
+        self.spectra += [spectra]
+        self.positions += [position]
+
+
+
 
 
 
@@ -99,7 +110,6 @@ class Source:
             spectra = [spectra]
 
         len_spec = len(self.spectra)
-        print(len_spec, tbl)
         tbl["ref"] += len_spec
         self.positions += [tbl]
         self.spectra += spectra
