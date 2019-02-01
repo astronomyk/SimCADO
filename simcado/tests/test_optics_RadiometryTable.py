@@ -13,9 +13,8 @@ from astropy import units as u
 
 from synphot import SpectralElement, SourceSpectrum
 
-import simcado.optics.optics_utils as opt_utils
 import simcado.optics.radiometry_utils as rad_utils
-import simcado.utils
+from simcado import utils
 from simcado.optics import radiometry as opt_rad
 from simcado.optics import surface as opt_surf
 import simcado as sim
@@ -89,7 +88,7 @@ class TestRadiometryTableAddSurface:
         rt = opt_rad.RadiometryTable(tables=(input_tables[0]))
         surf = opt_surf.SpectralSurface()
         rt.add_surface(surf, "new_surf", position)
-        colname = simcado.utils.real_colname("name", rt.table.colnames)
+        colname = utils.real_colname("name", rt.table.colnames)
         assert rt.table[colname][position] == "new_surf"
         assert "new_surf" in rt.surfaces
         assert isinstance(rt.surfaces["new_surf"], opt_surf.SpectralSurface)
@@ -270,10 +269,10 @@ class TestRealColname:
                              ("yahoo", ["yahoo", "Bogus"]),
                              ("yahoo", ["YAHOO", "Bogus"])])
     def test_returns_real_name(self, name, colnames):
-        assert simcado.utils.real_colname(name, colnames) == colnames[0]
+        assert utils.real_colname(name, colnames) == colnames[0]
 
     def test_returns_none_if_name_not_in_colname(self):
-        assert simcado.utils.real_colname("yahoo", ["Bogus"]) is None
+        assert utils.real_colname("yahoo", ["Bogus"]) is None
 
 
 @pytest.mark.usefixtures("input_tables")
@@ -293,7 +292,8 @@ class TestInsertIntoOrderedDict:
                               ({"x": 42, "y": 3.14}, ("a", 1), 2),
                               ({"x": 42, "y": 3.14}, [("b", 2), ("a", 1)], -1)])
     def test_works_as_prescribed(self, dic, new_entry, pos):
-        new_dic = simcado.utils.insert_into_ordereddict(dic, new_entry, pos)
+        new_dic = utils.insert_into_ordereddict(dic, new_entry, pos)
+        print(new_dic, pos)
         assert list(new_dic.keys())[pos] == "a"
         assert list(new_dic.values())[pos] == 1
         assert new_dic["a"] == 1
@@ -307,7 +307,7 @@ class TestEmptyType:
     @pytest.mark.parametrize("x, expected",
                              [(int, 0), (float, 0.), (bool, False), (str, " ")])
     def test_works_for_all_common_types(self, x, expected):
-        assert simcado.utils.empty_type(x) == expected
+        assert utils.empty_type(x) == expected
 
 
 @pytest.mark.usefixtures("input_tables")
