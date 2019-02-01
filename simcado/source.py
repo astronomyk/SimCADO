@@ -1159,24 +1159,29 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
     if isinstance(spec_type, (list, tuple)):
         return [_get_stellar_properties(i, cat) for i in spec_type]
     else:
-        # Check if stellar type is in cat; if not look for the next
-        # type in the sequence that is and assign its values
-        spt, cls, lum = spec_type[0], int(spec_type[1]), spec_type[2:]
-        for _ in range(10):
-            if cls > 9:
-                cls = 0
-                spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
+        # code breaks for D and W stars because spec_type[1] is assumed to be of type int
+        if spec_type[0] not in ['D', 'W']:
+            # Check if stellar type is in cat; if not look for the next
+            # type in the sequence that is and assign its values
+            #TODO: what does this for loop do? cat includes all types (O-M, 0-9), so this seems unnecessary (+susceptible to errors)
+            spt, cls, lum = spec_type[0], int(spec_type[1]), spec_type[2:]
+            for _ in range(10):
+                if cls > 9:
+                    cls = 0
+                    spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
+    
+                startype = spt+str(cls)+lum # was 'star', redefined function star()
+                cls += 1
+    
+                if startype in cat["Stellar_Type"]:
+                    break
+    
+            else:   # for loop did not find anything
+                raise ValueError(spec_type+" doesn't exist in the database")
+        else:
+            startype = spec_type
 
-            startype = spt+str(cls)+lum # was 'star', redefined function star()
-            cls += 1
-
-            if startype in cat["Stellar_Type"]:
-                break
-
-        else:   # for loop did not find anything
-            raise ValueError(spec_type+" doesn't exist in the database")
-
-        n = np.where(cat["Stellar_Type"] == startype.upper())[0][0]
+        n = np.where(cat["Stellar_Type"] == startype)[0][0]
         if verbose:
             print("Returning properties for", startype)
 
@@ -1259,24 +1264,36 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
     if isinstance(spec_type, (list, tuple)):
         return cat["lam"], [_get_pickles_curve(i, cat)[1] for i in spec_type]
     else:
-        # split the spectral type into 3 components and generalise for Pickles
-        spt, cls, lum = spec_type[0], int(spec_type[1]), spec_type[2:]
-        if lum.upper() == "I":
-            lum = "Ia"
-        elif lum.upper() == "II":
-            lum = "III"
-        elif "V" in lum.upper():
-            lum = "V"
-
-        for _ in range(10):  # TODO: What does this loop do? (OC)
-            if cls > 9:
-                cls = 0
-                spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
-            startype = spt + str(cls) + lum
-            cls += 1
-
-            if startype in cat.columns.names:
-                break
+        # code breaks for D and W stars
+        if spec_type[0] not in ['D', 'W']:
+            # split the spectral type into 3 components and generalise for Pickles
+            spt, cls, lum = spec_type[0], int(spec_type[1]), spec_type[2:]
+            # cat contains lum=I, not lum=Ia, Ia0 or Ib
+            if lum.upper() in ["IA", "IB", "IA0"]:
+                lum = "I"
+            # cat does contain lum=II, no need to change to III
+            # elif lum.upper() == "II":
+            #     lum = "III"
+            # cat does not contain lum=VI, but does have IV
+            elif "VI" in lum.upper():
+                lum = "V"
+    
+            # this for loop is actually necessary here because this cat does not contain all spectral types
+            for _ in range(10):  # TODO: What does this loop do? (OC)
+                if cls > 9:
+                    cls = 0
+                    spt = "OBAFGKML"["OBAFGKML".index(spt)+1]
+                startype = spt + str(cls) + lum
+                cls += 1
+                
+                if startype in cat.columns.names:
+                    break
+                elif "L" in startype:
+                    # cat does not contain L (or T) types, so break the loop there
+                    startype = "M9III"
+                    break
+        else:
+            startype = spec_type
 
         if spec_type != startype and verbose:
             print(spec_type, "isn't in Pickles. Returned", startype)
@@ -1285,6 +1302,8 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
             lam, spec = cat["lam"], cat[startype]
         except KeyError:      # Correct? This shouldn't use error handling.
             lam, spec = cat["lam"], cat["M9III"]
+            
+        spec = spec.astype(np.float64)      # when using these numbers as float32, infinite values occur
         return lam, spec
 
 
@@ -1356,13 +1375,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
         ph_factor += [tmp]
 
     # take care of the conversion to ph/s/m2 by multiplying by 1E4
-    # TODO: The original type(ec) == (list, tuple) is wrong (should be 'in')
-    #   However, correcting it (using idiomatic isinstance) breaks the code!
-    #   There must be a bug.
-    # Correct code:
-    # if isinstance(ec, (list, tuple)):
-    #     for i in range(len(ec)):
-    if type(ec) == (list, tuple):
+    if isinstance(ec, (list, tuple)):
         for i in range(len(ec)):
             ec[i] *= (lam/0.5556) * ph_factor[i] * 1E4
     else:
@@ -1936,7 +1949,7 @@ def stars(spec_types=("A0V"), mags=(0), filter_name="Ks",
                  units=units, **kwargs)
 
     src.info["object"] = "stars"
-    src.info["spec_types"] = spec_types
+    src.info["spec_types"] = unique_types       # this was redundant (already have src.ref, don't need spec_types)
     src.info["magnitudes"] = mags
     src.info["filter_name"] = filter_name
 
