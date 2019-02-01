@@ -104,7 +104,7 @@ from astropy.wcs import WCS
 from .utils import find_file, airmass2zendist
 
 from . import spectral as sc
-from . import commands
+from simcado.commands import user_commands
 from .nghxrg import HXRGNoise
 
 __all__ = ["Detector", "Chip", "open", "plot_detector", "plot_detector_layout",
@@ -639,7 +639,6 @@ class Chip(object):
         else:
             self.flat_field = None
 
-
     def add_signal(self, signal):
         """
         Add a 2D array of photon signal to the Chip
@@ -672,7 +671,6 @@ class Chip(object):
                                  str((self.naxis1, self.naxis2)))
         elif not hasattr(signal, "__len__"):
             self.array += signal
-
 
     def add_uniform_background(self, emission, lam_min, lam_max, output=False):
         """
@@ -810,7 +808,6 @@ class Chip(object):
 
         return out_array
 
-
     def _read_out_non_destructive(self, cmds, dit, ndit):
         """
         Read out NDIT times non-destructively according to FPA_READ_OUT_SCHEME
@@ -832,7 +829,8 @@ class Chip(object):
             ro_cube = []
             for t in ro_times:
 
-                signal = self._read_out_poisson((self.array + self.dark), dit=t, ndit=1)
+                signal = self._read_out_poisson((self.array + self.dark),
+                                                dit=t, ndit=1)
                 if lin_curve is not None:
                     signal, lin_curve = self._apply_linearity(signal, lin_curve,
                                                               return_curve=True)
@@ -853,9 +851,8 @@ class Chip(object):
 
         return out_array.astype(np.float32)
 
-
-    ## TODO: What to do if dit = min_dit (single read)?
-    ## TODO: Make breaking up into memory chunks more flexible?
+    # TODO: What to do if dit = min_dit (single read)?
+    # TODO: Make breaking up into memory chunks more flexible?
     def _read_out_up_the_ramp(self, cmds, dit, max_byte=2**30):
         """
         Test readout onto a detector using cube model
@@ -1367,7 +1364,7 @@ def make_noise_cube(num_layers=25, filename="FPA_noise.fits", multicore=True):
         return None
 
 
-    cmds = commands.UserCommands()
+    cmds = user_commands.UserCommands()
     cmds["FPA_NOISE_PATH"] = "generate"
     cmds["FPA_CHIP_LAYOUT"] = "default"
 

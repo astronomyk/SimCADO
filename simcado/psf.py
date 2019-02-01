@@ -111,18 +111,11 @@ from scipy.signal import fftconvolve
 from astropy.io import fits
 #from astropy import units as u   ## unused (OC)
 from astropy.convolution import Moffat2DKernel, Gaussian2DKernel
-#from astropy.convolution import convolve_fft   ## unused
 from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
 
 from . import utils
-
-try:
-    import poppy
-except:
-    warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
-                  will not work. See http://pythonhosted.org/poppy/""")
 
 
 ## TODO
@@ -1643,6 +1636,12 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     :func:`.get_eelt_segments`
 
     """
+    try:
+        import poppy
+    except:
+        raise ImportError("""Poppy is not installed -
+        See https://pythonhosted.org/poppy""")
+
     params = {"strehl"               : strehl,
               "mode"                 : mode,
               "size"                 : size,

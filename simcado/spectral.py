@@ -68,7 +68,6 @@ import yaml
 
 from .utils import find_file
 
-__all__ = []
 __all__ = ["TransmissionCurve", "EmissionCurve", "BlackbodyCurve", "UnityCurve",
            "get_sky_spectrum"]
 
@@ -139,11 +138,11 @@ class TransmissionCurve(object):
         self.lam = self.lam_orig
         self.val = self.val_orig
 
-        ## Resample to a default regular grid.
-        ## Not all of the filter curve .dat files have regular bin spacing and
-        ## so it is impossible to define a "lam_res" for those curves.
-        ## This is needed for the EmissionCurve method
-        ## "photons_in_range(lam_min, lam_max)"
+        # Resample to a default regular grid.
+        # Not all of the filter curve .dat files have regular bin spacing and
+        # so it is impossible to define a "lam_res" for those curves.
+        # This is needed for the EmissionCurve method
+        # "photons_in_range(lam_min, lam_max)"
         if self.params["Type"] == "Emission":
             self.resample(self.params["lam_res"], action="sum",
                           use_default_lam=self.params["use_default_lam"])
@@ -158,8 +157,8 @@ class TransmissionCurve(object):
 
     def __repr__(self):
         mask = [0, 1, 2], [-3, -2, -1]
-        return self.info["Type"]+"Curve \n"+str(self.val[mask[0]])[:-1] \
-                                    +" ..."+str(self.val[mask[1]])[1:]
+        return self.info["Type"] + "Curve \n" + str(self.val[mask[0]])[:-1] + \
+               " ..." + str(self.val[mask[1]])[1:]
 
 
     def _get_data(self):
@@ -169,6 +168,7 @@ class TransmissionCurve(object):
         Returns
         -------
         lam, val : 1D array
+
         """
 
         if self.params["lam"] is not None and self.params["val"] is not None:
@@ -181,7 +181,7 @@ class TransmissionCurve(object):
 
             if ".fits" in filename:
                 hdr = fits.getheader(filename)
-                if any(["SKYCALC" in hdr[i] for i in range(len(hdr)) \
+                if any(["SKYCALC" in hdr[i] for i in range(len(hdr))
                         if isinstance(hdr[i], str)]):
                     if self.params["Type"] == "Emission":
                         lam = fits.getdata(filename)["lam"]

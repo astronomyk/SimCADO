@@ -9,9 +9,10 @@ simulation.py
 import numpy as np
 
 #import simmetis as sim
-from . import source
-from .commands import UserCommands
-from .optics import OpticalTrain
+import simcado.source.templates
+from simcado.source import source
+from simcado.commands.user_commands import UserCommands
+from simcado.optics.imager import OpticalTrain
 from .detector import Detector
 
 __all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]
@@ -144,8 +145,8 @@ def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
         [y_cen + i*n for i in range(8)] + \
         [y_cen + i*n for i in range(9)]
 
-    lam, spec = source.SED("A0V", "Ks", 15)
-    src = source.Source(lam=lam, spectra=spec, x=x, y=y, ref=[0]*len(x))
+    lam, spec = simcado.source.templates.SED("A0V", "Ks", 15)
+    src = source.Source(lam=lam, spectra=spec, x=x, y=y, ref=[0] * len(x))
 
     run(src, detector_layout="full", filename=filename, mode=mode)
 
@@ -207,7 +208,7 @@ def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
 
         star_sep = cmd["SIM_DETECTOR_PIX_SCALE"] * 100
 
-        grid = source.star_grid(100, mmin, mmax, filter_name=filt, separation=star_sep)
+        grid = simcado.source.templates.star_grid(100, mmin, mmax, filter_name=filt, separation=star_sep)
         grids += [grid]
 
         hdus, (cmd, opt, fpa) = run(grid, filter_name=filt, cmds=cmd,

@@ -2,12 +2,16 @@
 
 import pytest
 import numpy as np
+from astropy.io import ascii as ioascii
 
-import simcado as sim
+import simcado.utils
 from simcado.utils import parallactic_angle, deriv_polynomial2d
 from simcado.utils import find_file
 from simcado.utils import airmass2zendist
 from simcado.utils import zendist2airmass
+from simcado.utils import convert_table_comments_to_dict
+
+from simcado import rc
 
 
 class TestFindFile:
@@ -17,15 +21,20 @@ class TestFindFile:
         # python 3.6: TypeError
         # python 3.4, 3.5: AttributeError (change in os.path.isabs)
         with pytest.raises((TypeError, AttributeError)):
-            find_file(1.2, sim.__search_path__)
+            find_file(1.2, rc.__search_path__)
 
     def test_passes_if_file_exists(self):
         filename = 'utils.py'
-        assert find_file(filename, sim.__search_path__)
+        assert find_file(filename, rc.__search_path__)
 
     def test_fails_if_file_doesnt_exist(self):
         filename = 'utils987654.pz'
-        assert find_file(filename, sim.__search_path__) is None
+        assert find_file(filename, rc.__search_path__) is None
+
+    def test_ignores_none_objects_in_search_path_list(self):
+        filename = 'utils.py'
+        new_filename = find_file(filename, [None] + rc.__search_path__)
+        assert filename in new_filename
 
 
 class TestAirmassZendist:
@@ -110,3 +119,32 @@ class TestDerivPolynomial2D:
 
         assert np.allclose(y_x, y_x_test)
         assert np.allclose(y_y, y_y_test)
+
+
+class TestConvertCommentsToDict:
+    def test_converts_list_of_strings_to_dict_if_comments_in_table_meta(self):
+        tbl = ioascii.read("""
+                         # key1 : val 1 
+                         # key2 : extra long entry
+                         col1    col2
+                         0       1 """)
+        dic = convert_table_comments_to_dict(tbl)
+        assert dic["key1"] == "val 1"
+        assert len(dic) == 2
+
+    def test_returns_none_if_comments_not_in_table_meta(self):
+        tbl = ioascii.read("""col1    col2
+                              0       1 """)
+        dic = convert_table_comments_to_dict(tbl)
+        assert dic is None
+
+    def test_returns_input_if_conversion_doesnt_work(self):
+        tbl_str = """
+        # key1 : val 1 
+        # 
+        # key2
+        col1    col2
+        0       1 """
+        tbl = ioascii.read(tbl_str)
+        dic = convert_table_comments_to_dict(tbl)
+        assert dic == tbl.meta["comments"]

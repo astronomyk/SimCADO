@@ -1,43 +1,26 @@
 """
 Helper functions for SimCADO
 """
-###############################################################################
-# utils.py
-#
-# DESCRIPTION
-#
-#
-# Classes:
-#
-#
-# Functions:
-#  read_config(config_file)
-#  update_config(config_file, config_dict)
-#  unify(x, unit, length=1)
-#  parallactic_angle(ha, de, lat=-24.589167)
-#  parallactic_angle_2(ha, de, lat=-24.589167)
-#  moffat(r, alpha, beta)
-#
-#
+
 import os
 import sys
-import inspect
+import warnings
+from collections import OrderedDict
 
-try:
-    import wget
-except ImportError:
-    print("Package wget is not available. simcado.get_extras() will not work.")
-
+import yaml
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii as ioascii
+from astropy.table import Column
 
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
+from . import rc
 
-#__all__ = []
-#__all__ = ["unify", "parallactic_angle", "poissonify",
-#           "atmospheric_refraction", "nearest", "add_keyword"]
+try:
+    import wget
+except ImportError:
+    print("Package wget is not available. simcado.get_extras() will not work."
+          "try pip install wget")
 
 
 def msg(cmds, message, level=3):
@@ -56,7 +39,6 @@ def msg(cmds, message, level=3):
     """
     if cmds["SIM_VERBOSE"] == "yes" and level <= cmds["SIM_MESSAGE_LEVEL"]:
         print(message)
-
 
 
 def unify(x, unit, length=1):
@@ -269,7 +251,7 @@ def nearest(arr, val):
 
 
 def deriv_polynomial2d(poly):
-    '''Derivatives (gradient) of a Polynomial2D model
+    """Derivatives (gradient) of a Polynomial2D model
 
     Parameters
     ----------
@@ -278,7 +260,7 @@ def deriv_polynomial2d(poly):
     Output
     ------
     gradient : tuple of Polynomial2d
-    '''
+    """
     import re
     from astropy.modeling.models import Polynomial2D
     degree = poly.degree
@@ -320,11 +302,14 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
     f.close()
 
 
-############# Check the server for data extras
-def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
+# ############ Check the server for data extras
+def download_file(url, save_dir=None):
     """
     Download the extra data that aren't in the SimCADO package
     """
+
+    if save_dir is None:
+        save_dir = rc.__data_dir__
 
     local_filename = os.path.join(save_dir, url.split('/')[-1])
     try:
@@ -347,7 +332,7 @@ def get_extras():
     Downloads large files that SimCADO needs to simulate MICADO
     """
 
-    save_dir = os.path.join(__pkg_dir__, "data")
+    save_dir = rc.__data_dir__
     fname = os.path.join(save_dir, "extras.dat")
 
     # check_replace = 0  ## unused (OC)
@@ -367,7 +352,7 @@ def get_extras():
         check_download = 1
 
         # does the file exist on the users disk?
-        fname = os.path.join(__pkg_dir__, "data", name)
+        fname = os.path.join(rc.__data_dir__, name)
         if os.path.exists(fname):
 
             # is the new name in the old list of filenames
@@ -400,7 +385,7 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
         Column 1 is the wavelength, column 2 is the flux
     file_out : str, optional
         Default is None. The file path to save the ASCII file. If ``None``, the SED
-        is saved to the SimCADO data directory i.e. to ``<utils.__pkg_dir__>/data/``
+        is saved to the SimCADO data directory i.e. to ``rc.__data_dir__``
     lam_units : str, astropy.Units
         Units for the wavelength column, either as a string or as astropy units
         Default is [um]
@@ -411,8 +396,8 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
 
     if file_out is None:
         if "SED_" not in file_name:
-            file_out = __pkg_dir__+"/data/SED_"+file_name+".dat"
-        else: file_out = __pkg_dir__+"/data/"+file_name+".dat"
+            file_out = rc.__data_dir__ + "SED_" + file_name + ".dat"
+        else: file_out = rc.__data_dir__ + file_name + ".dat"
 
     if file_ext.lower() in "fits":
         data = fits.getdata(file_in)
@@ -446,7 +431,7 @@ def zenith_dist_to_airmass(zenith_dist):
 
 
 def seq(start, stop, step=1):
-    '''Replacement for numpy.arange modelled after R's seq function
+    """Replacement for numpy.arange modelled after R's seq function
 
     Returns an evenly spaced sequence from start to stop. stop is included if the difference
     between start and stop is an integer multiple of step.
@@ -463,7 +448,7 @@ def seq(start, stop, step=1):
     step : [int, float]
         increment of the sequence, defaults to 1
 
-    '''
+    """
     feps = 1e-10     # value used in R seq.default
 
     delta = stop - start
@@ -592,7 +577,7 @@ def angle_in_arcseconds(distance, width):
 
 
 def bug_report():
-    '''Get versions of dependencies for inclusion in bug report'''
+    """Get versions of dependencies for inclusion in bug report"""
 
     try:
         from importlib import import_module
@@ -624,7 +609,7 @@ def bug_report():
 
 
 def find_file(filename, path=None, silent=False):
-    '''Find a file in search path
+    """Find a file in search path
 
     Parameters
     ----------
@@ -638,11 +623,13 @@ def find_file(filename, path=None, silent=False):
     Returns
     -------
     Absolute path of the file
-    '''
-    import simcado as sim
+    """
+
+    if filename is None or filename.lower() == "none":
+        return None
 
     if path is None:
-        path = sim.__search_path__
+        path = rc.__search_path__
 
     if os.path.isabs(filename):
         # absolute path: only path to try
@@ -650,7 +637,7 @@ def find_file(filename, path=None, silent=False):
     else:
         # try to find the file in a search path
         trynames = [os.path.join(trydir, filename)
-                    for trydir in path]
+                    for trydir in path if trydir is not None]
 
     for fname in trynames:
         if os.path.exists(fname):   # success
@@ -668,7 +655,7 @@ def find_file(filename, path=None, silent=False):
 
 
 def zendist2airmass(zendist):
-    '''Convert zenith distance to airmass
+    """Convert zenith distance to airmass
 
     Parameters
     ----------
@@ -678,12 +665,13 @@ def zendist2airmass(zendist):
     Returns
     -------
     airmass in sec(z) approximation
-    '''
+    """
+
     return 1. / np.cos(np.deg2rad(zendist))
 
 
 def airmass2zendist(airmass):
-    '''Convert airmass to zenith distance
+    """Convert airmass to zenith distance
 
     Parameters
     ----------
@@ -692,6 +680,197 @@ def airmass2zendist(airmass):
     Returns
     -------
     zenith distance in degrees
-    '''
+    """
 
     return np.rad2deg(np.arccos(1/airmass))
+
+
+def convert_table_comments_to_dict(tbl):
+
+    comments_dict = None
+    if "comments" in tbl.meta:
+        try:
+            comments_dict = yaml.load("\n".join(tbl.meta["comments"]))
+        except:
+            warnings.warn("Couldn't convert <table>.meta['comments'] to dict")
+            comments_dict = tbl.meta["comments"]
+    else:
+        warnings.warn("No comments in table")
+
+    return comments_dict
+
+
+def change_table_entry(tbl, col_name, new_val, old_val=None, position=None):
+
+    offending_col = list(tbl[col_name].data)
+
+    if old_val is not None:
+        for ii in np.where(old_val in offending_col)[0]:
+            offending_col[ii] = new_val
+    elif position is not None:
+        offending_col[position] = new_val
+    else:
+        raise ValueError("Either old_val or position must be given")
+
+    fixed_col = Column(name=col_name, data=offending_col)
+
+    ii = np.where(np.array(tbl.colnames) == col_name)[0][0]
+    tbl.remove_column(col_name)
+    tbl.add_column(fixed_col, index=ii)
+
+    return tbl
+
+
+def real_colname(name, colnames):
+    names = [name.lower(), name.upper(), name[0].upper() + name[1:].lower()]
+    real_name = [name for name in names if name in colnames]
+    if len(real_name) == 0:
+        real_name = None
+        warnings.warn("None of {} were found in {}".format(names, colnames))
+    else:
+        real_name = real_name[0]
+
+    return real_name
+
+
+def insert_into_ordereddict(dic, new_entry, pos):
+    if isinstance(new_entry, dict):
+        new_entry = [[key, val] for key, val in new_entry.items()]
+    elif isinstance(new_entry, (list, tuple)) and \
+            not isinstance(new_entry[0], (list, tuple)):
+        new_entry = [new_entry]
+
+    if pos < 0:
+        pos += len(dic) + len(new_entry)
+
+    new_dic = list(OrderedDict(dic).items())
+    new_dic = new_dic[:pos] + new_entry + new_dic[pos:]
+    new_dic = OrderedDict(new_dic)
+
+    return new_dic
+
+
+def empty_type(x):
+    type_dict = {int: 0, float: 0., bool: False, str: " ",
+                 list: [], tuple: (), dict: {}}
+    if "<U" in str(x):
+        x = str
+
+    return type_dict[x]
+
+
+def get_meta_quantity(meta_dict, name, fallback_unit=""):
+    """
+    Extract a Quantity from a dictionary
+
+    Parameters
+    ----------
+    meta_dict : dict
+    name : str
+    fallback_unit : Quantity
+
+    Returns
+    -------
+    quant : Quantity
+
+    """
+
+    if isinstance(meta_dict[name], u.Quantity):
+        unit = meta_dict[name].unit
+    elif name + "_unit" in meta_dict:
+        unit = meta_dict[name + "_unit"]
+    else:
+        unit = u.Unit(fallback_unit)
+    quant = quantify(meta_dict[name], unit)
+
+    return quant
+
+
+def quantify(item, unit):
+    """
+    Ensure an item is a Quantity
+
+    Parameters
+    ----------
+    item : int, float, array, list, Quantity
+    unit : str, Unit
+
+    Returns
+    -------
+    quant : Quantity
+
+    """
+
+    if isinstance(item, u.Quantity):
+        quant = item.to(u.Unit(unit))
+    else:
+        quant = item * u.Unit(unit)
+    return quant
+
+
+def extract_type_from_unit(unit, unit_type):
+    """
+    Extract ``astropy`` physical type from a compound unit
+
+    Parameters
+    ----------
+    unit : astropy.Unit
+    unit_type : str
+        The physical type of the unit as given by ``astropy``
+
+    Returns
+    -------
+    new_unit : Unit
+        The input unit minus any base units corresponding to ``unit_type``
+    extracted_units : Unit
+        Any base units corresponding to ``unit_type``
+
+    """
+
+    unit = unit**1
+    extracted_units = u.Unit("")
+    for base, power in zip(unit._bases, unit._powers):
+        if unit_type == (base**abs(power)).physical_type:
+            extracted_units *= base**power
+
+    new_unit = unit / extracted_units
+
+    return new_unit, extracted_units
+
+
+def extract_base_from_unit(unit, base_unit):
+    """
+    Extract ``astropy`` base unit from a compound unit
+
+    Parameters
+    ----------
+    unit : astropy.Unit
+    base_unit : Unit, str
+
+   Returns
+    -------
+    new_unit : Unit
+        The input unit minus any base units corresponding to ``base_unit``
+    extracted_units : Unit
+        Any base units corresponding to ``base_unit``
+
+    """
+
+    unit = unit**1
+    extracted_units = u.Unit("")
+    for base, power in zip(unit._bases, unit._powers):
+        if base == base_unit:
+            extracted_units *= base**power
+
+    new_unit = unit * extracted_units**-1
+
+    return new_unit, extracted_units
+
+
+def is_fits(filename):
+    flag = False
+    if filename is not None:
+        if filename.split(".")[-1].lower() in "fits":
+            flag = True
+
+    return flag
