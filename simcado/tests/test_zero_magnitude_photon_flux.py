@@ -23,8 +23,12 @@ MOCK_DIR = mock_dir()
 
 Conf.remote_timeout = 60
 
+# trying to force the timeout
+astropy.utils.data.get_readable_fileobj("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",
+                                        encoding="binary", cache=True, remote_timeout=60)
+
 synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",
-                                cache=True, )
+                                cache=True)
 
 
 
