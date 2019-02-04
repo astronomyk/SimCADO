@@ -4,8 +4,8 @@ import simcado
 import astropy.units as u
 import os
 import inspect
-import synphot
-from astropy.utils.data import Conf
+#import synphot
+#from astropy.utils.data import Conf
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -15,22 +15,10 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
+simcado.source.get_vega_spectrum(location=os.path.join(MOCK_DIR, "alpha_lyr_stis_008.fits"))
 
-# read_remote_spec uses astropy.utils.data.get_readable_fileobj to retrieve
-# external data. That function contains a timeout parameter which is not passed
-# by synphot. However astropy has a configurable timeout, let's see if it works.
-
-
-Conf.remote_timeout = 60
-
-# trying to force the timeout
-astropy.utils.data.get_readable_fileobj("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",
-                                        encoding="binary", cache=True, remote_timeout=60)
-
-synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",
-                                cache=True)
-
-
+#synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",
+#                                cache=True)
 
 
 #### Helper functions to check against tabulated values

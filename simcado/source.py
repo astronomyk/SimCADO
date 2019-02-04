@@ -106,6 +106,7 @@ from scipy.signal import fftconvolve
 from astropy.io import fits
 from astropy.io import ascii as ioascii
 from astropy.convolution import convolve
+from astropy.utils.data import get_readable_fileobj
 import astropy.units as u
 import astropy.constants as c
 
@@ -1245,6 +1246,7 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
     Returns
     -------
     lam : np.array
+    lam : np.array
         a single np.ndarray for the wavelength bins of the spectrum,
     val : np.array (list)
         a (list of) np.ndarray for the emission curve of the spectral type(s)
@@ -1490,20 +1492,34 @@ def _get_refstar_curve(filename=None,mag=0):
 
 # Using synphot to get the vega spectrum
 
-def get_vega_spectrum():
+def get_vega_spectrum(location=None, **kwargs):
     """
-    Retrieve the Vega spectrum from stsci and return it to the user in synphot format
+    Retrieve the Vega spectrum from a location (default stsci) and return it to the user in synphot format
     TODO: Should it be in get_extras?
+    Parameters
+    ---------
+    location: a valid location for the alpha_lyr file_obj
+             default  ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits
+
+    **kwargs: Keywords acceptable by astropy.utils.data.get_readable_fileobj
 
     Notes
     -----
     To access wavelength and fluxes use: wave, flux = vega_sp._get_arrays(wavelengths=None)
     """
 
-    remote = synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",cache=True)
-    header = remote[0]
-    wave = remote[1]
-    flux = remote[2]
+    if location is None:
+        location = "ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
+
+    with get_readable_fileobj(location, encoding="binary", cache=True, show_progress=True,
+                              remote_timeout=60, **kwargs) as fd:
+        header, wave, flux = synphot.specio.read_spec(fd, fname=location)
+
+    #return header, wavelengths, fluxes
+    #remote = synphot.specio.read_remote_spec(location, cache=True)
+    #header = remote[0]
+    #wave = remote[1]
+    #flux = remote[2]
     meta = {'header': header, 'expr': 'Vega from ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits'  }
     vega_sp = synphot.SourceSpectrum(synphot.models.Empirical1D, points=wave, lookup_table=flux, meta=meta)
     return vega_sp
@@ -1522,9 +1538,9 @@ def synphot_to_simcado(spectrum):
     lam: wavelenght in micros
     val: flux in simcado photlam (photons/s/um/m2)
     """
-    
+
     wave, flux = spectrum._get_arrays(wavelengths=None)
-    new_flux  = synphot.units.convert_flux(wave, flux, area =1 , out_flux_unit="photlam")
+    new_flux  = synphot.units.convert_flux(wave, flux, area=1, out_flux_unit="photlam")
     lam = wave.to_value(u.um)
     val = new_flux.value * 1e4 * 1e4   # <- to convert to /um/m2
     return lam, val
@@ -1748,7 +1764,7 @@ def SED(spec_type, filter_name="V", magnitude=0.):
     if np.any([i in gal_seds for i in spec_type]):
         galflux = []
         for gal in spec_type:
-            data = ioascii.read(find_file("/data/SED_"+gal+".dat"))
+            data = ioascii.read(find_file("data/SED_"+gal+".dat"))
             galflux += [data[data.colnames[1]]]
             galflux = np.asarray(galflux)
         lam = data[data.colnames[0]]
