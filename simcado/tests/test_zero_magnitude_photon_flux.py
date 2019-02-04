@@ -5,6 +5,7 @@ import astropy.units as u
 import os
 import inspect
 import synphot
+from astropy.utils.data import Conf
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -14,18 +15,30 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
-synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits", cache=True)
+
+# read_remote_spec uses astropy.utils.data.get_readable_fileobj to retrieve
+# external data. That function contains a timeout parameter which is not passed
+# by synphot. However astropy has a configurable timeout, let's see if it works.
+
+
+Conf.remote_timeout = 60
+
+synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",
+                                cache=True, )
+
+
 
 
 #### Helper functions to check against tabulated values
 def create_vega_table():
     """
+
     Returns astropy.table with tabulated values for Vega star
     Data taken from http://www.astronomy.ohio-state.edu/~martini/usefuldata.html
 
     -------
-
     """
+
     filters = astropy.table.Column(name="filters",
                                    data=["U", "B", "V",	"R", "I", "J", "H", "K"])
     lambda_eff = astropy.table.Column(name="lambda_eff",
