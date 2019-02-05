@@ -694,6 +694,12 @@ def convert_table_comments_to_dict(tbl):
         except:
             warnings.warn("Couldn't convert <table>.meta['comments'] to dict")
             comments_dict = tbl.meta["comments"]
+    elif "COMMENT" in tbl.meta:
+        try:
+            comments_dict = yaml.load("\n".join(tbl.meta["COMMENT"]))
+        except:
+            warnings.warn("Couldn't convert <table>.meta['COMMENT'] to dict")
+            comments_dict = tbl.meta["COMMENT"]
     else:
         warnings.warn("No comments in table")
 
@@ -874,3 +880,29 @@ def is_fits(filename):
             flag = True
 
     return flag
+
+
+def get_fits_type(filename):
+    with fits.open(filename) as hdulist:
+        hdutype = "image"
+        if hdulist[0].header["NAXIS"] == 0 and \
+                hdulist[1].header["XTENSION"] == "BINTABLE":
+            hdutype = "bintable"
+
+    return hdutype
+
+
+def quantity_from_table(colname, table, default_unit=""):
+    col = table[colname]
+    if col.unit is not None:
+        col = col.data * col.unit
+    else:
+        if colname+"_unit" in table.meta:
+            col *= u.Unit(table.meta[colname+"_unit"])
+        else:
+            col *= u.Unit(default_unit)
+            warnings.warn("{}_unit was not found in table.meta: {}. Used "
+                          "default_unit: {}"
+                          "".format(colname, table.meta, default_unit))
+
+    return col

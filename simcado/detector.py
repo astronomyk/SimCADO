@@ -1095,6 +1095,7 @@ class Chip(object):
         """
 
         from astropy.table import Table
+        from astropy.table import Table
 
         if isinstance(curve, str):
             if os.path.exists(curve):
