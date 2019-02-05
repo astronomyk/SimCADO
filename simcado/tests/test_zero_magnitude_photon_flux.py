@@ -6,7 +6,6 @@ from astropy.utils.data import download_file
 import os
 import inspect
 import pytest
-import urllib.error
 from astropy.utils.data import Conf
 
 def mock_dir():
@@ -58,10 +57,8 @@ def test_if_vega_is_downloaded():
     try:
         local_path = download_file(remote_url, cache=True, show_progress=True, timeout=60.0)
         print(local_path)
-    except urllib.error.URLError as e:
-        pytest.fail(e)
-
-    assert os.path.isfile(local_path)
+    finally:
+        assert os.path.isfile(local_path)
 
 
 def test_returning_numbers(filter_name="TC_filter_K.dat"):
