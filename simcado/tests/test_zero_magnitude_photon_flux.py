@@ -7,6 +7,7 @@ import os
 import inspect
 import pytest
 import urllib.error
+from astropy.utils.data import Conf
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -14,6 +15,7 @@ def mock_dir():
     return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
 
 
+Conf.remote_timeout = 60
 MOCK_DIR = mock_dir()
 
 remote_url = "http://ssb.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"

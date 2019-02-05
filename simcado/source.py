@@ -1506,7 +1506,7 @@ def get_vega_spectrum():
     -----
     To access wavelength and fluxes use: wave, flux = vega_sp._get_arrays(wavelengths=None)
     """
-    location = "ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
+    location = "http://ssb.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
     remote = synphot.specio.read_remote_spec(location, cache=True)
     header = remote[0]
     wave = remote[1]
