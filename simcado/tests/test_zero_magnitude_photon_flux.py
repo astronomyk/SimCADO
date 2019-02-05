@@ -16,8 +16,8 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
-remote_url = "ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
-download_file(remote_url, cache=True, show_progress=True, timeout=60.0) # Just trying to cache it
+remote_url = "http://ssb.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
+#download_file(remote_url, cache=True, show_progress=True, timeout=60.0) # Just trying to cache it
 
 
 # Helper function to check against tabulated values
