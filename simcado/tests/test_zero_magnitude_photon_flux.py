@@ -2,10 +2,11 @@ import numpy as np
 import astropy
 import simcado
 import astropy.units as u
+from astropy.utils.data import download_file
 import os
 import inspect
-#import synphot
-#from astropy.utils.data import Conf
+import pytest
+import urllib.error
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -15,13 +16,11 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
-simcado.source.get_vega_spectrum(location=os.path.join(MOCK_DIR, "alpha_lyr_stis_008.fits"))
-
-#synphot.specio.read_remote_spec("ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits",
-#                                cache=True)
+remote_url = "ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
+download_file(remote_url, cache=True, show_progress=True, timeout=60.0) # Just trying to cache it
 
 
-#### Helper functions to check against tabulated values
+# Helper function to check against tabulated values
 def create_vega_table():
     """
 
@@ -51,6 +50,16 @@ def create_vega_table():
     vega_table = astropy.table.Table((filters,lambda_eff,delta_lambda,f_nu,f_lambda,n_ph),
                                      meta={"source" :"http://www.astronomy.ohio-state.edu/~martini/usefuldata.html"})
     return vega_table
+
+
+def test_if_vega_is_downloaded():
+    try:
+        local_path = download_file(remote_url, cache=True, show_progress=True, timeout=60.0)
+        print(local_path)
+    except urllib.error.URLError as e:
+        pytest.fail(e)
+
+    assert os.path.isfile(local_path)
 
 
 def test_returning_numbers(filter_name="TC_filter_K.dat"):
@@ -87,7 +96,7 @@ def test_nph_from_sources(filter_name="TC_filter_K.dat"):
     nph_from_filter = simcado.source.zero_magnitude_photon_flux(filter_file)
     tc = simcado.optics.get_filter_curve(filter_file)
     nph_from_tc = simcado.source.zero_magnitude_photon_flux(tc)
-    assert np.abs((nph_from_filter / nph_from_tc) - 1) < 0.01
+    assert nph_from_filter / nph_from_tc == pytest.approx(1, rel=1e-2)
 
 
 def test_mag_to_photons_to_mag(filter_name="TC_filter_K.dat", magnitude=0):
@@ -133,7 +142,7 @@ def test_photon_flux_in_filter(filter_name="K"):
     n_photons_tab = t_temp["n_photons"]
     delta_lambda_tab = t_temp["delta_lambda"]
     n_photons_tab = n_photons_tab.to(u.Unit("photon / (um m2 s)")) * delta_lambda_tab
-    assert np.abs((n_photons_simcado / n_photons_tab[0].value) - 1) < 0.1
+    assert n_photons_simcado / n_photons_tab[0].value == pytest.approx(1, rel=0.1)
 
 
 # test_returning_numbers("TC_filter_Pa-beta.dat")

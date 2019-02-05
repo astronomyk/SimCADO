@@ -106,7 +106,6 @@ from scipy.signal import fftconvolve
 from astropy.io import fits
 from astropy.io import ascii as ioascii
 from astropy.convolution import convolve
-from astropy.utils.data import get_readable_fileobj
 import astropy.units as u
 import astropy.constants as c
 
@@ -1492,9 +1491,9 @@ def _get_refstar_curve(filename=None,mag=0):
 
 # Using synphot to get the vega spectrum
 
-def get_vega_spectrum(location=None, **kwargs):
+def get_vega_spectrum():
     """
-    Retrieve the Vega spectrum from a location (default stsci) and return it to the user in synphot format
+    Retrieve the Vega spectrum from stsci and return it to the user in synphot format
     TODO: Should it be in get_extras?
     Parameters
     ---------
@@ -1507,19 +1506,11 @@ def get_vega_spectrum(location=None, **kwargs):
     -----
     To access wavelength and fluxes use: wave, flux = vega_sp._get_arrays(wavelengths=None)
     """
-
-    if location is None:
-        location = "ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
-
-    with get_readable_fileobj(location, encoding="binary", cache=True, show_progress=True,
-                              remote_timeout=60, **kwargs) as fd:
-        header, wave, flux = synphot.specio.read_spec(fd, fname=location)
-
-    #return header, wavelengths, fluxes
-    #remote = synphot.specio.read_remote_spec(location, cache=True)
-    #header = remote[0]
-    #wave = remote[1]
-    #flux = remote[2]
+    location = "ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
+    remote = synphot.specio.read_remote_spec(location, cache=True)
+    header = remote[0]
+    wave = remote[1]
+    flux = remote[2]
     meta = {'header': header, 'expr': 'Vega from ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits'  }
     vega_sp = synphot.SourceSpectrum(synphot.models.Empirical1D, points=wave, lookup_table=flux, meta=meta)
     return vega_sp
