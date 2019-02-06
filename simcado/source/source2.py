@@ -44,7 +44,7 @@ from astropy import units as u
 from synphot import SourceSpectrum, SpectralElement, Observation
 from synphot.models import Empirical1D
 
-from ..optics.image_plane import get_corner_sky_coords
+from ..optics.image_plane import ImagePlane, make_image_plane_header
 from .. import utils
 
 
@@ -109,9 +109,12 @@ class Source:
         self.spectra += spectra
 
     def _from_image(self, image, spectra):
-        image.header["SPEC_REF"] = len(self.spectra)
-        self.positions += [image]
-        self.spectra += spectra
+        if spectra is not None:
+            image.header["SPEC_REF"] = len(self.spectra)
+            self.positions += [image]
+            self.spectra += spectra
+        else:
+            image.header["SPEC_REF"] = ""
 
     def _from_arrays(self, x, y, ref, weight, spectra):
         if weight is None:
@@ -127,23 +130,40 @@ class Source:
         self.positions += [tbl]
         self.spectra += spectra
 
-    def image_in_range(self, wave_0, wave_1, pix_scale, layers=None):
+    def image_in_range(self, wave_min, wave_max, pixel_scale=1*u.arcsec,
+                       layers=None, area=None, nbins=100):
         if layers is None:
-            layers = list(np.arange(self.positions))
+            layers = list(np.arange(len(self.positions)))
 
         positions = [self.positions[ii] for ii in layers]
-        get_corner_sky_coords(positions)
+        hdr = make_image_plane_header(positions, pixel_scale=pixel_scale)
+        im_plane = ImagePlane(hdr)
 
+        for position in positions:
+            if isinstance(position, Table):
+                fluxes = self.photons_in_range(wave_min, wave_max,
+                                               position["ref"], area, nbins)
+                tbl = Table(names=["x", "y", "flux"],
+                            data=[position["x"], position["y"], fluxes])
+                tbl.meta.update(position.meta)
+                hdu_or_table = tbl
 
-        # create a canvas
-        # add reproject the image hdus
-        # get the world coords from the tables
-        # find their pixel coords
-        # get their fluxes and add them to the canvas
+            elif isinstance(position, fits.ImageHDU):
+                if position.header["SPEC_REF"] is not "":
+                    flux = self.photons_in_range(wave_min, wave_max,
+                                                 position["ref"], area, nbins)
+                else:
+                    flux = 1
 
+                image = position.data * flux
+                hdu = fits.ImageHDU(header=position.header, data=image)
+                hdu_or_table = hdu
+            else:
+                continue
 
+            im_plane.add(hdu_or_table)
 
-        pass
+        return im_plane
 
     def photons_in_range(self, wave_min, wave_max, indexes=None, area=None,
                          nbins=100):
@@ -173,8 +193,36 @@ class Source:
     def read_from_fits(self, filename):
         pass
 
-    def shift(self, dx, dy, layer=None):
-        pass
+    def shift(self, dx=0, dy=0, layers=None):
+        """
+        Shifts the coordinates of the source by (dx, dy) in [arcsec]
+
+        Parameters
+        ----------
+        dx, dy : float, array
+            [arcsec] The offsets for each coordinate in the arrays ``x``, ``y``.
+            - If dx, dy are floats, the same offset is applied to all coordinates
+            - If dx, dy are arrays, they must be the same length as ``x``, ``y``
+
+        """
+
+        if layers is None:
+            layers = np.arange(len(self.positions))
+
+        for ii in layers:
+            if isinstance(self.positions[ii], Table):
+                x = utils.quantity_from_table("x", u.arcsec)
+                x += utils.quantify(dx, u.arcsec)
+                self.positions[ii]["x"] = x
+
+                y = utils.quantity_from_table("y", u.arcsec)
+                y += utils.quantify(dy, u.arcsec)
+                self.positions[ii]["y"] = y
+            elif isinstance(self.positions[ii], fits.ImageHDU):
+                dx = utils.quantify(dx, "arcsec").to(u.deg)
+                dy = utils.quantify(dy, "arcsec").to(u.deg)
+                self.positions[ii].header["CRVAL1"] += dx.value
+                self.positions[ii].header["CRVAL2"] += dy.value
 
     def rotate(self, angle, offset=None, layer=None):
         pass
@@ -216,7 +264,7 @@ def validate_source_input(**kwargs):
             raise ValueError("image must be fits.HDU object with a WCS."
                              "type(image) == {}".format(type(image)))
 
-        if "CRVAL1" not in image.header and "CRPIX1" not in image.header:
+        if len(wcs.find_all_wcs(image.header)) == 0:
             warnings.warn("image does not contain valid WCS. {}"
                           "".format(wcs.WCS(image)))
 
@@ -280,7 +328,7 @@ def photons_in_range(spectra, wave_min, wave_max,
                           bandpass).effstim(flux_unit="count", binned=True,
                                             area=area, waverange=wave).value
               for spectrum in spectra]
-    # effstim doesn't account for the edges well
+    # effstim doesn't account for the edges well. Generally one too many bins
     correction_factor = len(wave) / (len(wave) + 1.)
     counts *= u.ct / u.s * correction_factor
 
@@ -320,5 +368,39 @@ def make_imagehdu_from_table(x, y, flux, pix_scale=1*u.arcsec):
     hdu.header.extend(the_wcs.to_header())
 
     return hdu
+
+
+def scale_imagehdu(imagehdu, area=None, solid_angle=None, waverange=None):
+
+    if "BUNIT" in imagehdu.header:
+        unit = u.Unit(imagehdu.header["BUNIT"])
+    elif "FLUXUNIT" in imagehdu.header:
+        unit = u.Unit(imagehdu.header["BUNIT"])
+    else:
+        unit = ""
+
+    zero  = 0  * u.Unit(unit)
+    scale = 1 * u.Unit(unit)
+    if area is not None:
+        scale *= area
+    if solid_angle is not None:
+        scale *= solid_angle
+    if waverange is not None:
+        scale *= waverange
+    if "BSCALE" in imagehdu.header:
+        scale *= imagehdu.header["BSCALE"]
+        imagehdu.header["BSCALE"] = 1
+    if "BZERO" in imagehdu.header:
+        zero = imagehdu.header["BZERO"]
+        imagehdu.header["BZERO"] = 0
+
+    imagehdu.data = imagehdu * scale + zero
+    imagehdu.header["BUNIT"] = str(imagehdu.data.unit)
+    imagehdu.header["FLUXUNIT"] = str(imagehdu.data.unit)
+
+    return imagehdu
+
+
+
 
 

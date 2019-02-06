@@ -283,7 +283,7 @@ class TestMakeSurfaceDictFromTable:
         assert isinstance(surf_dict, dict)
         assert "M1" in surf_dict
 
-from collections import OrderedDict
+
 class TestInsertIntoOrderedDict:
     @pytest.mark.parametrize("dic, new_entry, pos",
                      [({},                   ["a", 1], 0),

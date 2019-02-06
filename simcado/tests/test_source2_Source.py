@@ -183,9 +183,12 @@ class TestMakeImageFromTable:
         yy = yy.astype(int)
         assert np.all(hdu.data[xx, yy])
 
-        # The dots match up with a 0.5 px shift, however the test fails
+        # When plotting the image vs the scatter plot
+        # The dots match up with a 0.5 px shift, When we intruduce the shift to
+        # the test, the dots are on top of the image, but the test fails
+        # when using
         # the_wcs.wcs.crpix = [0.5, 0.5]
-        # The test passes when
+        # Returning to normal the test passes when (albeit with an image offset)
         # the_wcs.wcs.crpix = [0., 0.]
         #
         # print(hdu.data, flush=True)
@@ -198,4 +201,6 @@ class TestMakeImageFromTable:
         # plt.show()
 
 
-
+class TestSourceImageInRange:
+    def test_that_it_does_what_it_should(self):
+        pass

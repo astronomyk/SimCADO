@@ -24,7 +24,7 @@ def image_hdu_square():
     # ca, sa = np.cos(np.deg2rad(theta)), np.sin(np.deg2rad(theta))
     # the_wcs.wcs.pc = np.array([[ca, sa], [-sa, ca]])
 
-    image = np.random.random(size=(width, width))
+    image = np.zeros((width, width))
     hdu = fits.ImageHDU(data=image, header=the_wcs.to_header())
 
     return hdu
@@ -76,18 +76,17 @@ class TestGetImagePlaneExtentInPixels:
 class TestMakeImagePlaneHeader:
     def test_header_contains_future_naxis_pixel_sizes(self, image_hdu_square,
                                                       image_hdu_rect):
-        hdr = opt_imp.make_image_plane_header([image_hdu_square.header,
-                                               image_hdu_rect.header])
+        hdr = opt_imp.make_image_plane_header([image_hdu_square,
+                                               image_hdu_rect])
         assert hdr["NAXIS1"] == 100
         assert hdr["NAXIS2"] == 200
 
     @pytest.mark.parametrize("offset", -np.random.randint(200, 1001, 10))
-    def test_header_contains_spread_out_regions(self, offset,
-                                                image_hdu_square,
+    def test_header_contains_spread_out_regions(self, offset, image_hdu_square,
                                                 image_hdu_rect):
         image_hdu_rect.header["CRVAL1"] += offset*u.arcsec.to(u.deg)
-        hdr = opt_imp.make_image_plane_header([image_hdu_square.header,
-                                               image_hdu_rect.header])
+        hdr = opt_imp.make_image_plane_header([image_hdu_square,
+                                               image_hdu_rect])
         image_width = image_hdu_square.header["NAXIS1"] // 2 + \
                       image_hdu_rect.header["NAXIS1"] // 2 + abs(offset)
 
@@ -130,3 +129,137 @@ class TestGetCornerSkyCoords:
         xsky, ysky = opt_imp.get_corner_sky_coords([tbl, image_hdu_square])
 
         assert np.all((xsky == x.to(u.deg).value))
+
+
+@pytest.mark.usefixtures("image_hdu_square")
+class TestAddTableToImageHDU:
+    @pytest.mark.parametrize("xpix, ypix, value",
+                             [(51, 51, 1),
+                              (48, 51, 2),
+                              (48, 48, 3),
+                              (51, 48, 4)])
+    def test_integer_pixel_fluxes_are_added_correctly(self, xpix, ypix, value,
+                                                      image_hdu_square):
+        # Given the weird behaviour on pixel boundaries
+        x, y = [1.5, -1.5, -1.5, 1.5]*u.arcsec, [1.5, 1.5, -1.5, -1.5]*u.arcsec
+        flux = [1, 2, 3, 4] * u.Unit("ph s-1")
+        tbl = Table(names=["x", "y", "flux"], data=[x, y, flux])
+
+        hdu = opt_imp.add_table_to_imagehdu(tbl, image_hdu_square,
+                                            sub_pixel=False)
+        assert hdu.data[xpix, ypix] == value
+
+    @pytest.mark.parametrize("x, y, flux, xpix, ypix, value",
+                             [([0], [0], [1], 50, 50, 1.),
+                              ([0.2], [0.2], [1], 50, 50, 0.64),
+                              ([-0.2], [-0.2], [1], 49, 49, 0.04),
+                              ([5], [-5.2], [1], 55, 45, 0.8),
+                              ([5], [-5.2], [1], 55, 44, 0.2)
+                             ])
+    def test_sub_pixel_fluxes_are_added_correctly(self, x, y, flux, xpix, ypix,
+                                                  value, image_hdu_square):
+        # Given the weird behaviour on pixel boundaries
+        tbl = Table(names=["x", "y", "flux"],
+                    data=[x*u.arcsec, y*u.arcsec, flux*u.Unit("ph s-1")])
+        hdu = opt_imp.add_table_to_imagehdu(tbl, image_hdu_square,
+                                            sub_pixel=True)
+
+        assert np.isclose(hdu.data[xpix, ypix], value)
+        # import matplotlib.pyplot as plt
+        # plt.imshow(hdu.data[45:55,45:55], origin="lower")
+        # plt.colorbar()
+        # plt.show()
+
+
+@pytest.mark.usefixtures("image_hdu_square", "image_hdu_rect")
+class TestAddImagehduToImageHDU:
+    @pytest.mark.parametrize("angle", [0, 30, 45, 89])
+    def test_image_added_conserves_flux(self, angle, image_hdu_square):
+        canvas = deepcopy(image_hdu_square)
+        canvas.data = np.zeros((200, 200))
+        canvas.header["CRPIX1"] *= 2
+        canvas.header["CRPIX2"] *= 2
+
+        angle = np.deg2rad(angle)
+        image_hdu_square.data = np.ones((100, 100))
+        image_hdu_square.header["PC1_1"] = np.cos(angle)
+        image_hdu_square.header["PC1_2"] = np.sin(angle)
+        image_hdu_square.header["PC2_1"] = -np.sin(angle)
+        image_hdu_square.header["PC2_2"] = np.cos(angle)
+
+        canvas = opt_imp.add_imagehdu_to_imagehdu(image_hdu_square, canvas)
+        assert np.isclose(np.sum(canvas.data), np.sum(image_hdu_square.data))
+
+
+class TestSubPixelFractions:
+    @pytest.mark.parametrize("x, y, xx_exp ,yy_exp, ff_exp",
+     [(   0,    0, [ 0, 0,  0, 0], [ 0,  0, 0, 0], [  1.,    0,    0,    0]),
+      ( 0.2,  0.2, [ 0, 1,  0, 1], [ 0,  0, 1, 1], [0.64, 0.16, 0.16, 0.04]),
+      (-0.2, -0.2, [-1, 0, -1, 0], [-1, -1, 0, 0], [0.04, 0.16, 0.16, 0.64]),
+      ( 0.2, -0.2, [ 0, 1,  0, 1], [-1, -1, 0, 0], [0.16, 0.04, 0.64, 0.16])])
+    def test_fractions_come_out_correctly_for_mixed_offsets(self, x, y, xx_exp,
+                                                            yy_exp, ff_exp):
+        xx, yy, ff = opt_imp.sub_pixel_fractions(x, y)
+        assert pytest.approx(xx == xx_exp)
+        assert pytest.approx(yy == yy_exp)
+        assert pytest.approx(ff == ff_exp)
+
+
+@pytest.mark.usefixtures("image_hdu_square", "image_hdu_rect")
+class TestImagePlaneInit:
+    def test_throws_error_when_initialised_with_nothing(self):
+        with pytest.raises(TypeError):
+            opt_imp.ImagePlane()
+
+    def test_initialises_with_header_with_hdu(self, image_hdu_square,
+                                              image_hdu_rect):
+        hdr = opt_imp.make_image_plane_header(pixel_scale=0.1*u.arcsec,
+                                              hdu_or_table_list=[image_hdu_rect,
+                                                                 image_hdu_square])
+        implane = opt_imp.ImagePlane(hdr)
+        assert isinstance(implane, opt_imp.ImagePlane)
+        assert isinstance(implane.hdu, fits.ImageHDU)
+
+    def test_throws_error_if_header_does_not_have_valid_wcs(self):
+        with pytest.raises(ValueError):
+            opt_imp.ImagePlane(fits.Header())
+
+
+@pytest.mark.usefixtures("image_hdu_square", "image_hdu_rect")
+class TestImagePlaneAdd:
+    def test_simple_add_imagehdu_conserves_flux(self, image_hdu_square,
+                                              image_hdu_rect):
+        hdr = opt_imp.make_image_plane_header(pixel_scale=0.1*u.arcsec,
+                                              hdu_or_table_list=[image_hdu_rect,
+                                                                 image_hdu_square])
+        implane = opt_imp.ImagePlane(hdr)
+        implane.add(image_hdu_rect)
+        assert np.isclose(np.sum(implane.data), np.sum(image_hdu_rect.data))
+
+    def test_simple_add_table_conserves_flux(self, image_hdu_rect):
+        x = [75, -75]*u.arcsec
+        y = [0, 0]*u.arcsec
+        flux = [30, 20] * u.Unit("ph s-1")
+        tbl = Table(names=["x", "y", "flux"], data=[x, y, flux])
+
+        hdr = opt_imp.make_image_plane_header(pixel_scale=0.1*u.arcsec,
+                                              hdu_or_table_list=[image_hdu_rect,
+                                                                 tbl])
+        implane = opt_imp.ImagePlane(hdr)
+        implane.add(tbl)
+        assert np.isclose(np.sum(implane.data), np.sum(flux.data))
+
+    def test_compound_add_image_and_table_conserves_flux(self, image_hdu_rect):
+        x = [75, -75]*u.arcsec
+        y = [0, 0]*u.arcsec
+        flux = [30, 20] * u.Unit("ph s-1")
+        tbl = Table(names=["x", "y", "flux"], data=[x, y, flux])
+
+        hdr = opt_imp.make_image_plane_header(pixel_scale=0.1*u.arcsec,
+                                              hdu_or_table_list=[image_hdu_rect,
+                                                                 tbl])
+        implane = opt_imp.ImagePlane(hdr)
+        implane.add(tbl)
+        implane.add(image_hdu_rect)
+        assert np.isclose(np.sum(implane.data),
+                          np.sum(flux.data) + np.sum(image_hdu_rect.data))
