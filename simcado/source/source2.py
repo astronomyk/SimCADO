@@ -49,6 +49,7 @@ from .. import utils
 
 
 class Source:
+
     def __init__(self, filename=None,
                  lam=None, spectra=None, x=None, y=None, ref=None, weight=None,
                  table=None, image=None, **kwargs):
