@@ -288,7 +288,6 @@ class TestInsertIntoOrderedDict:
     @pytest.mark.parametrize("dic, new_entry, pos",
                      [({},                   ["a", 1], 0),
                       ({"x": 42, "y": 3.14}, {"a": 1}, 0),
-                      ({"x": 42, "y": 3.14}, OrderedDict({"a": 1, "b": 2}), 1),
                       ({"x": 42, "y": 3.14}, ("a", 1), 2),
                       ({"x": 42, "y": 3.14}, [("b", 2), ("a", 1)], -1)])
     def test_works_as_prescribed(self, dic, new_entry, pos):
