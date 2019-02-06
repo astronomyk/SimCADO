@@ -22,7 +22,7 @@ Cheat Sheet
 
 
 .. _PDF version: ../_static/pdfs/SimCADO_cheatsheet.pdf
-.. _Jupyter Notebook: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/SimCADO-cheat-sheet.ipynb
+.. _Jupyter Notebook: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/SimCADO-cheat-sheet.ipynb
 
 
 
@@ -34,7 +34,7 @@ Tutorials
    An introductory notebook to SimCADO. Topics include: first steps with
    SimCADO, creating :class:`.Source` objects and customising simulations.
 
-.. _my\_first\_sim.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/my_first_sim.ipynb
+.. _my\_first\_sim.ipynb: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/my_first_sim.ipynb
    
 Science Cases
 -------------
@@ -44,7 +44,7 @@ Science Cases
    Examples for how to use ``limiting_mags()`` from the sub-module 
    ``simcado.simulation``. 
 
-.. _Limiting_Magnitudes.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Limiting_Magnitudes.ipynb
+.. _Limiting_Magnitudes.ipynb: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/Limiting_Magnitudes.ipynb
 
 -  `Betelgeuse.ipynb`_
 
@@ -52,7 +52,7 @@ Science Cases
    = -3 mag) with SimCADO without destroying the detectors. Short
    answer: yes.
    
-.. _Betelgeuse.ipynb:     http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Betelgeuse.ipynb   
+.. _Betelgeuse.ipynb:     https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/Betelgeuse.ipynb   
    
 -  `StarDestroyer.ipynb`_
 
@@ -60,7 +60,7 @@ Science Cases
    around the moon in his spaceship, could the E-ELT see it, and would
    we we know what it was?
 
-.. _StarDestroyer.ipynb:  http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/StarDestroyer.ipynb
+.. _StarDestroyer.ipynb:  https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/StarDestroyer.ipynb
    
    
 MICADO experiments
@@ -72,7 +72,7 @@ MICADO experiments
    notebook uses SimCADO to have a look at what that means for the
    resulting E-ELT PSF.
 
-.. _E-ELT\_2-Phase\_Mirror.ipynb: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/POPPY_EELT.ipynb   
+.. _E-ELT\_2-Phase\_Mirror.ipynb: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/POPPY_EELT.ipynb   
    
 .. note::
     the PSFs generated here are only approximations based on a diffraction limited core combined with a Seeing Halo. These are meant only as a guide.
@@ -83,8 +83,8 @@ MICADO experiments
    filters in MICADO will need to have in order to restrict flux leakage
    through the filter wings to less than 1% of the flux coming through
    the filter.
-   
-.. _Filter\_Wings.ipynb:  http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Filter_Wings.ipynb   
+
+   .. _Filter\_Wings.ipynb:  https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/Filter_Wings.ipynb   
 
 Workshop notebooks
 ------------------
@@ -93,19 +93,19 @@ Workshop notebooks
 
    Some basics about running SimCADO
    
-.. _Setting up SimCADO:   http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/1_Setting_up_SimCADO.ipynb   
+.. _Setting up SimCADO:   https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/1_Setting_up_SimCADO.ipynb   
    
 2. `Working with point sources`_
 
    The basics for making and combining point source objects
    
-.. _Working with point sources: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/2_Working_with_Point_Sources.ipynb   
+.. _Working with point sources: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/2_Working_with_Point_Sources.ipynb   
    
 3. `Notes on simulation with sub-pixel resolution`_
 
    A couple of examples on how to get SimCADO to do sub-pixel scale simulations
-   
-.. _Notes on simulation with sub-pixel resolution: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/4_Sub-pixel_shifting.ipynb   
+
+   .. _Notes on simulation with sub-pixel resolution: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/4_Sub-pixel_shifting.ipynb   
    
    
 4. `Working with extended sources`_
@@ -113,6 +113,6 @@ Workshop notebooks
    Creating a galaxy field with a large galaxy (the Antennae) and adding a series of background galaxies
    Here are the `FITS file used in the simulation`_
 
-.. _Working with extended sources: http://nbviewer.jupyter.org/url/www.univie.ac.at/simcado/_static/downloads/Antennae_galaxy_field.ipynb 
+.. _Working with extended sources: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/Antennae_galaxy_field.ipynb 
 .. _FITS file used in the simulation: ../_static/downloads/Antennae_data.zip
 
