@@ -22,6 +22,8 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
+sim.commands.UserCommands(os.path.join(MOCK_DIR,"default.config"))
+
 
 def create_image_scaled_by_factor(factor=1):
     """
