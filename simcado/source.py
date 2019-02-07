@@ -2178,7 +2178,6 @@ def cluster(mass=1E3, distance=50000, half_light_radius=1):
     return src
 
 
-
 def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                       units="ph/s/m2", flux_threshold=0,
                       center_offset=(0, 0),
@@ -2246,6 +2245,11 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
     Returns
     -------
     src : :class:`.Source` object
+
+    Notes
+    -----
+
+    Currently only one object per image is supported. 
 
 
     Examples
@@ -2330,6 +2334,12 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
                 # y_list += (y + j).tolist()
                 # w_list += (weight / oversample**2).tolist()
         # x, y, weight = np.array(x_list), np.array(y_list), np.array(w_list)
+
+            # -----  IMAGES should be normalized before resampling ------
+        images[images <= flux_threshold] = 0  # masking noise
+        images = images / np.sum(images[images > flux_threshold])
+
+            # -----------------------------------------------------------
 
         if oversample != 1:
             img = spi.zoom(images, oversample, order=3).astype(np.float32)
