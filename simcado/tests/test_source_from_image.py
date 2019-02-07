@@ -22,7 +22,7 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
-cmds = simcado.UserCommands()
+cmds = sim.UserCommands()
 cmds['SIM_DATA_DIR'] = MOCK_DIR
 sim.get_extras()
 
