@@ -262,4 +262,4 @@ class TestImagePlaneAdd:
         implane.add(tbl)
         implane.add(image_hdu_rect)
         assert np.isclose(np.sum(implane.data),
-                          np.sum(flux.data) + np.sum(image_hdu_rect.data))
+                          np.sum(flux.value) + np.sum(image_hdu_rect.data))
