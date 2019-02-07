@@ -247,7 +247,7 @@ class TestImagePlaneAdd:
                                                                  tbl])
         implane = opt_imp.ImagePlane(hdr)
         implane.add(tbl)
-        assert np.isclose(np.sum(implane.data), np.sum(flux.data))
+        assert np.isclose(np.sum(implane.data), np.sum(flux.value))
 
     def test_compound_add_image_and_table_conserves_flux(self, image_hdu_rect):
         x = [75, -75]*u.arcsec
