@@ -35,7 +35,7 @@ Reference Material
 
 .. _Leschinski et al. (2016): https://arxiv.org/pdf/1609.01480v1.pdf
 
--  The current status of MICADO is described in `Davies et al. (2016)`_
+-  The current status of MICADO is described in `Davies et al. (2018)`_
 
 .. _Davies et al. (2018): https://arxiv.org/pdf/1807.10003
 
