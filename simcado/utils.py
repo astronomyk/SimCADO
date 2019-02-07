@@ -898,9 +898,9 @@ def quantity_from_table(colname, table, default_unit=""):
         col = col.data * col.unit
     else:
         if colname+"_unit" in table.meta:
-            col *= u.Unit(table.meta[colname+"_unit"])
+            col = col * u.Unit(table.meta[colname+"_unit"])
         else:
-            col *= u.Unit(default_unit)
+            col = col * u.Unit(default_unit)
             warnings.warn("{}_unit was not found in table.meta: {}. Used "
                           "default_unit: {}"
                           "".format(colname, table.meta, default_unit))
