@@ -9,74 +9,23 @@ Welcome to SimCADocs!
 The (slowly expanding) documentation base for SimCADO, the instrument data
 simulation package for MICADO at the ELT.
 
-.. figure:: _static/images/Pulsar_light_curve_Davies.png
-    :figwidth: 600 px
-    :align: center
+.. Important::
+    SimCADO is currently under active development. A new version is expected to be released in ~2 months, 
+    which will incorporate the spectrocopic mode as well as many other features and improvements. 
+    The current version of SimCADO (dubbed v0.5) is however capable to answer many questions about the future performance
+    of MICADO imaging mode and your favorite science case. For the spectroscopic mode, please consult SpecCADO_.
 
-    This is the lightcurve that follows the shape of the Crab Pulsar, but
-    scaled so that each pulse is easily visible in a 5ms windowed H-band
-    exposure with MICADO. The star is H=15mag. The light curve has been
-    extracted from the intermediate non-destructive reads from an up-the-ramp
-    simulated exposure.
+    .. _SpecCADO: https://github.com/oczoske/SpecCADO
 
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   user_docs/1_GettingStarted
-   user_docs/2_Download
-   user_docs/3_FAQs
-   user_docs/4_Updates
-   user_docs/5_Gallery
-   user_docs/6_Notebooks
-
-   user_docs/A_DeepStuff
-   user_docs/B_UserCommands
-   user_docs/C_Source
-   user_docs/Z_Keywords
-
-   reference/simcado
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
-.. All Notebooks and API available on the University of Vienna's server:
-   www.univie.ac.at/simcado
 
 SimCADO in a nutshell
 ---------------------
 
 SimCADO is a python package designed to simulate the effects of the
 Atmosphere, E-ELT, and MICADO instrument on incoming light. The current
-version (v0.5) can simulate the MICADO imaging modi (4mas and 1.5mas per
+version (v0.5) can simulate the MICADO imaging mode (4mas and 1.5mas per
 pixel in the wavelength range 0.7µm to 2.5µm).
-
-iPython/Jupyter notebooks
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A (continualy expanding) series of iPython Notebooks detailing how to
-use SimCADO are available :doc:`here in the Notebooks
-<user_docs/6_Notebooks>`
-section.
-
-.. hint::
-    Don't feel like sifting through documentation? Common commands and examples
-    are on the SimCADO cheat-sheet:
-
-    * `PDF version`_ or
-    * `Jupyter Notebook`_
-    * `Presentation for October 2017 Science Team Meeting`_
-
-
-.. _PDF version: ./_static/pdfs/SimCADO_cheatsheet.pdf
-.. _Jupyter Notebook: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/SimCADO-cheat-sheet.ipynb
-.. _Presentation for October 2017 Science Team Meeting: ./_static/pdfs/SimCADO_status_Oct_2017.pdf
 
 Reference Material
 ~~~~~~~~~~~~~~~~~~
@@ -126,6 +75,31 @@ updated. Therefore before you do any major work with SimCADO we **HIGHLY**
 recommend calling :func:`~.simcado.utils.get_extras`::
 
     >>> simcado.get_extras()
+
+
+
+iPython/Jupyter notebooks
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A (continualy expanding) series of iPython Notebooks detailing how to
+use SimCADO are available :doc:`here in the Notebooks
+<user_docs/6_Notebooks>`
+section.
+
+.. hint::
+    Don't feel like sifting through documentation? Common commands and examples
+    are on the SimCADO cheat-sheet:
+
+    * `PDF version`_ or
+    * `Jupyter Notebook`_
+    * `Presentation for October 2017 Science Team Meeting`_
+
+
+.. _PDF version: ./_static/pdfs/SimCADO_cheatsheet.pdf
+.. _Jupyter Notebook: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/SimCADO-cheat-sheet.ipynb
+.. _Presentation for October 2017 Science Team Meeting: ./_static/pdfs/SimCADO_status_Oct_2017.pdf
+
+
 
 Running a simulation in 3 lines
 -------------------------------
@@ -179,6 +153,26 @@ For a brief explanation of how SimCADO works and which classes are relevant,
 please see either the :doc:`GettingStarted <user_docs/1_GettingStarted>` or
 :doc:`SimCADO in depth <user_docs/A_DeepStuff>` section.
 
+Using SimCADO
+-------------
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   user_docs/1_GettingStarted
+   user_docs/2_Download
+   user_docs/3_FAQs
+   user_docs/4_Updates
+   user_docs/5_Gallery
+   user_docs/6_Notebooks
+
+   user_docs/A_DeepStuff
+   user_docs/B_UserCommands
+   user_docs/C_Source
+   user_docs/Z_Keywords
+
+   reference/simcado
+
 Bugs and Issues
 ---------------
 
@@ -187,9 +181,9 @@ If you come across an buggy part of SimCADO, *please please* tell us. We can't
 make SimCADO better if we don't know about things.
 
 The preferable option is to open an issue on our Github page:
-`gastronomyk/SimCADO/issues`_, or you can contact either one of us directly.
+`astronomyk/SimCADO/issues`_, or you can contact one of us directly.
 
-.. _gastronomyk/SimCADO/issues: https://github.com/gastronomyk/SimCADO/issues,
+.. _astronomyk/SimCADO/issues: https://github.com/astronomyk/SimCADO/issues,
 
 Contact
 -------
@@ -198,8 +192,9 @@ For questions and complaints alike, please contact the authors:
 
 * kieran.leschinski@univie.ac.at
 * oliver.czoske@univie.ac.at
+* miguel.verdugo@unive.ac.at
 
-**Developers (Vienna):** Kieran Leschinski, Oliver Czoske
+**Developers (Vienna):** Kieran Leschinski, Oliver Czoske, Miguel Verdugo
 
 **Data Flow Team Leader (Gronigen):** Gijs Verdoes Kleijn
 
