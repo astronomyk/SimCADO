@@ -3,7 +3,7 @@
 # - overridden + : number, Source, SourceSpectrum
 # - overridden * : number, SpectralElement
 # - write to and read from file
-# - shift all positions
+# - shift all fields
 # - rotate around the centre
 # - photons_in_range returns the photons per spectrum in a wavelength range
 # - image_in_range returns an image of the source for a wavelength range
@@ -14,8 +14,8 @@
 #
 # old structure --> new structure:
 # - all data held in 6 arrays
-# --> new dicts for positions, spectrum
-#       position can be a Table or an ImageHDU
+# --> new dicts for fields, spectrum
+#       field can be a Table or an ImageHDU
 #       spectrum is a SourceSpectrum
 #
 # Use cases:
@@ -32,19 +32,20 @@
 
 import pickle
 import warnings
-
+from copy import deepcopy
 import numpy as np
 
 from astropy.table import Table, Column
 from astropy.io import ascii as ioascii
 from astropy.io import fits
-from astropy import wcs
 from astropy import units as u
 
-from synphot import SourceSpectrum, SpectralElement, Observation
-from synphot.models import Empirical1D
+from synphot import SpectralElement
 
-from ..optics.image_plane import ImagePlane, make_image_plane_header
+from ..optics.image_plane_utils import make_image_plane_header
+from ..optics.image_plane import ImagePlane
+from .source2_utils import validate_source_input, convert_to_list_of_spectra, \
+    photons_in_range
 from .. import utils
 
 
@@ -57,7 +58,7 @@ class Source:
         self.meta = {}
         self.meta.update(kwargs)
         
-        self.positions = []
+        self.fields = []
         self.spectra = []
 
         self.bandpass = None
@@ -106,15 +107,17 @@ class Source:
         if "weight" not in tbl.colnames:
             tbl.add_column(Column(name="weight", data=np.ones(len(tbl))))
         tbl["ref"] += len(self.spectra)
-        self.positions += [tbl]
+        self.fields += [tbl]
         self.spectra += spectra
 
     def _from_image(self, image, spectra):
         if spectra is not None:
             image.header["SPEC_REF"] = len(self.spectra)
-            self.positions += [image]
+            self.fields += [image]
             self.spectra += spectra
         else:
+            warnings.warn("No spectrum was provided. SPEC_REF set to ''. "
+                          "This could cause problems later")
             image.header["SPEC_REF"] = ""
 
     def _from_arrays(self, x, y, ref, weight, spectra):
@@ -128,36 +131,37 @@ class Source:
         tbl.meta["x_unit"] = "arcsec"
         tbl.meta["y_unit"] = "arcsec"
 
-        self.positions += [tbl]
+        self.fields += [tbl]
         self.spectra += spectra
 
     def image_in_range(self, wave_min, wave_max, pixel_scale=1*u.arcsec,
                        layers=None, area=None, nbins=100):
         if layers is None:
-            layers = list(np.arange(len(self.positions)))
+            layers = list(np.arange(len(self.fields)))
 
-        positions = [self.positions[ii] for ii in layers]
-        hdr = make_image_plane_header(positions, pixel_scale=pixel_scale)
+        fields = [self.fields[ii] for ii in layers]
+        hdr = make_image_plane_header(fields, pixel_scale=pixel_scale)
         im_plane = ImagePlane(hdr)
 
-        for position in positions:
-            if isinstance(position, Table):
+        for field in fields:
+            if isinstance(field, Table):
                 fluxes = self.photons_in_range(wave_min, wave_max,
-                                               position["ref"], area, nbins)
+                                               field["ref"], area, nbins)
                 tbl = Table(names=["x", "y", "flux"],
-                            data=[position["x"], position["y"], fluxes])
-                tbl.meta.update(position.meta)
+                            data=[field["x"], field["y"], fluxes])
+                tbl.meta.update(field.meta)
                 hdu_or_table = tbl
 
-            elif isinstance(position, fits.ImageHDU):
-                if position.header["SPEC_REF"] is not "":
+            elif isinstance(field, fits.ImageHDU):
+                if field.header["SPEC_REF"] is not "":
+                    ref = [field.header["SPEC_REF"]]
                     flux = self.photons_in_range(wave_min, wave_max,
-                                                 position["ref"], area, nbins)
+                                                 ref, area, nbins)
                 else:
                     flux = 1
 
-                image = position.data * flux
-                hdu = fits.ImageHDU(header=position.header, data=image)
+                image = field.data * flux
+                hdu = fits.ImageHDU(header=field.header, data=image)
                 hdu_or_table = hdu
             else:
                 continue
@@ -175,6 +179,12 @@ class Source:
         counts = photons_in_range(spectra, wave_min, wave_max, area=area,
                                   bandpass=self.bandpass, nbins=nbins)
         return counts
+
+    def fluxes(self, wave_min, wave_max, **kwargs):
+        return photons_in_range(wave_min, wave_max, **kwargs)
+
+    def image(self, wave_min, wave_max, **kwargs):
+        return self.image_in_range(wave_min, wave_max, **kwargs)
 
     @classmethod
     def load(cls, filename):
@@ -195,35 +205,24 @@ class Source:
         pass
 
     def shift(self, dx=0, dy=0, layers=None):
-        """
-        Shifts the coordinates of the source by (dx, dy) in [arcsec]
-
-        Parameters
-        ----------
-        dx, dy : float, array
-            [arcsec] The offsets for each coordinate in the arrays ``x``, ``y``.
-            - If dx, dy are floats, the same offset is applied to all coordinates
-            - If dx, dy are arrays, they must be the same length as ``x``, ``y``
-
-        """
 
         if layers is None:
-            layers = np.arange(len(self.positions))
+            layers = np.arange(len(self.fields))
 
         for ii in layers:
-            if isinstance(self.positions[ii], Table):
+            if isinstance(self.fields[ii], Table):
                 x = utils.quantity_from_table("x", u.arcsec)
                 x += utils.quantify(dx, u.arcsec)
-                self.positions[ii]["x"] = x
+                self.fields[ii]["x"] = x
 
                 y = utils.quantity_from_table("y", u.arcsec)
                 y += utils.quantify(dy, u.arcsec)
-                self.positions[ii]["y"] = y
-            elif isinstance(self.positions[ii], fits.ImageHDU):
+                self.fields[ii]["y"] = y
+            elif isinstance(self.fields[ii], fits.ImageHDU):
                 dx = utils.quantify(dx, "arcsec").to(u.deg)
                 dy = utils.quantify(dy, "arcsec").to(u.deg)
-                self.positions[ii].header["CRVAL1"] += dx.value
-                self.positions[ii].header["CRVAL2"] += dy.value
+                self.fields[ii].header["CRVAL1"] += dx.value
+                self.fields[ii].header["CRVAL2"] += dy.value
 
     def rotate(self, angle, offset=None, layer=None):
         pass
@@ -234,174 +233,24 @@ class Source:
 
         self.bandpass = bandpass
 
-    def __add__(self, other):
-        pass
+    def append(self, new_source):
+        if isinstance(new_source, Source):
+            for field in new_source.fields:
+                if isinstance(field, Table):
+                    field["ref"] += len(self.spectra)
+                    self.fields += [field]
+                elif isinstance(field, fits.ImageHDU):
+                    field.header["SPEC_REF"] += len(self.spectra)
+                    self.fields += [field]
+                    self.spectra += new_source.spectra
+        else:
+            raise ValueError("Cannot add {} object to Source object"
+                             "".format(type(new_source)))
 
-    def __mul__(self, other):
-        pass
+    def __add__(self, new_source):
+        copy_source = deepcopy(self)
+        copy_source.append(new_source)
+        return copy_source
 
-    def __sub__(self, other):
-        pass
-
-    def __radd__(self, other):
-        pass
-
-    def __rmul__(self, other):
-        pass
-
-    def __rsub__(self, other):
-        pass
-
-
-def validate_source_input(**kwargs):
-    if "filename" in kwargs and kwargs["filename"] is not None:
-        filename = kwargs["filename"]
-        if utils.find_file(filename) is None:
-            warnings.warn("filename was not found: {}".format(filename))
-
-    if "image" in kwargs and kwargs["image"] is not None:
-        image = kwargs["image"]
-        if not isinstance(image, (fits.PrimaryHDU, fits.ImageHDU)):
-            raise ValueError("image must be fits.HDU object with a WCS."
-                             "type(image) == {}".format(type(image)))
-
-        if len(wcs.find_all_wcs(image.header)) == 0:
-            warnings.warn("image does not contain valid WCS. {}"
-                          "".format(wcs.WCS(image)))
-
-    if "table" in kwargs and kwargs["table"] is not None:
-        tbl = kwargs["table"]
-        if not isinstance(tbl, Table):
-            raise ValueError("table must be an astropy.Table object:"
-                             "{}".format(type(tbl)))
-
-        if not np.all([col in tbl.colnames for col in ["x", "y", "ref"]]):
-            raise ValueError("table must contain at least column names: "
-                             "'x, y, ref': {}".format(tbl.colnames))
-
-    return True
-
-
-def convert_to_list_of_spectra(spectra, lam):
-    spectra_list = []
-    if isinstance(spectra, SourceSpectrum):
-        spectra_list += [spectra]
-
-    elif isinstance(spectra, (tuple, list)) and \
-            isinstance(spectra[0], SourceSpectrum):
-        spectra_list += spectra
-
-    elif isinstance(spectra, np.ndarray) and isinstance(lam, np.ndarray) and \
-            len(spectra.shape) == 1 :
-        spec = SourceSpectrum(Empirical1D, points=lam, lookup_table=spectra)
-        spectra_list += [spec]
-
-    elif ((isinstance(spectra, np.ndarray) and
-           len(spectra.shape) == 2) or
-          (isinstance(spectra, (list, tuple)) and
-           isinstance(spectra[0], np.ndarray))) and \
-            isinstance(lam, np.ndarray):
-
-        for sp in spectra:
-            spec = SourceSpectrum(Empirical1D, points=lam, lookup_table=sp)
-            spectra_list += [spec]
-
-    return spectra_list
-
-
-def photons_in_range(spectra, wave_min, wave_max,
-                     bandpass=None, area=None, nbins=100):
-    wave_min = utils.quantify(wave_min, u.um)
-    wave_max = utils.quantify(wave_max, u.um)
-    wave = np.linspace(wave_min.value, wave_max.value, nbins) * u.um
-
-    per_unit_area = False
-    if area is None:
-        area = 1 * u.m ** 2
-        per_unit_area = True
-
-    if bandpass is not None:
-        bandpass = bandpass
-    else:
-        bandpass = SpectralElement(Empirical1D, points=wave,
-                                   lookup_table=[1] * len(wave))
-    counts = [Observation(spectrum,
-                          bandpass).effstim(flux_unit="count", binned=True,
-                                            area=area, waverange=wave).value
-              for spectrum in spectra]
-    # effstim doesn't account for the edges well. Generally one too many bins
-    correction_factor = len(wave) / (len(wave) + 1.)
-    counts *= u.ct / u.s * correction_factor
-
-    if per_unit_area:
-        counts = counts / area
-
-    return counts
-
-
-def make_imagehdu_from_table(x, y, flux, pix_scale=1*u.arcsec):
-
-    pix_scale = pix_scale.to(u.deg)
-    unit = pix_scale.unit
-    x = utils.quantify(x, unit)
-    y = utils.quantify(y, unit)
-
-    xpixmin = int(np.floor(np.min(x) / pix_scale))
-    ypixmin = int(np.floor(np.min(y) / pix_scale))
-    xvalmin = (xpixmin * pix_scale).value
-    yvalmin = (ypixmin * pix_scale).value
-
-    the_wcs = wcs.WCS(naxis=2)
-    the_wcs.wcs.crpix = [0., 0.]
-    the_wcs.wcs.cdelt = [pix_scale.value, pix_scale.value]
-    the_wcs.wcs.crval = [xvalmin, yvalmin]
-    the_wcs.wcs.cunit = [unit, unit]
-    the_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-
-    ypix, xpix = the_wcs.wcs_world2pix(y.to(u.deg), x.to(u.deg), 1)
-    yint, xint  = ypix.astype(int), xpix.astype(int)
-
-    image = np.zeros((np.max(xint) + 1, np.max(yint) + 1))
-    for ii in range(len(xint)):
-        image[xint[ii], yint[ii]] += flux[ii]
-
-    hdu = fits.ImageHDU(data=image)
-    hdu.header.extend(the_wcs.to_header())
-
-    return hdu
-
-
-def scale_imagehdu(imagehdu, area=None, solid_angle=None, waverange=None):
-
-    if "BUNIT" in imagehdu.header:
-        unit = u.Unit(imagehdu.header["BUNIT"])
-    elif "FLUXUNIT" in imagehdu.header:
-        unit = u.Unit(imagehdu.header["BUNIT"])
-    else:
-        unit = ""
-
-    zero  = 0  * u.Unit(unit)
-    scale = 1 * u.Unit(unit)
-    if area is not None:
-        scale *= area
-    if solid_angle is not None:
-        scale *= solid_angle
-    if waverange is not None:
-        scale *= waverange
-    if "BSCALE" in imagehdu.header:
-        scale *= imagehdu.header["BSCALE"]
-        imagehdu.header["BSCALE"] = 1
-    if "BZERO" in imagehdu.header:
-        zero = imagehdu.header["BZERO"]
-        imagehdu.header["BZERO"] = 0
-
-    imagehdu.data = imagehdu * scale + zero
-    imagehdu.header["BUNIT"] = str(imagehdu.data.unit)
-    imagehdu.header["FLUXUNIT"] = str(imagehdu.data.unit)
-
-    return imagehdu
-
-
-
-
-
+    def __radd__(self, new_source):
+        return self.__add__(new_source)
