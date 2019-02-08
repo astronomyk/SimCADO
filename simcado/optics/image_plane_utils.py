@@ -1,7 +1,7 @@
 import warnings
 
 import numpy as np
-NUMPY_VERSION = float(".".join(np.__version__.split(".")[:2])
+NUMPY_VERSION = float(".".join(np.__version__.split(".")[:2]))
 
 from astropy import units as u, wcs
 from astropy.io import fits
