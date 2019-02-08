@@ -45,7 +45,8 @@ from synphot import SpectralElement
 from ..optics.image_plane_utils import make_image_plane_header
 from ..optics.image_plane import ImagePlane
 from .source2_utils import validate_source_input, convert_to_list_of_spectra, \
-    photons_in_range
+    photons_in_range, scale_imagehdu
+
 from .. import utils
 
 
@@ -53,7 +54,7 @@ class Source:
 
     def __init__(self, filename=None,
                  lam=None, spectra=None, x=None, y=None, ref=None, weight=None,
-                 table=None, image=None, **kwargs):
+                 table=None, image_hdu=None, **kwargs):
 
         self.meta = {}
         self.meta.update(kwargs)
@@ -64,8 +65,8 @@ class Source:
         self.bandpass = None
 
         valid = validate_source_input(lam=lam, x=x, y=y, ref=ref, weight=weight,
-                                      spectra=spectra, table=table, image=image,
-                                      filename=filename)
+                                      spectra=spectra, table=table,
+                                      image_hdu=image_hdu, filename=filename)
 
         spectra = convert_to_list_of_spectra(spectra, lam)
 
@@ -75,8 +76,8 @@ class Source:
         elif table is not None and spectra is not None:
             self._from_table(table, spectra)
 
-        elif image is not None and spectra is not None:
-            self._from_image(image, spectra)
+        elif image_hdu is not None and spectra is not None:
+            self._from_imagehdu(image_hdu, spectra)
 
         elif x is not None and y is not None and \
                 ref is not None and spectra is not None:
@@ -91,7 +92,7 @@ class Source:
             hdr = fits.getheader(filename)
             if fits_type == "image":
                 image = fits.ImageHDU(data=data, header=hdr)
-                self._from_image(image, spectra)
+                self._from_imagehdu(image, spectra)
             elif fits_type == "bintable":
                 hdr1 = fits.getheader(filename, 1)
                 hdr.update(hdr1)
@@ -110,15 +111,16 @@ class Source:
         self.fields += [tbl]
         self.spectra += spectra
 
-    def _from_image(self, image, spectra):
-        if spectra is not None:
-            image.header["SPEC_REF"] = len(self.spectra)
-            self.fields += [image]
+    def _from_imagehdu(self, image_hdu, spectra):
+        if spectra is not None and len(spectra) > 0:
+            image_hdu.header["SPEC_REF"] = len(self.spectra)
             self.spectra += spectra
         else:
             warnings.warn("No spectrum was provided. SPEC_REF set to ''. "
                           "This could cause problems later")
-            image.header["SPEC_REF"] = ""
+            image_hdu.header["SPEC_REF"] = ""
+
+        self.fields += [image_hdu]
 
     def _from_arrays(self, x, y, ref, weight, spectra):
         if weight is None:
@@ -135,7 +137,7 @@ class Source:
         self.spectra += spectra
 
     def image_in_range(self, wave_min, wave_max, pixel_scale=1*u.arcsec,
-                       layers=None, area=None, nbins=100):
+                       layers=None, area=None):
         if layers is None:
             layers = list(np.arange(len(self.fields)))
 
@@ -145,8 +147,10 @@ class Source:
 
         for field in fields:
             if isinstance(field, Table):
-                fluxes = self.photons_in_range(wave_min, wave_max,
-                                               field["ref"], area, nbins)
+                fluxes = self.photons_in_range(wave_min, wave_max, area,
+                                               field["ref"]) * field["weight"]
+                x = utils.quantity_from_table("x", field, u.arcsec)
+                y = utils.quantity_from_table("y", field, u.arcsec)
                 tbl = Table(names=["x", "y", "flux"],
                             data=[field["x"], field["y"], fluxes])
                 tbl.meta.update(field.meta)
@@ -155,10 +159,16 @@ class Source:
             elif isinstance(field, fits.ImageHDU):
                 if field.header["SPEC_REF"] is not "":
                     ref = [field.header["SPEC_REF"]]
-                    flux = self.photons_in_range(wave_min, wave_max,
-                                                 ref, area, nbins)
+                    flux = self.photons_in_range(wave_min, wave_max, area, ref)
+                    # [ph s-1] or [ph s-1 m-2] come out of photons_in_range
                 else:
+                    field = scale_imagehdu(field, area=area,
+                                           solid_angle=pixel_scale**2,
+                                           waverange=(wave_min, wave_max))
+                    # [ph s-1] or [ph s-1 m-2] come out of photons_in_range
                     flux = 1
+
+                ### ..todo: CATCH UNITS HERE. DEAL WITH THEM PROPERLY
 
                 image = field.data * flux
                 hdu = fits.ImageHDU(header=field.header, data=image)
@@ -170,18 +180,36 @@ class Source:
 
         return im_plane
 
-    def photons_in_range(self, wave_min, wave_max, indexes=None, area=None,
-                         nbins=100):
+    def photons_in_range(self, wave_min, wave_max, area=None, indexes=None):
+        """
+
+        Parameters
+        ----------
+        wave_min : float, u.Quantity
+            [um]
+        wave_max : float, u.Quantity
+            [um]
+        area : float, u.Quantity, optional
+            [m2]
+        indexes : list of integers, optional
+
+        Returns
+        -------
+        counts : u.Quantity list
+            [ph / s / m2] if area is None
+            [ph / s] if area is passed
+
+        """
         if indexes is None:
             indexes = range(len(self.spectra))
 
         spectra = [self.spectra[ii] for ii in indexes]
         counts = photons_in_range(spectra, wave_min, wave_max, area=area,
-                                  bandpass=self.bandpass, nbins=nbins)
+                                  bandpass=self.bandpass)
         return counts
 
     def fluxes(self, wave_min, wave_max, **kwargs):
-        return photons_in_range(wave_min, wave_max, **kwargs)
+        return self.photons_in_range(wave_min, wave_max, **kwargs)
 
     def image(self, wave_min, wave_max, **kwargs):
         return self.image_in_range(wave_min, wave_max, **kwargs)
@@ -198,11 +226,11 @@ class Source:
         with open(filename, 'wb') as fp1:
             pickle.dump(self, fp1)
 
-    def write_to_fits(self, filename):
-        pass
-
-    def read_from_fits(self, filename):
-        pass
+    # def write_to_fits(self, filename):
+    #     pass
+    #
+    # def read_from_fits(self, filename):
+    #     pass
 
     def shift(self, dx=0, dy=0, layers=None):
 
@@ -224,7 +252,7 @@ class Source:
                 self.fields[ii].header["CRVAL1"] += dx.value
                 self.fields[ii].header["CRVAL2"] += dy.value
 
-    def rotate(self, angle, offset=None, layer=None):
+    def rotate(self, angle, offset=None, layers=None):
         pass
 
     def add_bandpass(self, bandpass):
@@ -233,14 +261,16 @@ class Source:
 
         self.bandpass = bandpass
 
-    def append(self, new_source):
+    def append(self, source_to_add):
+        new_source = deepcopy(source_to_add)
         if isinstance(new_source, Source):
             for field in new_source.fields:
                 if isinstance(field, Table):
                     field["ref"] += len(self.spectra)
                     self.fields += [field]
                 elif isinstance(field, fits.ImageHDU):
-                    field.header["SPEC_REF"] += len(self.spectra)
+                    if isinstance(field.header["SPEC_REF"], int):
+                        field.header["SPEC_REF"] += len(self.spectra)
                     self.fields += [field]
                     self.spectra += new_source.spectra
         else:
@@ -254,3 +284,22 @@ class Source:
 
     def __radd__(self, new_source):
         return self.__add__(new_source)
+
+    def __repr__(self):
+
+        msg = ""
+        for ii in range(len(self.fields)):
+            if isinstance(self.fields[ii], Table):
+                tbl_len = len(self.fields[ii])
+                num_spec = set(self.fields[ii]["ref"])
+                msg += "[{}]: Table with {} rows, referencing {} spectra \n" \
+                       "".format(ii, tbl_len, num_spec)
+            elif isinstance(self.fields[ii], fits.ImageHDU):
+                im_size = self.fields[ii].data.shape
+                num_spec = "-"
+                if self.fields[ii].header["SPEC_REF"] is not "":
+                    num_spec = self.fields[ii].header["SPEC_REF"]
+                msg += "[{}]: ImageHDU with size {}, referencing spectrum {}" \
+                       "\n".format(ii, im_size, num_spec)
+
+        return msg

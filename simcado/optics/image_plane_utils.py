@@ -48,9 +48,13 @@ def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
 
     canvas_wcs = wcs.WCS(canvas_hdu)
     xpix, ypix = canvas_wcs.wcs_world2pix(x, y, 1)
+
     naxis1 = canvas_hdu.header["NAXIS1"]
     naxis2 = canvas_hdu.header["NAXIS2"]
-    mask = (xpix >= 0) * (xpix < naxis1) * (ypix >= 0) * (ypix < naxis2)
+    # Weird FITS / astropy behaviour. Axis1 == y, Axis2 == x.
+    # Also occasionally 0 is returned as ~ -1e-11
+    eps = -1e-7
+    mask = (xpix >= eps) * (xpix < naxis2) * (ypix >= eps) * (ypix < naxis1)
 
     if sub_pixel is True:
         canvas_hdu.header["comment"] = "Adding {} sub-pixel sources" \
@@ -97,7 +101,13 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
 
     """
 
+    if isinstance(image_hdu.data, u.Quantity):
+        unit = image_hdu.data.unit
+        image_hdu.data = image_hdu.data.value
+
     new_im, mask = reproject_interp(image_hdu, canvas_hdu.header, order=order)
+    new_im = np.nan_to_num(new_im, copy=False)
+
     # this won't work when image_hdu is larger than canvas_hdu
     if np.prod(canvas_hdu.data.shape) > np.prod(image_hdu.data.shape):
         new_im[mask > 0] *= np.sum(image_hdu.data) / np.sum(new_im[mask > 0])

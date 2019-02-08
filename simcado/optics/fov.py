@@ -20,12 +20,23 @@ from .. import rc
 
 
 class FieldOfView:
+    """
+    A FOV is a monochromatic image. Flux units after extracting the fields from
+    the Source are in ph/s/pixel
+
+    The initial header should contain a spatial WCS including:
+    - CDELTn, CUNITn, NAXISn : for pixel scale and size (assumed CUNIT in deg)
+    - CRVALn, CRPIXn : for positioning the final image
+    - CTYPE : is assumed to be a TAN projection.
+
+
+    """
+
     def __init__(self, header, waverange, **kwargs):
         self.meta = {"wave_binwidth" : rc.__rc__["SIM_SPEC_RESOLUTION"],
                      "wave_min" : utils.quantify(waverange[0], u.um),
                      "wave_max" : utils.quantify(waverange[1], u.um),
                      "area" : 1 * u.m**2,
-                     "transmission" : None,
                      "sub_pixel" : rc.__rc__["SIM_SUB_PIXEL_ACCURACY"]}
         self.meta.update(kwargs)
 
