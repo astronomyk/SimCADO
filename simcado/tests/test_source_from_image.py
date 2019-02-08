@@ -28,6 +28,12 @@ cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
 cmds["SIM_DATA_DIR"] = __data_dir__
 print(cmds["SIM_DATA_DIR"])
 print(cmds["ATMO_EC"])
+# Update some keywords by hand
+cmds["INST_ENTR_WINDOW_TC"] = os.path.join(MOCK_DIR, "TC_window.dat")
+cmds["INST_DICHROIC_TC"] = os.path.join(MOCK_DIR, "TC_dichroic.dat")
+cmds["INST_PUPIL_TC"] = os.path.join(MOCK_DIR, "TC_pupil.dat")
+cmds["INST_ADC_TC"] = os.path.join(MOCK_DIR, "TC_ADC.dat")
+
 
 sim.get_extras()
 
