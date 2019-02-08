@@ -1,7 +1,6 @@
 import warnings
 
-import numpy as np
-NUMPY_VERSION = float(".".join(np.__version__.split(".")[:2]))
+import numpy as np   # must be above 1.13 for the np.num_to_nan(copy=...) to work
 
 from astropy import units as u, wcs
 from astropy.io import fits
@@ -108,10 +107,7 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
         image_hdu.data = image_hdu.data.value
 
     new_im, mask = reproject_interp(image_hdu, canvas_hdu.header, order=order)
-    if NUMPY_VERSION >= 1.13:
-        new_im = np.nan_to_num(new_im, copy=False)
-    else:
-        new_im = np.nan_to_num(new_im)
+    new_im = np.nan_to_num(new_im, copy=False)
         
     # this won't work when image_hdu is larger than canvas_hdu
     if np.prod(canvas_hdu.data.shape) > np.prod(image_hdu.data.shape):
