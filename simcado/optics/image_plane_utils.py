@@ -1,6 +1,8 @@
 import warnings
 
 import numpy as np
+NUMPY_VERSION = np.__version__
+
 from astropy import units as u, wcs
 from astropy.io import fits
 from astropy.table import Table
@@ -106,8 +108,11 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
         image_hdu.data = image_hdu.data.value
 
     new_im, mask = reproject_interp(image_hdu, canvas_hdu.header, order=order)
-    new_im = np.nan_to_num(new_im, copy=False)
-
+    if NUMPY_VERSION >= (1, 13):
+        new_im = np.nan_to_num(new_im, copy=False)
+    else:
+        new_im = np.nan_to_num(new_im)
+        
     # this won't work when image_hdu is larger than canvas_hdu
     if np.prod(canvas_hdu.data.shape) > np.prod(image_hdu.data.shape):
         new_im[mask > 0] *= np.sum(image_hdu.data) / np.sum(new_im[mask > 0])
