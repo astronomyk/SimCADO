@@ -12,6 +12,7 @@ import simcado as sim
 import os
 import inspect
 import pytest
+from simcado.utils import __pkg_dir__
 
 # Helper functions ---
 
@@ -22,8 +23,8 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
-cmds = sim.UserCommands()
-cmds['SIM_DATA_DIR'] = MOCK_DIR
+cmds = sim.UserCommands(sim_data_dir=os.path.join(__pkg_dir__,"data"))
+print(cmds['SIM_DATA_DIR'])
 sim.get_extras()
 
 
