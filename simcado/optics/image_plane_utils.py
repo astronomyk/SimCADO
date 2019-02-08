@@ -1,7 +1,7 @@
 import warnings
 
 import numpy as np
-NUMPY_VERSION = np.__version__
+NUMPY_VERSION = float(".".join(np.__version__.split(".")[:2])
 
 from astropy import units as u, wcs
 from astropy.io import fits
@@ -108,7 +108,7 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
         image_hdu.data = image_hdu.data.value
 
     new_im, mask = reproject_interp(image_hdu, canvas_hdu.header, order=order)
-    if NUMPY_VERSION >= (1, 13):
+    if NUMPY_VERSION >= 1.13:
         new_im = np.nan_to_num(new_im, copy=False)
     else:
         new_im = np.nan_to_num(new_im)
