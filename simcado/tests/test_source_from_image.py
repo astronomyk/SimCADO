@@ -16,26 +16,22 @@ from simcado import __data_dir__
 
 # Helper functions ---
 
+
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
     rel_dirname = "mocks"
     return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
 
+
 MOCK_DIR = mock_dir()
 
 sim.get_extras()
-cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
-cmds["SIM_DATA_DIR"] = __data_dir__
+#cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
+#cmds["SIM_DATA_DIR"] = __data_dir__
 print(cmds["SIM_DATA_DIR"])
 print(cmds["ATMO_EC"])
-# Update some keywords by hand
-cmds["INST_ENTR_WINDOW_TC"] = os.path.join(MOCK_DIR, "TC_window.dat")
-cmds["INST_DICHROIC_TC"] = os.path.join(MOCK_DIR, "TC_dichroic.dat")
-cmds["INST_PUPIL_TC"] = os.path.join(MOCK_DIR, "TC_pupil.dat")
-cmds["INST_ADC_TC"] = os.path.join(MOCK_DIR, "TC_ADC.dat")
 
-
-sim.get_extras()
+#sim.get_extras()
 
 
 def create_image_scaled_by_factor(factor=1):
