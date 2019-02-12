@@ -26,8 +26,8 @@ def mock_dir():
 MOCK_DIR = mock_dir()
 
 sim.get_extras()
-cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
-cmds["SIM_DATA_DIR"] = __data_dir__
+#cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
+#cmds["SIM_DATA_DIR"] = __data_dir__
 print(__data_dir__)
 
 
@@ -143,8 +143,8 @@ def test_source_from_image(factor1, factor2):
                                                pix_res=0.004, flux_threshold=0, conserve_flux=True)
     galaxy_src2 = sim.source.source_from_image(image2, lam, spec, plate_scale=0.004,
                                                pix_res=0.004, flux_threshold=0, conserve_flux=True)
-    sim_img1 = sim.run(galaxy_src1, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
-    sim_img2 = sim.run(galaxy_src2, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+    sim_img1 = sim.run(galaxy_src1, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004) #, cmds=cmds)
+    sim_img2 = sim.run(galaxy_src2, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004) #, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
     assert np.abs(counts1 / counts2 - 1) < 0.1
@@ -167,8 +167,8 @@ def test_source_elliptical(mag):
     galaxy_src2 = sim.source.elliptical(20 * 0.004, 0.004, magnitude=mag, n=1,
                                         filter_name=filter_file, normalization="total",
                                         spectrum="spiral", ellipticity=0, angle=0)
-    sim_img1 = sim.run(galaxy_src1, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
-    sim_img2 = sim.run(galaxy_src2, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+    sim_img1 = sim.run(galaxy_src1, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004) #, cmds=cmds)
+    sim_img2 = sim.run(galaxy_src2, OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004) #, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
     print(mag)
