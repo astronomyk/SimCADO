@@ -26,12 +26,26 @@ def mock_dir():
 MOCK_DIR = mock_dir()
 
 sim.get_extras()
-#cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
-#cmds["SIM_DATA_DIR"] = __data_dir__
+cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
+cmds["SIM_DATA_DIR"] = __data_dir__
 print(__data_dir__)
 
 cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
 cmds["INST_ENTR_WINDOW_TC"] = os.path.join(MOCK_DIR, "TC_window.dat")
+cmds["ATMO_TC"] = os.path.join(MOCK_DIR, "TC_sky_25.tbl")
+cmds["SCOPE_M1_TC"] = os.path.join(MOCK_DIR, "TC_mirror_EELT.dat")
+cmds["INST_MIRROR_AO_TC"] = os.path.join(MOCK_DIR, "TC_mirror_gold.dat")
+cmds["INST_ENTR_WINDOW_TC"] = os.path.join(MOCK_DIR, "TC_window.dat")
+cmds["INST_DICHROIC_TC"] = os.path.join(MOCK_DIR, "TC_dichroic.dat")
+cmds["INST_MIRROR_TC"] = os.path.join(MOCK_DIR, "TC_mirror_gold.dat")
+cmds["INST_ADC_TC"] = os.path.join(MOCK_DIR, "TC_ADC.dat")
+cmds["INST_PUPIL_TC"] = os.path.join(MOCK_DIR, "TC_pupil.dat")
+cmds["INST_FILTER_TC"] = os.path.join(MOCK_DIR, "TC_filter_K.dat")
+cmds["FPA_QE"] = os.path.join(MOCK_DIR, "TC_detector_H2RG.dat")
+
+
+
+
 
 
 def create_image_scaled_by_factor(factor=1):
