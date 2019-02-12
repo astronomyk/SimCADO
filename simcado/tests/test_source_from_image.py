@@ -29,9 +29,6 @@ sim.get_extras()
 #cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
 #cmds["SIM_DATA_DIR"] = __data_dir__
 print(cmds["SIM_DATA_DIR"])
-print(cmds["ATMO_EC"])
-
-#sim.get_extras()
 
 
 def create_image_scaled_by_factor(factor=1):
