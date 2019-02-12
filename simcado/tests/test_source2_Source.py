@@ -1,5 +1,6 @@
 # actually for Source2
 import pytest
+from pytest import approx
 
 import os
 import inspect
@@ -22,6 +23,9 @@ from simcado.source.source2 import Source
 from simcado.source import source2 as src2
 from simcado.optics.image_plane import ImagePlane
 from simcado.utils import convert_table_comments_to_dict
+
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 
 
 def mock_dir():
@@ -101,23 +105,24 @@ def table_source():
 
 @pytest.fixture(scope="function")
 def image_source():
-    n = 100
+    n = 50
     unit = u.Unit("ph s-1 m-2 um-1")
     wave = np.linspace(0.5, 2.5, n) * u.um
     specs = [SourceSpectrum(Empirical1D, points=wave,
                             lookup_table=np.linspace(0, 4, n) * unit)]
 
+    n = 50
     im_wcs = wcs.WCS(naxis=2)
-    im_wcs.wcs.cdelt = [0.1, 0.1]
     im_wcs.wcs.cunit = [u.arcsec, u.arcsec]
+    im_wcs.wcs.cdelt = [0.2, 0.2]
     im_wcs.wcs.crval = [0, 0]
-    im_wcs.wcs.crpix = [50, 50]
+    im_wcs.wcs.crpix = [n//2, n//2]
     im_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
-    im = np.zeros((101, 101))
-    im[0, 100] = 1
-    im[100, 0] = 1
-    im[50, 50] = 10
+    im = np.ones((n+1, n+1)) * 1E-11
+    im[0, n] += 1
+    im[n, 0] += 1
+    im[n//2, n//2] += 10
 
     im_hdu = fits.ImageHDU(data=im, header=im_wcs.to_header())
     im_hdu.header["SPEC_REF"] = 0
@@ -151,9 +156,10 @@ class TestSourceInit:
         assert isinstance(src.fields[0], fits.PrimaryHDU)
 
     def test_initialises_with_image_and_0_spectra(self, input_hdulist):
-        src = Source(image_hdu=input_hdulist[0])
-        assert len(src.spectra) == 0
-        assert src.fields[0].header["SPEC_REF"] == ""
+        with pytest.raises(NotImplementedError):
+            src = Source(image_hdu=input_hdulist[0])
+        # assert len(src.spectra) == 0
+        # assert src.fields[0].header["SPEC_REF"] == ""
 
     @pytest.mark.parametrize("ii, dtype",
                              [(0, fits.ImageHDU),
@@ -215,16 +221,59 @@ class TestSourceImageInRange:
         counts = np.sum([ph.value[r] * w for r, w in zip(ref, weight)])
 
         im = table_source.image_in_range(1*u.um, 2*u.um)
-        assert np.isclose(np.sum(im.image), counts)
+        assert np.sum(im.image) == approx(counts)
 
-    def test_flux_from_imagehdu_is_as_expected(self, image_source):
-        im = image_source.image_in_range(1*u.um, 2*u.um, 0.1*u.arcsec)
-        assert np.isclose(np.sum(im.image), 24)
+    @pytest.mark.parametrize("pix_scl", [0.1, 0.2, 0.4])
+    def test_flux_from_imagehdu_is_as_expected(self, image_source, pix_scl):
+        im = image_source.image_in_range(1*u.um, 2*u.um, pix_scl*u.arcsec)
+        assert np.sum(im.image) == approx(24)
+
+    def test_image_ref_coords_is_irrespective_of_source_coords(self,
+                                                               table_source):
+        table_source.fields[0]["x"] += 20  # arcsec
+        im = table_source.image_in_range(1*u.um, 2*u.um)
+        assert np.all(im.image.shape == (11, 16))
+        assert im.header["CRPIX1"] == approx(-15)
+
+    def test_combines_more_that_one_field_into_image(self, image_source,
+                                                     table_source):
+        tbl = table_source.fields[0]
+        ph = table_source.photons_in_range(1 * u.um, 2 * u.um)
+        tbl_sum = [ph[tbl["ref"][ii]] * tbl["weight"][ii]
+                   for ii in range(len(tbl))]
+        im_hdu_sum = np.sum(image_source.fields[0].data) * \
+                     image_source.photons_in_range(1 * u.um, 2 * u.um)[0]
+        input_sum = np.sum(u.Quantity(tbl_sum)) + im_hdu_sum
+
+        from copy import deepcopy
+        tbl2 = deepcopy(table_source)
+        tbl2.fields[0]["x"] += -20
+        tbl2.fields[0]["y"] += 0
+
+        print(image_source.fields[0].header["CTYPE1"])
+        # image_source.fields[0].header["CRVAL1"] += 0 * u.arcsec.to(u.deg)
+        # image_source.fields[0].header["CRVAL2"] += 0 * u.arcsec.to(u.deg)
+
+        table_source.append(tbl2)
+        table_source.append(image_source)
+        im = table_source.image_in_range(1*u.um, 2*u.um,
+                                         pixel_scale=0.2*u.arcsec,
+                                         layers=[0, 1, 2])
+        impl_wcs = wcs.WCS(im.hdu)
 
 
+        plt.imshow(im.image.T, origin="lower", norm=LogNorm())
+        plt.colorbar()
+        x, y = impl_wcs.wcs_world2pix([0], [0], 1)
+        plt.scatter(x, y, c="r")
+        plt.show()
 
+        ipt_im = image_source.fields[0]
 
-
+        # print(ipt_im.header["CRVAL1"], ipt_im.header["CRPIX1"], ipt_im.header["NAXIS1"])
+        # print(ipt_im.header["CRVAL2"], ipt_im.header["CRPIX2"], ipt_im.header["NAXIS2"])
+        # print(np.sum(im.image), input_sum)
+        assert np.sum(im.image) == approx(input_sum.value)
 
 
 
@@ -251,7 +300,7 @@ class TestSourcePhotonsInRange:
     @pytest.mark.parametrize("area, expected", [(None, 2), (1, 2), (10, 20)])
     def test_photons_increase_with_area(self, area, expected, image_source):
         ph = image_source.photons_in_range(1, 2, area=area)
-        assert np.isclose(ph[0].value, expected)
+        assert ph[0].value == approx(expected)
 
     def test_photons_returned_only_for_indexes(self, table_source):
         ph = table_source.photons_in_range(1, 2, indexes=[0, 2])
@@ -285,7 +334,7 @@ class TestPhotonsInRange:
         wave = np.linspace(1, 2, 11) * u.um
         spec = SourceSpectrum(Empirical1D, points=wave, lookup_table=flux)
         counts = source2_utils.photons_in_range([spec], 1 * u.um, 2 * u.um)
-        assert np.isclose(counts.value, 1)
+        assert counts.value == approx(1)
 
     @pytest.mark.parametrize("area, expected_units",
                              [(1*u.m**2, u.ph / u.s),
@@ -308,7 +357,7 @@ class TestPhotonsInRange:
                                    lookup_table=0.5 * np.ones(13))
         counts = source2_utils.photons_in_range([spec], 1*u.um, 2*u.um,
                                                 bandpass=bandpass)
-        assert np.isclose(counts.value, 0.5)
+        assert counts.value == approx(0.5)
 
     @pytest.mark.parametrize("flux, area, expected",
                              [(np.linspace(0, 1, 11),      1E4*u.cm**2, 0.25),
@@ -326,7 +375,7 @@ class TestPhotonsInRange:
         counts = source2_utils.photons_in_range([spec], 1*u.um, 2*u.um,
                                                 bandpass=bandpass,
                                                 area=area)
-        assert np.isclose(counts.value, expected)
+        assert counts.value == approx(expected)
 
 
 class TestMakeImageFromTable:
@@ -345,7 +394,7 @@ class TestMakeImageFromTable:
         y = np.linspace(-1.0001, 1.0001, 9)*u.arcsec
         flux = np.ones(len(x))
         hdu = source2_utils.make_imagehdu_from_table(x=x, y=y, flux=flux,
-                                                                    pix_scale=0.25*u.arcsec)
+                                                     pix_scale=0.25*u.arcsec)
         the_wcs = wcs.WCS(hdu)
         yy, xx = the_wcs.wcs_world2pix(y.to(u.deg), x.to(u.deg), 1)
         xx = np.floor(xx).astype(int)
@@ -358,7 +407,7 @@ class TestMakeImageFromTable:
         y = np.random.random(11)*u.arcsec
         flux = np.ones(len(x))
         hdu = source2_utils.make_imagehdu_from_table(x=x, y=y, flux=flux,
-                                                                    pix_scale=0.1*u.arcsec)
+                                                     pix_scale=0.1*u.arcsec)
         the_wcs = wcs.WCS(hdu)
         yy, xx = the_wcs.wcs_world2pix(y.to(u.deg), x.to(u.deg), 1)
         xx = xx.astype(int)
@@ -382,11 +431,37 @@ class TestMakeImageFromTable:
         # plt.imshow(hdu.data)
         # plt.show()
 
+#
+# class TestScaleImageHDU:
+#     def test_scaling_properly_for_si_photlam_in_header(self):
+#         hdu = fits.ImageHDU(data=np.ones((10,10)))
+#         hdu.header["CDELT1"] = 0.1 * u.arcsec.to(u.deg)
+#         hdu.header["CDELT2"] = 0.1 * u.arcsec.to(u.deg)
+#         hdu.header["BUNIT"] = "ph s-1 m-2 um-1"
+#         waverange = (1, 2)*u.um
+#         scaled_hdu = source2_utils.scale_imagehdu(hdu, waverange)
+#         assert scaled_hdu
+#
+#     def test_scaling_properly_for_cgs_photlam_per_arcsec2_in_header(self):
+#         pass
+#
+#     def test_scaling_properly_for_photlam_per_arcsec2_no_area_in_header(self):
+#         pass
+#
+#     def test_scaling_properly_for_Jansky_in_header(self):
+#         pass
+#
+#     def test_scaling_properly_for_Jansky_per_arcsec_in_header(self):
+#         pass
+#
+#     def test_scaling_properly_for_photlam_and_bscale_in_header(self):
+#         pass
+#
+#     def test_scaling_properly_for_photlam_and_bscale_bzero_in_header(self):
+#         pass
 
-class TestScaleImageHDU():
-    def test_scaling_properly(self):
-        #source2_utils.scale_imagehdu()
-        pass
+
+
 
 
 

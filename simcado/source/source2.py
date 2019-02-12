@@ -116,9 +116,10 @@ class Source:
             image_hdu.header["SPEC_REF"] = len(self.spectra)
             self.spectra += spectra
         else:
+            image_hdu.header["SPEC_REF"] = ""
             warnings.warn("No spectrum was provided. SPEC_REF set to ''. "
                           "This could cause problems later")
-            image_hdu.header["SPEC_REF"] = ""
+            raise NotImplementedError
 
         self.fields += [image_hdu]
 
@@ -137,13 +138,29 @@ class Source:
         self.spectra += spectra
 
     def image_in_range(self, wave_min, wave_max, pixel_scale=1*u.arcsec,
-                       layers=None, area=None):
+                       layers=None, area=None, order="bilinear",
+                       sub_pixel=False):
         if layers is None:
             layers = list(np.arange(len(self.fields)))
-
         fields = [self.fields[ii] for ii in layers]
+
         hdr = make_image_plane_header(fields, pixel_scale=pixel_scale)
+
+        print(hdr["CRVAL1"], hdr["CRPIX1"],
+              hdr["NAXIS1"])
+        print(hdr["CRVAL2"], hdr["CRPIX2"],
+              hdr["NAXIS2"])
+
+        print(hdr)
+
         im_plane = ImagePlane(hdr)
+
+        print(im_plane.header["CRVAL1"], im_plane.header["CRPIX1"],
+              im_plane.header["NAXIS1"])
+        print(im_plane.header["CRVAL2"], im_plane.header["CRPIX2"],
+              im_plane.header["NAXIS2"])
+
+
 
         for field in fields:
             if isinstance(field, Table):
@@ -161,14 +178,17 @@ class Source:
                     ref = [field.header["SPEC_REF"]]
                     flux = self.photons_in_range(wave_min, wave_max, area, ref)
                     # [ph s-1] or [ph s-1 m-2] come out of photons_in_range
-                else:
-                    field = scale_imagehdu(field, area=area,
-                                           solid_angle=pixel_scale**2,
-                                           waverange=(wave_min, wave_max))
-                    # [ph s-1] or [ph s-1 m-2] come out of photons_in_range
-                    flux = 1
 
-                ### ..todo: CATCH UNITS HERE. DEAL WITH THEM PROPERLY
+                # ## ..todo: CATCH UNITS HERE. DEAL WITH THEM PROPERLY
+                # Currently assuming that all images are scaled appropriately
+                # and that they have SPEC_REF
+
+                # else:
+                #     field = scale_imagehdu(field, area=area,
+                #                            solid_angle=pixel_scale**2,
+                #                            waverange=(wave_min, wave_max))
+                #     # [ph s-1] or [ph s-1 m-2] come out of photons_in_range
+                #     flux = 1
 
                 image = field.data * flux
                 hdu = fits.ImageHDU(header=field.header, data=image)
@@ -176,7 +196,7 @@ class Source:
             else:
                 continue
 
-            im_plane.add(hdu_or_table)
+            im_plane.add(hdu_or_table, sub_pixel=sub_pixel, order=order)
 
         return im_plane
 
@@ -226,12 +246,6 @@ class Source:
         with open(filename, 'wb') as fp1:
             pickle.dump(self, fp1)
 
-    # def write_to_fits(self, filename):
-    #     pass
-    #
-    # def read_from_fits(self, filename):
-    #     pass
-
     def shift(self, dx=0, dy=0, layers=None):
 
         if layers is None:
@@ -268,11 +282,12 @@ class Source:
                 if isinstance(field, Table):
                     field["ref"] += len(self.spectra)
                     self.fields += [field]
+
                 elif isinstance(field, fits.ImageHDU):
                     if isinstance(field.header["SPEC_REF"], int):
                         field.header["SPEC_REF"] += len(self.spectra)
                     self.fields += [field]
-                    self.spectra += new_source.spectra
+                self.spectra += new_source.spectra
         else:
             raise ValueError("Cannot add {} object to Source object"
                              "".format(type(new_source)))
@@ -286,7 +301,6 @@ class Source:
         return self.__add__(new_source)
 
     def __repr__(self):
-
         msg = ""
         for ii in range(len(self.fields)):
             if isinstance(self.fields[ii], Table):

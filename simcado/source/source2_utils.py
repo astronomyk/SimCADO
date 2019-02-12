@@ -153,49 +153,83 @@ def make_imagehdu_from_table(x, y, flux, pix_scale=1*u.arcsec):
     return hdu
 
 
-def scale_imagehdu(imagehdu, area=None, solid_angle=None, waverange=None):
+def scale_imagehdu(imagehdu, waverange, area=None):
+    # ..todo: implement this
+    # For the moment, all imagehdu must be accompanied by a spectrum in PHOTLAM
+    #
+    # Future functionality will include scaling here of:
+    # ph s-1
+    # ph s-1 m-2
+    # ph s-1 m-2
+    # ph s-1 m-2 um-1
+    # ph s-1 m-2 um-1 arcsec-2
+    # J s-1 m-2 Hz-1
+    # J s-1 m-2 Hz-1 arcsec-2
+    # ABMAG
+    # ABMAG arcsec-2
+    # VEGAMAG
+    # VEGAMAG arcsec-2
 
-    if "BUNIT" in imagehdu.header:
-        unit = u.Unit(imagehdu.header["BUNIT"])
-    elif "FLUXUNIT" in imagehdu.header:
-        unit = u.Unit(imagehdu.header["BUNIT"])
-    elif isinstance(imagehdu.data, u.Quantity):
-        unit = imagehdu.data.unit
-        imagehdu.data = imagehdu.data.value
-    else:
-        unit = ""
-        warnings.warn("No flux unit found on ImageHDU. Please add BUNIT or "
-                      "FLUXUNIT to the header.")
-
-    per_unit_area = False
-    if area is None:
-        per_unit_area = True
-        area = 1*u.m**2
-
-    unit, sa_unit = utils.extract_type_from_unit(unit, "solid angle")
-    unit = convert_flux(waverange, 1 * unit, "count", area=area)
-    # [ct] comes out of convert_flux
-    unit *= u.s
-
-    if sa_unit != "":
-        unit *= (solid_angle * sa_unit).si.value
-
-    if per_unit_area is True:
-        unit += u.m**-2
-
-    zero  = 0 * u.Unit(unit)
-    scale = 1 * u.Unit(unit)
-
-    if "BSCALE" in imagehdu.header:
-        scale *= imagehdu.header["BSCALE"]
-        imagehdu.header["BSCALE"] = 1
-    if "BZERO" in imagehdu.header:
-        zero = imagehdu.header["BZERO"]
-        imagehdu.header["BZERO"] = 0
-
-    imagehdu.data = imagehdu * scale + zero
-    imagehdu.header["BUNIT"] = str(imagehdu.data.unit)
-    imagehdu.header["FLUXUNIT"] = str(imagehdu.data.unit)
-    imagehdu.header["SOLIDANG"] = str(solid_angle)
+    if "SPEC_REF" not in imagehdu.header:
+        raise ValueError("For this version, an ImageHDU must be associated "
+                         "with a spectrum. This will change in the future.")
 
     return imagehdu
+
+#     unit = extract_unit_from_imagehdu(imagehdu)
+#
+#     per_unit_area = False
+#     if area is None:
+#         per_unit_area = True
+#         area = 1*u.m**2
+#
+#     unit, sa_unit = utils.extract_type_from_unit(unit, "solid angle")
+#     unit = convert_flux(waverange, 1 * unit, "count", area=area)
+#     # [ct] comes out of convert_flux
+#     unit *= u.s
+#
+#     if sa_unit != "":
+#         cunit1 = u.deg
+#         cunit2 = u.deg
+#         if "CUNIT1" in imagehdu.header and "CUNIT2" in imagehdu.header:
+#             cunit1 = u.Unit(imagehdu.header["CUNIT1"])
+#             cunit2 = u.Unit(imagehdu.header["CUNIT2"])
+#         cdelt1 = imagehdu.header["CDELT1"] * cunit1
+#         cdelt2 = imagehdu.header["CDELT2"] * cunit2
+#
+#         pix_angle_area = cdelt1 * cdelt2
+#         unit *= (pix_angle_area * sa_unit).si.value
+#
+#     if per_unit_area is True:
+#         unit *= u.m**-2
+#
+#     zero  = 0 * u.Unit(unit)
+#     scale = 1 * u.Unit(unit)
+#
+#     if "BSCALE" in imagehdu.header:
+#         scale *= imagehdu.header["BSCALE"]
+#         imagehdu.header["BSCALE"] = 1
+#     if "BZERO" in imagehdu.header:
+#         zero = imagehdu.header["BZERO"]
+#         imagehdu.header["BZERO"] = 0
+#
+#     imagehdu.data = imagehdu * scale + zero
+#     imagehdu.header["BUNIT"] = str(imagehdu.data.unit)
+#     imagehdu.header["FLUXUNIT"] = str(imagehdu.data.unit)
+#
+#     return imagehdu
+#
+# def extract_unit_from_imagehdu(imagehdu):
+#     if "BUNIT" in imagehdu.header:
+#         unit = u.Unit(imagehdu.header["BUNIT"])
+#     elif "FLUXUNIT" in imagehdu.header:
+#         unit = u.Unit(imagehdu.header["FLUXUNIT"])
+#     elif isinstance(imagehdu.data, u.Quantity):
+#         unit = imagehdu.data.unit
+#         imagehdu.data = imagehdu.data.value
+#     else:
+#         unit = ""
+#         warnings.warn("No flux unit found on ImageHDU. Please add BUNIT or "
+#                       "FLUXUNIT to the header.")
+#
+#     return unit

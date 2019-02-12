@@ -1,4 +1,5 @@
 import pytest
+from pytest import approx
 from copy import deepcopy
 
 import numpy as np
@@ -9,6 +10,9 @@ from astropy.table import Table
 
 import simcado.optics.image_plane as opt_imp
 import simcado.optics.image_plane_utils as impl_utils
+
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 
 
 @pytest.fixture(scope="function")
@@ -48,39 +52,37 @@ def image_hdu_rect():
     return hdu
 
 
+@pytest.fixture(scope="function")
+def input_table():
+    x = [-10, -10, 0, 10, 10] * u.arcsec
+    y = [-10, 10, 0, -10, 10] * u.arcsec
+    tbl = Table(names=["x", "y"], data=[x, y])
+
+    return tbl
+
+
 @pytest.mark.usefixtures("image_hdu_square")
 class TestGetSpatialExtentOfHeader:
     def test_returns_right_sky_coords_from_known_coords(self, image_hdu_square):
         xsky, ysky = impl_utils.get_corner_sky_coords_from_header(image_hdu_square.header)
-        xsky = xsky*u.deg.to(u.arcsec)
-        ysky = ysky*u.deg.to(u.arcsec)
-
-        assert np.isclose(xsky[2] - xsky[1], image_hdu_square.header["NAXIS1"])
-        assert np.isclose(ysky[1] - ysky[0], image_hdu_square.header["NAXIS2"])
-
-
-@pytest.mark.usefixtures("image_hdu_square", "image_hdu_rect")
-class TestGetImagePlaneExtentInPixels:
-    def test_returns_extremes_of_two_headers(self, image_hdu_square,
-                                             image_hdu_rect):
-        hdu1, hdu2 = image_hdu_square, image_hdu_rect
-        x_xtrm, y_xtrm = impl_utils.get_image_plane_extent_in_pixels([hdu1.header,
-                                                                      hdu2.header])
-        xsky = np.diff(x_xtrm)*u.deg.to(u.arcsec)
-        ysky = np.diff(y_xtrm)*u.deg.to(u.arcsec)
-
-        assert np.isclose(xsky, image_hdu_square.header["NAXIS1"])
-        assert np.isclose(ysky, image_hdu_rect.header["NAXIS2"])
+        xsky = np.array(xsky)
+        xsky[xsky > 180 ] -= 360
+        xsky = np.array(xsky)*u.deg.to(u.arcsec)
+        ysky = np.array(ysky)*u.deg.to(u.arcsec)
+        dx = max(xsky) - min(xsky)
+        dy = max(ysky) - min(ysky)
+        assert dx == approx(image_hdu_square.header["NAXIS1"])
+        assert dy == approx(image_hdu_square.header["NAXIS2"])
 
 
-@pytest.mark.usefixtures("image_hdu_square", "image_hdu_rect")
+@pytest.mark.usefixtures("image_hdu_square", "image_hdu_rect", "input_table")
 class TestMakeImagePlaneHeader:
     def test_header_contains_future_naxis_pixel_sizes(self, image_hdu_square,
                                                       image_hdu_rect):
         hdr = impl_utils.make_image_plane_header([image_hdu_square,
                                                   image_hdu_rect])
-        assert hdr["NAXIS1"] == 100
-        assert hdr["NAXIS2"] == 200
+        assert hdr["NAXIS1"] == 100 + 2
+        assert hdr["NAXIS2"] == 200 + 2
 
     @pytest.mark.parametrize("offset", -np.random.randint(200, 1001, 10))
     def test_header_contains_spread_out_regions(self, offset, image_hdu_square,
@@ -89,9 +91,40 @@ class TestMakeImagePlaneHeader:
         hdr = impl_utils.make_image_plane_header([image_hdu_square,
                                                   image_hdu_rect])
         image_width = image_hdu_square.header["NAXIS1"] // 2 + \
-                      image_hdu_rect.header["NAXIS1"] // 2 + abs(offset)
+                      image_hdu_rect.header["NAXIS1"] // 2 + abs(offset) + 2
 
         assert hdr["NAXIS1"] == image_width
+
+    @pytest.mark.parametrize("offset", [0, 10, 25, 50])
+    def test_header_has_correct_size_based_on_table_extremes(self, offset,
+                                                             input_table):
+        tbl1 = input_table
+        tbl2 = deepcopy(input_table)
+        tbl3 = deepcopy(input_table)
+        tbl2["x"] += offset
+        tbl3["y"] += offset
+        hdr = impl_utils.make_image_plane_header([tbl1, tbl2, tbl3],
+                                                 pixel_scale=0.1*u.arcsec)
+
+        assert hdr["NAXIS1"] == np.max(tbl1["x"] + tbl2["x"]) * 10 + 2
+        assert hdr["NAXIS2"] == np.max(tbl1["y"] + tbl3["y"]) * 10 + 2
+
+    @pytest.mark.parametrize("pix_scl", [5, 1, 0.5, 0.1])
+    def test_header_has_correct_size_with_tbl_and_image_input(self, input_table,
+                                                              image_hdu_square,
+                                                              pix_scl):
+        input_table["x"] += 100
+        hdr = impl_utils.make_image_plane_header([image_hdu_square,
+                                                  input_table],
+                                                 pixel_scale=pix_scl * u.arcsec)
+        assert hdr["NAXIS1"] == approx(hdr["CRPIX1"] +
+                                       np.max(input_table["x"]) / pix_scl + 1,
+                                       abs=0.5)
+
+    def test_header_does_not_contain_negative_naxis_keywords(self):
+        pass
+
+
 
 
 class TestGetCornerSkyCoordsFromTable:
@@ -241,13 +274,30 @@ class TestImagePlaneInit:
 @pytest.mark.usefixtures("image_hdu_square", "image_hdu_rect")
 class TestImagePlaneAdd:
     def test_simple_add_imagehdu_conserves_flux(self, image_hdu_square,
-                                              image_hdu_rect):
-        hdr = impl_utils.make_image_plane_header(pixel_scale=0.1 * u.arcsec,
-                                                 hdu_or_table_list=[image_hdu_rect,
-                                                 image_hdu_square])
+                                                image_hdu_rect):
+        fields = [image_hdu_rect, image_hdu_square]
+        hdr = impl_utils.make_image_plane_header(pixel_scale=1 * u.arcsec,
+                                                 hdu_or_table_list=fields)
+
+        print(wcs.WCS(image_hdu_rect))
+        print(wcs.WCS(hdr))
+
         implane = opt_imp.ImagePlane(hdr)
         implane.add(image_hdu_rect)
-        assert np.isclose(np.sum(implane.data), np.sum(image_hdu_rect.data))
+
+        plt.imshow(image_hdu_rect.data.T)
+        x, y = wcs.WCS(image_hdu_rect).wcs_world2pix(0, 0, 1)
+        print(x, y)
+        plt.plot(x, y, "ro")
+        plt.show()
+
+        plt.imshow(implane.data.T)
+        x, y = wcs.WCS(image_hdu_rect).wcs_world2pix(0, 0, 1)
+        print(x, y)
+        plt.plot(x, y, "ro")
+        plt.show()
+
+        assert np.sum(implane.data) == approx(np.sum(image_hdu_rect.data))
 
     def test_simple_add_table_conserves_flux(self, image_hdu_rect):
         x = [75, -75]*u.arcsec

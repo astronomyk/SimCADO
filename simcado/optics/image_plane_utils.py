@@ -77,46 +77,6 @@ def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
     return canvas_hdu
 
 
-def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
-    """
-    Re-project one ``fits.ImageHDU`` onto another ``fits.ImageHDU``
-
-    Parameters
-    ----------
-    image_hdu : fits.ImageHDU
-        The ``ImageHDU`` which will be reprojected onto `canvas_hdu`
-
-
-    canvas_hdu : fits.ImageHDU
-        The ``ImageHDU`` onto which the table sources should be projected.
-        This must include a valid WCS
-
-    order : str, optional
-        Default is ``bilinear``. The resampling scheme used by
-        ``reproject_interp``. See ``reproject.reproject_interp()`` for the list
-        of options
-
-    Returns
-    -------
-    canvas_hdu : fits.ImageHDU
-
-    """
-
-    if isinstance(image_hdu.data, u.Quantity):
-        unit = image_hdu.data.unit
-        image_hdu.data = image_hdu.data.value
-
-    new_im, mask = reproject_interp(image_hdu, canvas_hdu.header, order=order)
-    new_im = np.nan_to_num(new_im, copy=False)
-        
-    # this won't work when image_hdu is larger than canvas_hdu
-    if np.prod(canvas_hdu.data.shape) > np.prod(image_hdu.data.shape):
-        new_im[mask > 0] *= np.sum(image_hdu.data) / np.sum(new_im[mask > 0])
-    canvas_hdu.data[mask > 0] += new_im[mask > 0]
-
-    return canvas_hdu
-
-
 def get_corner_sky_coords(hdus_tables):
     """
     Get the sky coordinates for the corners of a position object
@@ -168,7 +128,7 @@ def get_corner_sky_coords_from_table(table):
     Returns
     -------
     x_edges, y_edges : list
-        [x_min, x_max], [y_min, y_max]
+        [deg] : [x_min, x_max], [y_min, y_max] on sky coordinates
 
     """
 
@@ -205,17 +165,15 @@ def get_corner_sky_coords_from_header(header):
         raise ValueError("header must be astropy.Header: {}"
                          "".format(type(header)))
 
-    naxis1, naxis2 = header["NAXIS1"], header["NAXIS2"]
-    xpix, ypix = [0, 0, naxis1, naxis1], [0, naxis2, naxis2, 0]
-
-    hdr_wcs = wcs.WCS(header)
-    x_edges, y_edges = hdr_wcs.wcs_pix2world(xpix, ypix, 1)
-    x_edges[x_edges > 180.] -= 360.
+    xsky, ysky = wcs.WCS(header).calc_footprint(center=False).T
+    xsky[xsky > 180] -= 360
+    x_edges = [min(xsky), max(xsky)]
+    y_edges = [min(ysky), max(ysky)]
 
     return x_edges, y_edges
 
 
-def make_image_plane_header(hdu_or_table_list, pixel_scale=1 * u.arcsec):
+def make_image_plane_header(hdu_or_table_list, pixel_scale=1*u.arcsec):
     """
     Generate a fits.Header with a WCS that covers everything in the FOV
 
@@ -242,6 +200,7 @@ def make_image_plane_header(hdu_or_table_list, pixel_scale=1 * u.arcsec):
     unit = pixel_scale.unit
 
     (x0, x1), (y0, y1) = get_corner_sky_coords(hdu_or_table_list)
+
     # old way of doing it
     # naxis1 = np.ceil((x1 - x0)*u.deg / pixel_scale).value
     # naxis2 = np.ceil((y1 - y0)*u.deg / pixel_scale).value
@@ -253,15 +212,16 @@ def make_image_plane_header(hdu_or_table_list, pixel_scale=1 * u.arcsec):
     the_wcs.wcs.cunit = [unit, unit]
     the_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
-    xpix, ypix = the_wcs.wcs_world2pix([x0, x1], [y0, y1], 1)
-    naxis1 = np.round(xpix[1] - xpix[0]).astype(int)
-    naxis2 = np.round(ypix[1] - ypix[0]).astype(int)
+    xpix, ypix = the_wcs.wcs_world2pix([x0, x1], [y0, y1], 1, ra_dec_order=True)
+    naxis1 = np.round(max(xpix) - min(xpix)).astype(int)
+    naxis2 = np.round(max(ypix) - min(ypix)).astype(int)
 
+    # Add a row of padding to the image to catch outliers
     header = the_wcs.to_header()
-    header["NAXIS1"] = naxis1
-    header["NAXIS2"] = naxis2
-    header["CRPIX1"] = -xpix[0]
-    header["CRPIX2"] = -ypix[0]
+    header["NAXIS1"] = naxis1 + 2
+    header["NAXIS2"] = naxis2 + 2
+    header["CRPIX1"] = -xpix[0] + 1
+    header["CRPIX2"] = -ypix[0] + 1
 
     if naxis1 * naxis2 > 2**25:   # 2 * 4096**2
         warnings.warn("Header dimension are large: {}. Any image made from "
@@ -327,19 +287,156 @@ def sub_pixel_fractions(x, y):
     return x_pix, y_pix, fracs
 
 
-def get_image_plane_extent_in_pixels(headers):
-    """ Depreciated by get_corner_sky_coords()"""
+def overlay_image(small_im, big_im, coords, mask=None, sub_pixel=False):
+    """
+    Overlay small_im on top of big_im at the position specified by coords
 
-    xsky, ysky = [], []
-    for header in headers:
-        naxis1, naxis2 = header["NAXIS1"], header["NAXIS2"]
-        xpix, ypix = [0, 0, naxis1, naxis1], [0, naxis2, naxis2, 0]
+    ``small_im`` will be centred at ``coords``
 
-        hdr_wcs = wcs.WCS(header)
-        x, y = hdr_wcs.wcs_pix2world(xpix, ypix, 1)
-        x[x > 180.] -= 360.
-        xsky += list(x)
-        ysky += list(y)
+    Adapted from:
+    ``https://stackoverflow.com/questions/14063070/
+        overlay-a-smaller-image-on-a-larger-image-python-opencv``
 
-    return (np.min(xsky), np.max(xsky)), \
-           (np.min(ysky), np.max(ysky))
+    """
+
+    # TODO - Add in a catch for sub-pixel shifts
+    if sub_pixel:
+        raise NotImplementedError
+
+    x, y = np.array(coords, dtype=int) - np.array(small_im.shape) // 2
+
+    # Image ranges
+    x1, x2 = max(0, x), min(big_im.shape[0], x + small_im.shape[0])
+    y1, y2 = max(0, y), min(big_im.shape[1], y + small_im.shape[1])
+
+    # Overlay ranges
+    x1o, x2o = max(0, -x), min(small_im.shape[0], big_im.shape[0] - x)
+    y1o, y2o = max(0, -y), min(small_im.shape[1], big_im.shape[1] - y)
+
+    # Exit if nothing to do
+    if y1 >= y2 or x1 >= x2 or y1o >= y2o or x1o >= x2o:
+        return big_im
+
+    if mask is None:
+        big_im[x1:x2, y1:y2] += small_im[x1o:x2o, y1o:y2o]
+    else:
+        mask = mask[x1o:x2o, y1o:y2o].astype(bool)
+        big_im[x1:x2, y1:y2][mask] += small_im[x1o:x2o, y1o:y2o][mask]
+
+    return big_im
+
+
+def overlay_imagehdu_on_imagehdu(image_hdu, canvas_hdu, mask=None):
+    wcs_image = wcs.WCS(image_hdu)
+    wcs_canvas = wcs.WCS(canvas_hdu)
+
+    xcen_im = image_hdu.header["NAXIS1"] // 2
+    ycen_im = image_hdu.header["NAXIS2"] // 2
+
+    ysky0, xsky0 = wcs_image.wcs_pix2world(xcen_im, ycen_im, 1)
+    xpix0, ypix0 = wcs_canvas.wcs_world2pix(xsky0, ysky0, 1)
+    canvas_hdu.data = overlay_image(image_hdu.data, canvas_hdu.data,
+                                    coords=(xpix0, ypix0), mask=mask)
+
+    return canvas_hdu
+
+
+def make_canvas_header_for_reproject(in_imagehdu, pixel_scale=4*u.mas):
+    wcs_image = wcs.WCS(in_imagehdu)
+    footprint = wcs_image.calc_footprint().T
+    xsky_edges, ysky_edges = footprint[0], footprint[1]
+
+    xsky_min, ysky_min = min(xsky_edges), min(ysky_edges)
+
+    pixel_scale = pixel_scale.to(u.deg).value
+    wcs_canvas = wcs.WCS(naxis=2)
+    wcs_canvas.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+    wcs_canvas.wcs.cunit = ["deg", "deg"]
+    wcs_canvas.wcs.cdelt = [pixel_scale, pixel_scale]
+    wcs_canvas.wcs.crval = [xsky_min, ysky_min]
+    wcs_canvas.wcs.crpix = [0, 0]
+
+    xpix, ypix = wcs_canvas.wcs_world2pix(xsky_edges, ysky_edges, 1)
+    hdr_canvas = wcs_canvas.to_header()
+    hdr_canvas["NAXIS"] = 2
+    hdr_canvas["NAXIS1"] = int(np.ceil(max(xpix) - min(xpix)))
+    hdr_canvas["NAXIS2"] = int(np.ceil(max(ypix) - min(ypix)))
+
+    return hdr_canvas
+
+
+def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
+    if isinstance(image_hdu.data, u.Quantity):
+        unit = image_hdu.data.unit
+        image_hdu.data = image_hdu.data.value
+
+    image_hdu.header["CRVAL1"] *= -1
+    image_hdu.header["CRVAL1"] += 180.
+    canvas_hdu.header["CRVAL1"] += 180.
+
+    pixel_scale = canvas_hdu.header["CDELT1"] * u.deg
+    hdr_reproj = make_canvas_header_for_reproject(image_hdu,
+                                                  pixel_scale=pixel_scale)
+    new_im, mask = reproject_interp(image_hdu, hdr_reproj, order=order)
+    new_im = np.nan_to_num(new_im, copy=False)
+    new_im[mask > 0] *= np.sum(image_hdu.data) / np.sum(new_im[mask > 0])
+    new_im_hdu = fits.ImageHDU(data=new_im, header=hdr_reproj)
+
+    canvas_hdu = overlay_imagehdu_on_imagehdu(new_im_hdu, canvas_hdu, mask=mask)
+
+    canvas_hdu.header["CRVAL1"] -= 180.
+    image_hdu.header["CRVAL1"] -= 180.
+    image_hdu.header["CRVAL1"] *= -1
+
+    return canvas_hdu
+
+
+# def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
+#     """
+#     Re-project one ``fits.ImageHDU`` onto another ``fits.ImageHDU``
+#
+#     Parameters
+#     ----------
+#     image_hdu : fits.ImageHDU
+#         The ``ImageHDU`` which will be reprojected onto `canvas_hdu`
+#
+#
+#     canvas_hdu : fits.ImageHDU
+#         The ``ImageHDU`` onto which the table sources should be projected.
+#         This must include a valid WCS
+#
+#     order : str, optional
+#         Default is ``bilinear``. The resampling scheme used by
+#         ``reproject_interp``. See ``reproject.reproject_interp()`` for the list
+#         of options
+#
+#     Returns
+#     -------
+#     canvas_hdu : fits.ImageHDU
+#
+#     """
+#
+#     if isinstance(image_hdu.data, u.Quantity):
+#         unit = image_hdu.data.unit
+#         image_hdu.data = image_hdu.data.value
+#
+#     new_im, mask = reproject_interp(image_hdu, canvas_hdu.header, order=order)
+#     new_im = np.nan_to_num(new_im, copy=False)
+#
+#
+#     new_wcs = wcs.WCS(canvas_hdu)
+#     x, y = new_wcs.wcs_world2pix([0], [0], 1)
+#     import matplotlib.pyplot as plt
+#     from matplotlib.colors import LogNorm
+#     plt.imshow(new_im.T, origin="lower", norm=LogNorm())
+#     plt.scatter(x, y, c="r")
+#     plt.show()
+#
+#     # this won't work when image_hdu is larger than canvas_hdu
+#     if np.prod(canvas_hdu.data.shape) > np.prod(image_hdu.data.shape):
+#         new_im[mask > 0] *= np.sum(image_hdu.data) / np.sum(new_im[mask > 0])
+#
+#     canvas_hdu.data[mask > 0] += new_im[mask > 0]
+#
+#     return canvas_hdu
+

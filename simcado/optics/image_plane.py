@@ -53,15 +53,15 @@ class ImagePlane:
             raise ValueError("Header must have a valid WCS: {}"
                              "".format(dict(header)))
 
-        image = np.zeros((header["NAXIS1"]+1, header["NAXIS2"]+1))
+        image = np.zeros((header["NAXIS2"]+1, header["NAXIS1"]+1))
         self.hdu = fits.ImageHDU(data=image, header=header)
 
-    def add(self, hdu_or_table, sub_pixel=False):
+    def add(self, hdu_or_table, sub_pixel=False, order="bilinear"):
         """
         Add a projection of an image or table sources to the canvas
 
         .. note::
-          If a Table is provides, it must include the following columns:
+          If a Table is provided, it must include the following columns:
           `x`, `y`, and `flux`.
 
           Units for the columns should be provided in the
@@ -96,7 +96,8 @@ class ImagePlane:
                                              sub_pixel=sub_pixel)
         elif isinstance(hdu_or_table, fits.ImageHDU):
             self.hdu.header["COMMENT"] = "Adding sources from table"
-            self.hdu = add_imagehdu_to_imagehdu(hdu_or_table, self.hdu)
+            self.hdu = add_imagehdu_to_imagehdu(hdu_or_table, self.hdu,
+                                                order=order)
 
     @property
     def header(self):
