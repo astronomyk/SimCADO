@@ -77,7 +77,7 @@ def photometry(image):
 # End of helper functions ---
 
 
-@pytest.mark.parametrize("factor", np.arange(20))
+@pytest.mark.parametrize("factor", np.arange(2, 21, 4))
 def test_create_image_scaled_by_factor(factor):
     """
     Test if the image is created as expected
@@ -94,8 +94,8 @@ def test_create_image_scaled_by_factor(factor):
     assert np.abs(counts - factor) < 0.01
 
 
-@pytest.mark.parametrize("sky_level", np.linspace(1, 25, 5)**3)
-@pytest.mark.parametrize("factor", np.linspace(1, 25, 5))
+@pytest.mark.parametrize("sky_level", np.linspace(2, 20, 4)**3)
+@pytest.mark.parametrize("factor", np.linspace(2, 20, 4))
 def test_photometry(sky_level, factor):
     """re
     Test if photometry function is performing as expected
@@ -114,8 +114,8 @@ def test_photometry(sky_level, factor):
     assert np.abs(counts - factor) < 0.01
 
 
-@pytest.mark.parametrize("factor1", np.linspace(1, 25, 5))
-@pytest.mark.parametrize("factor2", np.linspace(1, 25, 5))
+@pytest.mark.parametrize("factor1", np.linspace(2, 20, 4))
+@pytest.mark.parametrize("factor2", np.linspace(2, 20, 4))
 def test_source_from_image(factor1, factor2):
     """
     test source from image
@@ -150,7 +150,7 @@ def test_source_from_image(factor1, factor2):
     assert np.abs(counts1 / counts2 - 1) < 0.1
 
 
-@pytest.mark.parametrize("mag", np.linspace(9, 18, 10))
+@pytest.mark.parametrize("mag", np.arange(11, 16, 1))
 def test_source_elliptical(mag):
     """
     Test whether source.elliptical produces consistent results in comparison with source from image
