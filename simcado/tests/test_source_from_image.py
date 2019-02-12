@@ -42,7 +42,7 @@ cmds["INST_ADC_TC"] = os.path.join(MOCK_DIR, "TC_ADC.dat")
 cmds["INST_PUPIL_TC"] = os.path.join(MOCK_DIR, "TC_pupil.dat")
 cmds["INST_FILTER_TC"] = os.path.join(MOCK_DIR, "TC_filter_K.dat")
 cmds["FPA_QE"] = os.path.join(MOCK_DIR, "TC_detector_H2RG.dat")
-
+cmds["SCOPE_MIRROR_LIST"] = os.path.join(MOCK_DIR, "EC_mirrors_EELT_SCAO.tbl")
 
 
 
