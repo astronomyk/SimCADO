@@ -25,7 +25,7 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 
-sim.get_extras()
+#sim.get_extras()
 cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
 cmds["SIM_DATA_DIR"] = MOCK_DIR
 print(cmds["SIM_DATA_DIR"])
@@ -165,6 +165,7 @@ def test_source_from_image(factor1, factor2):
     sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
+    print(factor1, factor2)
     assert np.abs(counts1 / counts2 - 1) < 0.1
 
 
