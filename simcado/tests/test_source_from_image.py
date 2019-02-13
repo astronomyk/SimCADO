@@ -26,11 +26,11 @@ def mock_dir():
 MOCK_DIR = mock_dir()
 
 #sim.get_extras()
-cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
+#cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
+cmds = sim.UserCommands(sim_data_dir=MOCK_DIR, filename=os.path.join(MOCK_DIR, "default.conf"))
 cmds["SIM_DATA_DIR"] = MOCK_DIR
 print(cmds["SIM_DATA_DIR"])
 
-cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
 cmds["INST_ENTR_WINDOW_TC"] = os.path.join(MOCK_DIR, "TC_window.dat")
 cmds["ATMO_TC"] = os.path.join(MOCK_DIR, "TC_sky_25.tbl")
 cmds["SCOPE_M1_TC"] = os.path.join(MOCK_DIR, "TC_mirror_EELT.dat")
@@ -43,9 +43,6 @@ cmds["INST_PUPIL_TC"] = os.path.join(MOCK_DIR, "TC_pupil.dat")
 cmds["INST_FILTER_TC"] = os.path.join(MOCK_DIR, "TC_filter_K.dat")
 cmds["FPA_QE"] = os.path.join(MOCK_DIR, "TC_detector_H2RG.dat")
 cmds["SCOPE_MIRROR_LIST"] = os.path.join(MOCK_DIR, "EC_mirrors_EELT_SCAO.tbl")
-
-
-
 
 
 def create_image_scaled_by_factor(factor=1):
@@ -114,7 +111,7 @@ def test_create_image_scaled_by_factor(factor):
 @pytest.mark.parametrize("sky_level", np.linspace(2, 20, 4)**3)
 @pytest.mark.parametrize("factor", np.linspace(2, 20, 4))
 def test_photometry(sky_level, factor):
-    """re
+    """
     Test if photometry function is performing as expected
 
     Parameters
