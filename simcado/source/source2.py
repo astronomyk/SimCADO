@@ -145,22 +145,7 @@ class Source:
         fields = [self.fields[ii] for ii in layers]
 
         hdr = make_image_plane_header(fields, pixel_scale=pixel_scale)
-
-        print(hdr["CRVAL1"], hdr["CRPIX1"],
-              hdr["NAXIS1"])
-        print(hdr["CRVAL2"], hdr["CRPIX2"],
-              hdr["NAXIS2"])
-
-        print(hdr)
-
         im_plane = ImagePlane(hdr)
-
-        print(im_plane.header["CRVAL1"], im_plane.header["CRPIX1"],
-              im_plane.header["NAXIS1"])
-        print(im_plane.header["CRVAL2"], im_plane.header["CRPIX2"],
-              im_plane.header["NAXIS2"])
-
-
 
         for field in fields:
             if isinstance(field, Table):
