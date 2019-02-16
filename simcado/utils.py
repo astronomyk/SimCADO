@@ -599,7 +599,8 @@ def bug_report():
     except ImportError:
         import_module = __import__
 
-    packages = ["simcado", "astropy", "numpy", "scipy", "poppy", "wget"]
+    packages = ["simcado", "astropy", "synphot", "numpy", "scipy",
+                "poppy", "wget"]
 
     # Check Python version
     print("Python:\n", sys.version)
