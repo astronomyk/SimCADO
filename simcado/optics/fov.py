@@ -162,8 +162,8 @@ def make_flux_table(fov_header, src, indexes):
     fov_xsky, fov_ysky = imp_utils.calc_footprint(fov_header)
 
     x, y, ref, weight = [], [], [], []
-    for field in src.fields:
-        if isinstance(field, Table):
+    for ii, field in enumerate(src.fields):
+        if isinstance(field, Table) and indexes[ii] is True:
             xcol = utils.quantity_from_table(field, "x", u.arcsec)
             ycol = utils.quantity_from_table(field, "y", u.arcsec)
             x += list(xcol.to(u.deg).value)
