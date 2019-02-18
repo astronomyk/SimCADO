@@ -1212,8 +1212,27 @@ def open(self, filename):
 #        plt.xlabel("Distance [arcsec]", fontsize=14)
 #        plt.ylabel("Distance [arcsec]", fontsize=14)
 
-def plot_detector_layout(detector, plane="sky", clr='g-', plot_origin=False):
-    """Plot the detector layout"""
+def plot_detector_layout(detector, plane="sky", plot_origin=False,
+                         label=True, **kwargs):
+    """Plot the detector layout
+
+Parameters
+==========
+
+detector : simcado.Detector
+   The Detector to be shown
+plane : 'sky' or 'fpa'
+   Plot detector layout on the sky (in arcsec) or in the focal plane (in mm)
+plot_origin : bool
+   Mark position pixel (1,1) for each chip.
+label : bool
+   Label the chips with their numberq
+
+Keyword arguments
+=================
+   Further keywords arguments are passed on to the matplotlib plot function
+   and can be used to set line style or colour of the detector outline.
+"""
 
     from matplotlib import pyplot as plt
     npts = 101
@@ -1244,7 +1263,7 @@ def plot_detector_layout(detector, plane="sky", clr='g-', plot_origin=False):
         xworld, yworld = thewcs.all_pix2world(xpix, ypix, 1)
         xworld -= thewcs.wcs.crval[0]
         yworld -= thewcs.wcs.crval[1]
-        plt.plot(xworld * scale, yworld * scale, clr)
+        plt.plot(xworld * scale, yworld * scale, **kwargs)
 
         if plot_origin:
             x0, y0 = thewcs.all_pix2world(1, 1, 1)
@@ -1255,7 +1274,8 @@ def plot_detector_layout(detector, plane="sky", clr='g-', plot_origin=False):
         xcen, ycen = thewcs.all_pix2world(chip.naxis1 / 2, chip.naxis2 / 2, 1)
         xcen -= thewcs.wcs.crval[0]
         ycen -= thewcs.wcs.crval[1]
-        plt.text(xcen * scale, ycen * scale, chip.id)
+        if label:
+            plt.text(xcen * scale, ycen * scale, chip.id)
 
     plt.axes().set_aspect('equal')
     if plane == 'sky':
