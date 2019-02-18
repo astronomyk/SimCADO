@@ -5,13 +5,15 @@ from astropy import wcs as apwcs
 from astropy import units as u
 from astropy.io import fits
 from astropy.table import Table
+from astropy import wcs
 
 from synphot.units import PHOTLAM
 
-from . import image_plane_utils_old as impl_utils
-
+from . import image_plane_utils as imp_utils
 from ..source.source2 import Source
-from ..import utils
+from ..source import source2_utils as src_utils 
+
+from .. import utils
 from .. import rc
 
 
@@ -40,47 +42,80 @@ class FieldOfView:
                      "sub_pixel" : rc.__rc__["SIM_SUB_PIXEL_ACCURACY"]}
         self.meta.update(kwargs)
 
-        self.hdu = fits.ImageHDU(header=header)
         if len(apwcs.find_all_wcs(header)) == 0:
             raise ValueError("header must contain a valid WCS: {}"
                              "".format(dict(header)))
 
+        data = np.zeros((header["NAXIS1"], header["NAXIS2"]))
+        self.hdu = fits.ImageHDU(header=header, data=data)
+        self.fields = []
+        self.fluxes = []
+
     def extract_from(self, source):
+        """ ..assumption: Bandpass has been applied"""
+        
         if not isinstance(source, Source):
             raise ValueError("source must be a Source object: {}"
                              "".format(type(source)))
 
-        wave_min = self.meta["wave_min"].to(u.Angstrom).value
-        wave_max = self.meta["wave_max"].to(u.Angstrom).value
-        fluxes = []
-        int_flux_unit = PHOTLAM * u.Angstrom
-        for spec in source.spectra:
-            wave = spec.model.points[0]
-            flux = spec.model.lookup_table
+        # determine which fields are inside the field of view
+        # determine which table rows are in FOV
+        # get the photons_in_range for the relevant fields
+        # make tables with x,y,flux for the relevant fields
+        # make new imagehdu for the relevant fields
 
-            mask = (spec.model.points[0] >= wave_min) * \
-                   (spec.model.points[0] <= wave_max)
-            fluxes += [np.trapz(flux[mask], wave[mask])]
+        fields_mask = [is_field_in_fov(self.hdu.header, field)
+                       for field in source.fields]
+        fields_indexes = np.where(fields_mask)[0]
 
-        fluxes = fluxes * int_flux_unit
+        print(fields_indexes)
 
-        for field in source.fields:
-            if isinstance(field, Table):
-                x = utils.quantity_from_table("x", field, u.arcsec)
-                y = utils.quantity_from_table("y", field, u.arcsec)
-                flux = fluxes[tbl["ref"]]
-                tbl = Table(names=["x", "y", "flux"], data=[x, y, flux])
+        wave_min = utils.quantify(self.meta["wave_min"], u.um).value
+        wave_max = utils.quantify(self.meta["wave_max"], u.um).value
+        #
+        # self.fields += [make_flux_table(self.hdu.header, source, fields_indexes)]
+        # self.fields += [reduce_imagehdus(self.fields, self.spectra,
+        #                                     fields_indexes)]
+        #
+        #
+        #
 
-                sub_pixel = self.meta["sub_pixel"]
-                self.hdu = impl_utils.add_table_to_imagehdu(tbl, self.hdu,
-                                                            sub_pixel=sub_pixel)
-            elif isinstance(field, fits.ImageHDU):
-                if field.header["SPEC_REF"] is not "":
-                    flux =  fluxes[field.header["SPEC_REF"]]
-                else:
-                    flux = 1 * int_flux_unit
 
-                self.hdu = impl_utils.add_imagehdu_to_imagehdu(field, self.hdu)
+
+
+
+
+
+
+        # fluxes = []
+        # int_flux_unit = PHOTLAM * u.Angstrom
+        # for spec in source.spectra:
+        #     wave = spec.model.points[0]
+        #     flux = spec.model.lookup_table
+        #
+        #     mask = (spec.model.points[0] >= wave_min) * \
+        #            (spec.model.points[0] <= wave_max)
+        #     fluxes += [np.trapz(flux[mask], wave[mask])]
+        #
+        # fluxes = fluxes * int_flux_unit
+        #
+        # for field in source.fields:
+        #     if isinstance(field, Table):
+        #         x = utils.quantity_from_table("x", field, u.arcsec)
+        #         y = utils.quantity_from_table("y", field, u.arcsec)
+        #         flux = fluxes[tbl["ref"]]
+        #         tbl = Table(names=["x", "y", "flux"], data=[x, y, flux])
+        #
+        #         sub_pixel = self.meta["sub_pixel"]
+        #         self.hdu = imp_utils.add_table_to_imagehdu(tbl, self.hdu,
+        #                                                     sub_pixel=sub_pixel)
+        #     elif isinstance(field, fits.ImageHDU):
+        #         if field.header["SPEC_REF"] is not "":
+        #             flux =  fluxes[field.header["SPEC_REF"]]
+        #         else:
+        #             flux = 1 * int_flux_unit
+        #
+        #         self.hdu = imp_utils.add_imagehdu_to_imagehdu(field, self.hdu)
 
 
     ###################################################
@@ -97,3 +132,48 @@ class FieldOfView:
     @property
     def image(self):
         return self.data
+
+
+def is_field_in_fov(fov_header, table_or_imagehdu):
+
+    pixel_scale = utils.quantify(fov_header["CDELT1"], u.deg)
+
+    if isinstance(table_or_imagehdu, Table):
+        ext_hdr = imp_utils._make_bounding_header_for_tables(
+                                            [table_or_imagehdu], pixel_scale)
+    elif isinstance(table_or_imagehdu, fits.ImageHDU):
+        ext_hdr = imp_utils._make_bounding_header_from_imagehdus(
+                                            [table_or_imagehdu], pixel_scale)
+    else:
+        raise ValueError(table_or_imagehdu)
+
+    ext_xsky, ext_ysky = imp_utils.calc_footprint(ext_hdr)
+    fov_xsky, fov_ysky = imp_utils.calc_footprint(fov_header)
+
+    is_inside_fov = min(ext_xsky) < max(fov_xsky) and \
+                    max(ext_xsky) > min(fov_xsky) and \
+                    min(ext_ysky) < max(fov_ysky) and \
+                    max(ext_ysky) > min(fov_ysky)
+
+    return is_inside_fov
+
+
+def make_flux_table(fov_header, src, indexes):
+    fov_xsky, fov_ysky = imp_utils.calc_footprint(fov_header)
+
+    x, y, ref, weight = [], [], [], []
+    for field in src.fields:
+        if isinstance(field, Table):
+            xcol = utils.quantity_from_table(field, "x", u.arcsec)
+            ycol = utils.quantity_from_table(field, "y", u.arcsec)
+            x += list(xcol.to(u.deg).value)
+            y += list(ycol.to(u.deg).value)
+            ref += list(field["ref"])
+            weight += list(field["weight"])
+
+    x = np.array(x)
+    y = np.array(y)
+    mask = x < max(fov_xsky) * x > min(fov_xsky) * \
+           y < max(fov_ysky) * y > min(fov_ysky)
+
+    spec_refs = set(ref[mask])

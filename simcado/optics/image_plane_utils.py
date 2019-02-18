@@ -114,8 +114,8 @@ def _make_bounding_header_for_tables(tables, pixel_scale=1 * u.arcsec):
         y_col = utils.quantity_from_table("y", table, u.arcsec).to(u.deg)
         x_col = list(x_col.value)
         y_col = list(y_col.value)
-        x += [min(x_col), max(x_col)]
-        y += [min(y_col), max(y_col)]
+        x += [np.min(x_col), np.max(x_col)]
+        y += [np.min(y_col), np.max(y_col)]
     pixel_scale = pixel_scale.to(u.deg).value
     hdr = _header_from_list_of_sky_xy(x, y, pixel_scale)
 
@@ -578,8 +578,8 @@ def calc_footprint(header):
     Returns
     -------
     xsky, ysky : arrays of floats
-        [deg] xsky is the coordinates of [0, w, w, 0]
-              ysky is the coordinates of [0, 0, h, h]
+        [deg] xsky are the coordinates for pixels [0, w, w, 0]
+        [deg] ysky are the coordinates for pixels [0, 0, h, h]
 
     """
 
