@@ -104,13 +104,23 @@ class TestFieldOfViewExtractFrom:
                                image_source):
         tblsrc1 = deepcopy(table_source)
         tblsrc2 = deepcopy(table_source)
-        tblsrc2.fields[0]["x"] += 12   # puts it outside
+        tblsrc2.fields[0]["x"] += 8   # puts it outside
         tblsrc3 = deepcopy(table_source)
-        tblsrc3.fields[0]["y"] += 12   # still outside
+        tblsrc3.fields[0]["y"] += 12   # still inside
+        tblsrc3.fields[0]["weight"] *= 1
+
+        image_source.fields[0].header["CRVAL1"] += 1*u.arcsec.to(u.deg)
 
         src = tblsrc1 + image_source + tblsrc2 + tblsrc3
         the_fov = fov.FieldOfView(basic_fov_header, (1, 2)*u.um)
+
         the_fov.extract_from(src)
+
+        if PLOTS:
+            plt.imshow(the_fov.fields[1].data.T, origin="lower")
+            plt.colorbar()
+            plt.show()
+
 
 
 

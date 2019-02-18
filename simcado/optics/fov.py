@@ -1,13 +1,12 @@
 import warnings
+from copy import deepcopy
+
 import numpy as np
 
 from astropy import wcs as apwcs
 from astropy import units as u
 from astropy.io import fits
-from astropy.table import Table
-from astropy import wcs
-
-from synphot.units import PHOTLAM
+from astropy.table import Table, Column
 
 from . import image_plane_utils as imp_utils
 from ..source.source2 import Source
@@ -15,10 +14,6 @@ from ..source import source2_utils as src_utils
 
 from .. import utils
 from .. import rc
-
-
-# WARNING : all spectra should be resampled so that there are at least 10 bins
-# per wavelength layer before we start for the FOV-ing
 
 
 class FieldOfView:
@@ -49,77 +44,39 @@ class FieldOfView:
         data = np.zeros((header["NAXIS1"], header["NAXIS2"]))
         self.hdu = fits.ImageHDU(header=header, data=data)
         self.fields = []
-        self.fluxes = []
 
-    def extract_from(self, source):
+    def extract_from(self, src):
         """ ..assumption: Bandpass has been applied"""
         
-        if not isinstance(source, Source):
+        if not isinstance(src, Source):
             raise ValueError("source must be a Source object: {}"
-                             "".format(type(source)))
-
-        # determine which fields are inside the field of view
-        # determine which table rows are in FOV
-        # get the photons_in_range for the relevant fields
-        # make tables with x,y,flux for the relevant fields
-        # make new imagehdu for the relevant fields
-
-        fields_mask = [is_field_in_fov(self.hdu.header, field)
-                       for field in source.fields]
-        fields_indexes = np.where(fields_mask)[0]
-
-        print(fields_indexes)
+                             "".format(type(src)))
 
         wave_min = utils.quantify(self.meta["wave_min"], u.um).value
         wave_max = utils.quantify(self.meta["wave_max"], u.um).value
-        #
-        # self.fields += [make_flux_table(self.hdu.header, source, fields_indexes)]
-        # self.fields += [reduce_imagehdus(self.fields, self.spectra,
-        #                                     fields_indexes)]
-        #
-        #
-        #
+        area = self.meta["area"]
 
+        # determine which fields are inside the field of view
+        fields_mask = [is_field_in_fov(self.hdu.header, field)
+                       for field in src.fields]
+        fields_indexes = np.where(fields_mask)[0]
 
+        # make tables with x,y,flux for the relevant fields
+        # determine which table rows are in FOV
+        # get the photons_in_range for the relevant fields
+        combined_table = combine_table_fields(self.hdu.header, src,
+                                              fields_indexes)
+        tbl = make_flux_table(combined_table, src, wave_max, wave_min, area)
+        self.fields += [tbl]
 
+        # make new imagehdu for the relevant fields
+        # get photons_in_range for each image_spectrum
+        # multiply the images by the flux
+        # add_imagehdu_to_imagehdu
 
-
-
-
-
-        # fluxes = []
-        # int_flux_unit = PHOTLAM * u.Angstrom
-        # for spec in source.spectra:
-        #     wave = spec.model.points[0]
-        #     flux = spec.model.lookup_table
-        #
-        #     mask = (spec.model.points[0] >= wave_min) * \
-        #            (spec.model.points[0] <= wave_max)
-        #     fluxes += [np.trapz(flux[mask], wave[mask])]
-        #
-        # fluxes = fluxes * int_flux_unit
-        #
-        # for field in source.fields:
-        #     if isinstance(field, Table):
-        #         x = utils.quantity_from_table("x", field, u.arcsec)
-        #         y = utils.quantity_from_table("y", field, u.arcsec)
-        #         flux = fluxes[tbl["ref"]]
-        #         tbl = Table(names=["x", "y", "flux"], data=[x, y, flux])
-        #
-        #         sub_pixel = self.meta["sub_pixel"]
-        #         self.hdu = imp_utils.add_table_to_imagehdu(tbl, self.hdu,
-        #                                                     sub_pixel=sub_pixel)
-        #     elif isinstance(field, fits.ImageHDU):
-        #         if field.header["SPEC_REF"] is not "":
-        #             flux =  fluxes[field.header["SPEC_REF"]]
-        #         else:
-        #             flux = 1 * int_flux_unit
-        #
-        #         self.hdu = imp_utils.add_imagehdu_to_imagehdu(field, self.hdu)
-
-
-    ###################################################
-    # Deal with flux units properly!!!!!
+        imagehdu = combine_imagehdu_fields(self.hdu.header, src, fields_indexes,
+                                           wave_max, wave_min, area)
+        self.fields += [imagehdu]
 
     @property
     def header(self):
@@ -158,14 +115,34 @@ def is_field_in_fov(fov_header, table_or_imagehdu):
     return is_inside_fov
 
 
-def make_flux_table(fov_header, src, indexes):
+def make_flux_table(source_tbl, src, wave_max, wave_min, area):
+    fluxes = np.zeros(len(src.spectra))
+    ref_set = list(set(source_tbl["ref"]))
+    flux_set = src.photons_in_range(wave_min, wave_max, area, ref_set)
+    fluxes[ref_set] = flux_set
+
+    ref = source_tbl["ref"]
+    weight = source_tbl["weight"]
+    flux_col = Column(name="flux", data=fluxes[ref] * weight)
+    x_col = source_tbl["x"]
+    y_col = source_tbl["y"]
+
+    tbl = Table()
+    tbl.add_columns([x_col, y_col, flux_col])
+
+    return tbl
+
+
+def combine_table_fields(fov_header, src, field_indexes):
     fov_xsky, fov_ysky = imp_utils.calc_footprint(fov_header)
 
     x, y, ref, weight = [], [], [], []
-    for ii, field in enumerate(src.fields):
-        if isinstance(field, Table) and indexes[ii] is True:
-            xcol = utils.quantity_from_table(field, "x", u.arcsec)
-            ycol = utils.quantity_from_table(field, "y", u.arcsec)
+
+    for ii in field_indexes:
+        field = src.fields[ii]
+        if isinstance(field, Table):
+            xcol = utils.quantity_from_table("x", field, u.arcsec)
+            ycol = utils.quantity_from_table("y", field, u.arcsec)
             x += list(xcol.to(u.deg).value)
             y += list(ycol.to(u.deg).value)
             ref += list(field["ref"])
@@ -173,7 +150,35 @@ def make_flux_table(fov_header, src, indexes):
 
     x = np.array(x)
     y = np.array(y)
-    mask = x < max(fov_xsky) * x > min(fov_xsky) * \
-           y < max(fov_ysky) * y > min(fov_ysky)
+    mask = np.array(x < max(fov_xsky)) * np.array(x > min(fov_xsky)) * \
+           np.array(y < max(fov_ysky)) * np.array(y > min(fov_ysky))
 
-    spec_refs = set(ref[mask])
+    x = x[mask]
+    y = y[mask]
+    ref = np.array(ref)[mask]
+    weight = np.array(weight)[mask]
+
+    tbl = Table(names=["x", "y", "ref", "weight"], data=[x, y, ref, weight])
+    tbl["x"].unit = u.deg
+    tbl["y"].unit = u.deg
+
+    return tbl
+
+
+def combine_imagehdu_fields(fov_header, src, fields_indexes,
+                            wave_max, wave_min, area):
+    image = np.zeros((fov_header["NAXIS1"], fov_header["NAXIS2"]))
+    canvas_hdu = fits.ImageHDU(header=fov_header, data=image)
+    order = int(rc.__rc__["SIM_SPLINE_ORDER"])
+
+    for ii in fields_indexes:
+        if isinstance(src.fields[ii], fits.ImageHDU):
+            flux = src.photons_in_range(wave_min, wave_max, area, indexes=[ii])
+            image = np.zeros((fov_header["NAXIS1"], fov_header["NAXIS2"]))
+            temp_hdu = fits.ImageHDU(header=fov_header, data=image)
+            temp_hdu = imp_utils.add_imagehdu_to_imagehdu(src.fields[ii],
+                                                          temp_hdu, order=order)
+            canvas_hdu.data += temp_hdu.data * flux[0].value
+
+    return canvas_hdu
+

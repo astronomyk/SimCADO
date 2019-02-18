@@ -456,9 +456,8 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1):
         This must include a valid WCS
 
     order : int, optional
-        Default is ``bilinear``. The resampling scheme used by
-        ``reproject_interp``. See ``reproject.reproject_interp()`` for the list
-        of options
+        Default is 1. The order of the spline interpolator used by the
+        ``scipy.ndimage`` functions
 
     Returns
     -------

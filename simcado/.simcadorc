@@ -12,6 +12,7 @@ SIM_PSF_RADIUS            1.024             # [arcsec] radius of PSF used in con
 SIM_PSF_OVERSAMPLE        no                # use astropy's inbuilt oversampling technique when generating the PSFs. Kills memory for PSFs over 511 x 511
 SIM_OVERSAMPLING          1                 # The factor of oversampling inside the simulation
 SIM_PIXEL_THRESHOLD       1                 # photons per pixel summed over the wavelength range. Values less than this are assumed to be zero
+SIM_SPLINE_ORDER          1                 # Order of spline interpolation passed to scipy.ndimage functions
 
 SIM_SPEC_RESOLUTION       1E-4              # [um] spectral resolution when resampling spectral curves
 SIM_SUB_PIXEL_ACCURACY    False             # Whether to use sub pixel accuracy when dealing with point sources
