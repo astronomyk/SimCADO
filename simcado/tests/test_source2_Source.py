@@ -4,6 +4,7 @@ from pytest import approx
 
 import os
 import inspect
+from copy import deepcopy
 
 import numpy as np
 
@@ -36,6 +37,8 @@ def mock_dir():
 
 MOCK_DIR = mock_dir()
 sim.rc.__search_path__.insert(0, MOCK_DIR)
+
+PLOTS = False
 
 
 @pytest.fixture(scope="module")
@@ -120,8 +123,8 @@ def image_source():
     im_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
     im = np.ones((n+1, n+1)) * 1E-11
-    im[0, n] += 1
-    im[n, 0] += 1
+    im[0, n] += 5
+    im[n, 0] += 5
     im[n//2, n//2] += 10
 
     im_hdu = fits.ImageHDU(data=im, header=im_wcs.to_header())
@@ -158,8 +161,8 @@ class TestSourceInit:
     def test_initialises_with_image_and_0_spectra(self, input_hdulist):
         with pytest.raises(NotImplementedError):
             src = Source(image_hdu=input_hdulist[0])
-        # assert len(src.spectra) == 0
-        # assert src.fields[0].header["SPEC_REF"] == ""
+            # assert len(src.spectra) == 0
+            # assert src.fields[0].header["SPEC_REF"] == ""
 
     @pytest.mark.parametrize("ii, dtype",
                              [(0, fits.ImageHDU),
@@ -221,69 +224,39 @@ class TestSourceImageInRange:
         counts = np.sum([ph.value[r] * w for r, w in zip(ref, weight)])
 
         im = table_source.image_in_range(1*u.um, 2*u.um)
-        #assert np.sum(im.image) == approx(counts)
-        # ..todo: get these working again
+        assert np.sum(im.image) == approx(counts)
 
     @pytest.mark.parametrize("pix_scl", [0.1, 0.2, 0.4])
     def test_flux_from_imagehdu_is_as_expected(self, image_source, pix_scl):
+        ph = image_source.photons_in_range(1*u.um, 2*u.um)[0].value
+        im_sum = ph * np.sum(image_source.fields[0].data)
         im = image_source.image_in_range(1*u.um, 2*u.um, pix_scl*u.arcsec)
-        #assert np.sum(im.image) == approx(24)
-        # ..todo: get these working again
-
-    def test_image_ref_coords_is_irrespective_of_source_coords(self,
-                                                               table_source):
-        table_source.fields[0]["x"] += 20  # arcsec
-        im = table_source.image_in_range(1*u.um, 2*u.um)
-        #assert np.all(im.image.shape == (11, 16))
-        #assert im.header["CRPIX1"] == approx(-15)
-        # ..todo: get these working again
+        assert np.sum(im.image) == approx(im_sum)
 
     def test_combines_more_that_one_field_into_image(self, image_source,
                                                      table_source):
         tbl = table_source.fields[0]
         ph = table_source.photons_in_range(1 * u.um, 2 * u.um)
-        tbl_sum = [ph[tbl["ref"][ii]] * tbl["weight"][ii]
-                   for ii in range(len(tbl))]
-        im_hdu_sum = np.sum(image_source.fields[0].data) * \
-                     image_source.photons_in_range(1 * u.um, 2 * u.um)[0]
-        input_sum = np.sum(u.Quantity(tbl_sum)) + im_hdu_sum
+        tbl_sum = u.Quantity([ph[tbl["ref"][ii]] * tbl["weight"][ii]
+                              for ii in range(len(tbl))])
+        tbl_sum = np.sum(tbl_sum.value)
 
-        from copy import deepcopy
-        tbl2 = deepcopy(table_source)
-        tbl2.fields[0]["x"] += -20
-        tbl2.fields[0]["y"] += 0
+        im_src2 = deepcopy(image_source)
+        im_src2.fields[0].header["CRVAL1"] -= 10*u.arcsec.to(u.deg)
+        im_src2.fields[0].header["CRVAL2"] -= 5*u.arcsec.to(u.deg)
+        ph = image_source.photons_in_range(1 * u.um, 2 * u.um)[0].value
+        im_sum = np.sum(im_src2.fields[0].data) * ph
 
-        print(image_source.fields[0].header["CTYPE1"])
-        # image_source.fields[0].header["CRVAL1"] += 0 * u.arcsec.to(u.deg)
-        # image_source.fields[0].header["CRVAL2"] += 0 * u.arcsec.to(u.deg)
+        image_source.fields[0].header["CRVAL1"] += 12*u.arcsec.to(u.deg)
 
-        table_source.append(tbl2)
-        table_source.append(image_source)
-        im = table_source.image_in_range(1*u.um, 2*u.um,
-                                         pixel_scale=0.2*u.arcsec,
-                                         layers=[0, 1, 2])
-        impl_wcs = wcs.WCS(im.hdu)
+        comb_src = image_source + table_source + im_src2
+        im_plane = comb_src.image_in_range(1*u.um, 2*u.um, 0.3*u.arcsec)
 
+        assert np.sum(im_plane.image) == approx(2*im_sum + tbl_sum)
 
-        # plt.imshow(im.image.T, origin="lower", norm=LogNorm())
-        # plt.colorbar()
-        # x, y = impl_wcs.wcs_world2pix([0], [0], 1)
-        # plt.scatter(x, y, c="r")
-        # plt.show()
-
-        ipt_im = image_source.fields[0]
-
-        # print(ipt_im.header["CRVAL1"], ipt_im.header["CRPIX1"], ipt_im.header["NAXIS1"])
-        # print(ipt_im.header["CRVAL2"], ipt_im.header["CRPIX2"], ipt_im.header["NAXIS2"])
-        # print(np.sum(im.image), input_sum)
-        # assert np.sum(im.image) == approx(input_sum.value)
-        # ..todo: get this working
-
-
-
-
-
-
+        if PLOTS:
+            plt.imshow(im_plane.image.T, origin="lower", norm=LogNorm())
+            plt.show()
 
 
 @pytest.mark.usefixtures("table_source", "image_source")

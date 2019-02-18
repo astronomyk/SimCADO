@@ -1,11 +1,9 @@
 import numpy as np
-
-from astropy import wcs
 from astropy.io import fits
+from astropy import wcs
 from astropy.table import Table
 
-from simcado.optics.image_plane_utils import add_table_to_imagehdu, \
-    add_imagehdu_to_imagehdu
+from .image_plane_utils_old import add_table_to_imagehdu, add_imagehdu_to_imagehdu
 
 
 class ImagePlane:
@@ -55,34 +53,34 @@ class ImagePlane:
             raise ValueError("Header must have a valid WCS: {}"
                              "".format(dict(header)))
 
-        image = np.zeros((header["NAXIS1"]+1, header["NAXIS2"]+1))
+        image = np.zeros((header["NAXIS2"]+1, header["NAXIS1"]+1))
         self.hdu = fits.ImageHDU(data=image, header=header)
 
-    def add(self, hdus_or_tables, sub_pixel=False, order=1):
+    def add(self, hdu_or_table, sub_pixel=False, order="bilinear"):
         """
         Add a projection of an image or table sources to the canvas
 
         .. note::
-            If a Table is provided, it must include the following columns:
-            `x`, `y`, and `flux`.
+          If a Table is provided, it must include the following columns:
+          `x`, `y`, and `flux`.
 
-            Units for the columns should be provided in the
-            <Table>.unit attribute or as an entry in the table's meta dictionary
-            using this syntax: <Table>.meta["<colname>_unit"] = <unit>.
+          Units for the columns should be provided in the
+          <Table>.unit attribute or as an entry in the table's meta dictionary
+          using this syntax: <Table>.meta["<colname>_unit"] = <unit>.
 
-            For example::
+          For example::
 
               tbl["x"].unit = u.arcsec
               tbl.meta["x_unit"] = "deg"
 
-            If no units are given, default units will be assumed. These are:
+          If no units are given, default units will be assumed. These are:
 
-            - `x`, `y`: `arcsec`
-            - `flux` : `ph / s / pix`
+          - `x`, `y`: `arcsec`
+          - `flux` : `ph / s / pix`
 
         Parameters
         ----------
-        hdus_or_tables : `fits.ImageHDU` or `astropy.Table`
+        hdu_or_table : `fits.ImageHDU` or `astropy.Table`
             The input to be projected onto the image plane. See above.
 
         sub_pixel : bool, optional
@@ -90,24 +88,16 @@ class ImagePlane:
             sub-pixel shifts or not. Accounting for sub-pixel shifts is approx.
             5x slower.
 
-        order : int, optional
-            Default is 1. Order of spline interpolations used in
-            ``scipy.ndimage`` functions ``zoom`` and ``rotate``.
-
         """
 
-        if isinstance(hdus_or_tables, (list, tuple)):
-            for hdu_or_table in hdus_or_tables:
-                self.add(hdu_or_table, sub_pixel=sub_pixel, order=order)
-        else:
-            if isinstance(hdus_or_tables, Table):
-                self.hdu.header["COMMENT"] = "Adding sources from table"
-                self.hdu = add_table_to_imagehdu(hdus_or_tables, self.hdu,
-                                                 sub_pixel=sub_pixel)
-            elif isinstance(hdus_or_tables, fits.ImageHDU):
-                self.hdu.header["COMMENT"] = "Adding sources from table"
-                self.hdu = add_imagehdu_to_imagehdu(hdus_or_tables, self.hdu,
-                                                    order=order)
+        if isinstance(hdu_or_table, Table):
+            self.hdu.header["COMMENT"] = "Adding sources from table"
+            self.hdu = add_table_to_imagehdu(hdu_or_table, self.hdu,
+                                             sub_pixel=sub_pixel)
+        elif isinstance(hdu_or_table, fits.ImageHDU):
+            self.hdu.header["COMMENT"] = "Adding sources from table"
+            self.hdu = add_imagehdu_to_imagehdu(hdu_or_table, self.hdu,
+                                                order=order)
 
     @property
     def header(self):
@@ -120,3 +110,5 @@ class ImagePlane:
     @property
     def image(self):
         return self.data
+
+

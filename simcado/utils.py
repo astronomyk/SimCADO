@@ -1,7 +1,7 @@
 """
 Helper functions for SimCADO
 """
-
+import math
 import os
 import sys
 import warnings
@@ -906,3 +906,11 @@ def quantity_from_table(colname, table, default_unit=""):
                           "".format(colname, table.meta, default_unit))
 
     return col
+
+
+def deg2rad(theta):
+    return theta * math.pi / 180
+
+
+def rad2deg(theta):
+    return theta * 180 / math.pi

@@ -42,8 +42,8 @@ from astropy import units as u
 
 from synphot import SpectralElement
 
-from ..optics.image_plane_utils import make_image_plane_header
-from ..optics.image_plane import ImagePlane
+from ..optics import image_plane as opt_imp
+from ..optics import image_plane_utils as imp_utils
 from .source2_utils import validate_source_input, convert_to_list_of_spectra, \
     photons_in_range, scale_imagehdu
 
@@ -138,14 +138,13 @@ class Source:
         self.spectra += spectra
 
     def image_in_range(self, wave_min, wave_max, pixel_scale=1*u.arcsec,
-                       layers=None, area=None, order="bilinear",
-                       sub_pixel=False):
+                       layers=None, area=None, order=1, sub_pixel=False):
         if layers is None:
-            layers = list(np.arange(len(self.fields)))
+            layers = range(len(self.fields))
         fields = [self.fields[ii] for ii in layers]
 
-        hdr = make_image_plane_header(fields, pixel_scale=pixel_scale)
-        im_plane = ImagePlane(hdr)
+        hdr = imp_utils.get_canvas_header(fields, pixel_scale=pixel_scale)
+        im_plane = opt_imp.ImagePlane(hdr)
 
         for field in fields:
             if isinstance(field, Table):
@@ -153,8 +152,7 @@ class Source:
                                                field["ref"]) * field["weight"]
                 x = utils.quantity_from_table("x", field, u.arcsec)
                 y = utils.quantity_from_table("y", field, u.arcsec)
-                tbl = Table(names=["x", "y", "flux"],
-                            data=[field["x"], field["y"], fluxes])
+                tbl = Table(names=["x", "y", "flux"], data=[x, y, fluxes])
                 tbl.meta.update(field.meta)
                 hdu_or_table = tbl
 
@@ -278,9 +276,9 @@ class Source:
                              "".format(type(new_source)))
 
     def __add__(self, new_source):
-        copy_source = deepcopy(self)
-        copy_source.append(new_source)
-        return copy_source
+        self_copy = deepcopy(self)
+        self_copy.append(new_source)
+        return self_copy
 
     def __radd__(self, new_source):
         return self.__add__(new_source)
@@ -291,7 +289,7 @@ class Source:
             if isinstance(self.fields[ii], Table):
                 tbl_len = len(self.fields[ii])
                 num_spec = set(self.fields[ii]["ref"])
-                msg += "[{}]: Table with {} rows, referencing {} spectra \n" \
+                msg += "[{}]: Table with {} rows, referencing spectra {} \n" \
                        "".format(ii, tbl_len, num_spec)
             elif isinstance(self.fields[ii], fits.ImageHDU):
                 im_size = self.fields[ii].data.shape

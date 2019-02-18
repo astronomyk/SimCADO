@@ -8,7 +8,7 @@ from astropy.table import Table
 
 from synphot.units import PHOTLAM
 
-from . import image_plane_utils as impl_utils
+from . import image_plane_utils_old as impl_utils
 
 from ..source.source2 import Source
 from ..import utils
