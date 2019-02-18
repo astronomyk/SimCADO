@@ -1212,7 +1212,7 @@ def open(self, filename):
 #        plt.xlabel("Distance [arcsec]", fontsize=14)
 #        plt.ylabel("Distance [arcsec]", fontsize=14)
 
-def plot_detector_layout(detector, plane="sky", plot_origin=False,
+def plot_detector_layout(detector, plane="sky", fmt='g-', plot_origin=False,
                          label=True, **kwargs):
     """Plot the detector layout
 
@@ -1223,6 +1223,7 @@ detector : simcado.Detector
    The Detector to be shown
 plane : 'sky' or 'fpa'
    Plot detector layout on the sky (in arcsec) or in the focal plane (in mm)
+fmt : matplotlib format string
 plot_origin : bool
    Mark position pixel (1,1) for each chip.
 label : bool
@@ -1263,7 +1264,7 @@ Keyword arguments
         xworld, yworld = thewcs.all_pix2world(xpix, ypix, 1)
         xworld -= thewcs.wcs.crval[0]
         yworld -= thewcs.wcs.crval[1]
-        plt.plot(xworld * scale, yworld * scale, **kwargs)
+        plt.plot(xworld * scale, yworld * scale, fmt, **kwargs)
 
         if plot_origin:
             x0, y0 = thewcs.all_pix2world(1, 1, 1)
