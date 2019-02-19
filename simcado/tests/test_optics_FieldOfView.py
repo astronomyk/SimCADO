@@ -110,20 +110,21 @@ class TestFieldOfViewExtractFrom:
         tblsrc3.fields[0]["weight"] *= 1
 
         image_source.fields[0].header["CRVAL1"] += 1*u.arcsec.to(u.deg)
+        image_source.fields[0].header["CRVAL2"] -= 1*u.arcsec.to(u.deg)
 
         src = tblsrc1 + image_source + tblsrc2 + tblsrc3
         the_fov = fov.FieldOfView(basic_fov_header, (1, 2)*u.um)
 
         the_fov.extract_from(src)
 
-        if PLOTS:
-            plt.imshow(the_fov.fields[1].data.T, origin="lower")
+        if PLOTS is False:
+            plt.imshow(the_fov.fields[1].data.T, origin="lower", norm=LogNorm())
             plt.colorbar()
             plt.show()
 
 
-
-
+class TestFieldOfViewView:
+    def test_view_function
 
 
 

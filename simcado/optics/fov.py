@@ -78,6 +78,19 @@ class FieldOfView:
                                            wave_max, wave_min, area)
         self.fields += [imagehdu]
 
+    def view(self, sub_pixel=False):
+        self.hdu.data = np.zeros((self.hdu.header["NAXIS1"],
+                                  self.hdu.header["NAXIS2"]))
+        for field in self.fields:
+            if isinstance(field, Table):
+
+                self.hdu = imp_utils.add_table_to_imagehdu(field, self.hdu,
+                                                           sub_pixel)
+            elif isinstance(field, fits.ImageHDU):
+                self.hdu.data += field.data
+
+        return self.hdu.data
+
     @property
     def header(self):
         return self.hdu.header
