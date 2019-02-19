@@ -1304,12 +1304,10 @@ class ADC_PSFCube(DeltaPSFCube):
                                     ", z0:" + str(params["ATMO_AIRMASS"])
 
 
-
-
-## The following two classes implement a kernel for the PSF of a centrally
-## obscured circular aperture. The classes are modelled after the kernels
-## in astropy.convolution.kernel and the models in astropy.modeling.models,
-## both from astropy version 1.1.1.
+# The following two classes implement a kernel for the PSF of a centrally
+# obscured circular aperture. The classes are modelled after the kernels
+# in astropy.convolution.kernel and the models in astropy.modeling.models,
+# both from astropy version 1.1.1.
 class AiryDiskDiff2DKernel(Kernel2D):
     """
     2D kernel for PSF for annular aperture

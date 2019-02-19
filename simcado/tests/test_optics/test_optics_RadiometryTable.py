@@ -22,7 +22,7 @@ import simcado as sim
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    rel_dirname = "mocks/MICADO_SCAO_WIDE/"
+    rel_dirname = "../mocks/MICADO_SCAO_WIDE/"
     return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
 
 

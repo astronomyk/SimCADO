@@ -39,8 +39,11 @@ class FieldOfView:
             raise ValueError("header must contain a valid WCS: {}"
                              "".format(dict(header)))
 
-        data = np.zeros((header["NAXIS1"], header["NAXIS2"]))
-        self.hdu = fits.ImageHDU(header=header, data=data)
+        self.hdu = fits.ImageHDU(header=header)
+        self.hdu.header["NAXIS"] = 2
+        self.hdu.header["NAXIS1"] = header["NAXIS1"]
+        self.hdu.header["NAXIS2"] = header["NAXIS2"]
+
         self.fields = []
 
     def extract_from(self, src):
@@ -96,6 +99,8 @@ class FieldOfView:
 
     @property
     def data(self):
+        if self.hdu.data is None:
+            self.view(self.meta["sub_pixel"])
         return self.hdu.data
 
     @property

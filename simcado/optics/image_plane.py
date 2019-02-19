@@ -48,7 +48,7 @@ class ImagePlane:
 
     def __init__(self, header, **kwargs):
 
-        self.meta = {"max_segment_size" : 4096*4096}
+        self.meta = {"i" : 4096*4096}
         self.meta.update(kwargs)
 
         if len(wcs.find_all_wcs(header=header)) == 0:
