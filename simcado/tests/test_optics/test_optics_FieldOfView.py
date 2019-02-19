@@ -124,7 +124,7 @@ class TestFieldOfViewView:
         the_fov.extract_from(src)
         view = the_fov.view()
 
-        assert np.sum(view) == approx(orig_sum)
+        assert np.sum(view) == approx(orig_sum, rel=1e-3)
 
         if PLOTS:
             plt.imshow(src.fields[0].data.T, origin="lower", norm=LogNorm())
@@ -163,7 +163,7 @@ class TestFieldOfViewView:
         view = the_fov.view()
 
         assert np.sum(the_fov.fields[0]["flux"]) == approx(36)
-        assert np.sum(the_fov.fields[1].data) == approx(orig_sum)
+        assert np.sum(the_fov.fields[1].data) == approx(orig_sum, rel=1e-3)
         assert np.sum(view) == approx(orig_sum + 36)
 
         if PLOTS:
