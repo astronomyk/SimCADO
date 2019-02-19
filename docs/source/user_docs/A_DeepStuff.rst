@@ -1,4 +1,5 @@
-Simulation building blocks
+
+Simulation Building Blocks
 ==========================
 
 SimCADO objects
@@ -80,7 +81,7 @@ follows the procedure described graphically in Figure 1. The example
 used in Figure 1 is for a simplified stellar cluster with only two
 different stellar types - A0V and K5V type stars.
 
-.. figure:: apply_optical_train.png
+.. figure:: ../_static/images/apply_optical_train.png
     :figwidth: 600 px
    
     Figure 1 - The steps involved in applying an ``OpticalTrain`` object to

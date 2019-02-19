@@ -63,12 +63,20 @@ Science Cases
 .. _StarDestroyer.ipynb:  https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/StarDestroyer.ipynb
    
    
-MICADO experiments
+PSF experiments
 ------------------
+
+- `SIMCADO\_PSF\_examples.ipynb`_
+
+  A notebook showing the different PSFs available in SimCADO and doing a bit of analysis of their characteristics.
+
+
+
+.. _SIMCADO\_PSF\_examples.ipynb: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/SIMCADO\_PSF\_examples.ipynb 
 
 -  `E-ELT\_2-Phase\_Mirror.ipynb`_
 
-   As the primary mirror of the E-ELT may be built in 2 phases, this
+   As the primary mirror of the E-ELT was innitially thought to be built in 2 phases, this
    notebook uses SimCADO to have a look at what that means for the
    resulting E-ELT PSF.
 
@@ -77,14 +85,14 @@ MICADO experiments
 .. note::
     the PSFs generated here are only approximations based on a diffraction limited core combined with a Seeing Halo. These are meant only as a guide.
 
--  `Filter\_Wings.ipynb`_
-
-   A experiment to investigate the transmission coefficients that the
-   filters in MICADO will need to have in order to restrict flux leakage
-   through the filter wings to less than 1% of the flux coming through
-   the filter.
-
-   .. _Filter\_Wings.ipynb:  https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/Filter_Wings.ipynb   
+.. -  `Filter\_Wings.ipynb`_
+..
+..    A experiment to investigate the transmission coefficients that the
+..   filters in MICADO will need to have in order to restrict flux leakage
+..   through the filter wings to less than 1% of the flux coming through
+..   the filter.
+.. 
+..   .. _Filter\_Wings.ipynb:  https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/Filter_Wings.ipynb   
 
 Workshop notebooks
 ------------------

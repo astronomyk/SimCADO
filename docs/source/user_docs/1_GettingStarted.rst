@@ -26,7 +26,7 @@ Doing this in iPython will call up the docstring: ::
 Source
 ------
 
-For full details, please see the :doc:`API<../reference/simcado>` and examples of
+For full details, please see the :doc:`API <simcado>` and examples of
 :doc:`Source Objects <C_Source>`
 
 The :class:`~.Source` class is probably the most important class for testing
@@ -63,8 +63,9 @@ object.::
 only import files that were generated directly from other :class:`.Source`
 objects. It’s a chicken/egg scenario, which is why the next section
 deals with creating :class:`.Source` objects in memory. For a description of
-the file format for saved :class:`.Source` objects, see `“File Format of saved
-Source objects” <user_docs/A_DeepStuff#source>`__.
+the file format for saved :class:`.Source` objects, see :ref:`“File Format of saved
+Source objects” <deepstuff>`.
+
 
 Making a :class:`.Source` with SimCADO’s in-built functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,8 +204,6 @@ the detector - “small”, “wide”, “full”. The default is “small”.
 
 A list of all the available keyword-value pairs can be found in the
 :doc:`Keywords section <Z_Keywords>` .
-.. and a description of the default values can be found in the
-   `“MICADO with SimCADO section” <SimCADO_defaults>`__.
 
 Alternatively you can dump a copy of the default parameters by calling
 ``simcado.commands.dump_defaults()``.
@@ -274,6 +273,35 @@ Where each of the strings means:
 -  ``"default"`` - depends on “mode” keyword. Full MICADO 9 chip
    detector array for either 4mas or 1.5mas modes
 
+PSF utilities in SimCADO
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+In SimCADO we have pre-packaged some simulated PSFs which match the expectations of the 
+different AO modes of MICADO. As new simulations of the AO capabilities become available we 
+will include these new PSFs in SimCADO. The available PSFs are
+
+- PSF_SCAO.fits
+- PSF_MCAO.fits
+
+which are the AO modes available. Additionally we provide a LTAO PSF (PSF_LTAO.fits) and a EELT diffraction limited PSF (PSF_POPPY.fits) calculated with `poppy <https://webbpsf.readthedocs.io/en/stable/poppy.html>`_ 
+
+For the moment, the PSF is assumed constant accross the field. The new (refractored) version will
+be capable to deal with field varying PSFs in a realistic manner. 
+
+SimCADO also provides utility functions that are able to produce analytic PSFs to be used in the simulation in adition to the pre-calculated PSFs. Please check the :mod:`simcado.psf` module. The 
+most important functions are the following:
+
+- :func:`simcado.psf.poppy_eelt_psf` creates a diffraction limited PSF based with mirror segments provided by :func:`simcado.psf.get_eelt_segments`
+
+- :func:`simcado.psf.seeing_psf` creates a seeing limited PSF with an user provided FWHM. Moffat and Gaussian profiles are available
+
+- :func:`simcado.psf.poppy_ao_psf` creates an analytical AO PSF with a user provided Strehl ratio
+
+All these functions can save the computed PSFs in fits format by specifying a filename. That file can be later used in the simulations as a parameter in :func:`simcado.simulation.run` using the ``SCOPE_PSF_FILE=filename`` keyword.
+
+In the :doc:`notebook <6_Notebooks>` section you can find a few detailed examples how to create and work with these PSFs. 
+
+
 Saving and reusing commands
 ---------------------------
 
@@ -314,7 +342,7 @@ commands file to edit in your favourite text editor:
     >>> simcado.commands.dump_defaults("path/to/cmds_file.txt")
 
 More information on the :class:`~.UserCommands` object is given in the
-`Examples Section <examples/UserCommands>`__
+:doc:`Examples Section <B_UserCommands>`
 
 Behind the scenes of SimCADO
 ----------------------------
@@ -333,8 +361,7 @@ SimCADO uses 4 main classes during a simulation:
    by SimCADO to run the simultationm, e.g. ``OBS_EXPTIME`` (exposure
    time) or ``INST_FILTER_TC`` (filter curve)
 
-For more information on how SimCADO works please see the `SimCADO in
-Depth <deep_stuff/SimCADO>`__ section.
+For more information on how SimCADO works please see the :doc:`SimCADO in Depth <A_DeepStuff>` section.
 
 Things to watch out for
 -----------------------

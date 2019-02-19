@@ -145,7 +145,7 @@ using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked
 
 That's it. Of course SimCADO can also go in the other direction, providing many
 more levels of complexity, but for that the reader is directed to the examples
-pages and/or the :doc:`API documentation <reference/simcado>`.
+pages and/or the :doc:`API documentation <user_docs/simcado>`.
 
 SimCADO building blocks
 -----------------------
@@ -156,7 +156,7 @@ please see either the :doc:`GettingStarted <user_docs/1_GettingStarted>` or
 Using SimCADO
 -------------
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    user_docs/1_GettingStarted
@@ -171,7 +171,7 @@ Using SimCADO
    user_docs/C_Source
    user_docs/Z_Keywords
 
-   reference/simcado
+   user_docs/simcado
 
 Bugs and Issues
 ---------------

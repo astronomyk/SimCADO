@@ -10,6 +10,12 @@ the newest information coming from the MICADO work packages.
 To update your version of SimCADO, use the ``simcado.get_extras()``
 command.
 
+2019-02-19
+~~~~~~~~~~
+
+- Documentation Updated
+- Reference spectrum now based on synphot
+
 
 2018-11-23
 ~~~~~~~~~~
