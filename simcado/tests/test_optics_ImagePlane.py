@@ -360,6 +360,28 @@ class TestImagePlaneAdd:
             plt.show()
 
 
+@pytest.mark.usefixtures("image_hdu_rect")
+class TestReorientImageHDU:
+    def test_flux_remains_constant(self, image_hdu_rect):
+        orig_sum = np.sum(image_hdu_rect.data)
+        new_hdu = imp_utils.reorient_imagehdu(image_hdu_rect)
+        new_sum = np.sum(new_hdu.data)
+
+        assert new_sum == approx(orig_sum)
+
+
+@pytest.mark.usefixtures("image_hdu_rect")
+class TestRescaleImageHDU:
+    @pytest.mark.parametrize("pixel_scale", [0.1, 0.2, 1, 2])
+    def test_flux_remains_constant(self, image_hdu_rect, pixel_scale):
+        orig_sum = np.sum(image_hdu_rect.data)
+        new_hdu = imp_utils.rescale_imagehdu(image_hdu_rect,
+                                             pixel_scale*u.arcsec.to(u.deg))
+        new_sum = np.sum(new_hdu.data)
+
+        assert new_sum == approx(orig_sum)
+
+
 ###############################################################################
 # ..todo: When you have time, reintegrate these tests, There are some good ones
 

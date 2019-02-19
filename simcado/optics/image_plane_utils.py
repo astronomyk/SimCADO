@@ -428,7 +428,7 @@ def reorient_imagehdu(imagehdu, **kwargs):
         angle = np.rad2deg(np.arctan2(hdr["PC1_2"], hdr["PC1_1"]))
         new_im = ndi.rotate(imagehdu.data, angle, reshape=True, **kwargs)
         new_im = np.nan_to_num(new_im, copy=False)
-        new_im *= np.sum(new_im) / np.sum(imagehdu.data)
+        new_im *= np.sum(imagehdu.data) / np.sum(new_im)
 
         imagehdu.data = new_im
         hdr["CRPIX1"] = hdr["NAXIS1"] / 2.
