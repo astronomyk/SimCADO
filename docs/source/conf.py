@@ -14,7 +14,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../'))
+sys.path.insert(0, os.path.abspath('../../simcado'))
 print(sys.path)
 
 # -- Project information -----------------------------------------------------
@@ -47,7 +47,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'numpydoc',
-    'sphinxcontrib.apidoc',
+    'sphinx.apidoc',
     'matplotlib.sphinxext.plot_directive',
 ]
 
