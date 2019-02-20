@@ -467,7 +467,7 @@ class Slit(object):
     imaged onto the slit and the slit image is then proejected onto the corresponding
     trace position on the detector focal plane
     
-    For a long slit spectrograph only one of these objects is needs to be defined.
+    For a long slit spectrograph only one of these py_objects is needs to be defined.
     The an IFU a slit should be defined for each spaxel
     For a MOS a slit should be definied for each fibre
     
@@ -597,7 +597,7 @@ class Spectrograph(OpticalTrain):
         """
         import a list of trace_maps from the trace_map_list.tbl file
         deal with the various format that the files may have
-        trace_map_list is just a list of Trace objects
+        trace_map_list is just a list of Trace py_objects
         
         """
         

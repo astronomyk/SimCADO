@@ -1,5 +1,27 @@
+import os
+
 import numpy as np
-from simcado.optics.effects.effects import Effect
+import pytest
+from astropy.table import Table
+
+import simcado as sim
+from simcado.optics.effects import Effect, SurfaceList, ApertureList
+
+MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                         "../mocks/MICADO_SCAO_WIDE/"))
+sim.rc.__search_path__ += [MOCK_PATH]
+
+
+@pytest.fixture()
+def surf_list_file():
+    fname = os.path.join(MOCK_PATH, "EC_mirrors_MICADO_Wide.tbl")
+    return fname
+
+
+@pytest.fixture()
+def aperture_list_file():
+    fname = os.path.join(MOCK_PATH, "EC_mirrors_MICADO_Wide.tbl")
+    return fname
 
 
 class TestEffectInit:
@@ -17,3 +39,25 @@ class TestEffectInit:
 
     def test_has_method_fov_grid(self):
         assert hasattr(Effect(), "fov_grid")
+
+
+@pytest.mark.usefixtures("surf_list_file")
+class TestSurfaceListInit:
+    def test_initialises_with_nothing(self):
+        assert isinstance(SurfaceList(), SurfaceList)
+
+    def test_initialises_with_valid_filename(self, surf_list_file):
+        surf_list = SurfaceList(filename=surf_list_file)
+        assert isinstance(surf_list, SurfaceList)
+        assert isinstance(surf_list.data, Table)
+
+
+@pytest.mark.usefixtures("aperture_list_file")
+class TestApertureListInit:
+    def test_initialises_with_nothing(self):
+        assert isinstance(ApertureList(), ApertureList)
+
+    def test_initialises_with_valid_filename(self, surf_list_file):
+        aperture_list = ApertureList(filename=surf_list_file)
+        assert isinstance(aperture_list, ApertureList)
+        assert isinstance(aperture_list.data, Table)

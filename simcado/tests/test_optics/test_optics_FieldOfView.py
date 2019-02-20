@@ -12,9 +12,9 @@ from simcado.optics import fov
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-from simcado.tests.mocks.objects.source_objects import _table_source, \
+from simcado.tests.mocks.py_objects.source_objects import _table_source, \
     _image_source, _combined_source
-from simcado.tests.mocks.objects.header_objects import _basic_fov_header
+from simcado.tests.mocks.py_objects.header_objects import _basic_fov_header
 
 PLOTS = False
 

@@ -39,7 +39,11 @@ class GaussianDiffractionPSF(Effect):
         fwhm_range = np.arange(fwhm[0], fwhm[1], pixel_scale)
         wavelengths = fwhm_range / 1.22 * diameter.to(u.m)
 
-        return {"coords": (0, 0), "wavelengths": wavelengths}
+        return {"coords": None, "wavelengths": wavelengths}
+
+    def update(self, **kwargs):
+        if "diameter" in kwargs:
+            self.meta["diameter"] = kwargs["diameter"]
 
 
 def get_diffraction_limited_gaussian_kernel(wave, pixel_scale, diameter):

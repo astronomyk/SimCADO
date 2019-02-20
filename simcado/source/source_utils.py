@@ -26,7 +26,7 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
 
     Returns
     -------
-    props : :class:`astropy.Table` or list of :class:`astropy.Table` objects
+    props : :class:`astropy.Table` or list of :class:`astropy.Table` py_objects
         with stellar parameters
 
     """

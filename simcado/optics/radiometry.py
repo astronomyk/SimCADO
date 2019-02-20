@@ -24,8 +24,8 @@ class RadiometryTable:
         if len(tables) > 0:
             self.add_surface_list(tables)
 
-    def add_surface_list(self, surface_lists, prepend=False):
-        self.table = combine_tables(surface_lists, self.table, prepend=prepend)
+    def add_surface_list(self, surface_list, prepend=False):
+        self.table = combine_tables(surface_list, self.table, prepend=prepend)
 
         r_name = real_colname("name", self.table.colnames)
         for row in self.table:

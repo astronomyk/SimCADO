@@ -333,11 +333,11 @@ def get_distorion_offsets(x, y, dist_map_hdus, corners):
 
     dist_map_hdus : list, astropy.io.fits.HDUList
         The distortion maps in X and Y directions. Accepts either
-        - a list of two PrimaryHDU objects, each containing a map of the
+        - a list of two PrimaryHDU py_objects, each containing a map of the
           distortion on the x and y direction.
           E.g. ``dist_map_hdus=(hdu_dx, hdu_dy)`` where ``hdu_dx`` and ``hdu_dy``
-          are FITS image objects (``ImageHDU``), or
-        - a HDULlist object which contains 3 HDU objects: A PrimaryHDU and two
+          are FITS image py_objects (``ImageHDU``), or
+        - a HDULlist object which contains 3 HDU py_objects: A PrimaryHDU and two
           ImageHDUs.
           - extension [0] (the PrimaryHDU) is nothing by a header,
           - extension [1] contains a map of the x-axis distortion,

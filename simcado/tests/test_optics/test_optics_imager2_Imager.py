@@ -1,12 +1,80 @@
-# # things that the imager needs to dc
-# # exist with nothing
-# # accept a UserCommands object
-# # have an attribute which pulls in all mirrors
-# # hold a list of transmission curves, emission curves
-# # create a list of fields of view
-# #
-# # make an OpticalTrain
-# # make a combined
+import os
+import pytest
+
+import simcado as sim
+from simcado.optics import imager as opt
+from simcado.optics.effects import GaussianDiffractionPSF
+
+from simcado.tests.mocks.py_objects.yaml_objects import _tiny_yaml_dict
+
+MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                         "../mocks/MICADO_SCAO_WIDE/"))
+sim.rc.__search_path__ += [MOCK_PATH]
+
+
+
+@pytest.fixture(scope="function")
+def tiny_yaml_dict():
+    return _tiny_yaml_dict()
+
+
+@pytest.mark.usefixtures("tiny_yaml_dict")
+class TestMakeEffect:
+    def test_it_creates_an_effects_object(self, tiny_yaml_dict):
+        effdic = tiny_yaml_dict["effects"][0]
+        properties = tiny_yaml_dict["properties"]
+        effect = opt.make_effect(effdic, **properties)
+
+        assert isinstance(effect, GaussianDiffractionPSF)
+        assert effect.meta["diameter"] == 39
+
+
+@pytest.mark.usefixtures("tiny_yaml_dict")
+class TestOpticalElementInit:
+    def test_initialised_with_nothing(self):
+        assert isinstance(opt.OpticalElement(), opt.OpticalElement)
+
+    def test_initialised_with_yaml_dict(self, tiny_yaml_dict):
+        opt_el = opt.OpticalElement(tiny_yaml_dict)
+        assert isinstance(opt_el, opt.OpticalElement)
+        assert isinstance(opt_el.effects[0], GaussianDiffractionPSF)
+
+
+class TestOpticalElementSurfaceListProperty:
+    def test_returns_empty_list_if_no_surface_list_given(self):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #
 # import os
 # import inspect

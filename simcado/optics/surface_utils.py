@@ -84,7 +84,7 @@ def make_emission_from_array(flux, wave, meta):
                                 "".format(orig_unit)]
     else:
         warnings.warn("wavelength and emission must be "
-                      "astropy.Quantity objects")
+                      "astropy.Quantity py_objects")
         flux = None
 
     return flux

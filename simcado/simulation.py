@@ -12,7 +12,7 @@ import numpy as np
 import simcado.source.templates
 from simcado.source import source
 from simcado.commands.user_commands import UserCommands
-from simcado.optics.imager import OpticalTrain
+from simcado.optics.imager_old import OpticalTrain
 from .detector import Detector
 
 __all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]
@@ -51,11 +51,11 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     filename : str, optional
         The filepath for where the FITS images should be saved.
         Default is None. If None, the output images are returned to the user as
-        FITS format astropy.io.HDUList objects.
+        FITS format astropy.io.HDUList py_objects.
 
     return_internals : bool
         [False, True] Default is False. If True, the ``UserCommands``,
-        ``OpticalTrain`` and ``Detector`` objects used in the simulation are
+        ``OpticalTrain`` and ``Detector`` py_objects used in the simulation are
         returned in a tuple: ``return hdu, (cmds, opt_train, fpa)``
 
     filter_name : str, TransmissionCurve
@@ -154,7 +154,7 @@ def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
 def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
                         cmds=None, **kwargs):
     """
-    Makes a series of :class:`.Detector` objects containing a grid of stars
+    Makes a series of :class:`.Detector` py_objects containing a grid of stars
 
 
     Parameters
@@ -176,7 +176,7 @@ def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
     Returns
     -------
     fpas : list
-        A list of :class:`Detector` objects with the grid of stars for each filter
+        A list of :class:`Detector` py_objects with the grid of stars for each filter
         len(fpas) == len(filter_names)
     grid : simcado.Source
         A :class:`Source` object containing the grids of stars
@@ -226,7 +226,7 @@ def _get_limiting_mags(fpas, grid, exptimes, filter_names=None,
     Parameters
     ----------
     fpas : list
-        The output from A list of :class:`Detector` objects with the grid of stars
+        The output from A list of :class:`Detector` py_objects with the grid of stars
         for each filter
 
     grid : simcado.Source

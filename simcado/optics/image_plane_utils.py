@@ -20,7 +20,7 @@ def get_canvas_header(hdu_or_table_list, pixel_scale=1 * u.arcsec):
     Parameters
     ----------
     hdu_or_table_list : list
-        A list of Tables and/or ImageHDU objects
+        A list of Tables and/or ImageHDU py_objects
 
     pixel_scale : astropy.Quantity
         [arcsec] The pixel scale of the projection. Default in 1 arcsec

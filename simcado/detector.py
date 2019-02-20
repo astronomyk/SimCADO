@@ -24,7 +24,7 @@ object is an intermediary - it only passes information on the photons to the
 Classes
 -------
 Detector
-    builds an array of ``Chip`` objects based on a ``UserCommands`` object
+    builds an array of ``Chip`` py_objects based on a ``UserCommands`` object
 Chip
     converts incoming photons into ADUs and adds in read-out noise
 
@@ -117,13 +117,13 @@ __all__ = ["Detector", "Chip", "open", "plot_detector", "plot_detector_layout",
 
 class Detector(object):
     """
-    Generate a series of :class:`.Chip` objects for a focal plane array
+    Generate a series of :class:`.Chip` py_objects for a focal plane array
 
 
     Summary
     -------
     The :class:`.Detector` is a holder for the series of :class:`.Chip`
-    objects which make up the detector array. The main advantage of the
+    py_objects which make up the detector array. The main advantage of the
     :class:`.Detector` object is that the  user can read out all chips in the
     whole detector array at once. A :class:`.Detector` is a parameter in the
     :meth:`.Source.apply_optical_train()` method.
@@ -200,7 +200,7 @@ class Detector(object):
     def __init__(self, cmds, small_fov=True):
         # 1. Read in the chip layout
         # 2. Read in the flat field file
-        # 3. Generate chip objects
+        # 3. Generate chip py_objects
         # 4. Check if a noise file has been given
             # if not, generate new noise files
             # else: read in the noise file
@@ -1168,7 +1168,7 @@ def open(self, filename):
     ** Should be moved outside of ``Detector`` and called with
     ``detector.open()`` **
 
-    Detector objects can be saved to FITS file and read back in for later
+    Detector py_objects can be saved to FITS file and read back in for later
     simulations.
 
     Parameters

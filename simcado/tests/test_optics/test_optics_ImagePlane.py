@@ -11,7 +11,7 @@ from astropy.table import Table
 import simcado.optics.image_plane as opt_imp
 import simcado.optics.image_plane_utils as imp_utils
 
-from simcado.tests.mocks.objects.imagehdu_objects import _image_hdu_square, \
+from simcado.tests.mocks.py_objects.imagehdu_objects import _image_hdu_square, \
     _image_hdu_rect
 
 import matplotlib.pyplot as plt

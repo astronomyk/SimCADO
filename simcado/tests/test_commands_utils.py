@@ -5,7 +5,7 @@ import pytest
 import warnings
 import os
 from simcado import rc
-from simcado.commands import commands_utils as cmd_utils
+from simcado.commands import user_commands_utils as cmd_utils
 
 class TestParseConfig:
     def test_empty_str_returns_empty_dict(self):

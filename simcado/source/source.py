@@ -1,6 +1,6 @@
 # pylint: disable=too-many-lines
 """
-The module that contains the functionality to create Source objects
+The module that contains the functionality to create Source py_objects
 
 Module Summary
 --------------
@@ -17,7 +17,7 @@ Source
 
 Functions
 ---------
-Functions to create ``Source`` objects
+Functions to create ``Source`` py_objects
 ::
 
     empty_sky()
@@ -768,7 +768,7 @@ class Source(object):
         """
         Return an image with the positions of all sources.
 
-        The pixel values correspond to the number of emitting objects in that
+        The pixel values correspond to the number of emitting py_objects in that
         pixel
 
         Parameters
@@ -1005,7 +1005,7 @@ class Source(object):
         spectra : np.ndarray
             Dimensions (n, m) for n SEDs, each with m spectral bins
         x, y : np.ndarray
-            [arcsec] each (1, n) for the coordinates of n emitting objects
+            [arcsec] each (1, n) for the coordinates of n emitting py_objects
         ref : np.ndarray
             Dimensions (1, n) for referencing each coordinate to a spectrum
         weight : np.ndarray, optional

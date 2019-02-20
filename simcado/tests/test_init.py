@@ -2,7 +2,7 @@ import sys
 import os
 import yaml
 from simcado import __version__, rc
-from simcado.commands.commands_utils import read_config
+from simcado.commands.user_commands_utils import read_config
 
 
 class TestBasicLoading:

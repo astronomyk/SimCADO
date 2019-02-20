@@ -566,7 +566,7 @@ class CombinedPSF(PSF):
     Parameters
     ----------
     psf_list : list
-        A list of PSF objects
+        A list of PSF py_objects
     size : int
         [pixel] the side length in pixels of the array
 
@@ -606,7 +606,7 @@ class CombinedPSF(PSF):
         super(CombinedPSF, self).__init__(size, pix_res)
         self.info["Type"] = "Combined"
         self.info['description'] = "Combined PSF from " + str(len(psf_list)) \
-                                                                + "PSF objects"
+                                                                + "PSF py_objects"
         self.set_array(arr_tmp)
 
 
@@ -810,7 +810,7 @@ class PSFCube(object):
         Parameters
         ----------
         kernel_list : list
-            list of PSF objects of 2D arrays
+            list of PSF py_objects of 2D arrays
 
         """
         if len(self.psf_slices) != len(kernel_list):
@@ -1091,7 +1091,7 @@ class CombinedPSFCube(PSFCube):
     def __init__(self, psf_list, **kwargs):
 
         if not (isinstance(psf_list, list) and len(psf_list) >= 2):
-            raise ValueError("psf_list only takes a list of psf objects")
+            raise ValueError("psf_list only takes a list of psf py_objects")
 
         ## Check that the wavelengths are equal
         lam_list = [cube.lam_bin_centers for cube in psf_list]
@@ -1682,7 +1682,7 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
                         size     = size,
                         pix_res  = params["pix_res"])
 
-    # Combine the two PSF FITS objects
+    # Combine the two PSF FITS py_objects
     hdu_list = fits.HDUList()
     for psf in eelt:
         poppy_ao = fits.ImageHDU()

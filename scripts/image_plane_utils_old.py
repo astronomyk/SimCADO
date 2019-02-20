@@ -180,7 +180,7 @@ def make_image_plane_header(hdu_or_table_list, pixel_scale=1*u.arcsec):
     Parameters
     ----------
     hdu_or_table_list : list
-        A list of Tables and/or ImageHDU objects for get_corner_sky_coords
+        A list of Tables and/or ImageHDU py_objects for get_corner_sky_coords
 
     pixel_scale : astropy.Quantity
         [arcsec] The pixel scale to the projection. Default in 1 arcsec

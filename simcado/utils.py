@@ -488,7 +488,7 @@ def seq(start, stop, step=1):
 
 def add_mags(mags):
     """
-    Returns a combined magnitude for a group of objects with ``mags``
+    Returns a combined magnitude for a group of py_objects with ``mags``
     """
     return -2.5*np.log10((10**(-0.4*np.array(mags))).sum())
 

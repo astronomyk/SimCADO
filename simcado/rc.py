@@ -1,6 +1,6 @@
 import os
 import inspect
-from .commands.commands_utils import read_config
+from .commands.user_commands_utils import read_config
 
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
 __data_dir__ = os.path.join(__pkg_dir__, "data")

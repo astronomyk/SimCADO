@@ -2,17 +2,14 @@ import pytest
 from pytest import approx
 
 import numpy as np
-from astropy.io import fits
-from astropy import wcs
 from astropy import units as u
 
 from simcado.optics.effects import gaussian_diffraction_psf as gdf
 from simcado.optics.fov import FieldOfView
 from simcado.optics.image_plane_utils import pix2sky
-from simcado.source.source2 import Source
 
-from simcado.tests.mocks.objects.source_objects import _image_source
-from simcado.tests.mocks.objects.header_objects import _basic_fov_header
+from simcado.tests.mocks.py_objects.source_objects import _image_source
+from simcado.tests.mocks.py_objects.header_objects import _basic_fov_header
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm

@@ -47,9 +47,7 @@
 #     >>> my_cmds.inst
 #     ...
 #
-#
 # """
-
 
 import os
 import glob
@@ -57,20 +55,21 @@ import warnings
 import logging
 import copy
 
+import yaml
 import numpy as np
-import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
+import astropy.io.ascii as ioascii
 
 from .. import rc
 
 from .. import spectral as sc
-from ..psf import PSFCube
-from ..utils import atmospheric_refraction, find_file, \
-                    zendist2airmass, airmass2zendist
+from ..utils import atmospheric_refraction, find_file, zendist2airmass, \
+                    airmass2zendist
 from .. import server as svr
 
-from . import commands_utils as cutils
+from . import user_commands_utils as cutils
 
 __all__ = ["UserCommands"]
+
 
 class UserCommands(object):
     """
@@ -788,6 +787,17 @@ class UserCommands(object):
     #         warnings.warn("{} doesn't exist. Capital letters?". format(item))
     #         raise AttributeError(item)
     #     return attr
+
+    @property
+    def yaml_docs(self):
+        sys_descrip = self.cmds["SIM_SYSTEM_DESCRIPTION"]
+        with open(find_file(sys_descrip)) as filename:
+            yaml_files = yaml.load(filename)
+        for element in yaml_files:
+            with open(find_file(yaml_files[element])) as filename:
+                yaml_files[element] = yaml.load(filename)
+
+        return yaml_files
 
     @property
     def keys(self):
