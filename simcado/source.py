@@ -1384,7 +1384,7 @@ def _scale_pickles_to_photons(spec_type, mag=0):
     else:
         ec *= (lam/0.5556) * ph_factor[0] * 1E4
 
-    return lam, ec
+    return np.array(lam), np.array(ec) # Making sure it returns a numpy array
 
 
 def BV_to_spec_type(B_V):
