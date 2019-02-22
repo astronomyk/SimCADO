@@ -281,12 +281,36 @@ class FOVManager:
 
     def generate_fovs_list(self):
 
-        # 1. check if there are any ApertureLists in the selection
-            # 1.
-        # 2. check if there are
+        # 1. Find the Wavelength range
+            # Build from edges of throughput curve,
 
+        # 2. Find the wavelength bins
+            # If TraceList and Aperture list, then Spectroscopy
+            # TraceList
+                # for each trace dlam along the trace centre in increments
+                #   of SIM_SUB_PIXEL_FRACTION
+                # Must be accompanied by an ApertureList
 
+            # If not, then imaging
+            # PSF core increase (atmo, ncpas)
+                # If from a files, what is the bin size?
+                # If analytic, dlam between a FWHM or SIM_SUB_PIXEL_FRACTION
+            # ADC + AD shifts
+                # dlam between shift of SIM_SUB_PIXEL_FRACTION
 
+        # 3. Find the spatial range
+            # If Spectroscopy
+            # ApertureList
+                # For each Trace set the sky header to the aperture footprint
+                #   plus any shifts from AtmosphericDispersion
+                # Set the Image plane footprint centred on the image plane
+                #   position
+
+            # If Imaging
+            # DetectorList, or ApertureMask, plus any shift from
+            #   AtmosphericDispersion
+
+        fovs_list = []
         return fovs_list
 
     @property
