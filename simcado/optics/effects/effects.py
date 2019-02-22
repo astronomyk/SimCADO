@@ -37,3 +37,8 @@ class ApertureList(Effect):
 class TERCurve(Effect):
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
+
+
+class AtmosphericDispersion(Effect):
+    def __init__(self, **kwargs):
+        super(Effect, self).__init__(**kwargs)

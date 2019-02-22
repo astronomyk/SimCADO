@@ -2,6 +2,8 @@ import os
 import warnings
 from copy import deepcopy
 
+import numpy as np
+
 from astropy.io import ascii as ioascii
 from astropy.io import fits
 from astropy.table import Table, vstack
@@ -40,17 +42,18 @@ class OpticalTrain:
         self.optics_manager.update(self.observation_dict)
         self.fov_manager = FOVManager(self.optics_manager)
         self.image_plane = ImagePlane(self.optics_manager.image_plane_header)
-        source = deepcopy(orig_source)
 
         # Make a FOV list - z_order = 0..99
-        # Make a focal plane - z_order = 100..199
+        # Make a image plane - z_order = 100..199
         # Apply Source altering effects - z_order = 200..299
         # Apply FOV specific (3D) effects - z_order = 300..399
         # Apply FOV-independent (2D) effects - z_order = 400..499
+
+        source = deepcopy(orig_source)
         for effect in self.optics_manager.source_effects:
             source = effect.apply_to(source)
 
-        for fov in self.fov_manager.fovs_list:
+        for fov in self.fov_manager.fovs:
             fov.extract_from(source)
             for effect in self.optics_manager.fov_effects:
                 fov = effect.apply_to(fov)
@@ -58,15 +61,6 @@ class OpticalTrain:
 
         for effect in self.optics_manager.image_plane_effects:
             self.image_plane = effect.apply_to(self.image_plane)
-
-    def _update_source(self, source):
-        new_source = deepcopy(source)
-
-        new_source.rotate(self.observation_dict["PUPIL_ANGLE_OFFSET"])
-        new_source = source * self.optics_manager.throughput
-        new_source.append(self.optics_manager.background_source)
-
-        return new_source
 
 
 class OpticsManager:
@@ -94,11 +88,20 @@ class OpticsManager:
         effects = []
         for opt_el in self.optical_elements:
             effects += opt_el.get_all(class_type)
+
+        return effects
+
+    def get_z_order_effects(self, z_level):
+        effects = []
+        for opt_el in self.optical_elements:
+            effects += opt_el.get_z_order_effects(z_level)
+
         return effects
 
     @property
     def image_plane_header(self):
         detector_lists = self.get_all(eff_mod.DetectorList)
+
         if len(detector_lists) != 1:
             warnings.warn("None or more than one DetectorList found. Using the"
                           " first instance.{}".format(detector_lists))
@@ -110,14 +113,26 @@ class OpticsManager:
 
     @property
     def image_plane_effects(self):
+        imp_effects = []
+        for opt_el in self.optical_elements:
+            imp_effects += opt_el.get_z_order_effects([400, 499])
+
         return imp_effects
 
     @property
     def fov_effects(self):
+        fov_effects = []
+        for opt_el in self.optical_elements:
+            fov_effects += opt_el.get_z_order_effects([300, 399])
+
         return fov_effects
 
     @property
     def source_effects(self):
+        src_effects = []
+        for opt_el in self.optical_elements:
+            src_effects += opt_el.get_z_order_effects([200, 299])
+
         return src_effects
 
     @property
@@ -131,14 +146,21 @@ class OpticsManager:
     def __add__(self, other):
         self.add_effect(other)
 
+    def __getitem__(self, item):
+        if isinstance(item, eff_mod.Effect):
+            effects = []
+            for opt_el in self.optical_elements:
+                effects += opt_el.get_all(item)
+            return effects
 
-class FOVManager:
-    def __init__(self, optics_manager=None):
-        self.fovs_list = []
+    def __repr__(self):
+        msg = "\nOpticsManager contains {} OpticalElements \n" \
+              "".format(len(self.optical_elements))
+        for ii, opt_el in enumerate(self.optical_elements):
+            msg += '[{}] "{}" contains {} effects \n' \
+                   ''.format(ii, opt_el.meta["name"], len(opt_el.effects))
 
-    def generate_fovs_list(self):
-        fovs_list = [None]
-        return fovs_list
+        return msg
 
 
 class OpticalElement:
@@ -166,6 +188,39 @@ class OpticalElement:
 
     def get_all(self, effect_class):
         return [eff for eff in self.effects if isinstance(eff, effect_class)]
+
+    def get_z_order_effects(self, z_level):
+        if isinstance(z_level, int):
+            zmin = z_level
+            zmax = zmin + 99
+        elif isinstance(z_level, (tuple, list)):
+            zmin, zmax = z_level[:2]
+        else:
+            zmin, zmax = 0, 500
+
+        effects = []
+        for eff in self.effects:
+            z = eff.meta["z_order"]
+            if isinstance(z, (list, tuple)):
+                if any([zmin <= zi <= zmax for zi in z]):
+                    effects += [eff]
+            else:
+                if zmin <= z <= zmax:
+                    effects += [eff]
+
+        return effects
+
+    @property
+    def z_orders(self):
+        z_orders = []
+        for eff in self.effects:
+            z = eff.meta["z_order"]
+            if isinstance(z, (list, tuple)):
+                z_orders += z
+            else:
+                z_orders += [z]
+
+        return z_orders
 
     @property
     def surface_list(self):
@@ -216,3 +271,25 @@ class RadiometryTable:
 class DetectorArray:
     detectors_list = []
 
+
+class FOVManager:
+    def __init__(self, effects=[], **kwargs):
+        self.meta = {}
+        self.meta.update(kwargs)
+        self.effects = effects
+        self._fovs_list = []
+
+    def generate_fovs_list(self):
+
+        # 1. check if there are any ApertureLists in the selection
+            # 1.
+        # 2. check if there are
+
+
+
+        return fovs_list
+
+    @property
+    def fovs(self):
+        self.generate_fovs_list()
+        return self._fovs_list

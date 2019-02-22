@@ -8,7 +8,7 @@ from simcado.optics import imager as opt
 from simcado.optics.effects import *
 
 from simcado.tests.mocks.py_objects.yaml_objects import \
-    _tiny_yaml_dict, _detector_yaml_dict
+    _atmo_yaml_dict, _detector_yaml_dict, _inst_yaml_dict
 
 MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                          "../mocks/MICADO_SCAO_WIDE/"))
@@ -16,8 +16,13 @@ sim.rc.__search_path__ += [MOCK_PATH]
 
 
 @pytest.fixture(scope="function")
-def tiny_yaml_dict():
-    return _tiny_yaml_dict()
+def atmo_yaml_dict():
+    return _atmo_yaml_dict()
+
+
+@pytest.fixture(scope="function")
+def inst_yaml_dict():
+    return _inst_yaml_dict()
 
 
 @pytest.fixture(scope="function")
@@ -25,34 +30,44 @@ def detector_yaml_dict():
     return _detector_yaml_dict()
 
 
-@pytest.mark.usefixtures("tiny_yaml_dict")
+@pytest.mark.usefixtures("atmo_yaml_dict")
 class TestMakeEffect:
-    def test_it_creates_an_effects_object(self, tiny_yaml_dict):
-        effdic = tiny_yaml_dict["effects"][0]
-        properties = tiny_yaml_dict["properties"]
+    def test_it_creates_an_effects_object(self, atmo_yaml_dict):
+        effdic = atmo_yaml_dict["effects"][0]
+        properties = atmo_yaml_dict["properties"]
         effect = opt.make_effect(effdic, **properties)
 
         assert isinstance(effect, GaussianDiffractionPSF)
         assert effect.meta["diameter"] == 39
 
 
-@pytest.mark.usefixtures("tiny_yaml_dict")
+@pytest.mark.usefixtures("atmo_yaml_dict")
 class TestOpticalElementInit:
     def test_initialised_with_nothing(self):
         assert isinstance(opt.OpticalElement(), opt.OpticalElement)
 
-    def test_initialised_with_yaml_dict(self, tiny_yaml_dict):
-        opt_el = opt.OpticalElement(tiny_yaml_dict)
+    def test_initialised_with_yaml_dict(self, atmo_yaml_dict):
+        opt_el = opt.OpticalElement(atmo_yaml_dict)
         assert isinstance(opt_el, opt.OpticalElement)
         assert isinstance(opt_el.effects[0], GaussianDiffractionPSF)
 
 
+@pytest.mark.usefixtures("detector_yaml_dict")
+class TestOpticalElementGetZOrderEffects:
+    @pytest.mark.parametrize("z_orders, n", [(0, 2), (100, 1), ([200, 299], 1)])
+    def test_returns_the_effects_with_z_values(self, z_orders, n,
+                                               detector_yaml_dict):
+        opt_el = opt.OpticalElement(detector_yaml_dict)
+        assert len(opt_el.get_z_order_effects(z_orders)) == n
+
+
+@pytest.mark.usefixtures("detector_yaml_dict")
 class TestOpticalElementSurfaceListProperty:
     def test_returns_empty_list_if_no_surface_list_given(self):
         pass
 
 
-@pytest.mark.usefixtures("detector_yaml_dict")
+@pytest.mark.usefixtures("detector_yaml_dict", "inst_yaml_dict")
 class TestOpticsManager:
     def test_initialises_with_nothing(self):
         assert isinstance(opt.OpticsManager(), opt.OpticsManager)
@@ -61,16 +76,25 @@ class TestOpticsManager:
         opt_man = opt.OpticsManager(detector_yaml_dict)
         assert isinstance(opt_man, opt.OpticsManager)
 
+    def test_initialises_yaml_dict(self, detector_yaml_dict, inst_yaml_dict):
+        opt_man = opt.OpticsManager([detector_yaml_dict, inst_yaml_dict])
+        print(opt_man)
+        assert isinstance(opt_man, opt.OpticsManager)
+
     def test_has_effects_loaded(self, detector_yaml_dict):
         opt_man = opt.OpticsManager([detector_yaml_dict])
         # print(opt_man.optical_elements[1])
         assert isinstance(opt_man.optical_elements[1], opt.OpticalElement)
         assert isinstance(opt_man.optical_elements[1].effects[0], Effect)
 
+
+@pytest.mark.usefixtures("detector_yaml_dict")
+class TestOpticsManagerImagePlaneHeader:
     def test_makes_image_plane_header_correctly(self, detector_yaml_dict):
         opt_man = opt.OpticsManager(detector_yaml_dict)
         opt_man.meta["SIM_DETECTOR_PIX_SCALE"] = 0.004
-        # assert isinstance(opt_man.image_plane_header, fits.Header)
+        print(opt_man)
+        assert isinstance(opt_man.image_plane_header, fits.Header)
 
 
 

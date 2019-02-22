@@ -5,7 +5,7 @@ YAMLS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           "../yamls/"))
 
 
-def _tiny_yaml_dict():
+def _atmo_yaml_dict():
     text = """
 # ATMOSPHERE
 object : atmosphere
@@ -18,7 +18,7 @@ properties :
 effects :
 -   name : super_psf
     class : GaussianDiffractionPSF
-    z_order : 0
+    z_order : 300
     kwargs :
         diameter : 39
 """
@@ -30,7 +30,6 @@ def _inst_yaml_dict():
 # INSTRUMENT OPTICS
 object : instrument
 name : micado_wide_field
-z_order : 3
 inst_pkg_name : micado
 
 properties :
@@ -40,17 +39,20 @@ properties :
 effects :
 -   name : micado_surface_list
     class : SurfaceList
+    z_order : 200
     kwargs :
         file_name : micado_mirror_list.tbl
 
 -   name : micado_adc
     class : AtmosphericDispersion
+    z_order : 0
     kwargs :
         zenith_distance : 30
         reverse_shifts : True
 
 -   name : pupil_mask
     class : ApertureList
+    z_order : 0
     kwargs :
         file_name : aperture_list.tbl        
         
@@ -63,7 +65,6 @@ def _detector_yaml_dict():
 # Detector array
 object : detector
 name : micado_detector_array
-z_order : 4
 inst_pkg_name : micado
 
 properties :
@@ -73,12 +74,14 @@ properties :
 effects :
 -   name : detector_qe_curve
     class : TERCurve
+    z_order : [0, 200]
     kwargs :
-        file_name : h4rg_QE.dat
+        filename : TC_blank.dat
 
 -   name : micado_detector_geometry
     class : DetectorList
+    z_order : [0, 100]
     kwargs:
-        file_name: micado_detector_geometry.tbl
+        filename: FPA_array_layout.dat
     """
     return yaml.load(text)

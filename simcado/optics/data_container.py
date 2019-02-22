@@ -8,6 +8,9 @@ from .. import utils
 class DataContainer:
     def __init__(self, filename=None, table=None, array_dict=None, **kwargs):
 
+        if filename is None and "file_name" in kwargs:
+            filename = kwargs["file_name"]
+
         filename = utils.find_file(filename)
         self.meta = {"filename" : filename,
                      "history" : []}
