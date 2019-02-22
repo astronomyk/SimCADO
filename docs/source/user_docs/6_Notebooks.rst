@@ -72,7 +72,7 @@ PSF experiments
 
 
 
-.. _SimCADO\_PSF\_examples.ipynb: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/SIMCADO\_PSF\_examples.ipynb 
+.. _SimCADO\_PSF\_examples.ipynb: https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/SimCADO\_PSF\_examples.ipynb 
 
 -  `E-ELT\_2-Phase\_Mirror.ipynb`_
 
