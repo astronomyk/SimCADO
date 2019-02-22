@@ -1,21 +1,28 @@
 import os
 import pytest
 
+from astropy.io import fits
+
 import simcado as sim
 from simcado.optics import imager as opt
-from simcado.optics.effects import GaussianDiffractionPSF
+from simcado.optics.effects import *
 
-from simcado.tests.mocks.py_objects.yaml_objects import _tiny_yaml_dict
+from simcado.tests.mocks.py_objects.yaml_objects import \
+    _tiny_yaml_dict, _detector_yaml_dict
 
 MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                          "../mocks/MICADO_SCAO_WIDE/"))
 sim.rc.__search_path__ += [MOCK_PATH]
 
 
-
 @pytest.fixture(scope="function")
 def tiny_yaml_dict():
     return _tiny_yaml_dict()
+
+
+@pytest.fixture(scope="function")
+def detector_yaml_dict():
+    return _detector_yaml_dict()
 
 
 @pytest.mark.usefixtures("tiny_yaml_dict")
@@ -42,7 +49,28 @@ class TestOpticalElementInit:
 
 class TestOpticalElementSurfaceListProperty:
     def test_returns_empty_list_if_no_surface_list_given(self):
+        pass
 
+
+@pytest.mark.usefixtures("detector_yaml_dict")
+class TestOpticsManager:
+    def test_initialises_with_nothing(self):
+        assert isinstance(opt.OpticsManager(), opt.OpticsManager)
+
+    def test_initialises_yaml_dict(self, detector_yaml_dict):
+        opt_man = opt.OpticsManager(detector_yaml_dict)
+        assert isinstance(opt_man, opt.OpticsManager)
+
+    def test_has_effects_loaded(self, detector_yaml_dict):
+        opt_man = opt.OpticsManager([detector_yaml_dict])
+        # print(opt_man.optical_elements[1])
+        assert isinstance(opt_man.optical_elements[1], opt.OpticalElement)
+        assert isinstance(opt_man.optical_elements[1].effects[0], Effect)
+
+    def test_makes_image_plane_header_correctly(self, detector_yaml_dict):
+        opt_man = opt.OpticsManager(detector_yaml_dict)
+        opt_man.meta["SIM_DETECTOR_PIX_SCALE"] = 0.004
+        # assert isinstance(opt_man.image_plane_header, fits.Header)
 
 
 

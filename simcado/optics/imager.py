@@ -19,7 +19,6 @@ class OpticalTrain:
     def __init__(self, cmds=None):
         self.observation_dict = None
         self.optics_manager = None
-        self.radiometry_table = None
         self.fov_manager = None
         self.image_plane = None
         self.yaml_docs = None
@@ -33,72 +32,119 @@ class OpticalTrain:
 
         self.observation_dict = user_commands.cmds
         self.yaml_docs = user_commands.yaml_docs
-        self.optics_manager = OpticsManager(user_commands.yaml_docs)
+        self.optics_manager = OpticsManager(user_commands.yaml_docs,
+                                            **self.observation_dict)
 
-    def observe(self, source):
+    def observe(self, orig_source):
         # prepare the observation
         self.optics_manager.update(self.observation_dict)
-        self.fov_manager = FOVManager(self.optics_manager,
-                                      self.observation_dict)
+        self.fov_manager = FOVManager(self.optics_manager)
         self.image_plane = ImagePlane(self.optics_manager.image_plane_header)
+        source = deepcopy(orig_source)
 
-        source.rotate(self.observation_dict["PUPIL_ANGLE_OFFSET"])
-        source = source * self.optics_manager.throughput
-        source.append(self.optics_manager.background_source)
+        # Make a FOV list - z_order = 0..99
+        # Make a focal plane - z_order = 100..199
+        # Apply Source altering effects - z_order = 200..299
+        # Apply FOV specific (3D) effects - z_order = 300..399
+        # Apply FOV-independent (2D) effects - z_order = 400..499
+        for effect in self.optics_manager.source_effects:
+            source = effect.apply_to(source)
 
-        # run the observation
         for fov in self.fov_manager.fovs_list:
             fov.extract_from(source)
-            for effect in self.optics_manager.sorted_effects:
+            for effect in self.optics_manager.fov_effects:
                 fov = effect.apply_to(fov)
             self.image_plane.add(fov)
 
+        for effect in self.optics_manager.image_plane_effects:
+            self.image_plane = effect.apply_to(self.image_plane)
+
+    def _update_source(self, source):
+        new_source = deepcopy(source)
+
+        new_source.rotate(self.observation_dict["PUPIL_ANGLE_OFFSET"])
+        new_source = source * self.optics_manager.throughput
+        new_source.append(self.optics_manager.background_source)
+
+        return new_source
+
 
 class OpticsManager:
-    def __init__(self, yaml_docs=None):
-
-        self.optical_elements = None
-        self.radiometry_table = None
+    def __init__(self, yaml_docs=[], **kwargs):
+        self.optical_elements = [OpticalElement({"name": "misc"})]
+        self.meta = {}
+        self.meta.update(kwargs)
 
         if yaml_docs is not None:
             self.load_effects(yaml_docs)
 
     def load_effects(self, yaml_docs):
-        self.optical_elements = [OpticalElement(dic) for dic in yaml_docs]
+        if isinstance(yaml_docs, dict):
+            yaml_docs = [yaml_docs]
+        self.optical_elements += [OpticalElement(dic) for dic in yaml_docs]
 
-    def make_radiometry_table(self, filename):
-        self.radiometry_table = Table
+    def add_effect(self, effect, ext=0):
+        if isinstance(effect, eff_mod.Effect):
+            self.optical_elements[ext].add_effect(effect)
 
-    @property
-    def sorted_effects(self):
-        sorted_effects_list = []
-        return sorted_effects_list
+    def update(self, obs_dict):
+        self.meta.update(obs_dict)
+
+    def get_all(self, class_type):
+        effects = []
+        for opt_el in self.optical_elements:
+            effects += opt_el.get_all(class_type)
+        return effects
 
     @property
     def image_plane_header(self):
-        header = fits.Header()
+        detector_lists = self.get_all(eff_mod.DetectorList)
+        if len(detector_lists) != 1:
+            warnings.warn("None or more than one DetectorList found. Using the"
+                          " first instance.{}".format(detector_lists))
+
+        pixel_scale = self.meta["SIM_DETECTOR_PIX_SCALE"] * u.arcsec
+        header = detector_lists[0].image_plane_header(pixel_scale)
+
         return header
 
     @property
+    def image_plane_effects(self):
+        return imp_effects
+
+    @property
+    def fov_effects(self):
+        return fov_effects
+
+    @property
+    def source_effects(self):
+        return src_effects
+
+    @property
     def background_source(self):
-        spec = self.radiometry_table.emission
-        bg_src = Source
-        return Source
+        return bg_src
+
+    @property
+    def radiometry_table(self):
+        return rad_table
+
+    def __add__(self, other):
+        self.add_effect(other)
 
 
 class FOVManager:
-    def __init__(self, optics_manager, observation_dict):
+    def __init__(self, optics_manager=None):
         self.fovs_list = []
 
-    def generate_fovs_list(self, optics_manager, observation_dict):
+    def generate_fovs_list(self):
         fovs_list = [None]
         return fovs_list
 
 
 class OpticalElement:
     def __init__(self, yaml_dict=None):
-        self.meta = None
-        self.properties = None
+        self.meta = {"name": "<empty>"}
+        self.properties = {}
         self.effects = []
 
         if isinstance(yaml_dict, dict):
@@ -114,18 +160,38 @@ class OpticalElement:
         for effdic in effects_dicts:
             self.effects += [make_effect(effdic, **self.properties)]
 
+    def add_effect(self, effect):
+        if isinstance(effect, eff_mod.Effect):
+            self.effects += [effect]
+
+    def get_all(self, effect_class):
+        return [eff for eff in self.effects if isinstance(eff, effect_class)]
+
     @property
     def surface_list(self):
         surf_list = [effect for effect in self.effects
-                     if isinstance(effect,
-                                   simcado.optics.effects.effects.SurfaceList)]
+                     if isinstance(effect, (eff_mod.SurfaceList,
+                                            eff_mod.TERCurve))]
         return surf_list
 
     @property
     def mask_list(self):
         mask_list = [effect for effect in self.effects
-                     if isinstance(effect, eff_mod.MaskList)]
+                     if isinstance(effect, eff_mod.ApertureList)]
         return mask_list
+
+    def __add__(self, other):
+        self.add_effect(other)
+
+    def __getitem__(self, item):
+        return self.get_all(item)
+
+    def __repr__(self):
+        msg = '\nOpticalElement : "{}" contains {} Effects: \n' \
+              ''.format(self.meta["name"], len(self.effects))
+        eff_str = "\n".join(["[{}] {}".format(i, eff.__repr__())
+                             for i, eff in enumerate(self.effects)])
+        return msg + eff_str
 
 
 def make_effect(effect_dict, **super_kwargs):

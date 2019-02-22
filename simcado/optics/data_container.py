@@ -53,6 +53,7 @@ class DataContainer:
         else:
             self.headers += [None]
 
+        self.table.meta.update(hdr_dict)
         self.meta.update(hdr_dict)
         self.meta["history"] += ["ASCII table read from {}"
                                  "".format(self.meta["filename"])]

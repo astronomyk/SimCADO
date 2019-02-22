@@ -17,12 +17,6 @@ class ImagePlane:
     header : `fits.Header`
         Must contain a valid WCS
 
-    kwargs
-    ------
-    max_segment_size : int
-        [pixel] Default is 4096**2. Maximum amount of pixels per segment.
-        Used in optimising memory usage and computation overheads
-
     .. todo: Write the code to deal with a canvas larger than max_segment_size
 
     Examples

@@ -1,2 +1,3 @@
 from .gaussian_diffraction_psf import GaussianDiffractionPSF
-from .effects import Effect, SurfaceList, ApertureList
+from .effects import *
+from .detector_list import DetectorList

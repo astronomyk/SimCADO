@@ -901,11 +901,25 @@ def quantity_from_table(colname, table, default_unit=""):
             col = col * u.Unit(table.meta[colname+"_unit"])
         else:
             col = col * u.Unit(default_unit)
-            warnings.warn("{}_unit was not found in table.meta: {}. Used "
-                          "default_unit: {}"
-                          "".format(colname, table.meta, default_unit))
+            warnings.warn(
+                "{}_unit was not found in table.meta: {}. Default to: {}"
+                "".format(colname, table.meta, default_unit))
 
     return col
+
+
+def unit_from_table(colname, table, default_unit=""):
+    col = table[colname]
+    if col.unit is not None:
+        unit = col.unit
+    elif colname + "_unit" in table.meta:
+        unit = u.Unit(table.meta[colname+"_unit"])
+    else:
+        warnings.warn("{}_unit was not found in table.meta: {}. Default to: {}"
+                      "".format(colname, table.meta, default_unit))
+        unit = u.Unit(default_unit)
+
+    return unit
 
 
 def deg2rad(theta):
