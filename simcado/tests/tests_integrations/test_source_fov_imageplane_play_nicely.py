@@ -14,7 +14,7 @@ from simcado.tests.mocks.py_objects import header_objects as hdrs
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-PLOTS = True
+PLOTS = False
 
 
 @pytest.fixture(scope="function")

@@ -102,7 +102,7 @@ class FieldOfView:
                 elif isinstance(field, fits.ImageHDU):
                     self.hdu.data += field.data
 
-        return self.hdu
+        return self.hdu.data
 
     @property
     def header(self):

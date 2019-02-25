@@ -5,7 +5,7 @@ def _basic_fov_header():
     w, h = 150, 150
     skywcs = wcs.WCS(naxis=2)
     skywcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-    skywcs.wcs.cdelt = [0.2, 0.2]
+    skywcs.wcs.cdelt = [0.1, 0.1]
     skywcs.wcs.cunit = ["arcsec", "arcsec"]
     skywcs.wcs.crval = [0, 0]
     skywcs.wcs.crpix = [w / 2, h / 2]
