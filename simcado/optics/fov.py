@@ -2,7 +2,6 @@ import warnings
 
 import numpy as np
 
-from astropy import wcs as apwcs
 from astropy import units as u
 from astropy.io import fits
 from astropy.table import Table, Column
@@ -19,11 +18,17 @@ class FieldOfView:
     A FOV is a monochromatic image. Flux units after extracting the fields from
     the Source are in ph/s/pixel
 
-    The initial header should contain a spatial WCS including:
-    - CDELTn, CUNITn, NAXISn : for pixel scale and size (assumed CUNIT in deg)
-    - CRVALn, CRPIXn : for positioning the final image
-    - CTYPE : is assumed to be a TAN projection.
+    The initial header should contain an on-sky WCS description:
+    - CDELT-, CUNIT-, NAXIS- : for pixel scale and size (assumed CUNIT in deg)
+    - CRVAL-, CRPIX- : for positioning the final image
+    - CTYPE- : is assumed to be "RA---TAN", "DEC---TAN"
 
+    and an image-plane WCS description
+    - CDELT-D, CUNIT-D, NAXISn : for pixel scale and size (assumed CUNIT in mm)
+    - CRVAL-D, CRPIX-D : for positioning the final image
+    - CTYPE-D : is assumed to be "LINEAR", "LINEAR"
+
+    The wavelength range is given by waverange
 
     """
 
@@ -35,8 +40,11 @@ class FieldOfView:
                      "sub_pixel" : rc.__rc__["SIM_SUB_PIXEL_ACCURACY"]}
         self.meta.update(kwargs)
 
-        if not has_needed_keywords(header):
-            raise ValueError("header must contain a valid WCS: {}"
+        if not any([utils.has_needed_keywords(header, s) for s in ["", "S"]]):
+            raise ValueError("header must contain a valid sky-plane WCS: {}"
+                             "".format(dict(header)))
+        if not utils.has_needed_keywords(header, "D"):
+            raise ValueError("header must contain a valid image-plane WCS: {}"
                              "".format(dict(header)))
 
         self.hdu = fits.ImageHDU(header=header)
@@ -108,9 +116,10 @@ class FieldOfView:
         return self.data
 
 
-def is_field_in_fov(fov_header, table_or_imagehdu):
+def is_field_in_fov(fov_header, table_or_imagehdu, wcs_suffix=""):
 
-    pixel_scale = utils.quantify(fov_header["CDELT1"], u.deg)
+    s = wcs_suffix
+    pixel_scale = utils.quantify(fov_header["CDELT1"+s], u.deg)
 
     if isinstance(table_or_imagehdu, Table):
         ext_hdr = imp_utils._make_bounding_header_for_tables(
@@ -123,8 +132,8 @@ def is_field_in_fov(fov_header, table_or_imagehdu):
                       "".format(table_or_imagehdu))
         return False
 
-    ext_xsky, ext_ysky = imp_utils.calc_footprint(ext_hdr)
-    fov_xsky, fov_ysky = imp_utils.calc_footprint(fov_header)
+    ext_xsky, ext_ysky = imp_utils.calc_footprint(ext_hdr, wcs_suffix)
+    fov_xsky, fov_ysky = imp_utils.calc_footprint(fov_header, wcs_suffix)
 
     is_inside_fov = min(ext_xsky) < max(fov_xsky) and \
                     max(ext_xsky) > min(fov_xsky) and \
@@ -185,7 +194,7 @@ def combine_table_fields(fov_header, src, field_indexes):
 
 
 def combine_imagehdu_fields(fov_header, src, fields_indexes, wave_min, wave_max,
-                            area):
+                            area, suffix=""):
     image = np.zeros((fov_header["NAXIS1"], fov_header["NAXIS2"]))
     canvas_hdu = fits.ImageHDU(header=fov_header, data=image)
     order = int(rc.__rc__["SIM_SPLINE_ORDER"])
@@ -197,12 +206,8 @@ def combine_imagehdu_fields(fov_header, src, fields_indexes, wave_min, wave_max,
             image = np.zeros((fov_header["NAXIS1"], fov_header["NAXIS2"]))
             temp_hdu = fits.ImageHDU(header=fov_header, data=image)
             temp_hdu = imp_utils.add_imagehdu_to_imagehdu(src.fields[ii],
-                                                          temp_hdu, order=order)
+                                                          temp_hdu, order=order,
+                                                          wcs_suffix=suffix)
             canvas_hdu.data += temp_hdu.data * flux[0].value
 
     return canvas_hdu
-
-
-def has_needed_keywords(header):
-    keys = ["NAXIS1", "CDELT1", "CRVAL1", "CRPIX1"]
-    return sum([key in header.keys() for key in keys]) == 4

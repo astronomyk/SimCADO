@@ -6,7 +6,7 @@ from astropy.io import fits
 from astropy.table import Table
 from scipy.ndimage import interpolation as ndi
 
-from simcado import utils
+from .. import utils
 
 
 ###############################################################################
@@ -58,7 +58,7 @@ def get_canvas_header(hdu_or_table_list, pixel_scale=1 * u.arcsec):
     return hdr
 
 
-def _make_bounding_header_from_imagehdus(imagehdus, pixel_scale=1 * u.arcsec):
+def _make_bounding_header_from_imagehdus(imagehdus, pixel_scale=1*u.arcsec):
     """
     Returns a Header with WCS and NAXISn keywords bounding all input ImageHDUs
 
@@ -76,20 +76,26 @@ def _make_bounding_header_from_imagehdus(imagehdus, pixel_scale=1 * u.arcsec):
 
     x = []
     y = []
+    if pixel_scale.unit.physical_type == "angle":
+        s = ""
+    elif pixel_scale.unit.physical_type == "length":
+        s = "D"
+
     for imagehdu in imagehdus:
         if isinstance(imagehdu, fits.ImageHDU):
-            x_foot, y_foot = calc_footprint(imagehdu.header)
+            x_foot, y_foot = calc_footprint(imagehdu.header, s)
         else:
-            x_foot, y_foot = calc_footprint(imagehdu)
+            x_foot, y_foot = calc_footprint(imagehdu, s)
         x += list(x_foot)
         y += list(y_foot)
-    pixel_scale = pixel_scale.to(u.deg).value
-    hdr = _header_from_list_of_sky_xy(x, y, pixel_scale)
+    unit = u.mm if s == "D" else u.deg
+    pixel_scale = pixel_scale.to(unit).value
+    hdr = _header_from_list_of_xy(x, y, pixel_scale, s)
 
     return hdr
 
 
-def _make_bounding_header_for_tables(tables, pixel_scale=1 * u.arcsec):
+def _make_bounding_header_for_tables(tables, pixel_scale=1*u.arcsec):
     """
     Returns a Header with WCS and NAXISn keywords bounding all input Tables
 
@@ -109,29 +115,36 @@ def _make_bounding_header_for_tables(tables, pixel_scale=1 * u.arcsec):
 
     x = []
     y = []
+
+    s = "D" if pixel_scale.unit.physical_type == "length" else ""
+    unit_new = u.mm if s == "D" else u.deg
+    unit_orig = u.mm if s == "D" else u.arcsec
+    x_name = "x_mm" if s == "D" else "x"
+    y_name = "y_mm" if s == "D" else "y"
+
     for table in tables:
-        x_col = utils.quantity_from_table("x", table, u.arcsec).to(u.deg)
-        y_col = utils.quantity_from_table("y", table, u.arcsec).to(u.deg)
+        x_col = utils.quantity_from_table(x_name, table, unit_orig).to(unit_new)
+        y_col = utils.quantity_from_table(y_name, table, unit_orig).to(unit_new)
         x_col = list(x_col.value)
         y_col = list(y_col.value)
         x += [np.min(x_col), np.max(x_col)]
         y += [np.min(y_col), np.max(y_col)]
-    pixel_scale = pixel_scale.to(u.deg).value
-    hdr = _header_from_list_of_sky_xy(x, y, pixel_scale)
+    pixel_scale = pixel_scale.to(unit_new).value
+    hdr = _header_from_list_of_xy(x, y, pixel_scale, s)
 
     return hdr
 
 
-def _header_from_list_of_sky_xy(x, y, pixel_scale):
+def _header_from_list_of_xy(x, y, pixel_scale, wcs_suffix=""):
     """
     Makes a header large enough to contain all x,y on-sky coordinates
 
     Parameters
     ----------
     x, y : list of floats
-        [deg] List of sky coordinates to be bounded by the Header dimensions
+        [deg, mm] List of sky coordinates to be bounded by the NAXISn keys
     pixel_scale : float
-        [deg]
+        [deg, mm]
 
     Returns
     -------
@@ -139,10 +152,12 @@ def _header_from_list_of_sky_xy(x, y, pixel_scale):
 
     """
 
-    x = np.array(x)
-    x[x > 270] -= 360
-    x[x < -90] += 360
-    x = list(x)
+    s = wcs_suffix
+    if wcs_suffix != "D":
+        x = np.array(x)
+        x[x > 270] -= 360
+        x[x < -90] += 360
+        x = list(x)
 
     hdr = fits.Header()
 
@@ -155,23 +170,23 @@ def _header_from_list_of_sky_xy(x, y, pixel_scale):
     hdr["NAXIS"] = 2
     hdr["NAXIS1"] = naxis1
     hdr["NAXIS2"] = naxis2
-    hdr["CTYPE1"] = "RA---TAN"
-    hdr["CTYPE2"] = "DEC--TAN"
-    hdr["CUNIT1"] = "deg"
-    hdr["CUNIT2"] = "deg"
-    hdr["CDELT1"] = pixel_scale
-    hdr["CDELT2"] = pixel_scale
-    hdr["CRVAL1"] = crval1
-    hdr["CRVAL2"] = crval2
-    hdr["CRPIX1"] = 0.
-    hdr["CRPIX2"] = 0.
+    hdr["CTYPE1"+s] = "LINEAR" if s == "D" else "RA---TAN"
+    hdr["CTYPE2"+s] = "LINEAR" if s == "D" else "DEC--TAN"
+    hdr["CUNIT1"+s] = "mm" if s == "D" else "deg"
+    hdr["CUNIT2"+s] = "mm" if s == "D" else "deg"
+    hdr["CDELT1"+s] = pixel_scale
+    hdr["CDELT2"+s] = pixel_scale
+    hdr["CRVAL1"+s] = crval1
+    hdr["CRVAL2"+s] = crval2
+    hdr["CRPIX1"+s] = 0.
+    hdr["CRPIX2"+s] = 0.
 
     xpcen, ypcen = naxis1 // 2, naxis2 // 2
-    xscen, yscen = pix2sky(hdr, xpcen, ypcen)
-    hdr["CRVAL1"] = float(xscen)
-    hdr["CRVAL2"] = float(yscen)
-    hdr["CRPIX1"] = xpcen
-    hdr["CRPIX2"] = ypcen
+    xscen, yscen = pix2val(hdr, xpcen, ypcen, s)
+    hdr["CRVAL1"+s] = float(xscen)
+    hdr["CRVAL2"+s] = float(yscen)
+    hdr["CRPIX1"+s] = xpcen
+    hdr["CRPIX2"+s] = ypcen
 
     return hdr
 
@@ -180,16 +195,16 @@ def _header_from_list_of_sky_xy(x, y, pixel_scale):
 # Table overlays
 
 
-def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
+def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True, wcs_suffix=""):
     """
     Add sources from an astropy.Table to the image of an fits.ImageHDU
 
     Parameters
     ----------
     table : astropy.Table
-        Must contain the columns "x", "y", "flux" with the units in the column
-        attribute .unit, or in the table.meta dictionary as "<colname>_unit".
-        Default units are ``arcsec`` and ``ph / s / pix``
+        Must contain the columns "x_mm", "y_mm", "flux" with the units in the
+        column attribute .unit, or in the table.meta dictionary as
+        "<colname>_unit". Default units are ``mm`` and ``ph / s / pix``
 
     canvas_hdu : fits.ImageHDU
         The ImageHDU onto which the table sources should be projected.
@@ -200,20 +215,29 @@ def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
         account when projecting onto the canvas pixel grid. This takes about 5x
         longer than ignoring the sub-pixel shifts
 
+    wcs_suffix : str, optional
+
     Returns
     -------
     canvas_hdu : fits.ImageHDU
 
     """
 
-    if len(wcs.find_all_wcs(canvas_hdu.header)) == 0:
-        raise ValueError("canvas_hdu must include a WCS")
+    s = wcs_suffix
+    if not utils.has_needed_keywords(canvas_hdu.header, s):
+        raise ValueError("canvas_hdu must include an appropriate WCS: {}"
+                         "".format(s))
 
-    x = utils.quantity_from_table("x", table, default_unit=u.arcsec).to(u.deg)
-    y = utils.quantity_from_table("y", table, default_unit=u.arcsec).to(u.deg)
     f = utils.quantity_from_table("flux", table, default_unit=u.Unit("ph s-1"))
+    if s == "D":
+        x = utils.quantity_from_table("x_mm", table, default_unit=u.mm).to(u.mm)
+        y = utils.quantity_from_table("y_mm", table, default_unit=u.mm).to(u.mm)
+    else:
+        arcsec = u.arcsec
+        x = utils.quantity_from_table("x", table, default_unit=arcsec).to(u.deg)
+        y = utils.quantity_from_table("y", table, default_unit=arcsec).to(u.deg)
 
-    xpix, ypix = sky2pix(canvas_hdu.header, x.value, y.value)
+    xpix, ypix = val2pix(canvas_hdu.header, x.value, y.value, s)
 
     # Weird FITS / astropy behaviour. Axis1 == y, Axis2 == x.
     naxis2 = canvas_hdu.header["NAXIS1"]
@@ -222,7 +246,6 @@ def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
     eps = -1e-7
     mask = (xpix >= eps) * (xpix < naxis1) * (ypix >= eps) * (ypix < naxis2)
 
-    #
     if sub_pixel is True:
         canvas_hdu = _add_subpixel_sources_to_canvas(canvas_hdu, xpix, ypix, f,
                                                      mask)
@@ -352,7 +375,7 @@ def overlay_image(small_im, big_im, coords, mask=None, sub_pixel=False):
     return big_im
 
 
-def rescale_imagehdu(imagehdu, pixel_scale, **kwargs):
+def rescale_imagehdu(imagehdu, pixel_scale, wcs_suffix="", **kwargs):
     """
     Scales the .data array by the ratio of pixel_scale [deg] and CDELTn
 
@@ -360,9 +383,10 @@ def rescale_imagehdu(imagehdu, pixel_scale, **kwargs):
 
     Parameters
     ----------
-    imagehdu
+    imagehdu : fits.ImageHDU
     pixel_scale : float
         [deg] NOT to be passed as a Quantity
+    wcs_suffix : str
 
     kwargs
     ------
@@ -375,9 +399,10 @@ def rescale_imagehdu(imagehdu, pixel_scale, **kwargs):
     imagehdu : fits.ImageHDU
 
     """
-
-    cdelt1 = imagehdu.header["CDELT1"]
-    cdelt2 = imagehdu.header["CDELT2"]
+    s = wcs_suffix
+    s0 = s[0] if len(s) > 0 else ""
+    cdelt1 = imagehdu.header["CDELT1"+s0]
+    cdelt2 = imagehdu.header["CDELT2"+s0]
 
     zoom1 = cdelt1 / pixel_scale
     zoom2 = cdelt2 / pixel_scale
@@ -390,23 +415,27 @@ def rescale_imagehdu(imagehdu, pixel_scale, **kwargs):
         if sum_new != 0:
             imagehdu.data = new_im * sum_orig / sum_new
 
-        imagehdu.header["CRPIX1"] *= zoom1
-        imagehdu.header["CRPIX2"] *= zoom2
-        imagehdu.header["CDELT1"] = pixel_scale
-        imagehdu.header["CDELT2"] = pixel_scale
-        imagehdu.header["CUNIT1"] = "deg"
-        imagehdu.header["CUNIT2"] = "deg"
+        for ii in range(max(1, len(s))):
+            si = s[ii] if len(s) > 0 else ""
+            imagehdu.header["CRPIX1"+si] *= zoom1
+            imagehdu.header["CRPIX2"+si] *= zoom2
+            imagehdu.header["CDELT1"+si] = pixel_scale
+            imagehdu.header["CDELT2"+si] = pixel_scale
+            imagehdu.header["CUNIT1"+si] = "deg"
+            imagehdu.header["CUNIT1"+si] = "deg"
 
     return imagehdu
 
 
-def reorient_imagehdu(imagehdu, **kwargs):
+def reorient_imagehdu(imagehdu, wcs_suffix="", **kwargs):
     """
     Rotates the .data array by the angle given in the PC matrix of the header
 
     Parameters
     ----------
     imagehdu : fits.ImageHDU
+
+    wcs_suffix : str
 
     kwargs
     ------
@@ -419,28 +448,36 @@ def reorient_imagehdu(imagehdu, **kwargs):
     imagehdu : fits.ImageHDU
 
     """
-    if "PC1_1" in imagehdu.header:
-        hdr = imagehdu.header
-        xscen, yscen = pix2sky(hdr, hdr["NAXIS1"] / 2., hdr["NAXIS2"] / 2.)
-        hdr["CRVAL1"] = xscen
-        hdr["CRVAL2"] = yscen
 
-        angle = np.rad2deg(np.arctan2(hdr["PC1_2"], hdr["PC1_1"]))
+    s = wcs_suffix
+
+    if "PC1_1"+s in imagehdu.header:
+        hdr = imagehdu.header
+        xscen, yscen = pix2val(hdr, hdr["NAXIS1"] / 2., hdr["NAXIS2"] / 2., s)
+        hdr["CRVAL1"+s] = xscen
+        hdr["CRVAL2"+s] = yscen
+
+        angle = np.rad2deg(np.arctan2(hdr["PC1_2"+s], hdr["PC1_1"+s]))
         new_im = ndi.rotate(imagehdu.data, angle, reshape=True, **kwargs)
         new_im = np.nan_to_num(new_im, copy=False)
         new_im *= np.sum(imagehdu.data) / np.sum(new_im)
 
         imagehdu.data = new_im
-        hdr["CRPIX1"] = hdr["NAXIS1"] / 2.
-        hdr["CRPIX2"] = hdr["NAXIS2"] / 2.
-        for card in ["PC1_1", "PC1_2", "PC2_1", "PC2_2"]:
+        hdr["CRPIX1"+s] = hdr["NAXIS1"] / 2.
+        hdr["CRPIX2"+s] = hdr["NAXIS2"] / 2.
+        for card in ["PC1_1"+s, "PC1_2"+s, "PC2_1"+s, "PC2_2"+s]:
             hdr.remove(card)
         imagehdu.header = hdr
+
+    elif any(["PC1_1" in key for key in imagehdu.header]):
+        warnings.warn("PC Keywords were found, but not used due to different "
+                      "wcs_suffix given: {} \n {}"
+                      "".format(wcs_suffix, dict(imagehdu.header)))
 
     return imagehdu
 
 
-def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1):
+def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1, wcs_suffix=""):
     """
     Re-project one ``fits.ImageHDU`` onto another ``fits.ImageHDU``
 
@@ -459,77 +496,85 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1):
         Default is 1. The order of the spline interpolator used by the
         ``scipy.ndimage`` functions
 
+    wcs_suffix : str
+        To determine which WCS to use. "" for sky HDUs and "D" for
+        ImagePlane HDUs
+
     Returns
     -------
     canvas_hdu : fits.ImageHDU
 
     """
 
+    s = wcs_suffix
     if isinstance(image_hdu.data, u.Quantity):
         unit = image_hdu.data.unit
         image_hdu.data = image_hdu.data.value
-    pixel_scale = canvas_hdu.header["CDELT1"]
+    pixel_scale = canvas_hdu.header["CDELT1"+s]
 
-    new_hdu = rescale_imagehdu(image_hdu, pixel_scale=pixel_scale, order=order)
-    new_hdu = reorient_imagehdu(new_hdu, order=order)
+    new_hdu = rescale_imagehdu(image_hdu, pixel_scale=pixel_scale, wcs_suffix=s,
+                               order=order)
+    new_hdu = reorient_imagehdu(new_hdu, wcs_suffix=s, order=order)
 
     xcen_im = new_hdu.header["NAXIS1"] // 2
     ycen_im = new_hdu.header["NAXIS2"] // 2
 
-    xsky0, ysky0 = pix2sky(new_hdu.header, xcen_im, ycen_im)
-    xpix0, ypix0 = sky2pix(canvas_hdu.header, xsky0, ysky0)
+    xsky0, ysky0 = pix2val(new_hdu.header, xcen_im, ycen_im, s)
+    xpix0, ypix0 = val2pix(canvas_hdu.header, xsky0, ysky0, s)
     canvas_hdu.data = overlay_image(new_hdu.data.T, canvas_hdu.data,
                                     coords=(xpix0, ypix0))
 
     return canvas_hdu
 
 
-def pix2sky(header, x, y):
+def pix2val(header, x, y, wcs_suffix=""):
     """
-    Returns the sky coordinates [degrees] for coordinates from a Header WCS
+    Returns the real coordinates [deg, mm] for coordinates from a Header WCS
 
     Parameters
     ----------
     header : fits.Header
     x, y : float, list, array
+    wcs_suffix : str
 
     Returns
     -------
-    ra, dec : float, array
-        [degrees] On-sky coordinates as given by the Header WCS
+    a, b : float, array
+        [deg, mm] Real coordinates as given by the Header WCS
 
     """
 
-    if "PC1_1" in header:
-        pc11 = header["PC1_1"]
-        pc12 = header["PC1_2"]
-        pc21 = header["PC2_1"]
-        pc22 = header["PC2_2"]
+    s = wcs_suffix
+    if "PC1_1"+s in header:
+        pc11 = header["PC1_1"+s]
+        pc12 = header["PC1_2"+s]
+        pc21 = header["PC2_1"+s]
+        pc22 = header["PC2_2"+s]
     else:
         pc11, pc12, pc21, pc22 = 1, 0, 0, 1
 
-    dra = header["CDELT1"]
-    ddec = header["CDELT2"]
-    x0 = header["CRPIX1"]
-    y0 = header["CRPIX2"]
-    ra0 = header["CRVAL1"]
-    dec0 = header["CRVAL2"]
+    da = header["CDELT1"+s]
+    db = header["CDELT2"+s]
+    x0 = header["CRPIX1"+s]
+    y0 = header["CRPIX2"+s]
+    a0 = header["CRVAL1"+s]
+    b0 = header["CRVAL2"+s]
 
-    ra = ra0 + dra * ((x - x0) * pc11 + (y - y0) * pc12)
-    dec = dec0 + ddec * ((x - x0) * pc21 + (y - y0) * pc22)
+    a = a0 + da * ((x - x0) * pc11 + (y - y0) * pc12)
+    b = b0 + db * ((x - x0) * pc21 + (y - y0) * pc22)
 
-    return ra, dec
+    return a, b
 
 
-def sky2pix(header, ra, dec):
+def val2pix(header, a, b, wcs_suffix=""):
     """
-    Returns the pixel coordinates for sky coordinates [deg] from a Header WCS
+    Returns the pixel coordinates for real coordinates [deg, mm] from a WCS
 
     Parameters
     ----------
     header : fits.Header
-    ra, dec : float, list, array
-        [deg]
+    a, b : float, list, array
+        [deg, mm]
 
     Returns
     -------
@@ -538,28 +583,33 @@ def sky2pix(header, ra, dec):
 
     """
 
-    if "PC1_1" in header:
-        pc11 = header["PC1_1"]
-        pc12 = header["PC1_2"]
-        pc21 = header["PC2_1"]
-        pc22 = header["PC2_2"]
+    s = wcs_suffix
+
+    if isinstance(header, fits.ImageHDU):
+        header = header.header
+
+    if "PC1_1"+s in header:
+        pc11 = header["PC1_1"+s]
+        pc12 = header["PC1_2"+s]
+        pc21 = header["PC2_1"+s]
+        pc22 = header["PC2_2"+s]
     else:
         pc11, pc12, pc21, pc22 = 1, 0, 0, 1
 
-    dra = header["CDELT1"]
-    ddec = header["CDELT2"]
-    x0 = header["CRPIX1"]
-    y0 = header["CRPIX2"]
-    ra0 = header["CRVAL1"]
-    dec0 = header["CRVAL2"]
+    da = header["CDELT1"+s]
+    db = header["CDELT2"+s]
+    x0 = header["CRPIX1"+s]
+    y0 = header["CRPIX2"+s]
+    a0 = header["CRVAL1"+s]
+    b0 = header["CRVAL2"+s]
 
-    x = x0 + 1 / dra * ((ra - ra0) * pc11 - (dec - dec0) * pc21)
-    y = y0 + 1 / ddec * ((ra - ra0) * pc12 + (dec - dec0) * pc22)
+    x = x0 + 1 / da * ((a - a0) * pc11 - (b - b0) * pc21)
+    y = y0 + 1 / db * ((a - a0) * pc12 + (b - b0) * pc22)
 
     return x, y
 
 
-def calc_footprint(header):
+def calc_footprint(header, wcs_suffix=""):
     """
     Returns the on sky-positions [deg] of the corners of a header WCS
 
@@ -574,6 +624,9 @@ def calc_footprint(header):
     ----------
     header : fits.Header
 
+    wcs_suffix : str
+        Letter suffix for the WCS keywords, e.g. CDELT1D for image-plane coords
+
     Returns
     -------
     xsky, ysky : arrays of floats
@@ -582,10 +635,13 @@ def calc_footprint(header):
 
     """
 
+    if isinstance(header, fits.ImageHDU):
+        header = header.header
+
     w, h = header["NAXIS1"], header["NAXIS2"]
     x = np.array([0, w, w, 0])
     y = np.array([0, 0, h, h])
 
-    xsky, ysky = pix2sky(header, x, y)
+    xsky, ysky = pix2val(header, x, y, wcs_suffix)
 
     return xsky, ysky

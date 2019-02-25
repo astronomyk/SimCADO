@@ -6,7 +6,7 @@ from astropy import units as u
 
 from simcado.optics.effects import gaussian_diffraction_psf as gdf
 from simcado.optics.fov import FieldOfView
-from simcado.optics.image_plane_utils import pix2sky
+from simcado.optics.image_plane_utils import pix2val
 
 from simcado.tests.mocks.py_objects.source_objects import _image_source
 from simcado.tests.mocks.py_objects.header_objects import _basic_fov_header
@@ -69,12 +69,12 @@ class TestApplyTo:
         basic_fov.header["CRPIX1"] = 0
         effect = gdf.GaussianDiffractionPSF(1)
 
-        x0, y0 = pix2sky(basic_fov.header,
+        x0, y0 = pix2val(basic_fov.header,
                          basic_fov.header["CRPIX1"],
                          basic_fov.header["CRPIX2"])
 
         basic_fov = effect.apply_to(basic_fov)
-        x1, y1 = pix2sky(basic_fov.header,
+        x1, y1 = pix2val(basic_fov.header,
                          basic_fov.header["CRPIX1"],
                          basic_fov.header["CRPIX2"])
 

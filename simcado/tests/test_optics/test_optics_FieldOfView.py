@@ -2,7 +2,6 @@ import pytest
 from pytest import approx
 
 import numpy as np
-from astropy import wcs
 from astropy.io import fits
 from astropy import units as u
 from astropy.table import Table
@@ -15,6 +14,7 @@ from matplotlib.colors import LogNorm
 from simcado.tests.mocks.py_objects.source_objects import _table_source, \
     _image_source, _combined_source
 from simcado.tests.mocks.py_objects.header_objects import _basic_fov_header
+
 
 PLOTS = False
 
@@ -46,6 +46,7 @@ class TestFieldOfViewInit:
             fov.FieldOfView()
 
     def test_initialises_with_header_and_waverange(self, basic_fov_header):
+        print(dict(basic_fov_header))
         the_fov = fov.FieldOfView(basic_fov_header, (1, 2)*u.um)
         assert isinstance(the_fov, fov.FieldOfView)
 
@@ -218,13 +219,3 @@ class TestCombineTableFields:
 class TestCombineImageHDUFields:
     def test_flux_in_equals_flux_out(self):
         pass
-
-
-class TestHasWcsKeys:
-    def test_fails_if_header_does_not_have_all_keys(self):
-        assert not fov.has_needed_keywords(fits.Header())
-
-    def test_passes_if_header_does_have_all_keys(self):
-        hdr = wcs.WCS().to_header()
-        hdr["NAXIS1"] = 100
-        assert fov.has_needed_keywords(hdr)

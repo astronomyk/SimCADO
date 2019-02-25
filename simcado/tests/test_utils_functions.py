@@ -2,13 +2,12 @@
 
 import pytest
 import numpy as np
-from astropy.io import ascii as ioascii
+from astropy import wcs
+from astropy.io import ascii as ioascii, fits
 
-import simcado.utils
 from simcado.utils import parallactic_angle, deriv_polynomial2d
-from simcado.utils import find_file
-from simcado.utils import airmass2zendist
-from simcado.utils import zendist2airmass
+from simcado.utils import find_file, has_needed_keywords
+from simcado.utils import airmass2zendist, zendist2airmass
 from simcado.utils import convert_table_comments_to_dict
 
 from simcado import rc
@@ -148,3 +147,19 @@ class TestConvertCommentsToDict:
         tbl = ioascii.read(tbl_str)
         dic = convert_table_comments_to_dict(tbl)
         assert dic == tbl.meta["comments"]
+
+
+class TestHasWcsKeys:
+    def test_fails_if_header_does_not_have_all_keys(self):
+        assert not has_needed_keywords(fits.Header())
+
+    def test_passes_if_header_does_have_all_keys(self):
+        hdr = wcs.WCS().to_header()
+        hdr["NAXIS1"] = 100
+        assert has_needed_keywords(hdr)
+
+    def test_passes_if_header_does_have_all_keys_and_suffix(self):
+        hdr = wcs.WCS(key="D").to_header()
+        hdr["NAXIS1"] = 100
+        assert has_needed_keywords(hdr, "D")
+

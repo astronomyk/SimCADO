@@ -3,7 +3,7 @@ from astropy import units as u
 
 from ... import utils
 from .effects import Effect
-from ..image_plane_utils import _header_from_list_of_sky_xy
+from ..image_plane_utils import _header_from_list_of_xy
 
 
 class DetectorList(Effect):
@@ -43,7 +43,7 @@ class DetectorList(Effect):
         y_sky = [y_sky_min.to(u.deg).value, y_sky_max.to(u.deg).value]
 
         pixel_scale = pixel_scale.to(u.deg).value
-        hdr = _header_from_list_of_sky_xy(x_sky, y_sky, pixel_scale)
+        hdr = _header_from_list_of_xy(x_sky, y_sky, pixel_scale)
 
         return hdr
 

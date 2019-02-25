@@ -3,11 +3,15 @@ from astropy import wcs
 from astropy.io import fits
 
 
-def _image_hdu_square():
+def _image_hdu_square(wcs_suffix=""):
     width = 100
-    the_wcs = wcs.WCS(naxis=2)
-    the_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-    the_wcs.wcs.cunit = ["arcsec", "arcsec"]
+    the_wcs = wcs.WCS(naxis=2, key=wcs_suffix)
+    if wcs_suffix == "":
+        the_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        the_wcs.wcs.cunit = ["arcsec", "arcsec"]
+    elif wcs_suffix == "D":
+        the_wcs.wcs.ctype = ["LINEAR", "LINEAR"]
+        the_wcs.wcs.cunit = ["mm", "mm"]
     the_wcs.wcs.cdelt = [1, 1]
     the_wcs.wcs.crval = [0, 0]
     the_wcs.wcs.crpix = [width // 2, width // 2]
@@ -22,14 +26,18 @@ def _image_hdu_square():
     return hdu
 
 
-def _image_hdu_rect():
+def _image_hdu_rect(wcs_suffix=""):
     width = 50
     height = 200
-    angle = 75
+    angle = 15
     ca, sa = np.cos(np.deg2rad(angle)), np.sin(np.deg2rad(angle))
-    the_wcs = wcs.WCS(naxis=2)
-    the_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-    the_wcs.wcs.cunit = ["arcsec", "arcsec"]
+    the_wcs = wcs.WCS(naxis=2, key=wcs_suffix)
+    if wcs_suffix == "":
+        the_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        the_wcs.wcs.cunit = ["arcsec", "arcsec"]
+    elif wcs_suffix == "D":
+        the_wcs.wcs.ctype = ["LINEAR", "LINEAR"]
+        the_wcs.wcs.cunit = ["mm", "mm"]
     the_wcs.wcs.cdelt = [1, 1]
     the_wcs.wcs.crval = [0, 0]
     the_wcs.wcs.crpix = [width // 2, height // 2]

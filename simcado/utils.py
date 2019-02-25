@@ -928,3 +928,9 @@ def deg2rad(theta):
 
 def rad2deg(theta):
     return theta * 180 / math.pi
+
+
+def has_needed_keywords(header, suffix=""):
+    keys = ["CDELT1", "CRVAL1", "CRPIX1"]
+    return sum([key + suffix in header.keys() for key in keys]) == 3 and \
+           "NAXIS1" in header.keys()

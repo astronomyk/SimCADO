@@ -1,11 +1,11 @@
 import numpy as np
 
-from astropy import wcs
 from astropy.io import fits
 from astropy.table import Table
 
-from simcado.optics.image_plane_utils import add_table_to_imagehdu, \
-    add_imagehdu_to_imagehdu
+from .image_plane_utils import add_table_to_imagehdu, add_imagehdu_to_imagehdu
+from .. import rc
+from .. import utils
 
 
 class ImagePlane:
@@ -24,16 +24,16 @@ class ImagePlane:
     ::
 
         from astropy.table import Table
-        from simcado.optics import image_plane as impl
+        from simcado.optics import image_plane as imp
 
         my_point_source_table = Table(names=["x", "y", "flux"],
-                                      data=[(0,  1,  2)*u.arcsec,
-                                            (0, -5, 10)*u.arcsec,
+                                      data=[(0,  1,  2)*u.mm,
+                                            (0, -5, 10)*u.mm,
                                             (100,50,25)*u.ph/u.s])
 
-        hdr = impl.make_image_plane_header([my_point_source_table],
-                                           pixel_scale=0.1*u.arcsec)
-        img_plane = impl.ImagePlane(hdr)
+        hdr = imp.make_image_plane_header([my_point_source_table],
+                                           pixel_size=0.015*u.mm)
+        img_plane = imp.ImagePlane(hdr)
         img_plane.add(my_point_source_table)
 
         print(img_plane.image)
@@ -42,23 +42,24 @@ class ImagePlane:
 
     def __init__(self, header, **kwargs):
 
-        self.meta = {"i" : 4096*4096}
+        self.meta = {"SIM_MAX_SEGMENT_SIZE" : rc.__rc__["SIM_MAX_SEGMENT_SIZE"]}
         self.meta.update(kwargs)
 
-        if len(wcs.find_all_wcs(header=header)) == 0:
-            raise ValueError("Header must have a valid WCS: {}"
+        if not any([utils.has_needed_keywords(header, s)
+                    for s in ["", "D", "S"]]):
+            raise ValueError("header must have a valid image-plane WCS: {}"
                              "".format(dict(header)))
 
         image = np.zeros((header["NAXIS1"]+1, header["NAXIS2"]+1))
         self.hdu = fits.ImageHDU(data=image, header=header)
 
-    def add(self, hdus_or_tables, sub_pixel=False, order=1):
+    def add(self, hdus_or_tables, sub_pixel=False, order=1, wcs_suffix=""):
         """
         Add a projection of an image or table sources to the canvas
 
         .. note::
             If a Table is provided, it must include the following columns:
-            `x`, `y`, and `flux`.
+            `x_mm`, `y_mm`, and `flux`.
 
             Units for the columns should be provided in the
             <Table>.unit attribute or as an entry in the table's meta dictionary
@@ -66,8 +67,8 @@ class ImagePlane:
 
             For example::
 
-              tbl["x"].unit = u.arcsec
-              tbl.meta["x_unit"] = "deg"
+              tbl["x"].unit = u.arcsec   # or
+              tbl.meta[x_unit"] = "deg"
 
             If no units are given, default units will be assumed. These are:
 
@@ -88,20 +89,23 @@ class ImagePlane:
             Default is 1. Order of spline interpolations used in
             ``scipy.ndimage`` functions ``zoom`` and ``rotate``.
 
+        wcs_suffix : str, optional
+            Default "". For sky coords - "" or "S", Detector coords - "D"
+
         """
 
         if isinstance(hdus_or_tables, (list, tuple)):
             for hdu_or_table in hdus_or_tables:
-                self.add(hdu_or_table, sub_pixel=sub_pixel, order=order)
+                self.add(hdu_or_table, sub_pixel, order, wcs_suffix)
         else:
             if isinstance(hdus_or_tables, Table):
                 self.hdu.header["COMMENT"] = "Adding sources from table"
                 self.hdu = add_table_to_imagehdu(hdus_or_tables, self.hdu,
-                                                 sub_pixel=sub_pixel)
+                                                 sub_pixel, wcs_suffix)
             elif isinstance(hdus_or_tables, fits.ImageHDU):
                 self.hdu.header["COMMENT"] = "Adding sources from table"
                 self.hdu = add_imagehdu_to_imagehdu(hdus_or_tables, self.hdu,
-                                                    order=order)
+                                                    order, wcs_suffix)
 
     @property
     def header(self):
