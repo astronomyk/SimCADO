@@ -79,6 +79,9 @@ class FieldOfView:
             combined_table = combine_table_fields(self.hdu.header, src,
                                                   fields_indexes)
             tbl = make_flux_table(combined_table, src, wave_max, wave_min, area)
+            xd, yd = sky2det(self.hdu.header, tbl["x"], tbl["y"])
+            tbl.add_columns([Column(name="x_mm", data=xd, unit=u.mm),
+                             Column(name="y_mm", data=yd, unit=u.mm)])
             self.fields += [tbl]
 
         # combine all ImageHDU fields
@@ -99,7 +102,7 @@ class FieldOfView:
                 elif isinstance(field, fits.ImageHDU):
                     self.hdu.data += field.data
 
-        return self.hdu.data
+        return self.hdu
 
     @property
     def header(self):
@@ -211,3 +214,10 @@ def combine_imagehdu_fields(fov_header, src, fields_indexes, wave_min, wave_max,
             canvas_hdu.data += temp_hdu.data * flux[0].value
 
     return canvas_hdu
+
+
+def sky2det(header, xsky, ysky):
+    xpix, ypix = imp_utils.val2pix(header, xsky, ysky)
+    xdet, ydet = imp_utils.pix2val(header, xpix, ypix, "D")
+
+    return xdet, ydet
