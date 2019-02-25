@@ -34,13 +34,14 @@ def setup_package():
     setup(name = 'SimCADO',
           version = VERSION,
           description = "MICADO Instrument simulator",
-          author = "Kieran Leschinski, Oliver Czoske",
+          author = "Kieran Leschinski, Oliver Czoske, Miguel Verdugo",
           author_email = """kieran.leschinski@unive.ac.at,
                             oliver.czoske@univie.ac.at""",
           url = "http://homepage.univie.ac.at/kieran.leschinski/",
-          package_dir={'simcado': '.'},
+          license="MIT",
+          package_dir={'simcado': 'simcado'},
           packages=['simcado'],
-          package_data = {'simcado': ['data/*']},
+          package_data = {'simcado': ['data/default.config']},
           )
 
 
