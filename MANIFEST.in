@@ -1,2 +1,5 @@
 include *.txt
 include PKG-INFO
+include data/*
+include docs/*
+include readme.md
