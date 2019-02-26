@@ -645,3 +645,4 @@ def calc_footprint(header, wcs_suffix=""):
     xsky, ysky = pix2val(header, x, y, wcs_suffix)
 
     return xsky, ysky
+

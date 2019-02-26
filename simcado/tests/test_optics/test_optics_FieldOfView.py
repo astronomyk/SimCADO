@@ -125,7 +125,7 @@ class TestFieldOfViewView:
         the_fov.extract_from(src)
         view = the_fov.view()
 
-        assert np.sum(view) == approx(orig_sum, rel=1e-3)
+        assert np.isclose(np.sum(view), orig_sum, rtol=1e-3)
 
         if PLOTS:
             plt.imshow(src.fields[0].data.T, origin="lower", norm=LogNorm())

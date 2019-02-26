@@ -33,7 +33,7 @@ def implane_hdr():
 
 
 @pytest.mark.usefixtures("comb_src", "fov_hdr", "implane_hdr")
-class TestCanExtractSourceAndPlaceOnImagePlane:
+class TestInteractionBetweenSourceFOVImagePlane:
     def test_can_extract_the_source_in_a_fov(self, fov_hdr, comb_src,
                                              implane_hdr):
         fov_hdr["CRVAL1D"] += 20

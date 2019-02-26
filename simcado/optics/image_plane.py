@@ -3,7 +3,9 @@ import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 
-from .image_plane_utils import add_table_to_imagehdu, add_imagehdu_to_imagehdu
+from .image_plane_utils import calc_footprint, add_table_to_imagehdu, \
+    add_imagehdu_to_imagehdu
+
 from .. import rc
 from .. import utils
 
@@ -52,6 +54,16 @@ class ImagePlane:
 
         image = np.zeros((header["NAXIS1"]+1, header["NAXIS2"]+1))
         self.hdu = fits.ImageHDU(data=image, header=header)
+        # x, y = calc_footprint(self.hdu, "D")
+        # self.meta.update({"xmin": min(x), "xmax": max(x),
+        #                   "ymin": min(y), "ymax": max(y)})
+
+
+    def make_tiles(self):
+        pass
+
+
+
 
     def add(self, hdus_or_tables, sub_pixel=False, order=1, wcs_suffix=""):
         """
