@@ -39,6 +39,8 @@ class RadiometryTable:
             raise ValueError("Cannot add surface without <self>.table template."
                              "Please add an empty table to define column names")
 
+        if position < 0:
+            position += len(self.table) + 1
         self.surfaces = add_surface_to_dict(self.surfaces, surface,
                                             name, position)
         if add_to_table:

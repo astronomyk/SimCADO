@@ -5,7 +5,8 @@ import pytest
 from astropy.table import Table
 
 import simcado as sim
-from simcado.optics.effects import Effect, SurfaceList, ApertureList
+from simcado.optics.effects import Effect, ApertureList
+from simcado.optics.effects.surface_list import SurfaceList
 
 MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                          "../mocks/MICADO_SCAO_WIDE/"))

@@ -1,5 +1,6 @@
 from simcado.optics.fov import FieldOfView
 from ..data_container import DataContainer
+from ..surface import SpectralSurface
 
 
 class Effect(DataContainer):
@@ -24,21 +25,26 @@ class Effect(DataContainer):
         return '{}: "{}"'.format(type(self).__name__, self.meta["name"])
 
 
-class SurfaceList(Effect):
-    def __init__(self, **kwargs):
-        super(SurfaceList, self).__init__(**kwargs)
-
-
 class ApertureList(Effect):
     def __init__(self, **kwargs):
         super(ApertureList, self).__init__(**kwargs)
+
+
+class AtmosphericDispersion(Effect):
+    def __init__(self, **kwargs):
+        super(Effect, self).__init__(**kwargs)
 
 
 class TERCurve(Effect):
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
 
+        self.surface = SpectralSurface()
+        self.surface.meta.update(self.meta)
+        data = self.get_data()
+        if data is not None:
+            self.surface.table = data
 
-class AtmosphericDispersion(Effect):
-    def __init__(self, **kwargs):
-        super(Effect, self).__init__(**kwargs)
+
+
+

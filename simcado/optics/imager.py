@@ -10,6 +10,7 @@ from astropy.table import Table, vstack
 from astropy import units as u
 
 import simcado.optics.effects.effects
+import simcado.optics.effects.surface_list
 from ..utils import find_file
 from . import effects as eff_mod
 from .image_plane import ImagePlane
@@ -141,6 +142,12 @@ class OpticsManager:
 
     @property
     def radiometry_table(self):
+        ter_effects_list = []
+        for opt_el in self.optical_elements:
+            ter_effects_list += opt_el.ter_list
+
+        rad_table = make_radiometry_table(ter_effects_list)
+
         return rad_table
 
     def __add__(self, other):
@@ -161,6 +168,12 @@ class OpticsManager:
                    ''.format(ii, opt_el.meta["name"], len(opt_el.effects))
 
         return msg
+
+
+def make_radiometry_table(ter_list):
+
+    rad_table = None
+    return rad_table
 
 
 class OpticalElement:
@@ -211,23 +224,12 @@ class OpticalElement:
         return effects
 
     @property
-    def z_orders(self):
-        z_orders = []
-        for eff in self.effects:
-            z = eff.meta["z_order"]
-            if isinstance(z, (list, tuple)):
-                z_orders += z
-            else:
-                z_orders += [z]
-
-        return z_orders
-
-    @property
-    def surface_list(self):
-        surf_list = [effect for effect in self.effects
-                     if isinstance(effect, (eff_mod.SurfaceList,
-                                            eff_mod.TERCurve))]
-        return surf_list
+    def ter_list(self):
+        ter_list = [effect for effect in self.effects
+                    if isinstance(effect, (
+                simcado.optics.effects.surface_list.SurfaceList,
+                eff_mod.TERCurve))]
+        return ter_list
 
     @property
     def mask_list(self):
@@ -262,10 +264,6 @@ def make_effect(effect_dict, **super_kwargs):
     effect.meta.update(effect_meta_dict)
 
     return effect
-
-
-class RadiometryTable:
-    surfaces_list = []
 
 
 class DetectorArray:
@@ -317,3 +315,6 @@ class FOVManager:
     def fovs(self):
         self.generate_fovs_list()
         return self._fovs_list
+
+
+

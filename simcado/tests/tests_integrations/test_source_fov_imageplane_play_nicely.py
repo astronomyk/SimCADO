@@ -1,4 +1,3 @@
-from copy import deepcopy
 import numpy as np
 import pytest
 from pytest import approx
@@ -14,7 +13,7 @@ from simcado.tests.mocks.py_objects import header_objects as hdrs
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-PLOTS = True
+PLOTS = False
 
 
 @pytest.fixture(scope="function")
@@ -57,9 +56,6 @@ class TestInteractionBetweenSourceFOVImagePlane:
         fov.hdu.header["CRVAL1D"] += 30
         fov.hdu.header["CRVAL2D"] -= 30
 
-        #fov2 = FieldOfView(fov_hdr, waverange=[0.5, 2.5]*u.um)
-        #fov2.hdu.header[]
-
         imp = ImagePlane(implane_hdr)
         fov.extract_from(comb_src)
         fov.view()
@@ -68,7 +64,7 @@ class TestInteractionBetweenSourceFOVImagePlane:
         ipt = np.sum(fov.fields[0]["flux"]) + np.sum(fov.fields[1].data)
         opt = np.sum(imp.image)
 
-        #assert ipt == approx(opt)
+        assert ipt == approx(opt)
 
         if PLOTS:
             plt.subplot(131)
