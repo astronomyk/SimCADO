@@ -29,7 +29,7 @@ def _image_hdu_square(wcs_suffix=""):
 def _image_hdu_rect(wcs_suffix=""):
     width = 50
     height = 200
-    angle = 15
+    angle = 0
     ca, sa = np.cos(np.deg2rad(angle)), np.sin(np.deg2rad(angle))
     the_wcs = wcs.WCS(naxis=2, key=wcs_suffix)
     if wcs_suffix == "":

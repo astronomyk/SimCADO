@@ -512,8 +512,8 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1, wcs_suffix=""):
         image_hdu.data = image_hdu.data.value
     pixel_scale = canvas_hdu.header["CDELT1"+s]
 
-    new_hdu = rescale_imagehdu(image_hdu, pixel_scale=pixel_scale, wcs_suffix=s,
-                               order=order)
+    new_hdu = rescale_imagehdu(image_hdu, pixel_scale=pixel_scale,
+                               wcs_suffix=s, order=order)
     new_hdu = reorient_imagehdu(new_hdu, wcs_suffix=s, order=order)
 
     xcen_im = new_hdu.header["NAXIS1"] // 2
@@ -521,7 +521,10 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1, wcs_suffix=""):
 
     xsky0, ysky0 = pix2val(new_hdu.header, xcen_im, ycen_im, s)
     xpix0, ypix0 = val2pix(canvas_hdu.header, xsky0, ysky0, s)
-    canvas_hdu.data = overlay_image(new_hdu.data.T, canvas_hdu.data,
+    print(dict(new_hdu.header))
+    print(dict(canvas_hdu.header))
+    print(new_hdu.data.shape, canvas_hdu.data.shape)
+    canvas_hdu.data = overlay_image(new_hdu.data, canvas_hdu.data,
                                     coords=(xpix0, ypix0))
 
     return canvas_hdu

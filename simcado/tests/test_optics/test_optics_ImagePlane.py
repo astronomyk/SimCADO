@@ -390,8 +390,8 @@ class TestAddImageHDUToImageHDU:
     def test_image_is_added_to_small_canvas(self, image_hdu_rect,
                                             image_hdu_square):
         im_hdu = image_hdu_rect
-        im_hdu.header["CRVAL1S"] -= 150*u.arcsec.to(u.deg)
-        im_hdu.header["CRVAL2S"] += 40*u.arcsec.to(u.deg)
+        im_hdu.header["CRVAL1"] -= 150*u.arcsec.to(u.deg)
+        im_hdu.header["CRVAL2"] += 40*u.arcsec.to(u.deg)
         hdr = imp_utils.get_canvas_header([im_hdu, image_hdu_square])
 
         im = np.zeros((hdr["NAXIS1"], hdr["NAXIS2"]))
@@ -414,7 +414,7 @@ class TestAddImageHDUToImageHDU:
 
             plt.show()
 
-    def test_image_is_added_to_small_canvas(self, image_hdu_rect_mm,
+    def test_mm_image_is_added_to_small_canvas(self, image_hdu_rect_mm,
                                             image_hdu_square_mm):
         im_hdu = image_hdu_rect_mm
         im_hdu.header["CRVAL1D"] -= 150

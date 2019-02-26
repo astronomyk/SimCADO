@@ -43,9 +43,10 @@ def _image_source(dx=0, dy=0, angle=0, weight=1):
     im_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
     im = np.random.random(size=(n+1, n+1)) * 1E-9
-    im[0, n] += 5
-    im[n, 0] += 5
+    im[n-1, 1] += 5
+    im[1, 1] += 5
     im[n//2, n//2] += 10
+    im[n//2, n-1] += 5
 
     im_hdu = fits.ImageHDU(data=im, header=im_wcs.to_header())
     im_hdu.header["SPEC_REF"] = 0

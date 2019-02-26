@@ -54,16 +54,6 @@ class ImagePlane:
 
         image = np.zeros((header["NAXIS1"]+1, header["NAXIS2"]+1))
         self.hdu = fits.ImageHDU(data=image, header=header)
-        # x, y = calc_footprint(self.hdu, "D")
-        # self.meta.update({"xmin": min(x), "xmax": max(x),
-        #                   "ymin": min(y), "ymax": max(y)})
-
-
-    def make_tiles(self):
-        pass
-
-
-
 
     def add(self, hdus_or_tables, sub_pixel=False, order=1, wcs_suffix=""):
         """
