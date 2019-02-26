@@ -12,7 +12,7 @@ from .. import utils
 
 def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
     """
-    Add sources from an astropy.Table to the image of an fits.ImageHDU
+    Add files from an astropy.Table to the image of an fits.ImageHDU
 
     Parameters
     ----------
@@ -21,11 +21,11 @@ def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
         attribute .unit, or in the table.meta dictionary as "<colname>_unit"
 
     canvas_hdu : fits.ImageHDU
-        The ImageHDU onto which the table sources should be projected.
+        The ImageHDU onto which the table files should be projected.
         This must include a valid WCS
 
     sub_pixel : bool, optional
-        Default is True. If True, sub-pixel shifts of sources will be taken into
+        Default is True. If True, sub-pixel shifts of files will be taken into
         account when projecting onto the canvas pixel grid. This takes about 5x
         longer than ignoring the sub-pixel shifts
 
@@ -58,7 +58,7 @@ def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
     mask = (xpix >= eps) * (xpix < naxis2) * (ypix >= eps) * (ypix < naxis1)
 
     if sub_pixel is True:
-        canvas_hdu.header["comment"] = "Adding {} sub-pixel sources" \
+        canvas_hdu.header["comment"] = "Adding {} sub-pixel files" \
                                        "".format(len(f))
         for ii in range(len(xpix)):
             if mask[ii]:
@@ -66,7 +66,7 @@ def add_table_to_imagehdu(table, canvas_hdu, sub_pixel=True):
                 for x, y, frac in zip(xx, yy, fracs):
                     canvas_hdu.data[x, y] += frac * f[ii].value
     else:
-        canvas_hdu.header["comment"] = "Adding {} int-pixel sources" \
+        canvas_hdu.header["comment"] = "Adding {} int-pixel files" \
                                        "".format(len(f))
         xpix = xpix.astype(int)
         ypix = ypix.astype(int)
@@ -402,7 +402,7 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order="bilinear"):
 #
 #
 #     canvas_hdu : fits.ImageHDU
-#         The ``ImageHDU`` onto which the table sources should be projected.
+#         The ``ImageHDU`` onto which the table files should be projected.
 #         This must include a valid WCS
 #
 #     order : str, optional

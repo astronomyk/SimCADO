@@ -12,7 +12,7 @@ import numpy as np
 import simcado.source.templates
 from simcado.source import source
 from simcado.commands.user_commands import UserCommands
-from simcado.optics.imager_old import OpticalTrain
+from scripts.imager_old import OpticalTrain
 from .detector import Detector
 
 __all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]

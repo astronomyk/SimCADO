@@ -596,14 +596,14 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
 
     oversample : int
         The factor with which to oversample the image. Each image pixel is split
-        into (oversample)^2 individual point sources.
+        into (oversample)^2 individual point files.
 
     units : str, optional
         The energy units of the spectra. Default is [ph/s/m2]
 
     flux_threshold : float, optional
         If there is noise in the image, set threshold to the noise limit so that
-        only real photon sources are extracted. Default is 0.
+        only real photon files are extracted. Default is 0.
 
     center_offset : (float, float)
         [arcsec] If the centre of the image is offset, add this offset to (x,y)

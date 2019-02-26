@@ -55,7 +55,7 @@ class ImagePlane:
 
     def add(self, hdus_or_tables, sub_pixel=False, order=1, wcs_suffix=""):
         """
-        Add a projection of an image or table sources to the canvas
+        Add a projection of an image or table files to the canvas
 
         .. note::
             If a Table is provided, it must include the following columns:
@@ -81,7 +81,7 @@ class ImagePlane:
             The input to be projected onto the image plane. See above.
 
         sub_pixel : bool, optional
-            Default is False. Dictates if point sources should be projected with
+            Default is False. Dictates if point files should be projected with
             sub-pixel shifts or not. Accounting for sub-pixel shifts is approx.
             5x slower.
 
@@ -99,11 +99,11 @@ class ImagePlane:
                 self.add(hdu_or_table, sub_pixel, order, wcs_suffix)
         else:
             if isinstance(hdus_or_tables, Table):
-                self.hdu.header["COMMENT"] = "Adding sources from table"
+                self.hdu.header["COMMENT"] = "Adding files from table"
                 self.hdu = add_table_to_imagehdu(hdus_or_tables, self.hdu,
                                                  sub_pixel, wcs_suffix)
             elif isinstance(hdus_or_tables, fits.ImageHDU):
-                self.hdu.header["COMMENT"] = "Adding sources from table"
+                self.hdu.header["COMMENT"] = "Adding files from table"
                 self.hdu = add_imagehdu_to_imagehdu(hdus_or_tables, self.hdu,
                                                     order, wcs_suffix)
 

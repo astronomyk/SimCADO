@@ -31,7 +31,7 @@ from matplotlib.colors import LogNorm
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    rel_dirname = "mocks/sources/"
+    rel_dirname = "mocks/files/"
     return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
 
 

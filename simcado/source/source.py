@@ -146,7 +146,7 @@ class Source(object):
     spectra : np.array
         [ph/s/m2/bin] A (n, m) array with n spectra, each with m spectral bins
     x, y : np.array
-        [arcsec] coordinates of where the emitting sources are relative to the
+        [arcsec] coordinates of where the emitting files are relative to the
         centre of the field of view
     ref : np.array
         the index for .spectra which connects a position (x, y) to a spectrum
@@ -298,7 +298,7 @@ class Source(object):
 
         # 1. Apply the master transmission curve to all the spectra
         #
-        # 1.5 Create a canvas onto which we splat the PSFed sources
+        # 1.5 Create a canvas onto which we splat the PSFed files
         #
         # 2. For each layer between cmds.lam_bin_edges[i, i+1]
         #   - Apply the x,y shift for the ADC
@@ -422,7 +422,7 @@ class Source(object):
 
     def image_in_range(self, psf, lam_min, lam_max, chip, **kwargs):
         """
-        Find the sources that fall in the chip area and generate an image for
+        Find the files that fall in the chip area and generate an image for
         the wavelength range [lam_min, lam_max)
 
         Output is in [ph/s/pixel]
@@ -430,7 +430,7 @@ class Source(object):
         Parameters
         ----------
         psf : psf.PSF object
-            The PSF that the sources will be convolved with
+            The PSF that the files will be convolved with
         lam_min, lam_max : float
             [um] the wavelength range relevant for the psf
         chip : str, detector.Chip
@@ -766,7 +766,7 @@ class Source(object):
 
     def on_grid(self, pix_res=0.004):
         """
-        Return an image with the positions of all sources.
+        Return an image with the positions of all files.
 
         The pixel values correspond to the number of emitting py_objects in that
         pixel
@@ -779,7 +779,7 @@ class Source(object):
         Returns
         -------
         im : 2D array
-            A numpy array containing an image of where the sources are
+            A numpy array containing an image of where the files are
 
         """
 
@@ -849,9 +849,9 @@ class Source(object):
         -----
         Just a place holder so that I know what's going on with the input table
         * The first extension [0] contains an "image" of size 4 x N where N is the
-        number of sources. The 4 columns are x, y, ref, weight.
+        number of files. The 4 columns are x, y, ref, weight.
         * The second extension [1] contains an "image" with the spectra of all
-        sources. The image is M x len(spectrum), where M is the number of unique
+        files. The image is M x len(spectrum), where M is the number of unique
         spectra in the source list. M = max(ref) - 1
         """
 

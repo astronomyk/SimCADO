@@ -59,7 +59,6 @@ from .utils import get_extras
 
 from .source.source import Source
 
-from .optics.imager_old import OpticalTrain
 # from .optics.spectrograph import OpticalTrain
 
 from .commands.user_commands import UserCommands

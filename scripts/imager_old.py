@@ -22,22 +22,22 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 
-from .. import psf as psf
-from .. import spectral as sc
-from .. import spatial as pe
+from simcado import psf as psf
+from simcado import spectral as sc
+from simcado import spatial as pe
 from simcado.source.templates import flat_spectrum_sb
 from simcado.source.source_utils import scale_spectrum_sb
-from ..commands.user_commands import UserCommands
-from ..utils import find_file
+from simcado.commands.user_commands import UserCommands
+from simcado.utils import find_file
 
-from . import optics_utils as opt_utils
+from simcado.optics import optics_utils as opt_utils
 
 __all__ = ["OpticalTrain"]
 
 class OpticalTrain(object):
     """
     The OpticalTrain object reads in or generates the information necessary to
-    model the optical path for all (3) sources of photons: the astronomical
+    model the optical path for all (3) files of photons: the astronomical
     source, the atmosphere and the primary mirror.
 
     Parameters
