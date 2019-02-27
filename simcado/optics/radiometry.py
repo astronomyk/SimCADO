@@ -48,6 +48,18 @@ class RadiometryTable:
                                               name, position)
 
     def get_throughput(self, start=0, end=None, rows=None):
+        """
+
+        Parameters
+        ----------
+        start
+        end
+        rows
+
+        Returns
+        -------
+
+        """
         if self.table is None:
             return None
 
@@ -92,6 +104,6 @@ class RadiometryTable:
         return self.surfaces[item]
 
     def __repr__(self):
-        print(self.table)
+        return self.table.__repr__()
 
 

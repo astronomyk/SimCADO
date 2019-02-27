@@ -78,7 +78,7 @@ class FieldOfView:
         if sum(tbl_fields_mask * fields_mask) > 0:
             combined_table = combine_table_fields(self.hdu.header, src,
                                                   fields_indexes)
-            tbl = make_flux_table(combined_table, src, wave_max, wave_min, area)
+            tbl = make_flux_table(combined_table, src, wave_min, wave_max, area)
             xd, yd = sky2fp(self.hdu.header, tbl["x"], tbl["y"])
             tbl.add_columns([Column(name="x_mm", data=xd, unit=u.mm),
                              Column(name="y_mm", data=yd, unit=u.mm)])
@@ -146,7 +146,7 @@ def is_field_in_fov(fov_header, table_or_imagehdu, wcs_suffix=""):
     return is_inside_fov
 
 
-def make_flux_table(source_tbl, src, wave_max, wave_min, area):
+def make_flux_table(source_tbl, src, wave_min, wave_max, area):
     fluxes = np.zeros(len(src.spectra))
     ref_set = list(set(source_tbl["ref"]))
     flux_set = src.photons_in_range(wave_min, wave_max, area, ref_set)

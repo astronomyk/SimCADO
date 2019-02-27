@@ -1,17 +1,19 @@
-import os
 import pytest
-from pytest import approx
+import os
+from copy import deepcopy
 
 import numpy as np
 from astropy import units as u
 
-from synphot import SpectralElement, SourceSpectrum
+from synphot import SourceSpectrum
 
 import simcado as sim
-from simcado.optics.effects import TERCurve
 from simcado.optics.effects.surface_list import SurfaceList
 from simcado.optics.radiometry import RadiometryTable
-from simcado.optics.surface import SpectralSurface
+
+from simcado.tests.mocks.py_objects.source_objects import _image_source
+from simcado.tests.mocks.py_objects.effects_objects import _surf_list, \
+    _surf_list_empty, _filter_surface
 
 from matplotlib import pyplot as plt
 
@@ -22,59 +24,66 @@ MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
 sim.rc.__search_path__ += [MOCK_PATH]
 
 
-class TestSurfaceListInit:
+@pytest.fixture(scope="function")
+def surf_list():
+    return _surf_list()
+
+
+@pytest.fixture(scope="function")
+def surf_list_empty():
+    return _surf_list_empty()
+
+
+@pytest.fixture(scope="function")
+def filter_surface():
+    return _filter_surface()
+
+
+@pytest.fixture(scope="function")
+def image_source():
+    return _image_source()
+
+
+@pytest.mark.usefixtures("surf_list")
+class TestInit:
     def test_initialise_with_nothing(self):
         assert isinstance(SurfaceList(), SurfaceList)
 
-    def test_initalises_with_list_of_surfaces(self):
-        filename = os.path.join(MOCK_PATH, "EC_mirrors_MICADO_Wide.tbl")
-        surf_list = SurfaceList(filename=filename)
+    def test_initalises_with_list_of_surfaces(self, surf_list):
         assert isinstance(surf_list, SurfaceList)
 
 
+@pytest.mark.usefixtures("surf_list")
 class TestRadiometryTableAttribute:
-    def test_returns_radiometry_table_object(self):
-        filename = os.path.join(MOCK_PATH, "EC_mirrors_MICADO_Wide.tbl")
-        etendue = 5776 * u.m ** 2 * u.mas ** 2
-        surf_list = SurfaceList(filename=filename, etendue=etendue)
-
+    def test_returns_radiometry_table_object(self, surf_list):
         assert isinstance(surf_list.radiometry_table, RadiometryTable)
         assert isinstance(surf_list.get_emission(), SourceSpectrum)
 
         if PLOTS:
-            wave = np.arange(10, 200.51, 1) * u.um
+            wave = np.arange(10, 200, 1) * u.um
             plt.plot(wave, surf_list.get_emission()(wave))
             plt.semilogy()
             plt.show()
 
 
+@pytest.mark.usefixtures("surf_list")
 class TestAddSurfaceList:
-    def test_second_list_is_joined_to_first(self):
-        etendue = 5776 * u.m ** 2 * u.mas ** 2
+    def test_second_list_is_joined_to_first(self, surf_list):
+        surf_list_copy = deepcopy(surf_list)
+        len1 = len(surf_list.radiometry_table.table)
+        len2 = len(surf_list_copy.radiometry_table.table)
 
-        filename1 = os.path.join(MOCK_PATH, "EC_mirrors_MICADO_Wide.tbl")
-        surf_list1 = SurfaceList(filename=filename1, etendue=etendue)
-        len1 = len(surf_list1.radiometry_table.table)
-
-        filename2 = os.path.join(MOCK_PATH, "EC_mirrors_ELT.tbl")
-        surf_list2 = SurfaceList(filename=filename2, etendue=etendue)
-        len2 = len(surf_list2.radiometry_table.table)
-
-        surf_list1.add_surface_list(surf_list2, prepend=True)
-        len3 = len(surf_list1.radiometry_table.table)
+        surf_list.add_surface_list(surf_list_copy, prepend=True)
+        len3 = len(surf_list.radiometry_table.table)
 
         assert len3 == len2 + len1
 
 
+@pytest.mark.usefixtures("surf_list", "filter_surface")
 class TestAddSurface:
-    def test_extra_surface_is_joined_to_list(self):
-        etendue = 5776 * u.m ** 2 * u.mas ** 2
-        surf_list = SurfaceList(filename="EC_mirrors_MICADO_Wide.tbl",
-                                etendue=etendue, name="MICADO Mirror List")
-        surf = TERCurve(filename="TC_filter_Ks.dat", name="filter",
-                        action="transmission", outer=0.1, temp=0)
+    def test_extra_surface_is_joined_to_list(self, surf_list, filter_surface):
         len1 = len(surf_list.radiometry_table.table)
-        surf_list.add_surface(surf, "filter")
+        surf_list.add_surface(filter_surface, "filter")
 
         assert len(surf_list.radiometry_table.table) == len1 + 1
 
@@ -89,36 +98,31 @@ class TestAddSurface:
             plt.show()
 
 
-class TestTERCurveInit:
-    def test_initialise_with_nothing(self):
-        assert isinstance(TERCurve(), TERCurve)
+@pytest.mark.usefixtures("surf_list", "filter_surface")
+class TestFovGrid:
+    def test_finds_borders_of_filter(self, filter_surface, surf_list):
+        surf_list.add_surface(filter_surface, "filter")
+        surf_list.meta["SIM_MIN_THROUGHPUT"] = 2e-4
+        fov_grid = surf_list.fov_grid(None, (0.5, 2.5)*u.um)
 
-    def test_initalises_with_list_of_surfaces(self):
-        filename = os.path.join(MOCK_PATH, "TC_filter_Ks.dat")
-        surf = TERCurve(filename=filename)
-        assert isinstance(surf, TERCurve)
-
-    def test_initalises_with_two_arrays(self):
-        surf = TERCurve(wavelength=np.array([0.5, 2.5]),
-                        transmission=np.array([1, 1]),
-                        wavelength_unit="um")
-        assert isinstance(surf, TERCurve)
+        # assuming surf is the K-filter
+        assert fov_grid["wavelengths"][0] > 1.9*u.um
+        assert fov_grid["wavelengths"][1] < 2.4*u.um
 
 
-class TestSurfaceAttribute:
-    def test_returns_surface_object(self):
-        filename = os.path.join(MOCK_PATH, "TC_filter_Ks.dat")
-        surf = TERCurve(filename=filename)
+@pytest.mark.usefixtures("surf_list_empty", "filter_surface", "image_source")
+class TestApplyTo:
+    def test_applied_to_source(self, filter_surface, surf_list_empty, image_source):
+        surf_list_empty.add_surface(filter_surface, "filter")
+        new_source = surf_list_empty.apply_to(deepcopy(image_source))
 
-        assert isinstance(surf.surface, SpectralSurface)
-        assert isinstance(surf.surface.transmission, SpectralElement)
-        assert isinstance(surf.surface.emission, SourceSpectrum)
+        wave = np.linspace(1.5, 2.5, 100)*u.um
+        old_flux = image_source.spectra[0](wave)
+        new_flux = new_source.spectra[0](wave)
 
-    def test_returns_surface_object_for_arrays(self):
-        surf = TERCurve(wavelength=[0.5, 1.5, 2.5],
-                        transmission=[0.1, 0.1, 0.1],
-                        wavelength_unit="um")
+        assert np.all(new_flux < old_flux)
 
-        assert isinstance(surf.surface, SpectralSurface)
-        assert isinstance(surf.surface.transmission, SpectralElement)
-        assert isinstance(surf.surface.emission, SourceSpectrum)
+        if PLOTS:
+            plt.plot(wave, image_source.spectra[0](wave))
+            plt.plot(wave, new_source.spectra[0](wave))
+            plt.show()

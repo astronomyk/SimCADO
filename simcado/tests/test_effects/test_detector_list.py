@@ -24,8 +24,5 @@ class TestDetectorInit:
 class TestDetectorImagePlaneHeader:
     def test_header_is_sensical(self):
         det_list = DetectorList(filename="FPA_array_layout.dat")
-
-        hdr_small = det_list.image_plane_header(1.5*u.mas)
-        hdr_big = det_list.image_plane_header(4*u.mas)
-
-        assert hdr_small["NAXIS1"] == approx(hdr_big["NAXIS1"], abs=2)
+        hdr_big = det_list.image_plane_header
+        assert hdr_big["NAXIS1"] > 4096*3

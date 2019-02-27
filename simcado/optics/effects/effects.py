@@ -13,7 +13,7 @@ class Effect(DataContainer):
             raise ValueError("fov must be a FieldOfView object: {}"
                              "".format(type(fov)))
 
-    def fov_grid(self, header, waverange):
+    def fov_grid(self, header, waverange, **kwargs):
         return {"coords": None, "wavelengths": None}
 
     def update(self, **kwargs):
@@ -25,16 +25,6 @@ class Effect(DataContainer):
         return '{}: "{}"'.format(type(self).__name__, self.meta["name"])
 
 
-class ApertureList(Effect):
-    def __init__(self, **kwargs):
-        super(ApertureList, self).__init__(**kwargs)
-
-
-class AtmosphericDispersion(Effect):
-    def __init__(self, **kwargs):
-        super(Effect, self).__init__(**kwargs)
-
-
 class TERCurve(Effect):
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
@@ -44,6 +34,40 @@ class TERCurve(Effect):
         data = self.get_data()
         if data is not None:
             self.surface.table = data
+
+
+class Shift3D(Effect):
+    def __init__(self, **kwargs):
+        super(Effect, self).__init__(**kwargs)
+
+
+class AtmosphericDispersion(Shift3D):
+    def __init__(self, **kwargs):
+        super(Shift3D, self).__init__(**kwargs)
+
+    def fov_grid(self, header, waverange, **kwargs):
+        pass
+
+
+class AtmosphericDispersionCorrector(Shift3D):
+    def __init__(self, **kwargs):
+        super(Shift3D, self).__init__(**kwargs)
+
+
+class ApertureList(Effect):
+    def __init__(self, **kwargs):
+        super(Effect, self).__init__(**kwargs)
+
+
+class ApertureMask(Effect):
+    def __init__(self, **kwargs):
+        super(Effect, self).__init__(**kwargs)
+        self.header = None
+
+
+class TraceList(Effect):
+    def __init__(self, **kwargs):
+        super(Effect, self).__init__(**kwargs)
 
 
 

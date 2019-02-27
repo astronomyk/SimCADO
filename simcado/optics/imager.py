@@ -9,13 +9,12 @@ from astropy.io import fits
 from astropy.table import Table, vstack
 from astropy import units as u
 
-import simcado.optics.effects.effects
-import simcado.optics.effects.surface_list
+from .. import rc
 from ..utils import find_file
-from . import effects as eff_mod
+from . import effects as efs
 from .image_plane import ImagePlane
-
-from ..source.source2 import Source
+from .image_plane_utils import calc_footprint, _header_from_list_of_xy
+from .fov import FieldOfView
 
 
 class OpticalTrain:
@@ -38,11 +37,13 @@ class OpticalTrain:
         self.optics_manager = OpticsManager(user_commands.yaml_docs,
                                             **self.observation_dict)
 
-    def observe(self, orig_source):
+    def observe(self, orig_source, **kwargs):
         # prepare the observation
-        self.optics_manager.update(self.observation_dict)
-        self.fov_manager = FOVManager(self.optics_manager)
-        self.image_plane = ImagePlane(self.optics_manager.image_plane_header)
+        self.optics_manager.update(**self.observation_dict, **kwargs)
+        self.fov_manager = FOVManager(self.optics_manager.fov_setup_effects,
+                                      **self.optics_manager.meta)
+        self.image_plane = ImagePlane(self.optics_manager.image_plane_header,
+                                      **self.optics_manager.meta)
 
         # Make a FOV list - z_order = 0..99
         # Make a image plane - z_order = 100..199
@@ -79,7 +80,7 @@ class OpticsManager:
         self.optical_elements += [OpticalElement(dic) for dic in yaml_docs]
 
     def add_effect(self, effect, ext=0):
-        if isinstance(effect, eff_mod.Effect):
+        if isinstance(effect, efs.Effect):
             self.optical_elements[ext].add_effect(effect)
 
     def update(self, obs_dict):
@@ -101,14 +102,12 @@ class OpticsManager:
 
     @property
     def image_plane_header(self):
-        detector_lists = self.get_all(eff_mod.DetectorList)
+        detector_lists = self.get_all(efs.DetectorList)
+        header = detector_lists[0].image_plane_header
 
         if len(detector_lists) != 1:
             warnings.warn("None or more than one DetectorList found. Using the"
                           " first instance.{}".format(detector_lists))
-
-        pixel_scale = self.meta["SIM_DETECTOR_PIX_SCALE"] * u.arcsec
-        header = detector_lists[0].image_plane_header(pixel_scale)
 
         return header
 
@@ -130,23 +129,40 @@ class OpticsManager:
 
     @property
     def source_effects(self):
-        src_effects = []
+        src_effects = [self.radiometry_table]
         for opt_el in self.optical_elements:
             src_effects += opt_el.get_z_order_effects([200, 299])
 
         return src_effects
 
     @property
+    def image_plane_setup_effects(self):
+        implane_setup_effects = []
+        for opt_el in self.optical_elements:
+            implane_setup_effects += opt_el.get_z_order_effects([100, 199])
+
+        return implane_setup_effects
+
+    @property
+    def fov_setup_effects(self):
+        fovmanager_effects = [self.radiometry_table]
+        for opt_el in self.optical_elements:
+            fovmanager_effects += opt_el.get_z_order_effects([0, 99])
+
+        return fovmanager_effects
+
+    @property
     def background_source(self):
+        bg_src = None
         return bg_src
 
     @property
     def radiometry_table(self):
-        ter_effects_list = []
+        surface_like_effects = []
         for opt_el in self.optical_elements:
-            ter_effects_list += opt_el.ter_list
+            surface_like_effects += opt_el.ter_list
 
-        rad_table = make_radiometry_table(ter_effects_list)
+        rad_table = combine_radiometry_effects(surface_like_effects)
 
         return rad_table
 
@@ -154,7 +170,7 @@ class OpticsManager:
         self.add_effect(other)
 
     def __getitem__(self, item):
-        if isinstance(item, eff_mod.Effect):
+        if isinstance(item, efs.Effect):
             effects = []
             for opt_el in self.optical_elements:
                 effects += opt_el.get_all(item)
@@ -170,10 +186,32 @@ class OpticsManager:
         return msg
 
 
-def make_radiometry_table(ter_list):
+def combine_radiometry_effects(surfaces):
+    surflist_list = [eff for eff in surfaces if isinstance(eff,
+                                                           efs.SurfaceList)]
+    surf_list = [eff for eff in surfaces if isinstance(eff, efs.TERCurve)]
 
-    rad_table = None
+    if len(surflist_list) == 0:
+        tbl = empty_surface_list()
+        tbl.meta["name"] = "Radiometry Table"
+        surflist_list += [tbl]
+
+    rad_table = deepcopy(surflist_list[0])
+    for surflist in surflist_list[1:]:
+        rad_table.add_surface_list(surflist)
+
+    for surf in surf_list:
+        rad_table.add_surface(surf, surf.meta["name"])
+
     return rad_table
+
+
+def empty_surface_list():
+    tbl = Table(names=["Name", "Outer", "Inner", "Angle",
+                       "Temp", "Action", "Filename"],
+                meta={"outer_unit": "m", "inner_unit": "m",
+                      "angle_unit": "deg", "temp_unit": "deg_C"})
+    return efs.SurfaceList(table=tbl)
 
 
 class OpticalElement:
@@ -196,11 +234,11 @@ class OpticalElement:
             self.effects += [make_effect(effdic, **self.properties)]
 
     def add_effect(self, effect):
-        if isinstance(effect, eff_mod.Effect):
+        if isinstance(effect, efs.Effect):
             self.effects += [effect]
 
     def get_all(self, effect_class):
-        return [eff for eff in self.effects if isinstance(eff, effect_class)]
+        return _get_all(self.effects, effect_class)
 
     def get_z_order_effects(self, z_level):
         if isinstance(z_level, int):
@@ -226,15 +264,14 @@ class OpticalElement:
     @property
     def ter_list(self):
         ter_list = [effect for effect in self.effects
-                    if isinstance(effect, (
-                simcado.optics.effects.surface_list.SurfaceList,
-                eff_mod.TERCurve))]
+                    if isinstance(effect, (efs.SurfaceList,
+                                           efs.TERCurve))]
         return ter_list
 
     @property
     def mask_list(self):
         mask_list = [effect for effect in self.effects
-                     if isinstance(effect, eff_mod.ApertureList)]
+                     if isinstance(effect, efs.ApertureList)]
         return mask_list
 
     def __add__(self, other):
@@ -251,11 +288,15 @@ class OpticalElement:
         return msg + eff_str
 
 
+def _get_all(effects, effect_class):
+    return [eff for eff in effects if isinstance(eff, effect_class)]
+
+
 def make_effect(effect_dict, **super_kwargs):
     effect_meta_dict = {key : effect_dict[key] for key in effect_dict
                         if key not in ["class", "kwargs"]}
     effect_class_name = effect_dict["class"]
-    effect_cls = getattr(eff_mod, effect_class_name)
+    effect_cls = getattr(efs, effect_class_name)
 
     effect_kwargs = effect_dict["kwargs"]
     effect_kwargs.update(super_kwargs)
@@ -266,9 +307,34 @@ def make_effect(effect_dict, **super_kwargs):
     return effect
 
 
-class DetectorArray:
-    detectors_list = []
+# 1. Find the Wavelength range
+# Build from edges of throughput curve
 
+# 2. Find the wavelength bins
+# If TraceList and Aperture list, then Spectroscopy
+# TraceList
+# for each trace dlam along the trace centre in increments
+#   of SIM_SUB_PIXEL_FRACTION
+# Must be accompanied by an ApertureList
+
+# If not, then imaging
+# PSF core increase (atmo, ncpas)
+# If from a files, what is the bin size?
+# If analytic, dlam between a FWHM or SIM_SUB_PIXEL_FRACTION
+# ADC + AD shifts
+# dlam between shift of SIM_SUB_PIXEL_FRACTION
+
+# 3. Find the spatial range
+# If Spectroscopy
+# ApertureList
+# For each Trace set the sky header to the aperture footprint
+#   plus any shifts from AtmosphericDispersion
+# Set the Image plane footprint centred on the image plane
+#   position
+
+# If Imaging
+# DetectorList, or ApertureMask, plus any shift from
+#   AtmosphericDispersion
 
 class FOVManager:
     def __init__(self, effects=[], **kwargs):
@@ -278,38 +344,18 @@ class FOVManager:
         self._fovs_list = []
 
     def generate_fovs_list(self):
+        waverange = [self.meta["SIM_LAM_MIN"] * u.um,
+                     self.meta["SIM_LAM_MAX"] * u.um]
+        waverange = self.effects[0].fov_grid(None, waverange)["wavelength"]
 
-        # 1. Find the Wavelength range
-            # Build from edges of throughput curve,
+        if is_spectroscope(self.effects):
+            waveset = get_spectroscopy_waveset(self.effects, **self.meta)
+            hdus = get_spectroscopy_hdus(self.effects, waveset, **self.meta)
+        else:
+            waveset = get_imaging_waveset(self.effects, **self.meta)
+            hdus = get_imaging_hdus(self.effects, waveset, **self.meta)
 
-        # 2. Find the wavelength bins
-            # If TraceList and Aperture list, then Spectroscopy
-            # TraceList
-                # for each trace dlam along the trace centre in increments
-                #   of SIM_SUB_PIXEL_FRACTION
-                # Must be accompanied by an ApertureList
-
-            # If not, then imaging
-            # PSF core increase (atmo, ncpas)
-                # If from a files, what is the bin size?
-                # If analytic, dlam between a FWHM or SIM_SUB_PIXEL_FRACTION
-            # ADC + AD shifts
-                # dlam between shift of SIM_SUB_PIXEL_FRACTION
-
-        # 3. Find the spatial range
-            # If Spectroscopy
-            # ApertureList
-                # For each Trace set the sky header to the aperture footprint
-                #   plus any shifts from AtmosphericDispersion
-                # Set the Image plane footprint centred on the image plane
-                #   position
-
-            # If Imaging
-            # DetectorList, or ApertureMask, plus any shift from
-            #   AtmosphericDispersion
-
-        fovs_list = []
-        return fovs_list
+        return hdus
 
     @property
     def fovs(self):
@@ -317,4 +363,100 @@ class FOVManager:
         return self._fovs_list
 
 
+def is_spectroscope(effects):
+    has_trace_lists = sum([isinstance(eff, efs.TraceList)
+                           for eff in effects])
+    has_apertures = sum([isinstance(eff, (efs.ApertureList,
+                                          efs.ApertureMask))
+                         for eff in effects])
 
+    return bool(has_apertures and has_trace_lists)
+
+
+def get_spectroscopy_waveset(effects, **kwargs):
+    # TraceList
+    # for each trace dlam along the trace centre in increments
+    #   of SIM_SUB_PIXEL_FRACTION
+    # Must be accompanied by an ApertureList
+    pass
+
+
+def get_spectroscopy_hdus(effects, waveset, **kwargs):
+    # ApertureList
+    # For each Trace set the sky header to the aperture footprint
+    #   plus any shifts from AtmosphericDispersion
+    # Set the Image plane footprint centred on the image plane
+    #   position
+    pass
+
+
+def get_imaging_waveset(effects, **kwargs):
+    # PSF core increase (atmo, ncpas)
+    # If from a files, what is the bin size?
+    # If analytic, dlam between a FWHM or SIM_SUB_PIXEL_FRACTION
+    # ADC + AD shifts
+    # dlam between shift of SIM_SUB_PIXEL_FRACTION
+    pass
+
+
+def get_imaging_hdus(effects, waveset, **kwargs):
+
+    # check DetectorList for boundaries, convert to on-sky coords
+    # check ApertureMask for boundaries
+    # find the smallest region
+
+    # increase the boundaries by any 3D shifts
+    # cut up based on MAX_CHUNK_SIZE
+
+    detector_array = _get_all(effects, efs.DetectorList)[0]
+    aperture_masks = _get_all(effects, efs.ApertureMask)
+
+    headers = [sky_hdr_from_detector_hdr(detector_array.image_plane_header,
+                                         kwargs["SIM_DETECTOR_PIX_SCALE"])]
+    for aperture_mask in aperture_masks:
+        headers += [aperture_mask.header]
+
+    xmin, xmax, ymin, ymax = [], [], [], []
+    for header in headers:
+        xsky, ysky = calc_footprint(header)
+        xmin += [min(xsky)]
+        xmax += [max(xsky)]
+        ymin += [min(ysky)]
+        ymax += [max(ysky)]
+
+    pixel_scale = kwargs["SIM_DETECTOR_PIX_SCALE"] * u.arcsec.to(u.deg)
+    width = kwargs["SIM_CHUNK_SIZE"]
+
+    # smallest field comes from max(xmin) --> min(xmax), max(ymin) --> min(ymax)
+    hdrs = []
+    for w in range(len(waveset)-1):
+        for x in np.arange(max(xmin), min(xmax), width):
+            for y in np.arange(max(ymin), min(ymax), width):
+                hdr = _header_from_list_of_xy([x, x+width], [y, y+width],
+                                              pixel_scale=pixel_scale)
+                hdrs += [hdr]
+
+    # ..todo: add in wavelength shifts
+    # ..todo: add in detector coords
+
+    return hdrs
+
+    # for the offsets
+    # OBS_FIELD_ROTATION
+    # SIM_LAM_MID
+    # ATMO_TEMPERATURE
+    # ATMO_PRESSURE
+    # ATMO_REL_HUMIDITY
+    # ATMO_PWV
+    # ATMO_AIRMASS
+
+
+def sky_hdr_from_detector_hdr(header, pixel_scale):
+    """ pixel_scale in degrees - returns header"""
+
+    pixel_size = header["CDELT1D"]
+    x_mm, y_mm = calc_footprint(header, "D")
+    scale = pixel_scale / pixel_size            # (deg pix-1) / (mm pix-1)
+    header =_header_from_list_of_xy(x_mm * scale, y_mm * scale, pixel_scale)
+
+    return header

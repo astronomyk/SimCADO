@@ -1,38 +1,52 @@
 import numpy as np
 
-from ... import rc
+from synphot import SourceSpectrum, SpectralElement
+from synphot.models import Empirical1D
 
-from .effects import Effect, TERCurve
+from ... import rc
+from ...source.source2 import Source
 from ..radiometry import RadiometryTable
+from .effects import Effect, TERCurve
 
 
 class SurfaceList(Effect):
     def __init__(self, **kwargs):
         super(SurfaceList, self).__init__(**kwargs)
 
-        self.meta["SIM_MIN_THRESHOLD"] = rc.__rc__["SIM_MIN_THRESHOLD"]
+        self.meta["SIM_MIN_THROUGHPUT"] = rc.__rc__["SIM_MIN_THROUGHPUT"]
 
         self.radiometry_table = RadiometryTable()
         self.radiometry_table.meta.update(self.meta)
+        self._emission = None
+        self._throughput = None
 
         data = self.get_data()
         if data is not None:
             self.radiometry_table.add_surface_list(data)
 
-    def apply_to(self):
-        pass
+    def apply_to(self, source):
+        if isinstance(source, Source):
+            for ii in range(len(source.spectra)):
+                wave = source.spectra[ii].waveset
+                spec = source.spectra[ii](wave)
+                thru = self.throughput(wave)
+                new_source = SourceSpectrum(Empirical1D, points=wave,
+                                            lookup_table=spec*thru)
+                source.spectra[ii] = new_source
 
-    def fov_grid(self, header, waverange):
+        return source
+
+    def fov_grid(self, header, waverange, **kwargs):
         wave = np.linspace(min(waverange), max(waverange), 100)
-        throughput = self.get_throughput()(wave)
-        valid_waves = np.where(throughput > self.meta["SIM_MIN_THRESHOLD"])[0]
+        throughput = self.throughput(wave)
+        valid_waves = np.where(throughput > self.meta["SIM_MIN_THROUGHPUT"])[0]
         if len(valid_waves) > 0:
             wave_edges = [min(wave[valid_waves]), max(wave[valid_waves])]
         else:
             raise ValueError("No transmission found above the threshold {} in "
-                             "this wavelength range: {}"
-                             "".format(self.meta["SIM_MIN_THRESHOLD"],
-                                       waverange))
+                             "this wavelength range {}. Did you open the "
+                             "shutter?".format(self.meta["SIM_MIN_THROUGHPUT"],
+                                               waverange))
 
         return {"coords": None, "wavelengths": wave_edges}
 
@@ -63,3 +77,19 @@ class SurfaceList(Effect):
 
     def get_throughput(self, **kwargs):
         return self.radiometry_table.get_throughput(**kwargs)
+
+    def collapse(self, wave):
+        throughput = self.radiometry_table.throughput(wave)
+        self._throughput = SpectralElement(Empirical1D, points=wave,
+                                           lookup_table=throughput)
+        emission = self.radiometry_table.emission(wave)
+        self._emission = SourceSpectrum(Empirical1D, points=wave,
+                                        lookup_table=emission)
+
+    @property
+    def throughput(self):
+        return self.get_throughput()
+
+    @property
+    def emission(self):
+        return self.get_emission()

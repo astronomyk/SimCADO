@@ -7,12 +7,19 @@ import simcado as sim
 from simcado.optics import imager as opt
 from simcado.optics.effects import *
 
+from simcado.tests.mocks.py_objects.source_objects import _image_source
 from simcado.tests.mocks.py_objects.yaml_objects import \
     _atmo_yaml_dict, _detector_yaml_dict, _inst_yaml_dict
+from simcado.tests.mocks.py_objects.effects_objects import \
+    _surf_list, _surf_list_empty, _filter_surface
 
 MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                          "../mocks/MICADO_SCAO_WIDE/"))
 sim.rc.__search_path__ += [MOCK_PATH]
+
+
+################################################################################
+# YAML dict mocks
 
 
 @pytest.fixture(scope="function")
@@ -30,6 +37,37 @@ def detector_yaml_dict():
     return _detector_yaml_dict()
 
 
+################################################################################
+# Effects mocks
+
+@pytest.fixture(scope="function")
+def surf_list():
+    return _surf_list()
+
+
+@pytest.fixture(scope="function")
+def surf_list_empty():
+    return _surf_list_empty()
+
+
+@pytest.fixture(scope="function")
+def filter_surface():
+    return _filter_surface()
+
+
+################################################################################
+# Source mocks
+
+
+@pytest.fixture(scope="function")
+def image_source():
+    return _image_source()
+
+
+################################################################################
+# Utils
+
+
 @pytest.mark.usefixtures("atmo_yaml_dict")
 class TestMakeEffect:
     def test_it_creates_an_effects_object(self, atmo_yaml_dict):
@@ -39,6 +77,40 @@ class TestMakeEffect:
 
         assert isinstance(effect, GaussianDiffractionPSF)
         assert effect.meta["diameter"] == 39
+
+
+@pytest.mark.usefixtures("surf_list", "filter_surface")
+class TestMakeRadiometryTable:
+    def test_load_just_one_surface(self, filter_surface):
+        rad_table = opt.combine_radiometry_effects([filter_surface])
+        assert isinstance(rad_table, SurfaceList)
+
+    def test_load_two_surface(self, filter_surface):
+        rad_table = opt.combine_radiometry_effects([filter_surface]*3)
+        assert len(rad_table.radiometry_table.table) == 3
+
+    def test_load_just_one_surface_list(self, surf_list):
+        rad_table = opt.combine_radiometry_effects([surf_list])
+        len1 = len(surf_list.radiometry_table.table)
+        len2 = len(rad_table.radiometry_table.table)
+        assert len2 == len1
+
+    def test_load_two_surface_lists(self, surf_list):
+        rad_table = opt.combine_radiometry_effects([surf_list, surf_list])
+        len1 = len(surf_list.radiometry_table.table)
+        len2 = len(rad_table.radiometry_table.table)
+        assert len2 == 2 * len1
+
+    def test_load_one_surface_and_one_surface_list(self, surf_list,
+                                                   filter_surface):
+        rad_table = opt.combine_radiometry_effects([surf_list, filter_surface])
+        len1 = len(surf_list.radiometry_table.table)
+        len2 = len(rad_table.radiometry_table.table)
+        assert len2 == len1 + 1
+
+
+################################################################################
+# Optics Element
 
 
 @pytest.mark.usefixtures("atmo_yaml_dict")
@@ -65,6 +137,10 @@ class TestOpticalElementGetZOrderEffects:
 class TestOpticalElementSurfaceListProperty:
     def test_returns_empty_list_if_no_surface_list_given(self):
         pass
+
+
+################################################################################
+# Optics Manager
 
 
 @pytest.mark.usefixtures("detector_yaml_dict", "inst_yaml_dict")
@@ -189,7 +265,6 @@ class TestOpticsManagerImagePlaneHeader:
 #
 #
 # class TestMakeSurfacesTable:
-#
 #     def test_returns_empty_table_for_no_filenames(self):
 #         surf_tbl = imager.make_surfaces_table()
 #         assert len(surf_tbl) == 0
