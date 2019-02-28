@@ -137,7 +137,7 @@ __all__ = ["PSF", "PSFCube",
            "DeltaPSF", "DeltaPSFCube",
            "CombinedPSF", "CombinedPSFCube",
            "UserPSF", "UserPSFCube",
-           #"poppy_eelt_psf", "poppy_ao_psf", "seeing_psf",
+           "poppy_eelt_psf", "poppy_ao_psf", "seeing_psf",
            "get_eelt_segments", "make_foreign_PSF_cube"
            ]
 

@@ -18,7 +18,8 @@ from astropy.stats.funcs import median_absolute_deviation as mad
 
 #warnings.filterwarnings('ignore')
 
-__all__ = []
+__all__ = ["HXRGNoise"]
+
 
 class HXRGNoise:
     """

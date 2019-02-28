@@ -51,8 +51,10 @@ extensions = [
     'numpydoc',
     'sphinx.apidoc',
     'matplotlib.sphinxext.plot_directive',
+    'sphinx_automodapi.automodapi',
 ]
 
+numpydoc_show_class_members = False
 apidoc_module_dir = os.path.abspath('../../')
 apidoc_output_dir = 'reference'
 apidoc_separate_modules = True
