@@ -1,6 +1,9 @@
-from simcado.optics.fov import FieldOfView
+from astropy.io import fits
+
+from ..fov import FieldOfView
 from ..data_container import DataContainer
 from ..surface import SpectralSurface
+from ..image_plane_utils import calc_footprint
 
 
 class Effect(DataContainer):
@@ -13,8 +16,8 @@ class Effect(DataContainer):
             raise ValueError("fov must be a FieldOfView object: {}"
                              "".format(type(fov)))
 
-    def fov_grid(self, header, waverange, **kwargs):
-        return {"coords": None, "wavelengths": None}
+    def fov_grid(self, header=None, waverange=None, **kwargs):
+        return {"edges": None, "wavelengths": None}
 
     def update(self, **kwargs):
         pass
@@ -40,13 +43,14 @@ class Shift3D(Effect):
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
 
+    def fov_grid(self, header=None, waverange=None, **kwargs):
+        dic = {"wavelengths": waverange, "x_shifts": [0, 0], "y_shifts": [0, 0]}
+        return dic
+
 
 class AtmosphericDispersion(Shift3D):
     def __init__(self, **kwargs):
         super(Shift3D, self).__init__(**kwargs)
-
-    def fov_grid(self, header, waverange, **kwargs):
-        pass
 
 
 class AtmosphericDispersionCorrector(Shift3D):
@@ -62,7 +66,14 @@ class ApertureList(Effect):
 class ApertureMask(Effect):
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
-        self.header = None
+
+    def fov_grid(self, header=None, waverange=None, **kwargs):
+        x_sky, y_sky = calc_footprint(self.header)
+        return {"wavelengths": None, "edges": [x_sky, y_sky]}
+
+    @property
+    def header(self):
+        return fits.Header()
 
 
 class TraceList(Effect):

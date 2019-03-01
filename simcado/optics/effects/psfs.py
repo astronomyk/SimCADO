@@ -35,6 +35,9 @@ class PSF(Effect):
 
         return fov
 
+    def fov_grid(self, header=None, waverange=None, **kwargs):
+        return {"wavelengths": waverange}
+
     def get_kernel(self, fov):
         self.valid_waverange = None
         self.kernel = np.ones((1, 1))
@@ -54,7 +57,7 @@ class Vibration(PSF):
     def __init__(self, **kwargs):
         super(PSF, self).__init__(**kwargs)
 
-    def fov_grid(self, header, waverange, **kwargs):
+    def fov_grid(self, header=None, waverange=None, **kwargs):
         return {"coords": None, "wavelengths": None}
 
 
@@ -62,7 +65,7 @@ class NonCommonPathAberration(PSF):
     def __init__(self, **kwargs):
         super(PSF, self).__init__(**kwargs)
 
-    def fov_grid(self, header, waverange, **kwargs):
+    def fov_grid(self, header=None, waverange=None, **kwargs):
         waveset = []
         return {"coords": None, "wavelengths": waveset}
 
@@ -71,7 +74,7 @@ class Seeing(PSF):
     def __init__(self, **kwargs):
         super(PSF, self).__init__(**kwargs)
 
-    def fov_grid(self, header, waverange, **kwargs):
+    def fov_grid(self, header=None, waverange=None, **kwargs):
         waveset = []
         return {"coords": None, "wavelengths": waveset}
 

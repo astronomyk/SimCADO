@@ -36,7 +36,7 @@ class SurfaceList(Effect):
 
         return source
 
-    def fov_grid(self, header, waverange, **kwargs):
+    def fov_grid(self, header=None, waverange=None, **kwargs):
         wave = np.linspace(min(waverange), max(waverange), 100)
         throughput = self.throughput(wave)
         valid_waves = np.where(throughput > self.meta["SIM_MIN_THROUGHPUT"])[0]

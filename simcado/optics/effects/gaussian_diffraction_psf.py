@@ -11,7 +11,7 @@ class GaussianDiffractionPSF(AnalyticalPSF):
         super(GaussianDiffractionPSF, self).__init__(**kwargs)
         self.meta["diameter"] = diameter
 
-    def fov_grid(self, header, waverange, **kwargs):
+    def fov_grid(self, header=None, waverange=None, **kwargs):
         waverange = utils.quantify(waverange, u.um)
         diameter = utils.quantify(self.meta["diameter"], u.m).to(u.um)
         fwhm = 1.22 * (waverange / diameter).value  # in rad

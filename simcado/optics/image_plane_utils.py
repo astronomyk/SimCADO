@@ -90,7 +90,7 @@ def _make_bounding_header_from_imagehdus(imagehdus, pixel_scale=1*u.arcsec):
         y += list(y_foot)
     unit = u.mm if s == "D" else u.deg
     pixel_scale = pixel_scale.to(unit).value
-    hdr = _header_from_list_of_xy(x, y, pixel_scale, s)
+    hdr = header_from_list_of_xy(x, y, pixel_scale, s)
 
     return hdr
 
@@ -130,12 +130,12 @@ def _make_bounding_header_for_tables(tables, pixel_scale=1*u.arcsec):
         x += [np.min(x_col), np.max(x_col)]
         y += [np.min(y_col), np.max(y_col)]
     pixel_scale = pixel_scale.to(unit_new).value
-    hdr = _header_from_list_of_xy(x, y, pixel_scale, s)
+    hdr = header_from_list_of_xy(x, y, pixel_scale, s)
 
     return hdr
 
 
-def _header_from_list_of_xy(x, y, pixel_scale, wcs_suffix=""):
+def header_from_list_of_xy(x, y, pixel_scale, wcs_suffix=""):
     """
     Makes a header large enough to contain all x,y on-sky coordinates
 
