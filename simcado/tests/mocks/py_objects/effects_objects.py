@@ -1,7 +1,17 @@
+import os
+
 from astropy import units as u
 from astropy.table import Table
 
 from simcado.optics.effects import SurfaceList, TERCurve
+from simcado.optics.effects.effects_utils import make_effect
+from simcado.tests.mocks.py_objects.yaml_objects import _yaml_min_viable_scope
+
+import simcado as sim
+YAMLS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                          "../files/"))
+sim.rc.__search_path__ += [YAMLS_PATH]
+
 
 
 def _surf_list():
@@ -29,3 +39,12 @@ def _filter_surface():
               "outer": 0.1,
               "temp": 0}
     return TERCurve(**kwargs)
+
+
+def _mvs_effects_list():
+    effects_list = []
+    for dic in _yaml_min_viable_scope():
+        effects = dic["effects"]
+        effects_list += [make_effect(eff) for eff in effects]
+
+    return effects_list

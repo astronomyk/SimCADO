@@ -3,6 +3,8 @@ import yaml
 
 YAMLS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           "../yamls/"))
+FILES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                          "../files/"))
 
 
 def _atmo_yaml_dict():
@@ -85,3 +87,15 @@ effects :
         filename: FPA_array_layout.dat
     """
     return yaml.load(text)
+
+
+def _yaml_min_viable_scope():
+    with open(os.path.join(YAMLS_PATH, "min_viable_sys.yaml")) as f:
+        dicts = [dic for dic in yaml.load_all(f)]
+    return dicts
+
+
+def _usr_cmds_min_viable_scope():
+    from simcado.commands.user_commands_utils import read_config
+    config_dict = read_config(os.path.join(FILES_PATH, "CMD_mvs_cmds.config"))
+    return config_dict

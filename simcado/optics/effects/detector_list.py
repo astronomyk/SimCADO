@@ -12,8 +12,8 @@ class DetectorList(Effect):
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         hdr = self.image_plane_header
-        pixel_scale = kwargs["pixel_scale"] / 3600.   # ["] --> [deg]
-        pixel_size = hdr["CDELT1"]
+        pixel_scale = kwargs["pixel_scale"]  # ["] --> [deg]
+        pixel_size = hdr["CDELT1D"]
         x_mm, y_mm = calc_footprint(hdr, "D")
         x_sky = x_mm * pixel_scale / pixel_size  # x[deg] = x[mm] * [deg] / [mm]
         y_sky = y_mm * pixel_scale / pixel_size  # y[deg] = y[mm] * [deg] / [mm]

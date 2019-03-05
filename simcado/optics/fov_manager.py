@@ -1,6 +1,7 @@
 import numpy as np
 from astropy import units as u
 
+from .. import utils
 from . import effects as efs
 from .fov import FieldOfView
 from .image_plane_utils import header_from_list_of_xy
@@ -45,22 +46,18 @@ class FOVManager:
         self._fovs_list = []
 
     def generate_fovs_list(self):
-        waverange = [self.meta["SIM_LAM_MIN"] * u.um,
-                     self.meta["SIM_LAM_MAX"] * u.um]
-        waverange = self.effects[0].fov_grid(None, waverange)["wavelength"]
-
         if is_spectroscope(self.effects):
             shifts  = get_3D_shifts(self.effects, **self.meta)
             waveset = get_spectroscopy_waveset(self.effects, **self.meta)
             headers = get_spectroscopy_headers(self.effects, **self.meta)
-            hdus    = get_spectroscopy_hdus(headers, waveset, shifts)
+            fovs    = get_spectroscopy_fovs(headers, waveset, shifts)
         else:
             shifts  = get_3D_shifts(self.effects, **self.meta)
             waveset = get_imaging_waveset(self.effects, **self.meta)
             headers = get_imaging_headers(self.effects, **self.meta)
-            hdus    = get_imaging_hdus(headers, waveset, shifts)
+            fovs    = get_imaging_fovs(headers, waveset, shifts)
 
-        return hdus
+        return fovs
 
     @property
     def fovs(self):
@@ -83,14 +80,21 @@ def get_3D_shifts(effects, **kwargs):
     sub_pixel_frac = kwargs["SIM_SUB_PIXEL_FRACTION"]
 
     effects = _get_all(effects, efs.Shift3D)
-    shifts = [eff.fov_grid(lam_min=wave_min, lam_mid=wave_mid, lam_max=wave_max,
-                           sub_pixel_frac=sub_pixel_frac, **kwargs)
-              for eff in effects]
+    if len(effects) > 0:
+        shifts = [eff.fov_grid(lam_min=wave_min, lam_mid=wave_mid,
+                               lam_max=wave_max, sub_pixel_frac=sub_pixel_frac,
+                               **kwargs)
+                  for eff in effects]
 
-    # ..todo: Set this up so that it actually does something
-    wave_bin_edges = [wave_min, wave_max]
-    x_shifts = [0, 0]
-    y_shifts = [0, 0]
+        # ..todo: Set this up so that it actually does something useful
+        wave_bin_edges = [shift["wavelengths"] for shift in shifts]
+        x_shift = [shift["x_shifts"] for shift in shifts]
+        y_shift = [shift["y_shifts"] for shift in shifts]
+
+    else:
+        wave_bin_edges = [wave_min, wave_max]
+        x_shifts = [0, 0]
+        y_shifts = [0, 0]
 
     return {"wavelengths": wave_bin_edges,
             "x_shifts": x_shifts,
@@ -100,19 +104,22 @@ def get_3D_shifts(effects, **kwargs):
 def get_imaging_waveset(effects, **kwargs):
     # dlam between shift of
 
+    if np.any([isinstance(effects, efs.SurfaceList)]):
+        # ..todo: get the effective wavelength range from SurfaceList
+        pass
+
     wave_min = kwargs["SIM_LAM_MIN"]
     wave_mid = kwargs["SIM_LAM_MID"]
     wave_max = kwargs["SIM_LAM_MAX"]
-    sub_pixel_frac = kwargs["SIM_SUB_PIXEL_FRACTION"]
+    spf = kwargs["SIM_SUB_PIXEL_FRACTION"]
 
     psfs = _get_all(effects, efs.PSF)
     if len(psfs) > 0:
-        wave_bin_edges = [psf.fov_grid(sub_pixel_frac=sub_pixel_frac,
-                                       lam_min=wave_min,
-                                       lam_max=wave_max)["wavelengths"]
+        wave_bin_edges = [psf.fov_grid(waverange=[wave_min, wave_max],
+                                       sub_pixel_frac=spf)["wavelengths"]
                           for psf in psfs]
         # assume the longest array requires the highest spectral resolution
-        len_steps = [len(lbe) for lbe in wave_bin_edges]
+        len_steps = np.array([len(lbe) for lbe in wave_bin_edges])
         ii = np.where(len_steps == max(len_steps))[0][0]
         wave_bin_edges = wave_bin_edges[ii]
     else:
@@ -121,30 +128,26 @@ def get_imaging_waveset(effects, **kwargs):
     return wave_bin_edges
 
 
-def get_imaging_headers(effects, waveset, **kwargs):
-
-    # check DetectorList for boundaries, convert to on-sky coords
-    # check ApertureMask for boundaries
-    # find the smallest region
-    # cut up based on MAX_CHUNK_SIZE
+def get_imaging_headers(effects, **kwargs):
 
     aperture_masks = _get_all(effects, efs.ApertureMask)
-    detector_array = _get_all(effects, efs.DetectorList)[0]
+    detector_arrays = _get_all(effects, efs.DetectorList)
 
-    pixel_size = detector_array.image_plane_header["CDELT1"]
-    pixel_scale = kwargs["SIM_DETECTOR_PIX_SCALE"]
+    pixel_scale = kwargs["SIM_DETECTOR_PIX_SCALE"] / 3600.         # " -> deg
+    pixel_size = detector_arrays[0].image_plane_header["CDELT1D"]  # mm
     deg2mm = pixel_size / pixel_scale
 
     if len(aperture_masks) > 0:
         sky_edges = [apm.fov_grid()["edges"] for apm in aperture_masks]
-    elif len(detector_array) > 0:
-        sky_edges = [detector_array.fov_grid(pixel_scale=pixel_scale)["edges"]]
+    elif len(detector_arrays) > 0:
+        edges = detector_arrays[0].fov_grid(pixel_scale=pixel_scale)["edges"]
+        sky_edges = [edges]
     else:
         raise ValueError("No ApertureMask or DetectorList was provided. At "
                          "least a DetectorList object must be passed: {}"
                          "".format(effects))
 
-    width = kwargs["SIM_CHUNK_SIZE"]
+    width = kwargs["SIM_CHUNK_SIZE"] * pixel_scale
     hdrs = []
     for xy_sky in sky_edges:
         x0, y0 = min(xy_sky[0]), min(xy_sky[1])
@@ -162,10 +165,10 @@ def get_imaging_headers(effects, waveset, **kwargs):
     return hdrs
 
 
-def get_imaging_hdus(headers, waveset, shifts):
+def get_imaging_fovs(headers, waveset, shifts):
 
-    if len(shifts["wavelength"]) > len(waveset):
-        waveset = shifts["wavelength"]
+    if len(shifts["wavelengths"]) > len(waveset):
+        waveset = shifts["wavelengths"]
 
     # ..todo: add the shifts in somehow
 
@@ -195,5 +198,5 @@ def get_spectroscopy_headers(effects, **kwargs):
     pass
 
 
-def get_spectroscopy_hdus(fields, waveset, shifts):
+def get_spectroscopy_fovs(fields, waveset, shifts):
     pass

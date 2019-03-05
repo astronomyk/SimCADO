@@ -164,8 +164,14 @@ def header_from_list_of_xy(x, y, pixel_scale, wcs_suffix=""):
     crval1 = divmod(min(x), pixel_scale)[0] * pixel_scale
     crval2 = divmod(min(y), pixel_scale)[0] * pixel_scale
 
-    naxis1 = int((max(x) - crval1) // pixel_scale) + 2
-    naxis2 = int((max(y) - crval2) // pixel_scale) + 2
+    # naxis1 = int((max(x) - crval1) // pixel_scale) # + 2
+    # naxis2 = int((max(y) - crval2) // pixel_scale) # + 2
+
+    # crval1 = min(x)
+    # crval2 = min(y)
+
+    naxis1 = int((max(x) - min(x)) // pixel_scale)
+    naxis2 = int((max(y) - min(y)) // pixel_scale)
 
     hdr["NAXIS"] = 2
     hdr["NAXIS1"] = naxis1

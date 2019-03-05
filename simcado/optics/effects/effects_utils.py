@@ -34,7 +34,9 @@ def make_effect(effect_dict, **super_kwargs):
     effect_class_name = effect_dict["class"]
     effect_cls = getattr(efs, effect_class_name)
 
-    effect_kwargs = effect_dict["kwargs"]
+    effect_kwargs = {}
+    if "kwargs" in effect_dict:
+        effect_kwargs = effect_dict["kwargs"]
     effect_kwargs.update(super_kwargs)
 
     effect = effect_cls(**effect_kwargs)
