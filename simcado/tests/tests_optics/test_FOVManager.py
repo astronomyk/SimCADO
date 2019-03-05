@@ -71,7 +71,7 @@ class TestGenerateFovs:
 @pytest.mark.usefixtures("mvs_effects_list", "mvs_usr_cmds")
 class TestGet3DShifts:
     def test_returns_empty_for_the_moment(self, mvs_effects_list, mvs_usr_cmds):
-        shift_dict = fov_mgr.get_3D_shifts(mvs_effects_list, **mvs_usr_cmds)
+        shift_dict = fov_mgr.get_3d_shifts(mvs_effects_list, **mvs_usr_cmds)
         assert shift_dict["wavelengths"][0] == mvs_usr_cmds["SIM_LAM_MIN"]
 
     def test_returns_zeros_when_adc_and_ad_are_equal(self):
@@ -108,7 +108,7 @@ class TestGetImagingHeaders:
 class TestGetImagingFOVs:
     def test_returns_header_grid_detector_size(self, mvs_effects_list,
                                                mvs_usr_cmds):
-        shift_dict = fov_mgr.get_3D_shifts(mvs_effects_list, **mvs_usr_cmds)
+        shift_dict = fov_mgr.get_3d_shifts(mvs_effects_list, **mvs_usr_cmds)
         waveset = fov_mgr.get_imaging_waveset(mvs_effects_list, **mvs_usr_cmds)
         hdrs = fov_mgr.get_imaging_headers(mvs_effects_list, **mvs_usr_cmds)
 

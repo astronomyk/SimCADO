@@ -47,12 +47,12 @@ class FOVManager:
 
     def generate_fovs_list(self):
         if is_spectroscope(self.effects):
-            shifts  = get_3D_shifts(self.effects, **self.meta)
+            shifts  = get_3d_shifts(self.effects, **self.meta)
             waveset = get_spectroscopy_waveset(self.effects, **self.meta)
             headers = get_spectroscopy_headers(self.effects, **self.meta)
             fovs    = get_spectroscopy_fovs(headers, waveset, shifts)
         else:
-            shifts  = get_3D_shifts(self.effects, **self.meta)
+            shifts  = get_3d_shifts(self.effects, **self.meta)
             waveset = get_imaging_waveset(self.effects, **self.meta)
             headers = get_imaging_headers(self.effects, **self.meta)
             fovs    = get_imaging_fovs(headers, waveset, shifts)
@@ -65,7 +65,7 @@ class FOVManager:
         return self._fovs_list
 
 
-def get_3D_shifts(effects, **kwargs):
+def get_3d_shifts(effects, **kwargs):
     # for the offsets
     # OBS_FIELD_ROTATION
     # ATMO_TEMPERATURE
@@ -88,8 +88,8 @@ def get_3D_shifts(effects, **kwargs):
 
         # ..todo: Set this up so that it actually does something useful
         wave_bin_edges = [shift["wavelengths"] for shift in shifts]
-        x_shift = [shift["x_shifts"] for shift in shifts]
-        y_shift = [shift["y_shifts"] for shift in shifts]
+        x_shifts = [shift["x_shifts"] for shift in shifts]
+        y_shifts = [shift["y_shifts"] for shift in shifts]
 
     else:
         wave_bin_edges = [wave_min, wave_max]

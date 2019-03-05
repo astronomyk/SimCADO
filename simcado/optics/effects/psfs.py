@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.signal import convolve
 
+from astropy.io import fits
+
 from ..fov import FieldOfView
 from .effects import Effect
 
@@ -115,3 +117,48 @@ class MaoryFieldVaryingPSF(DiscreetPSF):
 class MaoryFieldConstantPSF(DiscreetPSF):
     def __init__(self, **kwargs):
         super(DiscreetPSF, self).__init__(**kwargs)
+        self.waveset, self.kernel_indexes = get_psf_wave_exts(self)
+        self.current_layer = None
+
+    def fov_grid(self, header=None, waverange=None, **kwargs):
+        return {"wavelengths": self.waveset}
+
+    def get_kernel(self, fov):
+        fov_wave = 0.5 * (fov.meta["wave_min"] + fov.meta["wave_max"])
+        ii = nearest_index(fov_wave, self.waveset)
+        ext = self.kernel_indexes[ii]
+        if ext != self.current_layer:
+            self.kernel = self._file[ext]
+            self.current_layer = ext
+
+
+def nearest_index(x, x_array):
+    return int(round(np.interp(x, x_array, np.arange(len(x_array)))))
+
+
+def get_psf_wave_exts(hdu_list):
+    """
+    Returns a dict of {extension : wavelength}
+
+    Parameters
+    ----------
+    hdu_list
+
+    Returns
+    -------
+    wave_set, wave_ext
+
+    """
+
+    if not isinstance(hdu_list, fits.HDUList):
+        raise ValueError("psf_effect must be a PSF object: {}"
+                         "".format(type(hdu_list)))
+
+    wave_set = [hdu.header["WAVE0"] for hdu in hdu_list
+                if "WAVE0" in hdu.header]
+    wave_ext = [ii for ii in range(len(hdu_list))
+                if "WAVE0" in hdu_list[ii].header]
+
+    return wave_set, wave_ext
+
+
