@@ -67,8 +67,8 @@ effects:
   class: DetectorList
   z_order: [100, 500]
   kwargs:
-    array_dict: {"id": [1], "x_cen": [0], "y_cen":[0], "xhw": [500],
-                 "yhw": [500], "x_len": [1000], "y_len": [1000],
+    array_dict: {"id": [1], "x_cen": [0], "y_cen":[0], "xhw": [450],
+                 "yhw": [450], "x_len": [1000], "y_len": [1000],
                  "pixsize": [1.], "angle": [0.], "gain": [1.0]}
     x_cen_unit : mm
     y_cen_unit : mm

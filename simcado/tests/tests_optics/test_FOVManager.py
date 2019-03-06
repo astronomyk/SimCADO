@@ -6,6 +6,8 @@ import numpy as np
 import simcado as sim
 from simcado.optics.fov_manager import FOVManager
 from simcado.optics import fov_manager as fov_mgr
+from simcado.optics.image_plane import ImagePlane
+
 
 from simcado.tests.mocks.py_objects.effects_objects import _mvs_effects_list
 from simcado.tests.mocks.py_objects.yaml_objects import \
@@ -67,6 +69,22 @@ class TestGenerateFovs:
 
             plt.show()
 
+    def test_fovs_dont_overlap_on_canvas(self, mvs_effects_list, mvs_usr_cmds):
+
+        implane = ImagePlane(mvs_effects_list[-2].image_plane_header)
+        fov_man = FOVManager(mvs_effects_list, **mvs_usr_cmds)
+        fovs = fov_man.generate_fovs_list()
+        for fov in fovs:
+            fov.hdu.data = np.ones((fov.header["NAXIS1"], fov.header["NAXIS2"]))
+            implane.add(fov.hdu, wcs_suffix="D")
+
+        assert np.all(implane.image == 1)
+
+        if PLOTS:
+            plt.imshow(implane.image.T, origin="lower")
+            plt.colorbar()
+            plt.show()
+
 
 @pytest.mark.usefixtures("mvs_effects_list", "mvs_usr_cmds")
 class TestGet3DShifts:
@@ -88,7 +106,7 @@ class TestGetImagingWaveset:
         assert np.all(waveset == [mvs_usr_cmds["SIM_LAM_MIN"],
                                   mvs_usr_cmds["SIM_LAM_MAX"]])
 
-    def test_returns_waveset_based_on_read_psfs(self):
+    def test_returns_waveset_based_on_psfs(self):
         pass
 
 

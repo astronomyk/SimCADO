@@ -154,13 +154,15 @@ def get_imaging_headers(effects, **kwargs):
         x1, y1 = max(xy_sky[0]), max(xy_sky[1])
         for xi in np.arange(x0, x1, width):
             for yi in np.arange(y0, y1, width):
-                xii = np.array([xi, xi + min(width, x1-xi)])
-                yii = np.array([yi, yi + min(width, y1-yi)])
+                # xii = np.array([xi, xi + min(width, x1-xi)])
+                # yii = np.array([yi, yi + min(width, y1-yi)])
+                xii = np.array([xi, xi + width])
+                yii = np.array([yi, yi + width])
                 hdr_sky = header_from_list_of_xy(xii, yii, pixel_scale)
                 hdr_mm  = header_from_list_of_xy(xii * deg2mm, yii * deg2mm,
                                                  pixel_size, "D")
-                hdr_sky.update(hdr_mm)
-                hdrs += [hdr_sky]
+                hdr_mm.update(hdr_sky)
+                hdrs += [hdr_mm]
 
     return hdrs
 

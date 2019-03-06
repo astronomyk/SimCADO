@@ -527,9 +527,6 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1, wcs_suffix=""):
 
     xsky0, ysky0 = pix2val(new_hdu.header, xcen_im, ycen_im, s)
     xpix0, ypix0 = val2pix(canvas_hdu.header, xsky0, ysky0, s)
-    print(dict(new_hdu.header))
-    print(dict(canvas_hdu.header))
-    print(new_hdu.data.shape, canvas_hdu.data.shape)
     canvas_hdu.data = overlay_image(new_hdu.data, canvas_hdu.data,
                                     coords=(xpix0, ypix0))
 
