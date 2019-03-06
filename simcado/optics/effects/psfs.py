@@ -13,29 +13,30 @@ class PSF(Effect):
         self.valid_waverange = None
         super(Effect, self).__init__(**kwargs)
 
-    def apply_to(self, fov):
+    def apply_to(self, obj):
+        if len(obj.fields) > 0:
+            kernel = self.get_kernel(obj)
 
-        if not isinstance(fov, FieldOfView):
-            raise ValueError("fov must be a FieldOfView object: {}"
-                             "".format(type(fov)))
-        if fov.hdu.data is None:
-            fov.view()
+            sub_pixel = False
+            if "SIM_SUB_PIXEL_FLAG" in self.meta:
+                sub_pixel = self.meta["SIM_SUB_PIXEL_FLAG"]
 
-        kernel = self.get_kernel(fov)
+            if obj.hdu.data is None:
+                obj.view(sub_pixel)
 
-        old_shape = fov.hdu.data.shape
-        new_image = convolve(fov.hdu.data, kernel, mode="full")
-        new_shape = new_image.shape
+            old_shape = obj.hdu.data.shape
+            new_image = convolve(obj.hdu.data, kernel, mode="full")
+            new_shape = new_image.shape
 
-        fov.hdu.data = new_image
+            obj.hdu.data = new_image
 
-        # ..todo: careful with which dimensions mean what
-        fov.hdu.header["CRPIX1"] += (new_shape[0] - old_shape[0]) / 2
-        fov.hdu.header["CRPIX2"] += (new_shape[1] - old_shape[1]) / 2
-        fov.hdu.header["CRPIX1D"] += (new_shape[0] - old_shape[0]) / 2
-        fov.hdu.header["CRPIX2D"] += (new_shape[1] - old_shape[1]) / 2
+            # ..todo: careful with which dimensions mean what
+            obj.hdu.header["CRPIX1"] += (new_shape[0] - old_shape[0]) / 2
+            obj.hdu.header["CRPIX2"] += (new_shape[1] - old_shape[1]) / 2
+            obj.hdu.header["CRPIX1D"] += (new_shape[0] - old_shape[0]) / 2
+            obj.hdu.header["CRPIX2D"] += (new_shape[1] - old_shape[1]) / 2
 
-        return fov
+        return obj
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         return {"wavelengths": waverange}

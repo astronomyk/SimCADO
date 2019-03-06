@@ -174,11 +174,14 @@ def get_imaging_fovs(headers, waveset, shifts):
 
     # ..todo: add the shifts in somehow
 
+    counter = 0
     fovs = []
     for ii in range(len(waveset) - 1):
         for hdr in headers:
             waverange = [waveset[ii], waveset[ii + 1]]
-            fovs += [FieldOfView(hdr, waverange)]
+            fov = FieldOfView(hdr, waverange)
+            fov.meta["name"] = "FOV-{}".format(counter)
+            fovs += [fov]
 
     return fovs
 

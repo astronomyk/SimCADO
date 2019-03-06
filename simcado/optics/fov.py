@@ -118,6 +118,12 @@ class FieldOfView:
     def image(self):
         return self.data
 
+    @property
+    def corners(self):
+        sky_corners = imp_utils.calc_footprint(self.header)
+        imp_corners = imp_utils.calc_footprint(self.header, "D")
+        return sky_corners, imp_corners
+
 
 def is_field_in_fov(fov_header, table_or_imagehdu, wcs_suffix=""):
 

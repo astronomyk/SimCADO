@@ -1,7 +1,6 @@
 import os
 import glob
 import warnings
-import logging
 import copy
 
 import yaml
@@ -64,7 +63,24 @@ class UserCommands:
         for key in tmp_cmds:
             self[key] = tmp_cmds[key]
 
+    def _convert_python_types(self):
+        """Convert strings "none", "true", "false" values into python types"""
+        self.cmds = cutils.convert_dict_strings_to_python_types(self.cmds)
 
+    @property
+    def yaml_dicts(self):
+        atmo_yaml = find_file(self.cmds["SIM_ATMOSPHERE_YAML"])
+        scope_yaml = find_file(self.cmds["SIM_TELESCOPE_YAML"])
+        inst_yaml = find_file(self.cmds["SIM_INSTRUMENT_YAML"])
+        detector_yaml = find_file(self.cmds["SIM_DETECTOR_YAML"])
+
+        yaml_dicts = []
+        for yaml_file in [atmo_yaml, scope_yaml, inst_yaml, detector_yaml]:
+            if yaml_file is not None:
+                with open(find_file(yaml_file)) as f:
+                    yaml_dicts += [dic for dic in yaml.load_all(f)]
+
+        return yaml_dicts
 
     def __getitem__(self, key):
         if cutils.is_item_subcategory(key, self.cmds):

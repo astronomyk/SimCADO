@@ -37,6 +37,7 @@ def make_effect(effect_dict, **super_kwargs):
     effect_kwargs = {}
     if "kwargs" in effect_dict:
         effect_kwargs = effect_dict["kwargs"]
+    effect_kwargs.update(effect_meta_dict)
     effect_kwargs.update(super_kwargs)
 
     effect = effect_cls(**effect_kwargs)

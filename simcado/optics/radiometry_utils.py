@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from copy import deepcopy
+import warnings
 
 import numpy as np
 from astropy import units as u
@@ -108,11 +109,14 @@ def add_surface_to_table(tbl, surf, name, position):
     tbl.insert_row(position)
     for colname in tbl.colnames:
         surf_col = real_colname(colname, surf.meta)
-        if surf_col:
+        if surf_col is not None:
             surf_val = surf.meta[surf_col]
             if isinstance(surf_val, u.Quantity):
                 surf_val = surf_val.value
             tbl = change_table_entry(tbl, colname, surf_val, position=position)
+        else:
+            warnings.warn("{} was not found in the meta dictionary of {}. "
+                          "This could cause problems.".format(colname, name))
 
     colname = real_colname("name", tbl.colnames)
     tbl = change_table_entry(tbl, colname, name, position=position)

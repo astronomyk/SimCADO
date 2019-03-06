@@ -6,13 +6,13 @@ from simcado.optics.optical_element import OpticalElement
 
 
 class OpticsManager:
-    def __init__(self, yaml_docs=[], **kwargs):
+    def __init__(self, yaml_dicts=[], **kwargs):
         self.optical_elements = [OpticalElement({"name": "misc"})]
         self.meta = {}
         self.meta.update(kwargs)
 
-        if yaml_docs is not None:
-            self.load_effects(yaml_docs)
+        if yaml_dicts is not None:
+            self.load_effects(yaml_dicts)
 
     def load_effects(self, yaml_docs):
         if isinstance(yaml_docs, dict):
@@ -23,8 +23,8 @@ class OpticsManager:
         if isinstance(effect, efs.Effect):
             self.optical_elements[ext].add_effect(effect)
 
-    def update(self, obs_dict):
-        self.meta.update(obs_dict)
+    def update(self, **obs_dict):
+        self.meta.update(**obs_dict)
 
     def get_all(self, class_type):
         effects = []
@@ -115,6 +115,8 @@ class OpticsManager:
             for opt_el in self.optical_elements:
                 effects += opt_el.get_all(item)
             return effects
+        elif isinstance(item, int):
+            return self.optical_elements[item]
 
     def __repr__(self):
         msg = "\nOpticsManager contains {} OpticalElements \n" \

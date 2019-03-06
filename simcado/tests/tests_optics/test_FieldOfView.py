@@ -103,16 +103,16 @@ class TestFieldOfViewView:
 
         the_fov = fov.FieldOfView(basic_fov_header, (1, 2)*u.um)
         the_fov.extract_from(src)
-        view = the_fov.view()
+        the_fov.view()
 
-        assert np.isclose(np.sum(view), orig_sum)
+        assert np.isclose(np.sum(the_fov.hdu.data), orig_sum)
 
-        if PLOTS:
+        if PLOTS is False:
             plt.imshow(src.fields[0].data.T, origin="lower", norm=LogNorm())
             plt.colorbar()
             plt.show()
 
-            plt.imshow(view.T, origin="lower", norm=LogNorm())
+            plt.imshow(the_fov.hdu.data.T, origin="lower", norm=LogNorm())
             plt.colorbar()
             plt.show()
 

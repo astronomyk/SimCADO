@@ -39,13 +39,14 @@ class OpticalElement:
 
         effects = []
         for eff in self.effects:
-            z = eff.meta["z_order"]
-            if isinstance(z, (list, tuple)):
-                if any([zmin <= zi <= zmax for zi in z]):
-                    effects += [eff]
-            else:
-                if zmin <= z <= zmax:
-                    effects += [eff]
+            if "z_order" in eff.meta:
+                z = eff.meta["z_order"]
+                if isinstance(z, (list, tuple)):
+                    if any([zmin <= zi <= zmax for zi in z]):
+                        effects += [eff]
+                else:
+                    if zmin <= z <= zmax:
+                        effects += [eff]
 
         return effects
 

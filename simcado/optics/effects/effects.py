@@ -1,5 +1,6 @@
 from astropy.io import fits
 
+from ...source.source2 import Source
 from ..fov import FieldOfView
 from ..data_container import DataContainer
 from ..surface import SpectralSurface
@@ -11,10 +12,15 @@ class Effect(DataContainer):
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
 
-    def apply_to(self, fov):
-        if not isinstance(fov, FieldOfView):
-            raise ValueError("fov must be a FieldOfView object: {}"
-                             "".format(type(fov)))
+    def apply_to(self, obj):
+        if obj is None:
+            raise ValueError("fov was None. Oops.")
+
+        if not isinstance(obj, (Source, FieldOfView)):
+            raise ValueError("fov must be a FieldOfView (or Source) object: {}"
+                             "".format(type(obj)))
+
+        return obj
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         return {"edges": None, "wavelengths": None}
