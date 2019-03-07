@@ -119,10 +119,10 @@ import synphot
 
 __all__ = ["Source",
            "star", "stars", "cluster",
-           "spiral", "spiral_profile", "elliptical", "sersic_profile"
+           "spiral", "spiral_profile", "elliptical", "sersic_profile",
            "source_from_image",
            "star_grid", "empty_sky", "SED",
-           "sie_grad", "apply_grav_lens"
+           "sie_grad", "apply_grav_lens",
            "get_SED_names",
            "scale_spectrum", "scale_spectrum_sb",
            "flat_spectrum", "flat_spectrum_sb",

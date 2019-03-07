@@ -8,97 +8,73 @@ SimCADO Package
 ``simcado.commands module``
 ===========================
 
-.. currentmodule:: simcado.commands
-
-.. automodule:: simcado.commands
-   :members:
-
-
+.. automodapi:: simcado.commands
+   :no-inheritance-diagram:
+  
 
 ``simcado.detector module``
 ============================
 
-.. currentmodule:: simcado.detector
-
-.. automodule:: simcado.detector
-   :members:
-
+.. automodapi:: simcado.detector
+   :no-inheritance-diagram:
 
 
 ``simcado.nghxrg module``
 =========================
 
-.. currentmodule:: simcado.nghxrg
-
-.. automodule:: simcado.nghxrg
-   :members:
-
+.. automodapi:: simcado.nghxrg
+   :no-inheritance-diagram:
 
 
 ``simcado.optics module``
 =========================
 
-.. currentmodule:: simcado.optics
-
-.. automodule:: simcado.optics
-   :members:
+.. automodapi:: simcado.optics
+   :no-inheritance-diagram:
 
 
 
 ``simcado.psf module``
 ======================
 
-.. currentmodule:: simcado.psf
-
-.. automodule:: simcado.psf
-   :members:
+.. automodapi:: simcado.psf
+   :no-inheritance-diagram:
 
 
 
 ``simcado.simulation module``
 =============================
 
-.. currentmodule:: simcado.simulation
-
-.. automodule:: simcado.simulation
-   :members:
-
+.. automodapi:: simcado.simulation
+   :no-inheritance-diagram:
 
 
 ``simcado.source module``
 =========================
 
-.. currentmodule:: simcado.source
-
-.. automodule:: simcado.source
-   :members:
+.. automodapi:: simcado.source
+   :no-inheritance-diagram:
 
 
 
 ``simcado.spatial module``
 ==========================
 
-.. currentmodule:: simcado.spatial
-
-.. automodule:: simcado.spatial
-   :members:
+.. automodapi:: simcado.spatial
+   :no-inheritance-diagram:
 
 
 
 ``simcado.spectral module``
 ===========================
 
-.. currentmodule:: simcado.spectral
-
-.. automodule:: simcado.spectral
-   :members:
+.. automodapi:: simcado.spectral
+   :no-inheritance-diagram:
 
 
 
 ``simcado.utils module``
 ========================
 
-.. currentmodule:: simcado.utils
-
-.. automodule:: simcado.utils
-   :members:
+.. automodapi:: simcado.utils
+   :no-inheritance-diagram:
