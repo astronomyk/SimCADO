@@ -10,3 +10,4 @@ sphinx ==1.6.7
 synphot
 poppy
 pytest
+sphinx_automodapi
