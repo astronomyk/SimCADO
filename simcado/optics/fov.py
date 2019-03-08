@@ -33,7 +33,8 @@ class FieldOfView:
     """
 
     def __init__(self, header, waverange, **kwargs):
-        self.meta = {"wave_binwidth" : rc.__rc__["SIM_SPEC_RESOLUTION"],
+        self.meta = {"id" : None,
+                     "wave_binwidth" : rc.__rc__["SIM_SPEC_RESOLUTION"],
                      "wave_min" : utils.quantify(waverange[0], u.um),
                      "wave_max" : utils.quantify(waverange[1], u.um),
                      "area" : 1 * u.m**2,
@@ -92,9 +93,9 @@ class FieldOfView:
             self.fields += [imagehdu]
 
     def view(self, sub_pixel=False):
+        self.hdu.data = np.zeros((self.hdu.header["NAXIS1"],
+                                  self.hdu.header["NAXIS2"]))
         if len(self.fields) > 0:
-            self.hdu.data = np.zeros((self.hdu.header["NAXIS1"],
-                                      self.hdu.header["NAXIS2"]))
             for field in self.fields:
                 if isinstance(field, Table):
                     self.hdu = imp_utils.add_table_to_imagehdu(field, self.hdu,
@@ -123,6 +124,17 @@ class FieldOfView:
         sky_corners = imp_utils.calc_footprint(self.header)
         imp_corners = imp_utils.calc_footprint(self.header, "D")
         return sky_corners, imp_corners
+
+    def __repr__(self):
+        msg = "FOV id: {}, with dimensions ({}, {})\n" \
+              "".format(self.meta["id"], self.header["NAXIS1"],
+                        self.header["NAXIS2"])
+        msg += "Sky centre: ({},{})\n" \
+               "".format(self.header["CRVAL1"], self.header["CRVAL2"])
+        msg += "Image centre: ({},{})\n" \
+               "".format(self.header["CRVAL1D"], self.header["CRVAL2D"])
+
+        return msg
 
 
 def is_field_in_fov(fov_header, table_or_imagehdu, wcs_suffix=""):

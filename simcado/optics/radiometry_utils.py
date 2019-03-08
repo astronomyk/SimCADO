@@ -30,23 +30,27 @@ def combine_emissions(tbl, surfaces, row_indexes, etendue):
 
         if isinstance(surf, SpectralSurface):
             surf_throughput = getattr(surf, action_attr)
-
-            surf_emission = surf.emission
-            surf_eff_area = surf.area * np.cos(surf.mirror_angle)
-            surf_eff_solid_angle = (etendue / surf_eff_area).to(u.arcsec**2)
-            surf_emission *= surf_eff_solid_angle.value
-
-            surf_emission.meta["solid_angle"] = None
-            surf_emission.meta["history"] += ["Etendue scale factor applied. "
-                                              "Effective pixel solid angle for "
-                                              "surface is {}"
-                                              "".format(surf_eff_solid_angle)]
-
-            if ii == 0:
-                emission = deepcopy(surf_emission)
-            else:
+            if emission is not None:
                 emission = emission * surf_throughput
-                emission = emission + surf_emission
+
+            if surf.area is not None:
+                surf_emission = surf.emission
+                surf_eff_area = surf.area * np.cos(surf.mirror_angle)
+                surf_eff_solid_angle = (etendue / surf_eff_area).to(u.arcsec**2)
+                surf_emission *= surf_eff_solid_angle.value
+
+                msg = "Etendue scale factor applied. Effective pixel solid " \
+                      "angle for surface is {}".format(surf_eff_solid_angle)
+                surf_emission.meta["solid_angle"] = None
+                surf_emission.meta["history"] += [msg]
+
+                if ii == 0:
+                    emission = deepcopy(surf_emission)
+                else:
+                    emission = emission + surf_emission
+            else:
+                warnings.warn('Ignoring emission from surface: "{}". Area came '
+                              'back as "None"'.format(surf.meta["name"]))
 
     return emission
 

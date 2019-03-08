@@ -1,7 +1,10 @@
 import os
+from copy import deepcopy
 import pytest
+from pytest import approx
 
 import numpy as np
+from astropy import units as u
 
 import simcado as sim
 from simcado.optics.fov_manager import FOVManager
@@ -21,7 +24,7 @@ from simcado.tests.mocks.py_objects.source_objects import _image_source, \
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
-PLOTS = True
+PLOTS = False
 
 FILES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           "../mocks/files/"))
@@ -103,12 +106,47 @@ class TestObserve:
 
     def test_observe_works_for_source_distributed_over_several_fovs(self, cmds,
                                                                     im_src):
-        print(im_src.fields)
-        cmds["SIM_DETECTOR_PIX_SCALE"] = 0.1
+        orig_sum = np.sum(im_src.fields[0].data)
+
+        cmds["SIM_DETECTOR_PIX_SCALE"] = 0.02
         opt = OpticalTrain(cmds)
         opt.observe(im_src)
 
+        wave = np.arange(0.5, 2.51, 0.1)*u.um
+        unit = u.Unit("ph s-1 m-2 um-1")
+        print(opt.optics_manager.radiometry_table.emission(wave).to(unit))
+        print(opt.optics_manager.radiometry_table.table)
+        final_sum = np.sum(opt.image_plane.image)
+        print(orig_sum, final_sum)
+
         if PLOTS:
+            plt.imshow(opt.image_plane.image.T, origin="lower", norm=LogNorm())
+            plt.show()
+
+        assert final_sum == approx(orig_sum, rel=1e-3)
+
+    def test_observe_works_for_many_sources_distributed(self, cmds, im_src):
+        orig_sum = np.sum(im_src.fields[0].data)
+        im_src1 = deepcopy(im_src)
+        im_src2 = deepcopy(im_src)
+        im_src2.shift(7, 7)
+        im_src3 = deepcopy(im_src)
+        im_src3.shift(-10, 14)
+        im_src4 = deepcopy(im_src)
+        im_src4.shift(-4, -6)
+        im_src5 = deepcopy(im_src)
+        im_src5.shift(15, -15)
+        multi_img = im_src1 + im_src2 + im_src3 + im_src4 + im_src5
+
+        cmds["SIM_DETECTOR_PIX_SCALE"] = 0.02
+        opt = OpticalTrain(cmds)
+        opt.observe(multi_img)
+
+        final_sum = np.sum(opt.image_plane.image)
+        print(orig_sum, final_sum)
+        assert final_sum == approx(5*orig_sum, rel=1e-3)
+
+        if PLOTS is False:
             plt.imshow(opt.image_plane.image.T, origin="lower", norm=LogNorm())
             plt.show()
 

@@ -1,5 +1,5 @@
-from simcado.optics import effects as efs
-from simcado.optics.effects.effects_utils import make_effect, _get_all
+from . import effects as efs
+from .effects.effects_utils import make_effect, get_all_effects
 
 
 class OpticalElement:
@@ -26,7 +26,7 @@ class OpticalElement:
             self.effects += [effect]
 
     def get_all(self, effect_class):
-        return _get_all(self.effects, effect_class)
+        return get_all_effects(self.effects, effect_class)
 
     def get_z_order_effects(self, z_level):
         if isinstance(z_level, int):

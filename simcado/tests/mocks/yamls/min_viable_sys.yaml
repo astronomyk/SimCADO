@@ -4,7 +4,7 @@ name: test_atmosphere
 
 effects :
 - name: atmospheric transmission
-  class: TERCurve
+  class: AtmosphericTERCurve
   kwargs:
     array_dict: {wavelength: [0.5, 1.0, 2.0, 2.5],
                  transmission: [0, 1, 1, 0],
@@ -46,10 +46,12 @@ effects:
 - name: filter TC
   class: TERCurve
   kwargs:
-    array_dict: {wavelength: [0.5, 1.3, 1.4, 1.7, 1.8, 2.5],
+    array_dict: {wavelength: [0.5, 0.6, 0.7, 2.3, 2.4, 2.5],
                  transmission: [0, 0, 1, 1, 0, 0]}
     action: transmission
     wavelength_unit: um
+    outer: 0.2
+    outer_unit: m
 
 - name: NCPA PSF
   class: PSF
@@ -66,8 +68,8 @@ effects:
   class: DetectorList
   z_order: [10, 100, 500]
   kwargs:
-    array_dict: {"id": [1], "x_cen": [0], "y_cen":[0], "xhw": [250],
-                 "yhw": [250], "x_len": [900], "y_len": [900],
+    array_dict: {"id": [1], "x_cen": [0], "y_cen":[0], "xhw": [1024],
+                 "yhw": [1024], "x_len": [900], "y_len": [900],
                  "pixsize": [1.], "angle": [0.], "gain": [1.0]}
     x_cen_unit : mm
     y_cen_unit : mm

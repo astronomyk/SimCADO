@@ -53,6 +53,7 @@ class SpectralSurface:
                 the_area -= np.pi * (0.5 * inner_diameter) ** 2
         else:
             the_area = None
+
         return the_area
 
     @property
@@ -60,7 +61,7 @@ class SpectralSurface:
         if "angle" in self.meta:
             mirr_angle = self.from_meta("angle", u.deg)
         else:
-            mirr_angle = 0
+            mirr_angle = 0 * u.deg
         return mirr_angle
 
     @property
@@ -221,7 +222,7 @@ class SpectralSurface:
         if colname in self.meta:
             val = self.meta[colname]
         elif colname in self.table.colnames:
-            val = self.table[colname]
+            val = self.table[colname].data
         else:
             warnings.warn("{} not found in either '.meta' or '.table'"
                           "".format(colname))
@@ -246,5 +247,3 @@ class SpectralSurface:
                              "".format(colname))
 
         return val_out
-
-

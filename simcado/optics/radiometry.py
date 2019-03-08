@@ -15,7 +15,7 @@ class RadiometryTable:
     """
 
     def __init__(self, tables=(), **kwargs):
-        self.meta = {}
+        self.meta = {"area": None}
         self.meta.update(kwargs)
 
         self.table = None
@@ -87,7 +87,7 @@ class RadiometryTable:
 
     @property
     def emission(self):
-        if "etendue" not in self.meta["etendue"]:
+        if "etendue" not in self.meta:
             raise ValueError("self.meta['etendue'] must be set")
         etendue = quantify(self.meta["etendue"], u.Unit("m2 arcsec2"))
 

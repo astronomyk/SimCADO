@@ -1,7 +1,11 @@
 from copy import deepcopy
 
-from simcado.optics import effects as efs
-from simcado.optics.radiometry_utils import empty_surface_list
+import numpy as np
+from astropy import units as u
+
+from ... import utils
+from ..radiometry_utils import empty_surface_list
+from .. import effects as efs
 
 
 def combine_radiometry_effects(surfaces):
@@ -24,7 +28,7 @@ def combine_radiometry_effects(surfaces):
     return rad_table
 
 
-def _get_all(effects, effect_class):
+def get_all_effects(effects, effect_class):
     return [eff for eff in effects if isinstance(eff, effect_class)]
 
 

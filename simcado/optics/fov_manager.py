@@ -5,7 +5,7 @@ from .. import utils
 from . import effects as efs
 from .fov import FieldOfView
 from .image_plane_utils import header_from_list_of_xy
-from .effects.effects_utils import _get_all, is_spectroscope
+from .effects.effects_utils import get_all_effects, is_spectroscope
 
 
 # 1. Find the Wavelength range
@@ -79,7 +79,7 @@ def get_3d_shifts(effects, **kwargs):
     wave_max = kwargs["SIM_LAM_MAX"]
     sub_pixel_frac = kwargs["SIM_SUB_PIXEL_FRACTION"]
 
-    effects = _get_all(effects, efs.Shift3D)
+    effects = get_all_effects(effects, efs.Shift3D)
     if len(effects) > 0:
         shifts = [eff.fov_grid(lam_min=wave_min, lam_mid=wave_mid,
                                lam_max=wave_max, sub_pixel_frac=sub_pixel_frac,
@@ -113,7 +113,7 @@ def get_imaging_waveset(effects, **kwargs):
     wave_max = kwargs["SIM_LAM_MAX"]
     spf = kwargs["SIM_SUB_PIXEL_FRACTION"]
 
-    psfs = _get_all(effects, efs.PSF)
+    psfs = get_all_effects(effects, efs.PSF)
     if len(psfs) > 0:
         wave_bin_edges = [psf.fov_grid(waverange=[wave_min, wave_max],
                                        sub_pixel_frac=spf)["wavelengths"]
@@ -130,8 +130,8 @@ def get_imaging_waveset(effects, **kwargs):
 
 def get_imaging_headers(effects, **kwargs):
 
-    aperture_masks = _get_all(effects, efs.ApertureMask)
-    detector_arrays = _get_all(effects, efs.DetectorList)
+    aperture_masks = get_all_effects(effects, efs.ApertureMask)
+    detector_arrays = get_all_effects(effects, efs.DetectorList)
 
     pixel_scale = kwargs["SIM_DETECTOR_PIX_SCALE"] / 3600.         # " -> deg
     pixel_size = detector_arrays[0].image_plane_header["CDELT1D"]  # mm
@@ -180,7 +180,7 @@ def get_imaging_fovs(headers, waveset, shifts):
         for hdr in headers:
             waverange = [waveset[ii], waveset[ii + 1]]
             fov = FieldOfView(hdr, waverange)
-            fov.meta["name"] = "FOV-{}".format(counter)
+            fov.meta["id"] = counter
             fovs += [fov]
 
     return fovs

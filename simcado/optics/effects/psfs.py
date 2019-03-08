@@ -11,7 +11,7 @@ class PSF(Effect):
     def __init__(self, **kwargs):
         self.kernel = None
         self.valid_waverange = None
-        super(Effect, self).__init__(**kwargs)
+        super(PSF, self).__init__(**kwargs)
 
     def apply_to(self, obj):
         if len(obj.fields) > 0:
@@ -53,33 +53,22 @@ class PSF(Effect):
 
 class AnalyticalPSF(PSF):
     def __init__(self, **kwargs):
-        super(PSF, self).__init__(**kwargs)
+        super(AnalyticalPSF, self).__init__(**kwargs)
 
 
-class Vibration(PSF):
+class Vibration(AnalyticalPSF):
     def __init__(self, **kwargs):
-        super(PSF, self).__init__(**kwargs)
-
-    def fov_grid(self, header=None, waverange=None, **kwargs):
-        return {"coords": None, "wavelengths": None}
+        super(Vibration, self).__init__(**kwargs)
 
 
-class NonCommonPathAberration(PSF):
+class NonCommonPathAberration(AnalyticalPSF):
     def __init__(self, **kwargs):
-        super(PSF, self).__init__(**kwargs)
-
-    def fov_grid(self, header=None, waverange=None, **kwargs):
-        waveset = []
-        return {"coords": None, "wavelengths": waveset}
+        super(NonCommonPathAberration, self).__init__(**kwargs)
 
 
-class Seeing(PSF):
+class Seeing(AnalyticalPSF):
     def __init__(self, **kwargs):
-        super(PSF, self).__init__(**kwargs)
-
-    def fov_grid(self, header=None, waverange=None, **kwargs):
-        waveset = []
-        return {"coords": None, "wavelengths": waveset}
+        super(Seeing, self).__init__(**kwargs)
 
 
 ################################################################################
@@ -88,38 +77,38 @@ class Seeing(PSF):
 
 class SemiAnalyticalPSF(PSF):
     def __init__(self, **kwargs):
-        super(PSF, self).__init__(**kwargs)
+        super(SemiAnalyticalPSF, self).__init__(**kwargs)
 
 
 class PoppyFieldVaryingPSF(SemiAnalyticalPSF):
     def __init__(self, **kwargs):
-        super(SemiAnalyticalPSF, self).__init__(**kwargs)
+        super(PoppyFieldVaryingPSF, self).__init__(**kwargs)
 
 
 class PoppyFieldConstantPSF(SemiAnalyticalPSF):
     def __init__(self, **kwargs):
-        super(SemiAnalyticalPSF, self).__init__(**kwargs)
+        super(PoppyFieldConstantPSF, self).__init__(**kwargs)
 
 
 ################################################################################
 # Discreet PSFs - MAORY and co PSFs
 
 
-class DiscreetPSF(PSF):
+class DiscretePSF(PSF):
     def __init__(self, **kwargs):
-        super(PSF, self).__init__(**kwargs)
+        super(DiscretePSF, self).__init__(**kwargs)
 
 
-class MaoryFieldVaryingPSF(DiscreetPSF):
+class MaoryFieldVaryingPSF(DiscretePSF):
     def __init__(self, **kwargs):
-        super(DiscreetPSF, self).__init__(**kwargs)
+        super(MaoryFieldVaryingPSF, self).__init__(**kwargs)
 
 
-class MaoryFieldConstantPSF(DiscreetPSF):
+class MaoryFieldConstantPSF(DiscretePSF):
     def __init__(self, **kwargs):
-        super(DiscreetPSF, self).__init__(**kwargs)
+        super(MaoryFieldConstantPSF, self).__init__(**kwargs)
         self.waveset, self.kernel_indexes = get_psf_wave_exts(self)
-        self.current_layer = None
+        self.current_layer_id = None
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         return {"wavelengths": self.waveset}
@@ -128,9 +117,9 @@ class MaoryFieldConstantPSF(DiscreetPSF):
         fov_wave = 0.5 * (fov.meta["wave_min"] + fov.meta["wave_max"])
         ii = nearest_index(fov_wave, self.waveset)
         ext = self.kernel_indexes[ii]
-        if ext != self.current_layer:
+        if ext != self.current_layer_id:
             self.kernel = self._file[ext]
-            self.current_layer = ext
+            self.current_layer_id = ext
 
 
 def nearest_index(x, x_array):

@@ -7,7 +7,17 @@ from .image_plane import ImagePlane
 
 
 class OpticalTrain:
+    """
+    The main class for controlling a simulation
+
+    Parameters
+    ----------
+    cmds : UserCommands
+
+    """
+
     def __init__(self, cmds=None):
+
         self.observation_dict = None
         self.optics_manager = None
         self.fov_manager = None
@@ -18,8 +28,14 @@ class OpticalTrain:
             self.load(cmds)
 
     def load(self, user_commands):
-        # UserCommands contains the filenames of which yaml files to use as
-        # well what the observational parameters will be
+        """
+        (Re)Loads an OpticalTrain with a new set of UserCommands
+
+        Parameters
+        ----------
+        user_commands : UserCommands
+
+        """
 
         if not isinstance(user_commands, UserCommands):
             raise ValueError("user_commands must be a UserCommands object: "
@@ -32,6 +48,15 @@ class OpticalTrain:
         self.update()
 
     def update(self, **kwargs):
+        """
+        Update the user-defined parameters and remake the main internal classes
+
+        Parameters
+        ----------
+        kwargs : **dict
+            Any keyword-value pairs from a config file
+
+        """
         self.optics_manager.update(**self.observation_dict)
         self.optics_manager.update(**kwargs)
         self.fov_manager = FOVManager(self.optics_manager.fov_setup_effects,
@@ -40,11 +65,27 @@ class OpticalTrain:
                                       **self.optics_manager.meta)
 
     def observe(self, orig_source, **kwargs):
-        # Make a FOV list - z_order = 0..99
-        # Make a image plane - z_order = 100..199
-        # Apply Source altering effects - z_order = 200..299
-        # Apply FOV specific (3D) effects - z_order = 300..399
-        # Apply FOV-independent (2D) effects - z_order = 400..499
+        """
+        Main controlling method for observing ``Source`` objects
+
+        Parameters
+        ----------
+        orig_source : Source
+        kwargs : **dict
+            Any keyword-value pairs from a config file
+
+        Notes
+        -----
+        How the list of Effects is split between the 5 main tasks:
+
+        - Make a FOV list - z_order = 0..99
+        - Make a image plane - z_order = 100..199
+        - Apply Source altering effects - z_order = 200..299
+        - Apply FOV specific (3D) effects - z_order = 300..399
+        - Apply FOV-independent (2D) effects - z_order = 400..499
+
+        """
+
         self.update(**kwargs)
 
         source = deepcopy(orig_source)
@@ -56,17 +97,9 @@ class OpticalTrain:
             for effect in self.optics_manager.fov_effects:
                 fov = effect.apply_to(fov)
 
-                plt.imshow(fov.hdu.data.T, origin="lower",
-                           norm=LogNorm())
-                plt.show()
-
-
-
+            if fov.hdu.data is None:
+                fov.view()
             self.image_plane.add(fov.hdu, wcs_suffix="D")
 
         for effect in self.optics_manager.image_plane_effects:
             self.image_plane = effect.apply_to(self.image_plane)
-
-
-import matplotlib.pyplot as plt
-from matplotlib.colors import  LogNorm

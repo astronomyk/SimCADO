@@ -1,9 +1,12 @@
 import numpy as np
 
+from astropy import units as u
+
 from synphot import SourceSpectrum, SpectralElement
 from synphot.models import Empirical1D
 
 from ... import rc
+from ... import utils
 from ...source.source2 import Source
 from ..radiometry import RadiometryTable
 from .effects import Effect, TERCurve
@@ -27,11 +30,11 @@ class SurfaceList(Effect):
     def apply_to(self, source):
         if isinstance(source, Source):
             for ii in range(len(source.spectra)):
-                wave = source.spectra[ii].waveset
-                spec = source.spectra[ii](wave)
-                thru = self.throughput(wave)
+                compound_spec = source.spectra[ii] * self.throughput
+                wave = compound_spec.waveset
+                spec = compound_spec(wave)
                 new_source = SourceSpectrum(Empirical1D, points=wave,
-                                            lookup_table=spec*thru)
+                                            lookup_table=spec)
                 source.spectra[ii] = new_source
 
         return source
@@ -78,12 +81,12 @@ class SurfaceList(Effect):
     def get_throughput(self, **kwargs):
         return self.radiometry_table.get_throughput(**kwargs)
 
-    def collapse(self, wave):
-        throughput = self.radiometry_table.throughput(wave)
-        self._throughput = SpectralElement(Empirical1D, points=wave,
+    def collapse(self, waveset):
+        throughput = self.radiometry_table.throughput(waveset)
+        self._throughput = SpectralElement(Empirical1D, points=waveset,
                                            lookup_table=throughput)
-        emission = self.radiometry_table.emission(wave)
-        self._emission = SourceSpectrum(Empirical1D, points=wave,
+        emission = self.radiometry_table.emission(waveset)
+        self._emission = SourceSpectrum(Empirical1D, points=waveset,
                                         lookup_table=emission)
 
     @property
@@ -93,3 +96,13 @@ class SurfaceList(Effect):
     @property
     def emission(self):
         return self.get_emission()
+
+    @property
+    def area(self):
+        tbl = self.radiometry_table.table
+        outer_col = utils.real_colname("outer", tbl.colnames)
+        inner_col = utils.real_colname("inner", tbl.colnames)
+        outer = utils.quantity_from_table(outer_col, tbl, u.m)
+        inner = utils.quantity_from_table(inner_col, tbl, u.m)
+
+        return np.max(np.pi / 4 * (outer**2 - inner**2))

@@ -82,3 +82,16 @@ def _combined_source(im_angle=0, dx=[0, 0, 0], dy=[0, 0, 0], weight=[1, 1, 1]):
     src = tblsrc1 + tblsrc2 + tblsrc3 + imsrc
 
     return src
+
+
+def _single_table_source():
+    n = 3
+    unit = u.Unit("ph s-1 m-2 um-1")
+    wave = np.linspace(0.5, 2.5, n) * u.um
+    specs = [SourceSpectrum(Empirical1D, points=wave,
+                            lookup_table=np.ones(n) * unit)]
+    tbl = Table(names=["x", "y", "ref", "weight"],
+                data=[[0]*u.arcsec, [0]*u.arcsec, [0], [1]])
+    tbl_source = Source(table=tbl, spectra=specs)
+
+    return tbl_source
