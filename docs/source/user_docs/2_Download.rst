@@ -36,14 +36,14 @@ Installation
 ------------
 
 To install it, download SimCADO from the link above and use the standard
-``pip3`` call to install it: ::
+``pip`` call to install it: ::
 
-    $ pip3 install --user SimCADO.tar.gz
+    $ pip install SimCADO
 
 
-Alternatively give the full URL to pip and let it do the downloading for you: ::
+.. Alternatively give the full URL to pip and let it do the downloading for you: ::
 
-    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
+..    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
 
 
 .. Note::
@@ -73,7 +73,8 @@ Required
 +-----------+-----------+
 | synphot   | >0.1      |
 +-----------+-----------+
-
+| pyyaml    |           |
++-----------+-----------+
 
 Optional
 
@@ -85,10 +86,17 @@ Optional
 | poppy        | >0.4      |
 +--------------+-----------+
 
-All dependencies can be installed via `pip`: ::
+All dependencies should be automatically installed when typing the `pip` command above.
+In case of any error message you can try to install them manually::
 
-   $ pip3 install numpy scipy astropy wget matplotlib poppy
+   $ pip install numpy scipy astropy wget matplotlib poppy pyyaml synphot requests
 
+We really recomend to install SimCADO in a python distribution like `anaconda`_ or `miniconda`_
+as they allow to have full control over your python environment without interfering with your
+system instalation. 
+
+.. _anaconda: https://www.anaconda.com/
+.. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
 Getting up-to-date data for SimCADO
 -----------------------------------

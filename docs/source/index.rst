@@ -52,7 +52,15 @@ this though.
 
 The quick way::
 
-    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
+    $ pip install SimCADO
+
+.. --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
+
+We also recomend to install SimCADO in an `anaconda`_/`miniconda`_/etc python
+distributions as it is much easier to keep control over your python environment.
+
+.. _anaconda: https://www.anaconda.com/
+.. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
 The **first time** in python you should update the SimCADO data directory with
 :func:`~.simcado.utils.get_extras`::
