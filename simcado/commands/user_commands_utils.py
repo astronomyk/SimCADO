@@ -28,7 +28,7 @@ def read_config(config_str):
     --------
     From file::
 
-        >>> import simcado.commands.commands_utils as cutils
+        >>> import simcado.tests_commands.commands_utils as cutils
         >>> my_dict = cutils.read_config("../.default.config")
 
     From a string::
@@ -133,7 +133,7 @@ def update_config(new_config, old_config):
     --------
     From file::
 
-        >>> import simcado.commands.commands_utils as cutils
+        >>> import simcado.tests_commands.commands_utils as cutils
         >>> my_dict = {}
         >>> new_file = "../.default.config"
         >>> cutils.update_config(new_file, my_dict)
@@ -186,7 +186,7 @@ def str_to_python_type(input_str):
     --------
     ::
 
-        >>> import simcado.commands.commands_utils as cutils
+        >>> import simcado.tests_commands.commands_utils as cutils
         >>> cutils.str_to_python_type("true")
         True
         >>> cutils.str_to_python_type("42")

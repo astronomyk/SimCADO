@@ -3,7 +3,7 @@ import warnings
 from astropy import units as u
 
 from . import effects as efs
-from .effects.effects_utils import combine_radiometry_effects
+from .effects.effects_utils import combine_surface_effects
 from .optical_element import OpticalElement
 
 
@@ -25,7 +25,7 @@ class OpticsManager:
         self.optical_elements = [OpticalElement({"name": "misc"})]
         self.meta = {}
         self.meta.update(kwargs)
-        self._radiometry_table = None
+        self._surfaces_table = None
 
         if yaml_dicts is not None:
             self.load_effects(yaml_dicts)
@@ -150,7 +150,7 @@ class OpticsManager:
 
     @property
     def image_plane_effects(self):
-        imp_effects = []
+        imp_effects = [self.surfaces_table]
         for opt_el in self.optical_elements:
             imp_effects += opt_el.get_z_order_effects([400, 499])
 
@@ -166,7 +166,7 @@ class OpticsManager:
 
     @property
     def source_effects(self):
-        src_effects = [self.radiometry_table]
+        src_effects = [self.surfaces_table]
         for opt_el in self.optical_elements:
             src_effects += opt_el.get_z_order_effects([200, 299])
 
@@ -182,30 +182,25 @@ class OpticsManager:
 
     @property
     def fov_setup_effects(self):
-        fovmanager_effects = [self.radiometry_table]
+        fovmanager_effects = [self.surfaces_table]
         for opt_el in self.optical_elements:
             fovmanager_effects += opt_el.get_z_order_effects([0, 99])
 
         return fovmanager_effects
 
     @property
-    def background_source(self):
-        bg_src = None
-        return bg_src
-
-    @property
-    def radiometry_table(self):
+    def surfaces_table(self):
         surface_like_effects = []
         for opt_el in self.optical_elements:
             surface_like_effects += opt_el.ter_list
 
         pixel_scale = self.meta["SIM_DETECTOR_PIX_SCALE"] * u.arcsec
-        rad_table = combine_radiometry_effects(surface_like_effects)
-        rad_table.meta["etendue"] = rad_table.area * pixel_scale**2
+        surf_table = combine_surface_effects(surface_like_effects)
+        surf_table.meta["etendue"] = surf_table.area * pixel_scale**2
 
-        self._radiometry_table = rad_table
+        self._surfaces_table = surf_table
 
-        return rad_table
+        return surf_table
 
     def __add__(self, other):
         self.add_effect(other)

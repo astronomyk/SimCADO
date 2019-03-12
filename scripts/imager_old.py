@@ -43,7 +43,7 @@ class OpticalTrain(object):
     Parameters
     ----------
     cmds : UserCommands, optional
-        Holds the commands needed to generate a model of the optical train
+        Holds the tests_commands needed to generate a model of the optical train
 
 
     Optional Parameters
@@ -53,13 +53,13 @@ class OpticalTrain(object):
 
     See Also
     --------
-    .commands.dump_defaults(), .commands.UserCommands
+    .tests_commands.dump_defaults(), .tests_commands.UserCommands
 
 
     General Attributes
     ------------------
-    - cmds : commands, optional
-        a dictionary of commands for running the simulation
+    - cmds : tests_commands, optional
+        a dictionary of tests_commands for running the simulation
 
     Spatial attributes (for PSFs)
     -----------------------------
@@ -142,8 +142,8 @@ class OpticalTrain(object):
 
         Parameters
         ----------
-        - cmds : commands
-            a dictionary of commands
+        - cmds : tests_commands
+            a dictionary of tests_commands
         """
 
         # Here we make the optical train. This includes
@@ -548,7 +548,7 @@ class OpticalTrain(object):
 
         for key in tc_keywords:
             if key not in self.cmds.keys():
-                raise ValueError(key + " is not in your list of commands")
+                raise ValueError(key + " is not in your list of tests_commands")
 
             if self.cmds[key] is not None:
                 if isinstance(self.cmds[key], (sc.TransmissionCurve,

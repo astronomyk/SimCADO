@@ -48,30 +48,30 @@ class TestMakeEffect:
 @pytest.mark.usefixtures("surf_list", "filter_surface")
 class TestMakeRadiometryTable:
     def test_load_just_one_surface(self, filter_surface):
-        rad_table = e_utils.combine_radiometry_effects([filter_surface])
+        rad_table = e_utils.combine_surface_effects([filter_surface])
         assert isinstance(rad_table, SurfaceList)
 
     def test_load_two_surface(self, filter_surface):
-        rad_table = e_utils.combine_radiometry_effects([filter_surface] * 3)
-        assert len(rad_table.radiometry_table.table) == 3
+        rad_table = e_utils.combine_surface_effects([filter_surface] * 3)
+        assert len(rad_table.surfaces_table.table) == 3
 
     def test_load_just_one_surface_list(self, surf_list):
-        rad_table = e_utils.combine_radiometry_effects([surf_list])
-        len1 = len(surf_list.radiometry_table.table)
-        len2 = len(rad_table.radiometry_table.table)
+        rad_table = e_utils.combine_surface_effects([surf_list])
+        len1 = len(surf_list.surfaces_table.table)
+        len2 = len(rad_table.surfaces_table.table)
         assert len2 == len1
 
     def test_load_two_surface_lists(self, surf_list):
-        rad_table = e_utils.combine_radiometry_effects([surf_list, surf_list])
-        len1 = len(surf_list.radiometry_table.table)
-        len2 = len(rad_table.radiometry_table.table)
+        rad_table = e_utils.combine_surface_effects([surf_list, surf_list])
+        len1 = len(surf_list.surfaces_table.table)
+        len2 = len(rad_table.surfaces_table.table)
         assert len2 == 2 * len1
 
     def test_load_one_surface_and_one_surface_list(self, surf_list,
                                                    filter_surface):
-        rad_table = e_utils.combine_radiometry_effects([surf_list,
-                                                        filter_surface])
-        len1 = len(surf_list.radiometry_table.table)
-        len2 = len(rad_table.radiometry_table.table)
+        rad_table = e_utils.combine_surface_effects([surf_list,
+                                                     filter_surface])
+        len1 = len(surf_list.surfaces_table.table)
+        len2 = len(rad_table.surfaces_table.table)
         assert len2 == len1 + 1
 

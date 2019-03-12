@@ -33,7 +33,7 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         ["wide", "zoom"] Default is "wide", for a 4mas FoV. "Zoom" -> 1.5mas
 
     cmds : simcado.UserCommands, optional
-        A custom set of commands for the simulation. Default is None
+        A custom set of tests_commands for the simulation. Default is None
 
     opt_train : simcado.OpticalTrain, optional
         A custom optical train for the simulation. Default is None
@@ -166,12 +166,12 @@ def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
         [mag] Minimum and maximum magnitudes to use for the grid of stars
 
     cmds : simcado.UserCommands
-        A custom set of commands for building the optical train
+        A custom set of tests_commands for building the optical train
 
     Optional Parameters
     -------------------
     Any Keyword-Value pairs accepted by a
-    :class:`~simcado.commands.UserCommands` object
+    :class:`~simcado.tests_commands.UserCommands` object
 
     Returns
     -------
@@ -183,7 +183,7 @@ def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
 
     See Also
     --------
-    :class:`~simcado.commands.UserCommands`
+    :class:`~simcado.tests_commands.UserCommands`
 
     """
     if filter_names is None:
@@ -446,7 +446,7 @@ def limiting_mags(exptimes=None, filter_names=None,
         Calls :func:`plot_exptime_vs_limiting_mag`
 
     cmds : simcado.UserCommands
-        A custom set of commands for building the optical train
+        A custom set of tests_commands for building the optical train
 
 
     Optional Parameters
@@ -774,7 +774,7 @@ def snr(exptimes, mags, filter_name="Ks", cmds=None, **kwargs):
         The default is "Ks"
 
     cmds : UserCommands object, optional
-        Extra commands to be passed to :func:`simcado.simulation.run`.
+        Extra tests_commands to be passed to :func:`simcado.simulation.run`.
 
     Optional Parameters
     -------------------
@@ -866,7 +866,7 @@ def snr(exptimes, mags, filter_name="Ks", cmds=None, **kwargs):
         # Number of readouts during the period ``exptime``. Default is 1
 
     # cmds : simcado.UserCommands, optional
-        # A custom set of commands for the simulations. If not specified, SimCADO
+        # A custom set of tests_commands for the simulations. If not specified, SimCADO
         # uses the default MICADO parameters
 
     # Returns

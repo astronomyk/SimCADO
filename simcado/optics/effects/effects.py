@@ -11,6 +11,7 @@ class Effect(DataContainer):
 
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
+        self.meta["z_order"] = []
 
     def apply_to(self, obj):
         if obj is None:
@@ -53,6 +54,7 @@ class AtmosphericTERCurve(TERCurve):
 class Shift3D(Effect):
     def __init__(self, **kwargs):
         super(Shift3D, self).__init__(**kwargs)
+        self.meta["z_order"] = [0]
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         dic = {"wavelengths": waverange, "x_shifts": [0, 0], "y_shifts": [0, 0]}
@@ -77,6 +79,7 @@ class ApertureList(Effect):
 class ApertureMask(Effect):
     def __init__(self, **kwargs):
         super(ApertureMask, self).__init__(**kwargs)
+        self.meta["z_order"] = [0]
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         x_sky, y_sky = calc_footprint(self.header)
@@ -87,10 +90,7 @@ class ApertureMask(Effect):
         return fits.Header()
 
 
-class TraceList(Effect):
+class SpectralTraceList(Effect):
     def __init__(self, **kwargs):
-        super(TraceList, self).__init__(**kwargs)
-
-
-
-
+        super(SpectralTraceList, self).__init__(**kwargs)
+        self.meta["z_order"] = [0]

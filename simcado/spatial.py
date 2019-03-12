@@ -210,7 +210,7 @@ def wind_jitter(arr, cmds):
 
 
 def adc_shift(cmds):
-    """Generates a list of x and y shifts from a commands object"""
+    """Generates a list of x and y shifts from a tests_commands object"""
 
     para_angle = cmds["OBS_PARALLACTIC_ANGLE"]
     effectiveness = cmds["INST_ADC_PERFORMANCE"] / 100.

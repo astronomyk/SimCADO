@@ -114,8 +114,8 @@ class TestObserve:
 
         wave = np.arange(0.5, 2.51, 0.1)*u.um
         unit = u.Unit("ph s-1 m-2 um-1")
-        print(opt.optics_manager.radiometry_table.emission(wave).to(unit))
-        print(opt.optics_manager.radiometry_table.table)
+        print(opt.optics_manager.surfaces_table.emission(wave).to(unit))
+        print(opt.optics_manager.surfaces_table.table)
         final_sum = np.sum(opt.image_plane.image)
         print(orig_sum, final_sum)
 

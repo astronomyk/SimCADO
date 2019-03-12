@@ -8,24 +8,25 @@ from ..radiometry_utils import empty_surface_list
 from .. import effects as efs
 
 
-def combine_radiometry_effects(surfaces):
-    surflist_list = [eff for eff in surfaces if isinstance(eff,
-                                                           efs.SurfaceList)]
-    surf_list = [eff for eff in surfaces if isinstance(eff, efs.TERCurve)]
+def combine_surface_effects(surface_effects):
+    surflist_list = [eff for eff in surface_effects
+                     if isinstance(eff, efs.SurfaceList)]
+    surf_list = [eff for eff in surface_effects
+                 if isinstance(eff, efs.TERCurve)]
 
     if len(surflist_list) == 0:
         tbl = empty_surface_list()
         tbl.meta["name"] = "Radiometry Table"
         surflist_list += [tbl]
 
-    rad_table = deepcopy(surflist_list[0])
+    new_surflist = deepcopy(surflist_list[0])
     for surflist in surflist_list[1:]:
-        rad_table.add_surface_list(surflist)
+        new_surflist.add_surface_list(surflist)
 
     for surf in surf_list:
-        rad_table.add_surface(surf, surf.meta["name"])
+        new_surflist.add_surface(surf, surf.meta["name"])
 
-    return rad_table
+    return new_surflist
 
 
 def get_all_effects(effects, effect_class):
@@ -51,7 +52,8 @@ def make_effect(effect_dict, **super_kwargs):
 
 
 def is_spectroscope(effects):
-    has_trace_lists = sum([isinstance(eff, efs.TraceList) for eff in effects])
+    has_trace_lists = sum([isinstance(eff, efs.SpectralTraceList)
+                           for eff in effects])
     has_apertures = sum([isinstance(eff, (efs.ApertureList, efs.ApertureMask))
                          for eff in effects])
 

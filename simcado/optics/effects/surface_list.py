@@ -9,12 +9,14 @@ from ... import rc
 from ... import utils
 from ...source.source2 import Source
 from ..radiometry import RadiometryTable
+from ..image_plane import ImagePlane
 from .effects import Effect, TERCurve
 
 
 class SurfaceList(Effect):
     def __init__(self, **kwargs):
         super(SurfaceList, self).__init__(**kwargs)
+        self.meta["z_order"] = []
 
         self.meta["SIM_MIN_THROUGHPUT"] = rc.__rc__["SIM_MIN_THROUGHPUT"]
 
@@ -27,17 +29,27 @@ class SurfaceList(Effect):
         if data is not None:
             self.radiometry_table.add_surface_list(data)
 
-    def apply_to(self, source):
-        if isinstance(source, Source):
-            for ii in range(len(source.spectra)):
-                compound_spec = source.spectra[ii] * self.throughput
+    def apply_to(self, obj):
+        if isinstance(obj, Source):
+            for ii in range(len(obj.spectra)):
+                compound_spec = obj.spectra[ii] * self.throughput
                 wave = compound_spec.waveset
                 spec = compound_spec(wave)
                 new_source = SourceSpectrum(Empirical1D, points=wave,
                                             lookup_table=spec)
-                source.spectra[ii] = new_source
+                obj.spectra[ii] = new_source
 
-        return source
+        elif isinstance(obj, ImagePlane):
+            # by calling use_area, the surface area is taken into account, but
+            # the units are stuck in PHOTLAM for synphot
+            emission = self.get_emission(use_area=True)  # --> PHOTLAM * area
+            wave = emission.waveset  # angstrom
+            flux = emission(wave)    # PHOTLAM --> ph s-1 cm-2 AA-1 * cm2
+            phs = (np.trapz(flux, wave) * u.cm**2).to(u.Unit("ph s-1"))
+
+            obj.hdu.data += phs.value
+
+        return obj
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         wave = np.linspace(min(waverange), max(waverange), 100)
