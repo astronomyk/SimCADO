@@ -36,7 +36,7 @@ guide star (LGS or NGS), and far from a guide star.
 SCAO PSFs
 ---------
 
-.. figure:: ../_static/images/MAORY_SCAO_FVPSF.gif
+.. figure:: ../_static/images/MAORY_H-band_SCAO_map.PNG
     :figwidth: 700 px
     :align: center
 
