@@ -1,3 +1,4 @@
+"""
 # old functionality to implement:
 # - provide x, y, lam, spectra, weight, ref
 # - overridden + : number, Source, SourceSpectrum
@@ -29,6 +30,7 @@
 #
 # image header keywords = WCS, SPEC_ID, WEIGHT
 # [WCS = CRPIXn, CRVALn = (0,0), CTYPEn, CDn_m, NAXISn, CUNITn
+"""
 
 import pickle
 import warnings
@@ -51,6 +53,53 @@ from .. import utils
 
 
 class Source:
+    """
+    Create a source object from a file or from arrays
+    
+    A Source object must consist of a spatial and a spectral description
+    of the on-sky source. Many sources can be added together and kept
+    in memory as a single Source object.
+    
+    The spatial descriptions are kept in the ``<Source>.fields`` list,
+    while the spectral descriptions are in ``<Source>.spectra`` list.
+    
+    The spatial description can be built from any combination of:
+    
+    * a list of arrays (like in SimCADO v0.5)
+    * astropy Table objects
+    * astropy ImageHDU objects
+    * on disk FITS files
+    * on disk ASCII tables
+    
+    while the spectral descriptions can be passed as either ``synphot.SourceSpectrum``
+    objects, or a set of two equal length arrays for wavelength and flux.
+   
+    Parameters
+    ----------
+    spectra : array, or 
+    filename : str
+        
+    or
+    
+    lam : np.array
+        [um] Wavelength bins of length (m)
+    spectra : np.array
+        [ph/s/m2/bin] A (n, m) array with n spectra, each with m spectral bins
+    x, y : np.array
+        [arcsec] coordinates of where the emitting files are relative to the
+        centre of the field of view
+    ref : np.array
+        the index for .spectra which connects a position (x, y) to a spectrum
+        f(x[i], y[i]) = spectra[ref[i]] * weight[i]
+    weight : np.array
+        A weighting to scale the relevant spectrum for each position
+    
+    See Also
+    --------
+    ``synphot`` - https://synphot.readthedocs.io/en/latest/
+    
+    
+    """
 
     def __init__(self, filename=None,
                  lam=None, spectra=None, x=None, y=None, ref=None, weight=None,
