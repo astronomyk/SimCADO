@@ -2351,7 +2351,7 @@ def source_from_image(images, lam, spectra, plate_scale, oversample=1,
             # -----  IMAGES should be normalized before resampling ------
         images[images <= flux_threshold] = 0  # masking noise
         images = images / np.sum(images[images > flux_threshold])
-
+        flux_threshold = 0 # <- IMPORTANT, flux_threshold is set to zero after noise is masked out
             # -----------------------------------------------------------
 
         if oversample != 1:
