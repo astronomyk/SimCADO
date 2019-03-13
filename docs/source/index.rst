@@ -27,6 +27,13 @@ Atmosphere, E-ELT, and MICADO instrument on incoming light. The current
 version (v0.5) can simulate the MICADO imaging mode (4mas and 1.5mas per
 pixel in the wavelength range 0.7µm to 2.5µm).
 
+.. figure:: ./_static/images/simcado_in_30_secs.gif
+    :figwidth: 750 px
+    :align: center
+
+    A simple simulation in 30 seconds with SimCADO.
+
+
 Reference Material
 ~~~~~~~~~~~~~~~~~~
 
