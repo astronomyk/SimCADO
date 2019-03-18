@@ -696,3 +696,46 @@ def airmass2zendist(airmass):
     '''
 
     return np.rad2deg(np.arccos(1/airmass))
+
+
+def is_fits(filename):
+    """
+    Checks if file is a FITS file based on extension
+
+    Parameters
+    ----------
+    filename : str
+
+    Returns
+    -------
+    flag : bool
+
+    """
+    flag = False
+    if filename is not None:
+        if filename.split(".")[-1].lower() in "fits":
+            flag = True
+
+    return flag
+
+
+def quantify(item, unit):
+    """
+    Ensure an item is a Quantity
+
+    Parameters
+    ----------
+    item : int, float, array, list, Quantity
+    unit : str, Unit
+
+    Returns
+    -------
+    quant : Quantity
+
+    """
+
+    if isinstance(item, u.Quantity):
+        quant = item.to(u.Unit(unit))
+    else:
+        quant = item * u.Unit(unit)
+    return quant

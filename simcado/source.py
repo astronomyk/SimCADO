@@ -355,7 +355,7 @@ class Source(object):
             image = None
 
             # 2.
-            for i in range(len(opt_train.lam_bin_edges[:-1])):
+            for i in range(len(opt_train.lam_bin_edges) - 1):
 
                 if params["verbose"]:
                     print("Wavelength slice [um]:",
@@ -366,28 +366,50 @@ class Source(object):
                 self._y = self.y + opt_train.adc_shifts[1][i]
 
                 # include any other shifts here
+                lam_min, lam_max = opt_train.lam_bin_edges[i:i + 2]
 
-                # apply the psf (get_slice_photons is called within)
-                lam_min, lam_max = opt_train.lam_bin_edges[i:i+2]
-                psf_i = utils.nearest(opt_train.psf.lam_bin_centers,
-                                      opt_train.lam_bin_centers[i])
-                psf = opt_train.psf[psf_i]
+                if opt_train.psf.info["Type"] == "FVPSF":
+                    ########################
+                    # Added for FV-PSFs
 
-                oversample = opt_train.cmds["SIM_OVERSAMPLING"]
-                sub_pixel = params["sub_pixel"]
-                verbose = params["verbose"]
-
-                # image is in units of ph/s/pixel/m2
-                imgslice = self.image_in_range(psf, lam_min, lam_max,
-                                               detector.chips[chip_i],
-                                               pix_res=opt_train.pix_res,
-                                               oversample=oversample,
-                                               sub_pixel=sub_pixel,
-                                               verbose=verbose)
-                if image is None:
-                    image = imgslice
+                    from .fv_psf import PoorMansFOV
+                    chip_fov = PoorMansFOV(detector.chips[chip_i],
+                                           lam_min, lam_max)
+                    kernels_masks = opt_train.psf.get_kernel(chip_fov)
+                    psf_list = [km[0] for km in kernels_masks]
+                    mask_list = [km[1] for km in kernels_masks]
+                    ########################
                 else:
-                    image += imgslice
+                    # apply the psf (get_slice_photons is called within)
+                    psf_i = utils.nearest(opt_train.psf.lam_bin_centers,
+                                          opt_train.lam_bin_centers[i])
+                    psf_list = [opt_train.psf[psf_i]]
+                    mask_list = [1]
+
+                ii = 0
+                for psf, mask in zip(psf_list, mask_list):
+                    ii += 1
+                    oversample = opt_train.cmds["SIM_OVERSAMPLING"]
+                    sub_pixel = params["sub_pixel"]
+                    verbose = params["verbose"]
+
+                    print("Convolving with PSF {} or {}"
+                          "".format(ii, len(psf_list)), flush=True)
+
+                    # image is in units of ph/s/pixel/m2
+                    imgslice = self.image_in_range(psf, lam_min, lam_max,
+                                                   detector.chips[chip_i],
+                                                   pix_res=opt_train.pix_res,
+                                                   oversample=oversample,
+                                                   sub_pixel=sub_pixel,
+                                                   verbose=verbose)
+
+                    if mask is not None:
+                        imgslice *= mask
+                    if image is None:
+                        image = imgslice
+                    else:
+                        image += imgslice
 
             # 3. Apply wavelength-independent spatial effects
             # !!!!!!!!!!!!!! All of these need to be combined into a single
@@ -1566,7 +1588,8 @@ def synphot_to_EC(spectrum):
     '''
 
     lam, val = synphot_to_simcado(spectrum)
-    ec = simcado.spectral.EmissionCurve(lam=lam, val=val)
+    from .spectral import EmissionCurve
+    ec = EmissionCurve(lam=lam, val=val)
     return ec
 
 

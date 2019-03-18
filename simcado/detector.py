@@ -991,7 +991,7 @@ class Chip(object):
         """
         image2 = image * dit
         ## does not seem to be necessary in numpy version 1.12.1 any more
-#        image2[image2 > 2.14E9] = 2.14E9
+        image2[image2 > 2.14E9] = 2.14E9
 
         im_st = np.zeros(np.shape(image))
         for _ in range(ndit):

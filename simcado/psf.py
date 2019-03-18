@@ -116,20 +116,15 @@ from astropy.convolution import Kernel2D
 from astropy.modeling.core import Fittable2DModel
 from astropy.modeling.parameters import Parameter
 
+# Field Varying PSFs
+from .fv_psf import FieldVaryingPSF
+
 from . import utils
-
-try:
-    import poppy
-except:
-    warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
-                  will not work. See http://pythonhosted.org/poppy/""")
-
 
 # TODO
 # - Add a ellipticity to the GaussianPSF
 # - Make sure MoffatPSF works
 
-#__all__ = []
 __all__ = ["PSF", "PSFCube",
            "MoffatPSF", "MoffatPSFCube",
            "AiryPSF", "AiryPSFCube",
@@ -138,9 +133,17 @@ __all__ = ["PSF", "PSFCube",
            "CombinedPSF", "CombinedPSFCube",
            "UserPSF", "UserPSFCube",
            "poppy_eelt_psf", "poppy_ao_psf", "seeing_psf",
-           "get_eelt_segments", "make_foreign_PSF_cube"
+           "get_eelt_segments", "make_foreign_PSF_cube",
+           "FieldVaryingPSF",
            ]
 
+
+def poppy_warning():
+    try:
+        import poppy
+    except:
+        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
+                      will not work. See http://pythonhosted.org/poppy/""")
 
 
 ###############################################################################
@@ -565,7 +568,6 @@ class MoffatPSF(PSF):
                                       y_size=self.size, mode=mode).array)
 
 
-
 class CombinedPSF(PSF):
     """
     Generate a PSF from a collection of several PSFs.
@@ -615,7 +617,6 @@ class CombinedPSF(PSF):
         self.info['description'] = "Combined PSF from " + str(len(psf_list)) \
                                                                 + "PSF objects"
         self.set_array(arr_tmp)
-
 
 
 class UserPSF(PSF):
@@ -1160,16 +1161,23 @@ class UserPSFCube(PSFCube):
         n_slices = len(hdulist.info(output=False))
 
         for i in range(n_slices):
-            if "WAVE0" in hdulist[i].header.keys():
+            if "WAVE0" in hdulist[i].header:
                 psf_lam_cen += [hdulist[i].header["WAVE0"]]
-            elif "WAVELENG" in hdulist[i].header.keys():
+            elif "WAVELENG" in hdulist[i].header:
                 psf_lam_cen += [hdulist[i].header["WAVELENG"]]
             else:
-                raise ValueError("""Could not determine wavelength of PSF in
-                                 extension """ + str(i) + """. FITS file
-                                 needs either WAVE0 or WAVELENG header
-                                 keywords. \n Use simcado.utils.add_keyword()
-                                 to add WAVELENG to the FITS header""")
+                if i == 0 and n_slices > 1:
+                    # multiple PSFs in ImageHDU extensions
+                    psf_lam_cen += [0]
+                elif i == 1 and n_slices > 2:
+                    # possible FV-PSF strehl map or table
+                    psf_lam_cen += [0]
+                else:
+                    raise ValueError("""Could not determine wavelength of PSF in
+                                     extension """ + str(i) + """. FITS file
+                                     needs either WAVE0 or WAVELENG header
+                                     keywords. \nUse simcado.utils.add_keyword()
+                                     to add WAVELENG to the FITS header""")
             # If the wavelength is not in the 0.1-2.5 range, it must be in [m]
             if psf_lam_cen[i] < 0.1:
                 psf_lam_cen[i] *= 1E6
@@ -1640,6 +1648,8 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     :func:`.get_eelt_segments`
 
     """
+    poppy_warning()
+
     params = {"strehl"               : strehl,
               "mode"                 : mode,
               "size"                 : size,
@@ -1844,12 +1854,7 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     :func:`.get_eelt_segments`
 
     """
-
-    try:
-        import poppy
-    except:
-        raise ImportError("""Poppy is not installed -
-        See https://pythonhosted.org/poppy""")
+    poppy_warning()
 
     params = {"flattoflat"           : 1.256,
               "gap"                  : 0.004,
@@ -1956,11 +1961,7 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         for the segments which are missing.
 
     """
-
-    try:
-        import poppy
-    except:
-        raise ImportError("Poppy is not installed - google 'JWST POPPY'")
+    poppy_warning()
 
     if plan.lower() == "b":
         #inner_diam = 21.9
