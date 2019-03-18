@@ -5,16 +5,16 @@ from matplotlib.colors import LogNorm
 
 import simcado as sim
 
-PLOTS = True
+PLOTS = False
 
 
 class TestSimDataDir:
-    def test_user_commands_defaults_to_installation_directory(self):
+    def user_commands_defaults_to_installation_directory(self):
         print(sim.__data_dir__)
 
 
 class TestNormalSimcadoUse:
-    def test_basic_cluster_example(self):
+    def basic_cluster_example(self):
         src = sim.source.cluster(mass=1e4, distance=50e3)
         hdu = sim.run(src, sim_data_dir="C:/Work/Legacy_SimCADO_data/")
         if PLOTS:
@@ -23,13 +23,13 @@ class TestNormalSimcadoUse:
 
 
 class TestFVPSFsWithSimCADO:
-    def test_see_what_happens(self):
+    def see_what_happens(self):
         cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
         cmd["SCOPE_PSF_FILE"] = "MAORY_SCAO_FVPSF_4mas_20181203.fits"
         opt = sim.OpticalTrain(cmd)
         print(opt.psf)
 
-    def test_reading_in_fv_psf_with_legacy_functions(self):
+    def reading_in_fv_psf_with_legacy_functions(self):
         cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
         cmd["SCOPE_PSF_FILE"] = "MAORY_SCAO_FVPSF_4mas_20181203.fits"
         from simcado.psf import FieldVaryingPSF
@@ -40,7 +40,7 @@ class TestFVPSFsWithSimCADO:
             plt.imshow(psf.strehl_imagehdu.data.T, origin="l")
             plt.show()
 
-    def test_what_happens_when_passed_to_source(self):
+    def what_happens_when_passed_to_source(self):
         cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
         cmd["FPA_LINEARITY_CURVE"] = None
         cmd["SIM_USE_FILTER_LAM"] = "no"
@@ -59,14 +59,14 @@ class TestFVPSFsWithSimCADO:
         src.y = -24 + 48.*np.random.random(len(src.y))
         src.apply_optical_train(opt, fpa)
         hdu = fpa.read_out()
-        hdu.writeto("E:/test_fv_psf.fits", clobber=True)
+        hdu.writeto("E:/fv_psf.fits", clobber=True)
 
         plt.imshow(hdu[0].data.T, origin="l")
         plt.show()
 
 
 class TestPoorMansFOV:
-    def test_initialised_with_a_chip(self):
+    def initialised_with_a_chip(self):
         from simcado.fv_psf import PoorMansFOV
 
         cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
@@ -76,4 +76,23 @@ class TestPoorMansFOV:
                           cmd.lam_bin_edges[-1])
         assert isinstance(fov, PoorMansFOV)
 
-        print(dict(fov.hdu.header))
+
+class TestCaseStudiesForFVPSFs:
+    def grid_of_stars(self):
+        cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
+        cmd["FPA_LINEARITY_CURVE"] = None
+        cmd["SIM_USE_FILTER_LAM"] = "no"
+        cmd["INST_FILTER_TC"] = "TC_filter_J.dat"
+        cmd["SIM_LAM_MIN"] = 1.0
+        cmd["SIM_LAM_MAX"] = 1.25
+        cmd["OBS_EXPTIME"] = 3600
+        cmd["SCOPE_PSF_FILE"] = "MAORY_SCAO_FVPSF_4mas_20181203.fits"
+        cmd["FPA_CHIP_LAYOUT"] = "full"
+
+        opt = sim.OpticalTrain(cmd)
+        fpa = sim.Detector(cmd, small_fov=False)
+
+        src = sim.source.star_grid(900, 15, 15.1, separation=2)
+        src.apply_optical_train(opt, fpa)
+        hdu = fpa.read_out()
+        hdu.writeto("E:/test_fv_psf_grid_J.fits", clobber=True)

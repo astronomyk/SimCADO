@@ -376,15 +376,15 @@ class Source(object):
                     chip_fov = PoorMansFOV(detector.chips[chip_i],
                                            lam_min, lam_max)
                     kernels_masks = opt_train.psf.get_kernel(chip_fov)
-                    psf_list = [km[0] for km in kernels_masks]
-                    mask_list = [km[1] for km in kernels_masks]
+                    psf_list = [km[0].T for km in kernels_masks]
+                    mask_list = [km[1].T for km in kernels_masks]
                     ########################
                 else:
                     # apply the psf (get_slice_photons is called within)
                     psf_i = utils.nearest(opt_train.psf.lam_bin_centers,
                                           opt_train.lam_bin_centers[i])
                     psf_list = [opt_train.psf[psf_i]]
-                    mask_list = [1]
+                    mask_list = [None]
 
                 ii = 0
                 for psf, mask in zip(psf_list, mask_list):
