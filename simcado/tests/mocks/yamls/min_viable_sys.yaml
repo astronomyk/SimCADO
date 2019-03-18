@@ -22,7 +22,6 @@ name: test_telescope
 effects:
 - name: Delta PSF
   class: PSF
-  z_order: [11, 300]
 
 - name: Scope Surface List
   class: SurfaceList
@@ -55,7 +54,6 @@ effects:
 
 - name: NCPA PSF
   class: PSF
-  z_order: [14, 301]
 
 ---
 
@@ -66,7 +64,6 @@ name: test_detector
 effects:
 - name: detector array list
   class: DetectorList
-  z_order: [10, 100, 500]
   kwargs:
     array_dict: {"id": [1], "x_cen": [0], "y_cen":[0], "xhw": [1024],
                  "yhw": [1024], "x_len": [900], "y_len": [900],

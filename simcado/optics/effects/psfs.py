@@ -2,6 +2,8 @@ from copy import deepcopy
 
 import numpy as np
 from scipy.signal import convolve
+from scipy.ndimage import zoom
+from scipy.interpolate import griddata
 
 from astropy.io import fits
 from astropy import units as u
@@ -199,15 +201,26 @@ class FieldVaryingPSF(DiscretePSF):
         if ii != self.current_ext:
             self.current_ext = ii
             self.current_data = self._file[ii].data
+        kernel_pixel_scale = self._file[ii].header["CDELT1"]
+        fov_pixel_scale = fov.hdu.header["CDELT1"]
 
-        strehl_cutout = get_strehl_cutout(fov.hdu.header, self.strehl_imagehdu)
-        layer_ids = np.round(np.unique(strehl_cutout.data)).astype(int)
+        strl_hdu = self.strehl_imagehdu
+        strl_cutout = get_strehl_cutout(fov.hdu.header, strl_hdu)
+
+        layer_ids = np.round(np.unique(strl_cutout.data)).astype(int)
         if len(layer_ids) > 1:
             kernels = [self.current_data[ii] for ii in layer_ids]
-            masks = [strehl_cutout.data == ii for ii in layer_ids]
-            self.kernel = [(krnl, msk) for krnl, msk in zip(kernels, masks)]
+            masks = [strl_cutout.data.T == ii for ii in layer_ids]          # there's a .T in here that I don't like
+            self.kernel = [[krnl, msk] for krnl, msk in zip(kernels, masks)]
         else:
-            self.kernel = [(self.current_data[layer_ids[0]], None)]
+            self.kernel = [[self.current_data[layer_ids[0]], None]]
+
+        # .. todo: re-scale kernel and masks to pixel_scale of FOV
+        # .. todo: can this be put somewhere else to save on iterations?
+        pix_ratio = fov_pixel_scale / kernel_pixel_scale
+        if abs(pix_ratio - 1) > self.meta["SIM_FLUX_ACCURACY"]:
+            for ii in range(len(self.kernel)):
+                self.kernel[ii][0] = resize_array(self.kernel[ii][0], pix_ratio)
 
         return self.kernel
 
@@ -218,8 +231,10 @@ class FieldVaryingPSF(DiscretePSF):
             if isinstance(self._file[ecat], fits.ImageHDU):
                 self._strehl_imagehdu = self._file[ecat]
 
+            # ..todo: impliment this case
             elif isinstance(self._file[ecat], fits.BinTableHDU):
-                raise NotImplementedError
+                cat = self._file[ecat]
+                self._strehl_imagehdu = make_strehl_map_from_table(cat)
 
         return self._strehl_imagehdu
 
@@ -227,18 +242,54 @@ class FieldVaryingPSF(DiscretePSF):
 ################################################################################
 # Helper functions
 
+def make_strehl_map_from_table(tbl, pixel_scale=1*u.arcsec):
+
+
+    # pixel_scale = utils.quantify(pixel_scale, u.um).to(u.deg)
+    # coords = np.array([tbl["x"], tbl["y"]]).T
+    #
+    # xmin, xmax = np.min(tbl["x"]), np.max(tbl["x"])
+    # ymin, ymax = np.min(tbl["y"]), np.max(tbl["y"])
+    # mesh = np.array(np.meshgrid(np.arange(xmin, xmax, pixel_scale),
+    #                             np.arange(np.min(tbl["y"]), np.max(tbl["y"]))))
+    # map = griddata(coords, tbl["layer"], mesh, method="nearest")
+    #
+
+    map = griddata(np.array([tbl.data["x"], tbl.data["y"]]).T,
+                   tbl.data["layer"],
+                   np.array(np.meshgrid(np.arange(-25, 26),
+                                        np.arange(-25, 26))).T,
+                   method="nearest")
+
+    hdr = imp_utils.header_from_list_of_xy(np.array([-25, 25]) / 3600.,
+                                           np.array([-25, 25]) / 3600.,
+                                           pixel_scale=1/3600)
+
+    map_hdu = fits.ImageHDU(header=hdr, data=map)
+
+    return map_hdu
+
+
+
+
+def resize_array(image, scale_factor, order=1):
+    sum_image = np.sum(image)
+    image = zoom(image, scale_factor, order=order)
+    image = np.nan_to_num(image, copy=False)        # numpy version >=1.13
+    sum_new_image = np.sum(image)
+    image *= sum_image / sum_new_image
+
+    return image
+
 
 def get_strehl_cutout(fov_header, strehl_imagehdu):
-
-    pixel_scale_fov = fov_header["CDELT1"]
-    pixel_scale_strl = strehl_imagehdu.header["CDELT1"]
 
     image = np.zeros((fov_header["NAXIS1"], fov_header["NAXIS2"]))
     canvas_hdu = fits.ImageHDU(header=fov_header, data=image)
     canvas_hdu = imp_utils.add_imagehdu_to_imagehdu(strehl_imagehdu,
-                                                    canvas_hdu, order=0)
-    canvas_hdu.data *= (pixel_scale_strl / pixel_scale_fov)**2
-    canvas_hdu.data = np.round(canvas_hdu.data).astype(int)
+                                                    canvas_hdu, order=0,
+                                                    conserve_flux=False)
+    canvas_hdu.data = canvas_hdu.data.astype(int)
 
     return canvas_hdu
 

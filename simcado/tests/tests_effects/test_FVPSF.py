@@ -51,8 +51,7 @@ YAMLS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
 sim.rc.__search_path__ += [FILES_PATH, YAMLS_PATH]
 
 
-def _centre_fov():
-    n = 55
+def _centre_fov(n=55):
     xsky = np.array([-n, n]) * u.arcsec.to(u.deg)
     ysky = np.array([-n, n]) * u.arcsec.to(u.deg)
     sky_hdr = imp_utils.header_from_list_of_xy(xsky, ysky, 1/3600.)
@@ -90,17 +89,33 @@ class TestStrehlImageHDU:
 
 @pytest.mark.usefixtures("centre_fov")
 class TestGetKernel:
-    def test_returns_array_with_single_kernel_from_fov(self, centre_fov):
+    def test_returns_array_with_single_kernel_from_fov(self):
         fvpsf = FieldVaryingPSF(filename="test_FVPSF.fits")
-        kernels = fvpsf.get_kernel(centre_fov)
+        kernels = fvpsf.get_kernel(_centre_fov(n=10))
         assert np.all(kernels[0][0] == fvpsf._file[2].data[4])
         assert kernels[0][1] is None
 
-    def test_returns_four_arrays_when_fov_on_intersection(self, centre_fov):
-        centre_fov.hdu.header["CRVAL1"] -= 15/3600.
-        centre_fov.hdu.header["CRVAL2"] -= 15/3600.
+    @pytest.mark.parametrize("factor", [0.2, 1, 3])
+    def test_kernel_is_scale_properly_if_cdelts_differ(self, factor):
+        fov = _centre_fov(n=10)
+        fov.hdu.header["CDELT1"] *= factor
+        fov.hdu.header["CDELT2"] *= factor
+
         fvpsf = FieldVaryingPSF(filename="test_FVPSF.fits")
-        kernels = fvpsf.get_kernel(centre_fov)
+        kernels = fvpsf.get_kernel(fov)
+
+        psf_shape = np.array(fvpsf._file[2].data[0].shape)
+        kernel_shape = kernels[0][0].shape
+
+        assert all(kernel_shape == psf_shape * factor)
+
+    def test_returns_four_arrays_when_fov_on_intersection(self):
+        fov = _centre_fov(n=20)
+        fov.hdu.header["CRVAL1"] -= 15/3600.
+        fov.hdu.header["CRVAL2"] -= 15/3600.
+
+        fvpsf = FieldVaryingPSF(filename="test_FVPSF.fits")
+        kernels = fvpsf.get_kernel(fov)
         assert len(kernels) == 4
 
         if PLOTS:
@@ -119,63 +134,71 @@ class TestApplyTo:
         nax1, nax2 = centre_fov.header["NAXIS1"], centre_fov.header["NAXIS2"]
         centre_fov.hdu.data = np.zeros((nax1, nax2))
         centre_fov.hdu.data[::3, ::3] = 1
+        sum_orig = np.sum(centre_fov.hdu.data)
 
         fvpsf = FieldVaryingPSF(filename="test_FVPSF.fits")
         fov_back = fvpsf.apply_to(centre_fov)
 
-        if PLOTS:
+        assert np.sum(fov_back.hdu.data) == sum_orig
+
+        if not PLOTS:
             plt.imshow(fov_back.hdu.data.T, origin="lower")
             plt.show()
 
     def test_convolution_with_fvpsfs_for_shifted_region(self, centre_fov):
-        # centre_fov.hdu.header["CRVAL1"] -= 15/3600.
-        # centre_fov.hdu.header["CRVAL2"] -= 15/3600.
-
         nax1, nax2 = centre_fov.header["NAXIS1"], centre_fov.header["NAXIS2"]
         centre_fov.hdu.data = np.zeros((nax1, nax2))
-        centre_fov.hdu.data[::5, ::5] = 1
+        centre_fov.hdu.data[1::5, 1::5] = 1
         centre_fov.fields = [1]
+        sum_orig = np.sum(centre_fov.hdu.data)
 
         fvpsf = FieldVaryingPSF(filename="test_FVPSF.fits")
         fov_back = fvpsf.apply_to(centre_fov)
+
+        assert np.sum(fov_back.hdu.data) == approx(sum_orig, rel=1E-2)
 
         if PLOTS:
             plt.imshow(fov_back.hdu.data.T, origin="lower")
             plt.show()
 
-    def test_circular_fvpsf(self, centre_fov, basic_circular_fvpsf):
-        # centre_fov.hdu.header["CRVAL1"] -= 15/3600.
-        # centre_fov.hdu.header["CRVAL2"] -= 15/3600.
-
+    def test_circular_fvpsf(self, basic_circular_fvpsf):
+        centre_fov = _centre_fov(n=62)
         nax1, nax2 = centre_fov.header["NAXIS1"], centre_fov.header["NAXIS2"]
         centre_fov.hdu.data = np.zeros((nax1, nax2))
-        x, y = np.random.randint(0, 100, (2, 150))
+
+        x, y = np.random.randint(6, nax1-6, (2, 150))
         centre_fov.hdu.data[x, y] = 1
-        # centre_fov.hdu.data[::11, ::11] = 1
+        # centre_fov.hdu.data[6:nax1-6:10, 6:nax1-6:10] = 1
         centre_fov.fields = [1]
+        sum_orig = np.sum(centre_fov.hdu.data)
 
         fvpsf = FieldVaryingPSF(filename="test_circular_fvpsf.fits")
         fov_back = fvpsf.apply_to(centre_fov)
 
-        if not PLOTS:
+        if PLOTS:
             plt.imshow(fov_back.hdu.data.T, origin="lower", vmax=0.1)
             plt.show()
 
+        # print(np.sum(fov_back.hdu.data), sum_orig)
+        assert np.sum(fov_back.hdu.data) == approx(sum_orig, rel=1E-2)
 
-@pytest.mark.usefixtures("centre_fov")
+
 class TestFunctionGetStrehlCutout:
     @pytest.mark.parametrize("scale", [0.2, 0.5, 1, 2])
-    def test_returns_correct_section_of_strehl_map(self, centre_fov, scale):
+    def test_returns_correct_section_of_strehl_map(self, scale):
+        centre_fov = _centre_fov(10)
         centre_fov.hdu.header["CDELT1"] *= scale
         centre_fov.hdu.header["CDELT2"] *= scale
+        centre_fov.hdu.header["CRVAL1"] -= 15/3600.
+        centre_fov.hdu.header["CRVAL2"] -= 15/3600.
 
         fvpsf = FieldVaryingPSF(filename="test_FVPSF.fits")
         strehl_hdu = psfs.get_strehl_cutout(centre_fov.header,
                                             fvpsf.strehl_imagehdu)
 
-        #assert all(np.unique(strehl_hdu.data).astype(int) == [0, 1, 3, 4])
-
-        if not PLOTS:
+        if PLOTS:
             plt.imshow(strehl_hdu.data.T, origin="lower")
             plt.colorbar()
             plt.show()
+
+        assert all(np.unique(strehl_hdu.data).astype(int) == [0, 1, 3, 4])

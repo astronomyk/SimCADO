@@ -3,6 +3,8 @@ from copy import deepcopy
 import numpy as np
 from astropy import units as u
 
+import simcado.optics.effects.spectroscopy_effects
+import simcado.optics.effects.ter_curves
 from ... import utils
 from ..radiometry_utils import empty_surface_list
 from .. import effects as efs
@@ -12,7 +14,7 @@ def combine_surface_effects(surface_effects):
     surflist_list = [eff for eff in surface_effects
                      if isinstance(eff, efs.SurfaceList)]
     surf_list = [eff for eff in surface_effects
-                 if isinstance(eff, efs.TERCurve)]
+                 if isinstance(eff, simcado.optics.effects.ter_curves.TERCurve)]
 
     if len(surflist_list) == 0:
         tbl = empty_surface_list()
@@ -52,9 +54,12 @@ def make_effect(effect_dict, **super_kwargs):
 
 
 def is_spectroscope(effects):
-    has_trace_lists = sum([isinstance(eff, efs.SpectralTraceList)
+    has_trace_lists = sum([isinstance(eff,
+                                      simcado.optics.effects.spectroscopy_effects.SpectralTraceList)
                            for eff in effects])
-    has_apertures = sum([isinstance(eff, (efs.ApertureList, efs.ApertureMask))
+    has_apertures = sum([isinstance(eff, (
+    simcado.optics.effects.spectroscopy_effects.ApertureList,
+    simcado.optics.effects.spectroscopy_effects.ApertureMask))
                          for eff in effects])
 
     return bool(has_apertures and has_trace_lists)

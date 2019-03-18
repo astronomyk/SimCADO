@@ -10,7 +10,8 @@ from ... import utils
 from ...source.source2 import Source
 from ..radiometry import RadiometryTable
 from ..image_plane import ImagePlane
-from .effects import Effect, TERCurve
+from .effects import Effect
+from simcado.optics.effects.ter_curves import TERCurve
 
 
 class SurfaceList(Effect):

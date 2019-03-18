@@ -1,3 +1,5 @@
+import simcado.optics.effects.spectroscopy_effects
+import simcado.optics.effects.ter_curves
 from . import effects as efs
 from .effects.effects_utils import make_effect, get_all_effects
 
@@ -54,13 +56,14 @@ class OpticalElement:
     def ter_list(self):
         ter_list = [effect for effect in self.effects
                     if isinstance(effect, (efs.SurfaceList,
-                                           efs.TERCurve))]
+                                           simcado.optics.effects.ter_curves.TERCurve))]
         return ter_list
 
     @property
     def mask_list(self):
         mask_list = [effect for effect in self.effects
-                     if isinstance(effect, efs.ApertureList)]
+                     if isinstance(effect,
+                                   simcado.optics.effects.spectroscopy_effects.ApertureList)]
         return mask_list
 
     def __add__(self, other):

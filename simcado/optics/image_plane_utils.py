@@ -381,7 +381,8 @@ def overlay_image(small_im, big_im, coords, mask=None, sub_pixel=False):
     return big_im
 
 
-def rescale_imagehdu(imagehdu, pixel_scale, wcs_suffix="", **kwargs):
+def rescale_imagehdu(imagehdu, pixel_scale, wcs_suffix="", conserve_flux=True,
+                     **kwargs):
     """
     Scales the .data array by the ratio of pixel_scale [deg] and CDELTn
 
@@ -416,10 +417,14 @@ def rescale_imagehdu(imagehdu, pixel_scale, wcs_suffix="", **kwargs):
     if zoom1 != 1 or zoom2 != 1:
         sum_orig = np.sum(imagehdu.data)
         new_im = ndi.zoom(imagehdu.data, (zoom1, zoom2), **kwargs)
-        new_im = np.nan_to_num(new_im, copy=False)
-        sum_new = np.sum(new_im)
-        if sum_new != 0:
-            imagehdu.data = new_im * sum_orig / sum_new
+
+        if conserve_flux:
+            new_im = np.nan_to_num(new_im, copy=False)
+            sum_new = np.sum(new_im)
+            if sum_new != 0:
+                new_im *= sum_orig / sum_new
+
+        imagehdu.data = new_im
 
         for ii in range(max(1, len(s))):
             si = s[ii] if len(s) > 0 else ""
@@ -433,7 +438,7 @@ def rescale_imagehdu(imagehdu, pixel_scale, wcs_suffix="", **kwargs):
     return imagehdu
 
 
-def reorient_imagehdu(imagehdu, wcs_suffix="", **kwargs):
+def reorient_imagehdu(imagehdu, wcs_suffix="", conserve_flux=True, **kwargs):
     """
     Rotates the .data array by the angle given in the PC matrix of the header
 
@@ -465,8 +470,9 @@ def reorient_imagehdu(imagehdu, wcs_suffix="", **kwargs):
 
         angle = np.rad2deg(np.arctan2(hdr["PC1_2"+s], hdr["PC1_1"+s]))
         new_im = ndi.rotate(imagehdu.data, angle, reshape=True, **kwargs)
-        new_im = np.nan_to_num(new_im, copy=False)
-        new_im *= np.sum(imagehdu.data) / np.sum(new_im)
+        if conserve_flux:
+            new_im = np.nan_to_num(new_im, copy=False)
+            new_im *= np.sum(imagehdu.data) / np.sum(new_im)
 
         imagehdu.data = new_im
         hdr["CRPIX1"+s] = hdr["NAXIS1"] / 2.
@@ -483,7 +489,8 @@ def reorient_imagehdu(imagehdu, wcs_suffix="", **kwargs):
     return imagehdu
 
 
-def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1, wcs_suffix=""):
+def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1, wcs_suffix="",
+                             conserve_flux=True):
     """
     Re-project one ``fits.ImageHDU`` onto another ``fits.ImageHDU``
 
@@ -519,8 +526,10 @@ def add_imagehdu_to_imagehdu(image_hdu, canvas_hdu, order=1, wcs_suffix=""):
     pixel_scale = canvas_hdu.header["CDELT1"+s]
 
     new_hdu = rescale_imagehdu(image_hdu, pixel_scale=pixel_scale,
-                               wcs_suffix=s, order=order)
-    new_hdu = reorient_imagehdu(new_hdu, wcs_suffix=s, order=order)
+                               wcs_suffix=s, order=order,
+                               conserve_flux=conserve_flux)
+    new_hdu = reorient_imagehdu(new_hdu, wcs_suffix=s, order=order,
+                                conserve_flux=conserve_flux)
 
     xcen_im = new_hdu.header["NAXIS1"] // 2
     ycen_im = new_hdu.header["NAXIS2"] // 2

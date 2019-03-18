@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from synphot import SpectralElement, SourceSpectrum
 
 import simcado as sim
-from simcado.optics.effects import TERCurve
+from simcado.optics.effects.ter_curves import TERCurve
 from simcado.optics.surface import SpectralSurface
 
 PLOTS = False

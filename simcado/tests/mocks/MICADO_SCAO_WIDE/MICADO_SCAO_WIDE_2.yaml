@@ -11,13 +11,13 @@ effects :
     class : TERCurve
     kwargs :
         filename : TER_atmo_average.dat
+        action : transmission
 
 ---
 
 # TELESCOPE
 object : telescope
 name : elt
-z_order : 1
 inst_pkg_name : elt
 
 properties :
@@ -71,6 +71,7 @@ effects :
     class : TERCurve
     kwargs :
         filename : TC_filter_Ks.dat
+        action : transmission
 
 ---
 
@@ -89,6 +90,7 @@ effects :
     class : TERCurve
     kwargs :
         filename : QE_h4rg.dat
+        action : transmission
 
 -   name : MICADO_centre_chip_layout
     class : DetectorList

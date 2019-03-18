@@ -14,7 +14,7 @@ from simcado.optics.optical_train import OpticalTrain
 from simcado.optics.optics_manager import OpticsManager
 from simcado.utils import find_file
 from simcado.commands.user_commands2 import UserCommands
-from simcado.optics.effects import TERCurve
+from simcado.optics.effects.ter_curves import TERCurve
 
 from simcado.tests.mocks.py_objects.effects_objects import _mvs_effects_list
 from simcado.tests.mocks.py_objects.yaml_objects import \

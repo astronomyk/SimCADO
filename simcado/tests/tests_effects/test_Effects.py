@@ -5,7 +5,8 @@ import pytest
 from astropy.table import Table
 
 import simcado as sim
-from simcado.optics.effects import Effect, ApertureList
+from simcado.optics.effects import Effect
+from simcado.optics.effects.spectroscopy_effects import ApertureList
 from simcado.optics.effects.surface_list import SurfaceList
 
 MOCK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
@@ -15,13 +16,13 @@ sim.rc.__search_path__ += [MOCK_PATH]
 
 @pytest.fixture()
 def surf_list_file():
-    fname = os.path.join(MOCK_PATH, "EC_mirrors_MICADO_Wide.tbl")
+    fname = os.path.join(MOCK_PATH, "LIST_mirrors_MICADO_Wide.tbl")
     return fname
 
 
 @pytest.fixture()
 def aperture_list_file():
-    fname = os.path.join(MOCK_PATH, "EC_mirrors_MICADO_Wide.tbl")
+    fname = os.path.join(MOCK_PATH, "LIST_mirrors_MICADO_Wide.tbl")
     return fname
 
 

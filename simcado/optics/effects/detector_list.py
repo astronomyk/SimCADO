@@ -9,7 +9,7 @@ from ..image_plane_utils import header_from_list_of_xy, calc_footprint
 class DetectorList(Effect):
     def __init__(self, **kwargs):
         super(Effect, self).__init__(**kwargs)
-        self.meta["z_order"] = [100, 500]
+        self.meta["z_order"] = [0, 100, 500]
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         hdr = self.image_plane_header

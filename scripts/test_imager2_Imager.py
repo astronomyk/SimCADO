@@ -86,15 +86,15 @@
 #         assert len(surf_tbl) == 0
 #
 #     def test_returns_single_table_when_only_one_filename_is_passed(self):
-#         files = ["EC_mirrors_ELT.tbl"]
+#         files = ["LIST_mirrors_ELT.tbl"]
 #         surf_tbl = imager.make_surfaces_table(files)
 #         assert len(surf_tbl) == 5
 #         assert "Temp" in surf_tbl.colnames
 #
 #     def test_returns_combined_table(self):
-#         files = ["EC_mirrors_ELT.tbl",
-#                  "EC_mirrors_SCAO_relay.tbl",
-#                  "EC_mirrors_MICADO_Wide.tbl"]
+#         files = ["LIST_mirrors_ELT.tbl",
+#                  "LIST_mirrors_SCAO_relay.tbl",
+#                  "LIST_mirrors_MICADO_Wide.tbl"]
 #         surf_tbl = imager.make_surfaces_table(files)
 #         assert len(surf_tbl) == 19
 #         assert "Temp" in surf_tbl.colnames
@@ -104,7 +104,7 @@
 #         assert len(surf_tbl) == 0
 #
 #     def test_ignores_tables_which_dont_exist_but_doesnt_throw_error(self):
-#         files = ["EC_mirrors_ELT.tbl",
+#         files = ["LIST_mirrors_ELT.tbl",
 #                  "bogus.tbl"]
 #         surf_tbl = imager.make_surfaces_table(files)
 #         assert len(surf_tbl) == 5
