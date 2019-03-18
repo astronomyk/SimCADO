@@ -16,10 +16,11 @@ from .detector import Detector
 
 __all__ = ["run", "snr", "check_chip_positions", "limiting_mags"]
 
+
 def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         detector_layout="small", filename=None, return_internals=False,
         filter_name=None, exptime=None, sub_pixel=False,
-        **kwargs):
+        sim_data_dir=None, **kwargs):
     """
     Run a MICADO simulation with default parameters
 
@@ -63,10 +64,13 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
     exptime : int, float
         [s] Analogous to passing OBS_EXPTIME as a keyword argument
 
+    sim_data_dir : str
+        Path to where the data is kept
+
     """
 
     if cmds is None:
-        cmds = UserCommands()
+        cmds = UserCommands(sim_data_dir=sim_data_dir)
         cmds["INST_FILTER_TC"] = "Ks"
 
         if detector_layout.lower() in ("tiny", "small", "centre", "center"):
@@ -120,7 +124,6 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         return hdu
 
 
-
 def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
                          n=0.3, mode="wide"):
     """
@@ -128,7 +131,6 @@ def check_chip_positions(filename="src.fits", x_cen=17.084, y_cen=17.084,
 
     THe number of stars in each grid corresponds to the id number of the chip
     """
-
 
     x = [-x_cen]*1 + [0]*2 + [x_cen]*3 + \
         [-x_cen]*4 + [0]*5 + [x_cen]*6 + \
