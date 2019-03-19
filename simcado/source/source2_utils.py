@@ -76,9 +76,10 @@ def photons_in_range(spectra, wave_min, wave_max, area=None, bandpass=None):
         [um]
     wave_max
         [um]
-    area
+    area : Quantity
         [m2]
-    bandpass
+    bandpass : SpectralElement
+
 
     Returns
     -------

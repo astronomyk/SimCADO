@@ -39,6 +39,19 @@ from .effects.effects_utils import get_all_effects, is_spectroscope
 
 
 class FOVManager:
+    """
+    A class to manage the (monochromatic) image windows covering the target
+
+    Parameters
+    ----------
+    effects : list of Effect objects
+        Passed from optics_manager.fov_setup_effects
+
+    kwargs
+    ------
+    All observation parameters as passed from UserCommands
+
+    """
     def __init__(self, effects=[], **kwargs):
         self.meta = {}
         self.meta.update(kwargs)
@@ -46,6 +59,15 @@ class FOVManager:
         self._fovs_list = []
 
     def generate_fovs_list(self):
+        """
+        Generates a series of FieldOfViews objects based self.effects
+
+        Returns
+        -------
+        fovs : list of FieldOfView objects
+
+        """
+
         if is_spectroscope(self.effects):
             shifts  = get_3d_shifts(self.effects, **self.meta)
             waveset = get_spectroscopy_waveset(self.effects, **self.meta)
@@ -66,6 +88,20 @@ class FOVManager:
 
 
 def get_3d_shifts(effects, **kwargs):
+    """
+    Returns the total 3D shifts (x,y,lam) from a series of Shift3D objects
+
+    Parameters
+    ----------
+    effects : list of Shift3D effects
+
+    Returns
+    -------
+    shift_dict : dict
+        returns the x, y shifts for each wavelength in the waveset, where
+        waveset contains the edge wavelengths for each spectral layer
+
+    """
     # for the offsets
     # OBS_FIELD_ROTATION
     # ATMO_TEMPERATURE
@@ -96,13 +132,27 @@ def get_3d_shifts(effects, **kwargs):
         x_shifts = [0, 0]
         y_shifts = [0, 0]
 
-    return {"wavelengths": wave_bin_edges,
-            "x_shifts": x_shifts,
-            "y_shifts": y_shifts}
+    shift_dict = {"wavelengths": wave_bin_edges,
+                  "x_shifts": x_shifts,
+                  "y_shifts": y_shifts}
+
+    return shift_dict
 
 
 def get_imaging_waveset(effects, **kwargs):
-    # dlam between shift of
+    """
+    Returns the edge wavelengths for the spectral layers needed for simulation
+
+    Parameters
+    ----------
+    effects : list of Effect objects
+
+    Returns
+    -------
+    wave_bin_edges : list
+        [um] list of wavelengths
+
+    """
 
     if np.any([isinstance(effects, efs.SurfaceList)]):
         # ..todo: get the effective wavelength range from SurfaceList
@@ -129,6 +179,27 @@ def get_imaging_waveset(effects, **kwargs):
 
 
 def get_imaging_headers(effects, **kwargs):
+    """
+    Returns a list of Header objects for each of the FieldOfVIew objects
+
+    Parameters
+    ----------
+    effects : list of Effect objects
+        Should contain all effects which define the spatial edges of all the
+        FieldOfView objects.
+
+    Returns
+    -------
+    hdrs : list of Header objects
+
+    Notes
+    -----
+    FOV headers use the return values from the ``<Effect>.fov_grid()``
+    method. The ``fov_grid`` dict mult contain the ``edges``
+
+    This may change in future versions of SimCADO
+
+    """
 
     aperture_masks = get_all_effects(effects, efs.ApertureMask)
     detector_arrays = get_all_effects(effects, efs.DetectorList)
@@ -168,6 +239,25 @@ def get_imaging_headers(effects, **kwargs):
 
 
 def get_imaging_fovs(headers, waveset, shifts):
+    """
+    Returns a list of ``FieldOfView`` objects
+
+    Parameters
+    ----------
+    headers : list of Header objects
+
+    waveset : list of floats
+        [um] N+1 wavelengths for N spectral layers
+
+    shifts : list of tuples
+        [deg] x,y shifts w.r.t to the optical axis plane. N shifts for N
+        spectral layers
+
+    Returns
+    -------
+    fovs : list of FieldOfView objects
+
+    """
 
     if len(shifts["wavelengths"]) > len(waveset):
         waveset = shifts["wavelengths"]
