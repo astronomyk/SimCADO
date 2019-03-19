@@ -4,13 +4,13 @@ SimCADO: A python package to simulate MICADO
 """
 
 from datetime import datetime
-from distutils.core import setup
+import setuptools
 import pytest  # not needed, but stops setup being included by sphinx.apidoc
 
 # Version number
 MAJOR = 0
 MINOR = 5
-ATTR = 'dev1'
+ATTR = 'dev3'
 
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
@@ -27,21 +27,44 @@ date    = '{}'
         fd.write(cnt.format(VERSION, timestamp))
 
 
+with open("readme.md", "r", encoding='utf-8') as fh:
+    long_description = fh.read()
+
+
 def setup_package():
     # Rewrite the version file every time
     write_version_py()
 
-    setup(name = 'SimCADO',
-          version = VERSION,
-          description = "MICADO Instrument simulator",
-          author = "Kieran Leschinski, Oliver Czoske, Miguel Verdugo",
-          author_email = """kieran.leschinski@unive.ac.at,
-                            oliver.czoske@univie.ac.at""",
-          url = "http://homepage.univie.ac.at/kieran.leschinski/",
-          license="MIT",
-          package_dir={'simcado': 'simcado'},
-          packages=['simcado'],
-          package_data = {'simcado': ['data/default.config']},
+    setuptools.setup(name = 'SimCADO',
+      version = VERSION,
+      description = "SimCADO: The MICADO Instrument simulator",
+      long_description = long_description,
+      long_description_content_type = 'text/markdown',
+      author = "Kieran Leschinski, Oliver Czoske, Miguel Verdugo",
+      author_email = """kieran.leschinski@unive.ac.at,
+                        oliver.czoske@univie.ac.at,
+                        miguel.verdugo@univie.ac.at""",
+      url = "http://homepage.univie.ac.at/kieran.leschinski/",
+      license ="MIT",
+      package_dir = {'simcado': 'simcado'},
+      packages = ['simcado'],
+      package_data = {'simcado': ['simcado/data/default.config']},
+      include_package_data=True,
+#          data_files=[('data/', ['default.config']),],
+      install_requires = ["numpy>1.10.4", 
+                          "scipy>0.17", 
+                          "astropy>1.1.2",
+                          "wget>3.0", 
+                          "requests>2.0",
+                          "synphot>0.1",
+                          "matplotlib>1.5.0", 
+                          "poppy>0.4", 
+                          "pyyaml",],
+      classifiers = ["Programming Language :: Python :: 3",
+                      "License :: OSI Approved :: MIT License",
+                      "Operating System :: OS Independent",
+                      "Intended Audience :: Science/Research",
+                      "Topic :: Scientific/Engineering :: Astronomy",]
           )
 
 
