@@ -207,8 +207,6 @@ class UserCommands(object):
 
 
     """
-
-
     def __init__(self, filename=None, sim_data_dir=None):
 
         """

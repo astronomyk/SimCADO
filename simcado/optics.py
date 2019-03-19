@@ -640,11 +640,17 @@ class OpticalTrain(object):
             if os.path.exists(self.cmds["SCOPE_PSF_FILE"]):
                 #logging.debug("Using PSF: " + self.cmds["SCOPE_PSF_FILE"])
 
-                psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
-                                         self.lam_bin_centers)
+                hdr = fits.getheader(self.cmds["SCOPE_PSF_FILE"], 0)
+                if "ETYPE" in hdr and hdr["ETYPE"] == "FVPSF":
+                    fname = self.cmds["SCOPE_PSF_FILE"]
+                    psf_m1 = psf.FieldVaryingPSF(filename=fname)
 
-                if psf_m1[0].pix_res != self.pix_res:
-                    psf_m1.resample(self.pix_res)
+                else:
+                    psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],
+                                             self.lam_bin_centers)
+
+                    if psf_m1[0].pix_res != self.pix_res:
+                        psf_m1.resample(self.pix_res)
             else:
                 warnings.warn("""
                 Couldn't resolve SCOPE_PSF_FILE.
