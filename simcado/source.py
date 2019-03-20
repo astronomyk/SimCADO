@@ -386,15 +386,15 @@ class Source(object):
                     psf_list = [opt_train.psf[psf_i]]
                     mask_list = [None]
 
+                nn = len(psf_list)
                 ii = 0
                 for psf, mask in zip(psf_list, mask_list):
                     ii += 1
+                    print("Convolving with PSF", ii, "of", nn, flush=True)
+
                     oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                     sub_pixel = params["sub_pixel"]
                     verbose = params["verbose"]
-
-                    print("Convolving with PSF {} or {}"
-                          "".format(ii, len(psf_list)), flush=True)
 
                     # image is in units of ph/s/pixel/m2
                     imgslice = self.image_in_range(psf, lam_min, lam_max,

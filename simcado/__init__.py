@@ -22,8 +22,6 @@ from . import optics
 from . import commands
 from . import source
 
-#from . import optics_utils
-#from . import defaults
 from . import simulation
 
 try:
@@ -33,15 +31,13 @@ except ImportError:
 
 # import specific Classes from the modules to be accessible in the global
 # namespace
-from .utils     import __pkg_dir__
-from .utils     import bug_report
-from .detector  import Detector, Chip
-from .source    import Source
-from .optics    import OpticalTrain
-from .commands  import UserCommands
+from .utils    import __pkg_dir__, bug_report
+from .detector import Detector, Chip
+from .source   import Source
+from .optics   import OpticalTrain
+from .commands import UserCommands
 
 # don't import these ones just yet
-#from .SpectralGrating  import *
 from .simulation import run
 from .utils import get_extras
 from .detector import install_noise_cube
