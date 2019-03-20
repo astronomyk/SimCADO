@@ -56,7 +56,7 @@ class TestInit:
 @pytest.mark.usefixtures("surf_list")
 class TestRadiometryTableAttribute:
     def test_returns_radiometry_table_object(self, surf_list):
-        assert isinstance(surf_list.radiometry_table, RadiometryTable)
+        assert isinstance(surf_list.surfaces_table, RadiometryTable)
         assert isinstance(surf_list.get_emission(), SourceSpectrum)
 
         if PLOTS:
@@ -70,11 +70,11 @@ class TestRadiometryTableAttribute:
 class TestAddSurfaceList:
     def test_second_list_is_joined_to_first(self, surf_list):
         surf_list_copy = deepcopy(surf_list)
-        len1 = len(surf_list.radiometry_table.table)
-        len2 = len(surf_list_copy.radiometry_table.table)
+        len1 = len(surf_list.surfaces_table.table)
+        len2 = len(surf_list_copy.surfaces_table.table)
 
         surf_list.add_surface_list(surf_list_copy, prepend=True)
-        len3 = len(surf_list.radiometry_table.table)
+        len3 = len(surf_list.surfaces_table.table)
 
         assert len3 == len2 + len1
 
@@ -82,10 +82,10 @@ class TestAddSurfaceList:
 @pytest.mark.usefixtures("surf_list", "filter_surface")
 class TestAddSurface:
     def test_extra_surface_is_joined_to_list(self, surf_list, filter_surface):
-        len1 = len(surf_list.radiometry_table.table)
+        len1 = len(surf_list.surfaces_table.table)
         surf_list.add_surface(filter_surface, "filter")
 
-        assert len(surf_list.radiometry_table.table) == len1 + 1
+        assert len(surf_list.surfaces_table.table) == len1 + 1
 
         if PLOTS:
             wave = np.linspace(0.5, 2.5, 100)*u.um

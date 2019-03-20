@@ -57,7 +57,7 @@ E-ELT and MICADO. The photons are then cast onto the detector array. Each
 :class:`.Chip` converts the photons to ADUs and adds the resulting image to an
 Astropy ``HDUList``. The ``HDUList`` is then written to disk.
 
-    >>> # Create a set of commands, optical train and detector
+    >>> # Create a set of tests_commands, optical train and detector
     >>>
     >>> import simcado
     >>> cmds = simcado.UserCommands()
@@ -139,7 +139,7 @@ class Detector(object):
     Attributes
     ----------
     cmds : UserCommands
-        commands for modelling the detector layout and exposures
+        tests_commands for modelling the detector layout and exposures
     layout : astropy.table.Table
         table of positions and sizes of the chips on the focal plane
     chips : list

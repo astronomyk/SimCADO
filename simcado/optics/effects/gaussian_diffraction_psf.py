@@ -10,6 +10,7 @@ class GaussianDiffractionPSF(AnalyticalPSF):
     def __init__(self, diameter, **kwargs):
         super(GaussianDiffractionPSF, self).__init__(**kwargs)
         self.meta["diameter"] = diameter
+        self.meta["z_order"] = [0, 300]
 
     def fov_grid(self, header=None, waverange=None, **kwargs):
         waverange = utils.quantify(waverange, u.um)

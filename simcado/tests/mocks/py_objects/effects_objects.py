@@ -3,7 +3,8 @@ import os
 from astropy import units as u
 from astropy.table import Table
 
-from simcado.optics.effects import SurfaceList, TERCurve
+from simcado.optics.effects import SurfaceList
+from simcado.optics.effects.ter_curves import TERCurve
 from simcado.optics.effects.effects_utils import make_effect
 from simcado.tests.mocks.py_objects.yaml_objects import _yaml_min_viable_scope
 
@@ -16,7 +17,7 @@ sim.rc.__search_path__ += [YAMLS_PATH]
 
 def _surf_list():
     kwargs = {"etendue": 5776 * u.m ** 2 * u.mas ** 2,
-              "filename": "EC_mirrors_MICADO_Wide.tbl",
+              "filename": "LIST_mirrors_MICADO_Wide.tbl",
               "name": "MICADO Mirror List"}
     return SurfaceList(**kwargs)
 

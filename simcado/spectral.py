@@ -24,7 +24,7 @@
 # A Throughput curve doesn't need anything else on top of the spectral,
 # however the EmissionCurve must know which units are being used so that it
 # can immediately convert the energy into photons. In order to do this the
-# EmissionCurve needs the following extra info from the commands dictionary
+# EmissionCurve needs the following extra info from the tests_commands dictionary
 #  - spatial area [m2]
 #  - angular area [arcsec2]
 #  - integration time [s]

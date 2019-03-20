@@ -14,7 +14,7 @@ from simcado.optics.optical_train import OpticalTrain
 from simcado.optics.optics_manager import OpticsManager
 from simcado.utils import find_file
 from simcado.commands.user_commands2 import UserCommands
-from simcado.optics.effects import TERCurve
+from simcado.optics.effects.ter_curves import TERCurve
 
 from simcado.tests.mocks.py_objects.effects_objects import _mvs_effects_list
 from simcado.tests.mocks.py_objects.yaml_objects import \
@@ -114,8 +114,8 @@ class TestObserve:
 
         wave = np.arange(0.5, 2.51, 0.1)*u.um
         unit = u.Unit("ph s-1 m-2 um-1")
-        print(opt.optics_manager.radiometry_table.emission(wave).to(unit))
-        print(opt.optics_manager.radiometry_table.table)
+        print(opt.optics_manager.surfaces_table.emission(wave).to(unit))
+        print(opt.optics_manager.surfaces_table.table)
         final_sum = np.sum(opt.image_plane.image)
         print(orig_sum, final_sum)
 

@@ -1,6 +1,8 @@
 import numpy as np
 from astropy import units as u
 
+import simcado.optics.effects.shifts
+import simcado.optics.effects.spectroscopy_effects
 from .. import utils
 from . import effects as efs
 from .fov import FieldOfView
@@ -115,7 +117,7 @@ def get_3d_shifts(effects, **kwargs):
     wave_max = kwargs["SIM_LAM_MAX"]
     sub_pixel_frac = kwargs["SIM_SUB_PIXEL_FRACTION"]
 
-    effects = get_all_effects(effects, efs.Shift3D)
+    effects = get_all_effects(effects, simcado.optics.effects.shifts.Shift3D)
     if len(effects) > 0:
         shifts = [eff.fov_grid(lam_min=wave_min, lam_mid=wave_mid,
                                lam_max=wave_max, sub_pixel_frac=sub_pixel_frac,
@@ -201,7 +203,8 @@ def get_imaging_headers(effects, **kwargs):
 
     """
 
-    aperture_masks = get_all_effects(effects, efs.ApertureMask)
+    aperture_masks = get_all_effects(effects,
+                                     simcado.optics.effects.spectroscopy_effects.ApertureMask)
     detector_arrays = get_all_effects(effects, efs.DetectorList)
 
     pixel_scale = kwargs["SIM_DETECTOR_PIX_SCALE"] / 3600.         # " -> deg

@@ -276,7 +276,7 @@ class UserCommands(object):
 
         Examples
         --------
-        View the default commands::
+        View the default tests_commands::
 
             >>> import simcado
             >>> my_cmds = simcado.UserCommands()
@@ -286,7 +286,7 @@ class UserCommands(object):
 
             >>> my_cmds["OBS_EXPTIME"] = 60
 
-        Change a series of commands at once::
+        Change a series of tests_commands at once::
 
             >>> new_cmds = {"OBS_EXPTIME" : 60 , "OBS_NDIT" : 10}
             >>> my_cmds.update(new_cmds)
@@ -344,9 +344,9 @@ class UserCommands(object):
 
         return files_exist and data_format_ok
 
-    def writeto(self, filename="commands.config"):
+    def writeto(self, filename="tests_commands.config"):
         """
-        Write all the key-value commands to an ASCII file on disk
+        Write all the key-value tests_commands to an ASCII file on disk
 
         Parameters
         ----------
@@ -753,9 +753,9 @@ class UserCommands(object):
 
     def __str__(self):
         if self.cmds["CONFIG_USER"] is not None:
-            return "A dictionary of commands compiled from " + \
+            return "A dictionary of tests_commands compiled from " + \
                                                         self.cmds["CONFIG_USER"]
-        return "A dictionary of default commands"
+        return "A dictionary of default tests_commands"
 
     def __iter__(self):
         return self.cmds.__iter__()

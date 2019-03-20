@@ -72,7 +72,8 @@ class RadiometryTable:
 
         return combine_throughputs(self.table, self.surfaces, rows)
 
-    def get_emission(self, etendue, start=0, end=None, rows=None):
+    def get_emission(self, etendue, start=0, end=None, rows=None,
+                     use_area=False):
         if self.table is None:
             return None
 
@@ -83,7 +84,8 @@ class RadiometryTable:
         if rows is None:
             rows = np.arange(start, end)
 
-        return combine_emissions(self.table, self.surfaces, rows, etendue)
+        return combine_emissions(self.table, self.surfaces, rows, etendue,
+                                 use_area)
 
     @property
     def emission(self):

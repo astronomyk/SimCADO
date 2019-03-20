@@ -32,9 +32,9 @@ sim.rc.__search_path__.insert(0, MOCK_DIR)
 
 @pytest.fixture(scope="module")
 def input_tables():
-    filenames = ["EC_mirrors_ELT.tbl",
-                 "EC_mirrors_SCAO_relay.tbl",
-                 "EC_mirrors_MICADO_Wide.tbl"]
+    filenames = ["LIST_mirrors_ELT.tbl",
+                 "LIST_mirrors_SCAO_relay.tbl",
+                 "LIST_mirrors_MICADO_Wide.tbl"]
 
     return [os.path.join(MOCK_DIR, fname) for fname in filenames]
 

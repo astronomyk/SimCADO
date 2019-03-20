@@ -13,7 +13,7 @@ from ..utils import real_colname, insert_into_ordereddict, quantify, \
     change_table_entry, convert_table_comments_to_dict
 
 
-def combine_emissions(tbl, surfaces, row_indexes, etendue):
+def combine_emissions(tbl, surfaces, row_indexes, etendue, use_area=False):
     if len(tbl) == 0:
         return None
 
@@ -33,11 +33,16 @@ def combine_emissions(tbl, surfaces, row_indexes, etendue):
             if emission is not None:
                 emission = emission * surf_throughput
 
-            if surf.area is not None:
+            area = surf.area
+            if area is not None:
                 surf_emission = surf.emission
-                surf_eff_area = surf.area * np.cos(surf.mirror_angle)
+                surf_eff_area = area * np.cos(surf.mirror_angle)
                 surf_eff_solid_angle = (etendue / surf_eff_area).to(u.arcsec**2)
                 surf_emission *= surf_eff_solid_angle.value
+
+                if use_area:
+                    surf_emission *= area.to(u.cm**2).value
+                    surf_emission.meta["use_area"] = use_area
 
                 msg = "Etendue scale factor applied. Effective pixel solid " \
                       "angle for surface is {}".format(surf_eff_solid_angle)

@@ -51,10 +51,14 @@ class TestObserve:
     def test_flux_is_conserved_and_emission_level_correct(self, cmds, tbl_src):
         opt = OpticalTrain(cmds)
         opt.observe(tbl_src)
-        assert tbl_src.photons_in_range(1, 2, 1)[0].value == approx(1) # * u.Unit("ph s-1")
-        assert np.sum(opt.image_plane.image) == approx(1, rel=2e-3)    # given a 1 um bandpass
+        im = opt.image_plane.image
+        bg_flux = np.pi / 4 * np.prod(im.shape)
+        src_flux = tbl_src.photons_in_range(1, 2, 1)[0].value
+        assert src_flux == approx(1)          # u.Unit("ph s-1")
+        assert np.sum(im) == approx(src_flux + bg_flux, rel=2e-3)
+        # given a 1 um bandpass
 
-        if PLOTS:
+        if PLOTS is False:
             plt.imshow(opt.image_plane.image.T, origin="lower", norm=LogNorm())
             plt.colorbar()
             plt.show()
