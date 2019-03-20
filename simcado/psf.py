@@ -138,14 +138,6 @@ __all__ = ["PSF", "PSFCube",
            ]
 
 
-def poppy_warning():
-    try:
-        import poppy
-    except:
-        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
-                      will not work. See http://pythonhosted.org/poppy/""")
-
-
 ###############################################################################
 #                            PSF and PSF subclasses                           #
 ###############################################################################
@@ -158,7 +150,6 @@ def poppy_warning():
 # MoffatPSF     fwhm                pix_res=0.004, size=f(fwhm)
 # CombinedPSFCube   psf_list            size=f(psf_list)
 # UserPSFCube       filename,           pix_res=0.004, size=f(filename), fits_ext=0
-
 
 
 class PSF(object):
@@ -453,7 +444,6 @@ class AiryPSF(PSF):
                                        y_size=size,
                                        mode=mode).array
         self.set_array(psf_arr)
-
 
 
 class GaussianPSF(PSF):
@@ -926,7 +916,6 @@ class PSFCube(object):
         self.__sub__(x)
 
 
-
 class DeltaPSFCube(PSFCube):
     """
     Generate a list of DeltaPSFs for wavelengths defined in lam_bin_centers
@@ -1041,6 +1030,7 @@ class GaussianPSFCube(PSFCube):
 
         self.info['description'] = "List of Gaussian function PSFs"
         self.info["Type"] = "GaussianCube"
+
 
 class MoffatPSFCube(PSFCube):
     """
@@ -1316,12 +1306,12 @@ class ADC_PSFCube(DeltaPSFCube):
                                     ", z0:" + str(params["ATMO_AIRMASS"])
 
 
-
-
 # The following two classes implement a kernel for the PSF of a centrally
 # obscured circular aperture. The classes are modelled after the kernels
 # in astropy.convolution.kernel and the models in astropy.modeling.models,
 # both from astropy version 1.1.1.
+
+
 class AiryDiskDiff2DKernel(Kernel2D):
     """
     2D kernel for PSF for annular aperture
@@ -1393,6 +1383,7 @@ class AiryDiskDiff2DKernel(Kernel2D):
         super(AiryDiskDiff2DKernel, self).__init__(**kwargs)
         self.normalize()
         self._truncation = None
+
 
 class AiryDiskDiff2D(Fittable2DModel):
     """
@@ -1575,7 +1566,6 @@ def make_foreign_PSF_cube(fnames, out_name=None, window=None, pix_res_orig=None,
         hdu_list.writeto(out_name, clobber=True)
 
 
-
 def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
                  **kwargs):
     """
@@ -1648,7 +1638,11 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     :func:`.get_eelt_segments`
 
     """
-    poppy_warning()
+    try:
+        import poppy
+    except ImportWarning:
+        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
+                      will not work. See http://pythonhosted.org/poppy/""")
 
     params = {"strehl"               : strehl,
               "mode"                 : mode,
@@ -1854,7 +1848,11 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     :func:`.get_eelt_segments`
 
     """
-    poppy_warning()
+    try:
+        import poppy
+    except ImportWarning:
+        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
+                      will not work. See http://pythonhosted.org/poppy/""")
 
     params = {"flattoflat"           : 1.256,
               "gap"                  : 0.004,
@@ -1928,7 +1926,6 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
         hdu_list.writeto(filename, clobber=True)
 
 
-
 def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
                       inner_diam=10.6, outer_diam=39.):
     """
@@ -1961,7 +1958,11 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         for the segments which are missing.
 
     """
-    poppy_warning()
+    try:
+        import poppy
+    except ImportWarning:
+        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
+                      will not work. See http://pythonhosted.org/poppy/""")
 
     if plan.lower() == "b":
         #inner_diam = 21.9
@@ -1971,9 +1972,8 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         first_seg = 60
         if missing is None: missing = 0
 
-
     ap = poppy.MultiHexagonAperture(flattoflat=1.256, gap=0.004,
-                                                    segmentlist=np.arange(2000))
+                                    segmentlist=np.arange(2000))
     rad = [np.sqrt(np.sum(np.array(ap._hex_center(j))**2))
                                                         for j in ap.segmentlist]
 
