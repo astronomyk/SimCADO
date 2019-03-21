@@ -643,7 +643,8 @@ class OpticalTrain(object):
                 hdr = fits.getheader(self.cmds["SCOPE_PSF_FILE"], 0)
                 if "ETYPE" in hdr and hdr["ETYPE"] == "FVPSF":
                     fname = self.cmds["SCOPE_PSF_FILE"]
-                    psf_m1 = psf.FieldVaryingPSF(filename=fname)
+                    psf_m1 = psf.FieldVaryingPSF(filename=fname,
+                                                 **self.cmds.cmds)
 
                 else:
                     psf_m1 = psf.UserPSFCube(self.cmds["SCOPE_PSF_FILE"],

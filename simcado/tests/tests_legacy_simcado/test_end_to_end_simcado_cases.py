@@ -78,7 +78,7 @@ class TestPoorMansFOV:
 
 
 class TestCaseStudiesForFVPSFs:
-    def grid_of_stars(self):
+    def test_grid_of_stars(self):
         import time
         start = time.time()
 
@@ -89,8 +89,11 @@ class TestCaseStudiesForFVPSFs:
         cmd["SIM_LAM_MIN"] = 1.0
         cmd["SIM_LAM_MAX"] = 1.25
         cmd["OBS_EXPTIME"] = 3600
-        cmd["SCOPE_PSF_FILE"] = "MAORY_SCAO_FVPSF_4mas_20181203.fits"
-        cmd["FPA_CHIP_LAYOUT"] = "full"
+        # "MAORY_SCAO_FVPSF_4mas_20181203.fits"
+        cmd["SCOPE_PSF_FILE"] = "C:/Work/irdb/_PSFs/AnisoCADO_SCAO_FVPSF_4mas_20190321.fits"
+        cmd["FPA_CHIP_LAYOUT"] = "centre"
+        cmd["OBS_SCAO_NGS_OFFSET_X"] = -5
+        cmd["OBS_SCAO_NGS_OFFSET_Y"] = 5
 
         opt = sim.OpticalTrain(cmd)
         fpa = sim.Detector(cmd, small_fov=False)
@@ -98,7 +101,7 @@ class TestCaseStudiesForFVPSFs:
         src = sim.source.star_grid(900, 15, 15.1, separation=2)
         src.apply_optical_train(opt, fpa)
         hdu = fpa.read_out()
-        hdu.writeto("E:/test_psf.fits", clobber=True)
+        hdu.writeto("E:/test_psf_aniso.fits", clobber=True)
 
         end = time.time()
         print("Time elapsed: {} sec".format(end - start))

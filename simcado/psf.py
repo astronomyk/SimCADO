@@ -1961,7 +1961,6 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         first_seg = 60
         if missing is None: missing = 0
 
-
     ap = poppy.MultiHexagonAperture(flattoflat=1.256, gap=0.004,
                                                     segmentlist=np.arange(2000))
     rad = [np.sqrt(np.sum(np.array(ap._hex_center(j))**2))

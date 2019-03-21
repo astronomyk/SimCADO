@@ -376,7 +376,7 @@ class Source(object):
                     chip_fov = PoorMansFOV(detector.chips[chip_i],
                                            lam_min, lam_max)
                     kernels_masks = opt_train.psf.get_kernel(chip_fov)
-                    psf_list = [km[0].T for km in kernels_masks]
+                    psf_list = [km[0] for km in kernels_masks]
                     mask_list = [km[1] for km in kernels_masks]
                     ########################
                 else:
@@ -386,11 +386,11 @@ class Source(object):
                     psf_list = [opt_train.psf[psf_i]]
                     mask_list = [None]
 
-                nn = len(psf_list)
+                # nn = len(psf_list)
                 ii = 0
                 for psf, mask in zip(psf_list, mask_list):
                     ii += 1
-                    print("Convolving with PSF", ii, "of", nn, flush=True)
+                    # print("Convolving with PSF", ii, "of", nn, flush=True)
 
                     oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                     sub_pixel = params["sub_pixel"]
