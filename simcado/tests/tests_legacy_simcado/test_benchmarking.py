@@ -8,9 +8,11 @@ import simcado as sim
 
 PLOTS = False
 
+# To run the test, add "test_" back into the names of the functions
+
 
 class TestConstantPSFs:
-    def test_basic_cluster_example_1024_px_window(self):
+    def basic_cluster_example_1024_px_window(self):
         start = time.time()
 
         src = sim.source.cluster(mass=1e4, distance=50e3)
@@ -21,7 +23,7 @@ class TestConstantPSFs:
         end = time.time()
         print("Time elapsed: {} sec".format(end - start))
 
-    def test_basic_cluster_example_central_detector(self):
+    def basic_cluster_example_central_detector(self):
         start = time.time()
 
         src = sim.source.cluster(mass=1e4, distance=20e3)
@@ -33,7 +35,7 @@ class TestConstantPSFs:
         end = time.time()
         print("Time elapsed: {} sec".format(end - start))
 
-    def test_basic_cluster_example_full_fpa(self):
+    def basic_cluster_example_full_fpa(self):
         start = time.time()
 
         src = sim.source.cluster(mass=1e4, distance=20e3)
@@ -48,7 +50,7 @@ class TestConstantPSFs:
 
 class TestCaseFVPSFs:
 
-    def test_basic_cluster_example_1024_px_window(self):
+    def basic_cluster_example_1024_px_window(self):
         start = time.time()
 
         cmd = sim.UserCommands(
@@ -71,7 +73,7 @@ class TestCaseFVPSFs:
         end = time.time()
         print("Time elapsed: {} sec".format(end - start))
 
-    def test_grid_of_stars_full_fpa(self):
+    def grid_of_stars_full_fpa(self):
         start = time.time()
 
         cmd = sim.UserCommands(
