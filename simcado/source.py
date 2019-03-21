@@ -377,7 +377,7 @@ class Source(object):
                                            lam_min, lam_max)
                     kernels_masks = opt_train.psf.get_kernel(chip_fov)
                     psf_list = [km[0].T for km in kernels_masks]
-                    mask_list = [km[1].T for km in kernels_masks]
+                    mask_list = [km[1] for km in kernels_masks]
                     ########################
                 else:
                     # apply the psf (get_slice_photons is called within)
@@ -405,7 +405,7 @@ class Source(object):
                                                    verbose=verbose)
 
                     if mask is not None:
-                        imgslice *= mask
+                        imgslice *= mask.T
                     if image is None:
                         image = imgslice
                     else:

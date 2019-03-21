@@ -78,7 +78,10 @@ class TestPoorMansFOV:
 
 
 class TestCaseStudiesForFVPSFs:
-    def grid_of_stars(self):
+    def test_grid_of_stars(self):
+        import time
+        start = time.time()
+
         cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
         cmd["FPA_LINEARITY_CURVE"] = None
         cmd["SIM_USE_FILTER_LAM"] = "no"
@@ -95,4 +98,8 @@ class TestCaseStudiesForFVPSFs:
         src = sim.source.star_grid(900, 15, 15.1, separation=2)
         src.apply_optical_train(opt, fpa)
         hdu = fpa.read_out()
-        hdu.writeto("E:/test_fv_psf_grid_J.fits", clobber=True)
+        hdu.writeto("E:/test_psf.fits", clobber=True)
+
+        end = time.time()
+        print("Time elapsed: {} sec".format(end - start))
+
