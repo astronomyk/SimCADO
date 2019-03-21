@@ -324,3 +324,14 @@ def resize_array(image, scale_factor, order=1):
     return image
 
 
+def round_edges(kernel, edge_width=32):
+    n = edge_width
+    #falloff = np.cos(1.5708 * np.arange(n) / (n-1)).reshape([1, n])
+    falloff = np.linspace(1, 0, n).reshape([1, n])
+
+    kernel[:n, :] *= falloff.T[::-1, :]
+    kernel[-n:, :] *= falloff.T
+    kernel[:, :n] *= falloff[:, ::-1]
+    kernel[:, -n:] *= falloff
+
+    return kernel

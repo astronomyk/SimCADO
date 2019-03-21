@@ -15,10 +15,14 @@ class TestConstantPSFs:
     def basic_cluster_example_1024_px_window(self):
         start = time.time()
 
-        src = sim.source.cluster(mass=1e4, distance=50e3)
+        src = sim.source.cluster(mass=1e4, distance=20e3, half_light_radius=0.1)
         hdu = sim.run(src, sim_data_dir="C:/Work/Legacy_SimCADO_data/")
 
         hdu.writeto("E:/test_psf.fits", clobber=True)
+
+        if PLOTS:
+            plt.imshow(hdu[0].data.T, origin="l")
+            plt.show()
 
         end = time.time()
         print("Time elapsed: {} sec".format(end - start))

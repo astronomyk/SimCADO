@@ -598,6 +598,9 @@ class Source(object):
 
         psf_array = np.copy(psf.array)
 
+        from .fv_psf import round_edges
+        psf_array = round_edges(psf_array, 32)
+
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array
             # x_int, y_int = np.floor(x_pix), np.floor(y_pix)
