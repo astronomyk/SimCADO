@@ -78,7 +78,7 @@ class TestPoorMansFOV:
 
 
 class TestCaseStudiesForFVPSFs:
-    def test_grid_of_stars(self):
+    def grid_of_stars(self):
         import time
         start = time.time()
 
