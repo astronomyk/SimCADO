@@ -183,6 +183,22 @@ def make_flux_table(source_tbl, src, wave_min, wave_max, area):
 
 
 def combine_table_fields(fov_header, src, field_indexes):
+    """
+    Combines a list of Table objects into a single one bounded by the Header WCS
+
+    Parameters
+    ----------
+    fov_header : fits.Header
+        Header from a FieldOfView objects
+    src : Source object
+    field_indexes : list of int
+
+    Returns
+    -------
+    tbl : Table
+
+    """
+
     fov_xsky, fov_ysky = imp_utils.calc_footprint(fov_header)
 
     x, y, ref, weight = [], [], [], []
@@ -215,7 +231,34 @@ def combine_table_fields(fov_header, src, field_indexes):
 
 
 def combine_imagehdu_fields(fov_header, src, fields_indexes, wave_min, wave_max,
-                            area, suffix=""):
+                            area, wcs_suffix=""):
+    """
+    Combines a list of ImageHDUs into a single one bounded by the Header WCS
+
+    Parameters
+    ----------
+    fov_header : fits.Header
+        Header from the FieldOfView
+    src : Source object
+    fields_indexes : list of ints
+        Which indexes from <Source>.fields to use
+    wave_min : float
+        [deg] Blue spectral border
+    wave_max : float
+        [deg] Red spectral border
+    area : float
+        [m2] Area of the primary aperture
+    wcs_suffix : str
+        Which coordinate system to use
+        - "" for the on-sky coordinate system
+        - "D" for the image-plane coordinate system
+
+    Returns
+    -------
+    canvas_hdu : fits.ImageHDU
+
+    """
+
     image = np.zeros((fov_header["NAXIS1"], fov_header["NAXIS2"]))
     canvas_hdu = fits.ImageHDU(header=fov_header, data=image)
     order = int(rc.__rc__["SIM_SPLINE_ORDER"])
@@ -228,13 +271,30 @@ def combine_imagehdu_fields(fov_header, src, fields_indexes, wave_min, wave_max,
             temp_hdu = fits.ImageHDU(header=fov_header, data=image)
             temp_hdu = imp_utils.add_imagehdu_to_imagehdu(src.fields[ii],
                                                           temp_hdu, order=order,
-                                                          wcs_suffix=suffix)
+                                                          wcs_suffix=wcs_suffix)
             canvas_hdu.data += temp_hdu.data * flux[0].value
 
     return canvas_hdu
 
 
 def sky2fp(header, xsky, ysky):
+    """
+    Convert sky coordinates to image plane coordinated
+
+    Parameters
+    ----------
+    header : Header
+        Header of a FieldOfView object which contains two sets of WCS keywords
+    xsky, ysky : float, array
+        [deg] The on-sky coordinated
+
+    Returns
+    -------
+    xdet, ydet : float, array
+        [mm] The coordinated on the image plane
+
+    """
+
     xpix, ypix = imp_utils.val2pix(header, xsky, ysky)
     xdet, ydet = imp_utils.pix2val(header, xpix, ypix, "D")
 
