@@ -376,8 +376,8 @@ class Source(object):
                     chip_fov = PoorMansFOV(detector.chips[chip_i],
                                            lam_min, lam_max)
                     kernels_masks = opt_train.psf.get_kernel(chip_fov)
-                    psf_list = [km[0].T for km in kernels_masks]
-                    mask_list = [km[1].T for km in kernels_masks]
+                    psf_list = [km[0] for km in kernels_masks]
+                    mask_list = [km[1] for km in kernels_masks]
                     ########################
                 else:
                     # apply the psf (get_slice_photons is called within)
@@ -386,15 +386,15 @@ class Source(object):
                     psf_list = [opt_train.psf[psf_i]]
                     mask_list = [None]
 
+                # nn = len(psf_list)
                 ii = 0
                 for psf, mask in zip(psf_list, mask_list):
                     ii += 1
+                    # print("Convolving with PSF", ii, "of", nn, flush=True)
+
                     oversample = opt_train.cmds["SIM_OVERSAMPLING"]
                     sub_pixel = params["sub_pixel"]
                     verbose = params["verbose"]
-
-                    print("Convolving with PSF {} or {}"
-                          "".format(ii, len(psf_list)), flush=True)
 
                     # image is in units of ph/s/pixel/m2
                     imgslice = self.image_in_range(psf, lam_min, lam_max,
@@ -405,7 +405,7 @@ class Source(object):
                                                    verbose=verbose)
 
                     if mask is not None:
-                        imgslice *= mask
+                        imgslice *= mask.T
                     if image is None:
                         image = imgslice
                     else:
@@ -598,6 +598,13 @@ class Source(object):
 
         psf_array = np.copy(psf.array)
 
+        # Try to get rid of the sharp edges
+        from .fv_psf import round_edges
+        psf_array = round_edges(psf_array, 64, "linear")
+        # w2, h2 = np.array(psf_array.shape) // 2
+        # threshold = min(psf_array[[0, w2, -1, w2], [h2, 0, h2, -1]])
+        # psf_array[psf_array < threshold] = 0
+
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array
             # x_int, y_int = np.floor(x_pix), np.floor(y_pix)
@@ -650,9 +657,9 @@ class Source(object):
                 # slice_array = convolve_fft(slice_array, psf.array,
                 #                            allow_huge=True)
                 # make the move to scipy
-                slice_array = fftconvolve(slice_array, psf.array, mode="same")
+                slice_array = fftconvolve(slice_array, psf_array, mode="same")
             except ValueError:
-                slice_array = convolve(slice_array, psf.array)
+                slice_array = convolve(slice_array, psf_array)
 
         return slice_array
 

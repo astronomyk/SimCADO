@@ -130,6 +130,8 @@ class FieldVaryingPSF(DataContainer):
         self.meta["SIM_SUB_PIXEL_FLAG"] = False
         self.meta['description'] = "Master psf cube from list"
         self.meta["Type"] = "FVPSF"
+        self.meta["OBS_SCAO_NGS_OFFSET_X"] = 0
+        self.meta["OBS_SCAO_NGS_OFFSET_Y"] = 0
 
         self.meta.update(kwargs)
 
@@ -215,15 +217,21 @@ class FieldVaryingPSF(DataContainer):
 
     @property
     def strehl_imagehdu(self):
-        if self._strehl_imagehdu is None:
+        return self.get_strehl_imagehdu()
+
+    def get_strehl_imagehdu(self, recalculate=False):
+        if self._strehl_imagehdu is None or recalculate is True:
+            dx = self.meta["OBS_SCAO_NGS_OFFSET_X"]
+            dy = self.meta["OBS_SCAO_NGS_OFFSET_Y"]
+
             ecat = self._file[0].header["ECAT"]
             if isinstance(self._file[ecat], fits.ImageHDU):
                 self._strehl_imagehdu = self._file[ecat]
 
-            # ..todo: impliment this case
             elif isinstance(self._file[ecat], fits.BinTableHDU):
-                cat = self._file[ecat]
-                self._strehl_imagehdu = make_strehl_map_from_table(cat)
+                strl_hdu = make_strehl_map_from_table(self._file[ecat],
+                                                      offset=(dx, dy))
+                self._strehl_imagehdu = strl_hdu
 
         return self._strehl_imagehdu
 
@@ -285,10 +293,10 @@ def get_psf_wave_exts(hdu_list):
     return wave_set, wave_ext
 
 
-def make_strehl_map_from_table(tbl, pixel_scale=1*u.arcsec):
-
-    map = griddata(np.array([tbl.data["x"], tbl.data["y"]]).T,
-                   tbl.data["layer"],
+def make_strehl_map_from_table(tbl, pixel_scale=1*u.arcsec, offset=(0, 0)):
+    x = tbl.data["x"] + offset[0]
+    y = tbl.data["y"] + offset[1]
+    map = griddata(np.array([x, y]).T, tbl.data["layer"],
                    np.array(np.meshgrid(np.arange(-25, 26),
                                         np.arange(-25, 26))).T,
                    method="nearest")
@@ -324,3 +332,18 @@ def resize_array(image, scale_factor, order=1):
     return image
 
 
+def round_edges(kernel, edge_width=32, rounding_function="linear"):
+    n = edge_width
+    if "cos" in rounding_function:
+        falloff = (np.cos(np.pi * np.arange(n) / (n-1)).reshape([1, n]) + 1) / 2
+    elif "lin" in rounding_function:
+        falloff = np.linspace(1, 0, n).reshape([1, n])
+    elif "log" in rounding_function:
+        falloff = np.logspace(0, -5, n).reshape([1, n])
+
+    kernel[:n, :] *= falloff.T[::-1, :]
+    kernel[-n:, :] *= falloff.T
+    kernel[:, :n] *= falloff[:, ::-1]
+    kernel[:, -n:] *= falloff
+
+    return kernel

@@ -809,7 +809,6 @@ class PSFCube(object):
 
         ext_list.writeto(filename, clobber=clobber, checksum=True)
 
-
     def convolve(self, kernel_list):
         """
         Convolve a list of PSFs with a list of kernels
@@ -830,7 +829,6 @@ class PSFCube(object):
             self.psf_slices[i].set_array(tmp.array)
         self.info["Type"] = "Complex"
 
-
     def nearest(self, lam):
         """
         Returns the PSF closest to the desired wavelength, lam [um]
@@ -849,7 +847,6 @@ class PSFCube(object):
         i = utils.nearest(self.lam_bin_centers, lam)
         return self.psf_slices[i]
 
-
     def __str__(self):
         return self.info['description']
 
@@ -861,7 +858,6 @@ class PSFCube(object):
 
     def __len__(self):
         return len(self.psf_slices)
-
 
     def __mul__(self, x):
         newpsf = deepcopy(self)
@@ -879,8 +875,6 @@ class PSFCube(object):
             newpsf[i].set_array(self.psf_slices[i] * y[i])
         return newpsf
 
-
-
     def __add__(self, x):
         newpsf = deepcopy(self)
 
@@ -896,7 +890,6 @@ class PSFCube(object):
         for i in np.arange(len(self.psf_slices)):
             newpsf[i].set_array(self.psf_slices[i] + y[i])
         return newpsf
-
 
     def __sub__(self, x):
         newpsf = deepcopy(self)
@@ -914,8 +907,6 @@ class PSFCube(object):
             newpsf[i].set_array(self.psf_slices[i] - y[i])
         return newpsf
 
-
-
     def __rmul__(self, x):
         self.__mul__(x)
 
@@ -924,7 +915,6 @@ class PSFCube(object):
 
     def __rsub__(self, x):
         self.__sub__(x)
-
 
 
 class DeltaPSFCube(PSFCube):
@@ -1970,7 +1960,6 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
     else:
         first_seg = 60
         if missing is None: missing = 0
-
 
     ap = poppy.MultiHexagonAperture(flattoflat=1.256, gap=0.004,
                                                     segmentlist=np.arange(2000))
