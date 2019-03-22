@@ -6,6 +6,7 @@ SimCADO: A python package to simulate MICADO
 from datetime import datetime
 import setuptools
 import pytest  # not needed, but stops setup being included by sphinx.apidoc
+from io import open  # in py3 just an alias to builtin 'open'. In py2.7, allows encoding='utf-8' 
 
 # Version number
 MAJOR = 0
