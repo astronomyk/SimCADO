@@ -25,7 +25,7 @@ date    = '{}'
 """
     timestamp = datetime.utcnow().strftime('%Y-%m-%d %T GMT')
     with open(filename, 'w', encoding='utf-8') as fd:
-        fd.write(cnt.format(VERSION, timestamp))
+        fd.write(cnt.format(VERSION, timestamp).decode('utf-8'))
 
 
 with open("readme.md", "r", encoding='utf-8') as fh:
