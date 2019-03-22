@@ -598,8 +598,12 @@ class Source(object):
 
         psf_array = np.copy(psf.array)
 
+        # Try to get rid of the sharp edges
         from .fv_psf import round_edges
-        psf_array = round_edges(psf_array, 32)
+        psf_array = round_edges(psf_array, 64, "linear")
+        # w2, h2 = np.array(psf_array.shape) // 2
+        # threshold = min(psf_array[[0, w2, -1, w2], [h2, 0, h2, -1]])
+        # psf_array[psf_array < threshold] = 0
 
         if params["sub_pixel"] is True:
             # for each point source in the list, add a psf to the slice_array
@@ -653,9 +657,9 @@ class Source(object):
                 # slice_array = convolve_fft(slice_array, psf.array,
                 #                            allow_huge=True)
                 # make the move to scipy
-                slice_array = fftconvolve(slice_array, psf.array, mode="same")
+                slice_array = fftconvolve(slice_array, psf_array, mode="same")
             except ValueError:
-                slice_array = convolve(slice_array, psf.array)
+                slice_array = convolve(slice_array, psf_array)
 
         return slice_array
 

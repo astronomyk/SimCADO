@@ -465,13 +465,11 @@ class UserCommands(object):
             raise ValueError("Cannot recognise SCOPE_PSF_FILE: " +
                              self.cmds["SCOPE_PSF_FILE"])
 
-
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
         if self.cmds["INST_MIRROR_AO_TC"] == "default":
             self.cmds["INST_MIRROR_AO_TC"] = self.cmds["INST_MIRROR_TC"]
-
 
         # which detector chip to use
         if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "full"):
@@ -487,8 +485,6 @@ class UserCommands(object):
                                                       "middle", "center"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 find_file("FPA_chip_layout_centre.dat")
-
-
 
     def _update_attributes(self):
         """
@@ -511,9 +507,8 @@ class UserCommands(object):
 
         i = np.where(self.mirrors_telescope["Mirror"] == "M1")[0][0]
         self.diameter = self.mirrors_telescope["Outer"][i]
-        self.area = np.pi / 4 * (self.diameter**2 - \
+        self.area = np.pi / 4 * (self.diameter**2 -
                                  self.mirrors_telescope["Inner"][i]**2)
-
 
         # Check for a filter curve file or a standard broadband name
         if isinstance(self.cmds["INST_FILTER_TC"], str):

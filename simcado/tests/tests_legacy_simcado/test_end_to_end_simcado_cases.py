@@ -78,31 +78,38 @@ class TestPoorMansFOV:
 
 
 class TestCaseStudiesForFVPSFs:
-    def test_grid_of_stars(self):
+    def grid_of_stars(self):
         import time
         start = time.time()
 
         cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
         cmd["FPA_LINEARITY_CURVE"] = None
         cmd["SIM_USE_FILTER_LAM"] = "no"
-        cmd["INST_FILTER_TC"] = "TC_filter_J.dat"
-        cmd["SIM_LAM_MIN"] = 1.0
-        cmd["SIM_LAM_MAX"] = 1.25
+        cmd["INST_FILTER_TC"] = "TC_filter_Ks.dat"
+        cmd["SIM_LAM_MIN"] = 1.9
+        cmd["SIM_LAM_MAX"] = 2.4
         cmd["OBS_EXPTIME"] = 3600
-        # "MAORY_SCAO_FVPSF_4mas_20181203.fits"
-        cmd["SCOPE_PSF_FILE"] = "C:/Work/irdb/_PSFs/AnisoCADO_SCAO_FVPSF_4mas_20190321.fits"
-        cmd["FPA_CHIP_LAYOUT"] = "centre"
-        cmd["OBS_SCAO_NGS_OFFSET_X"] = -5
-        cmd["OBS_SCAO_NGS_OFFSET_Y"] = 5
+        mcao = "C:/Work/irdb/_PSFs/MAORY_MCAO_FVPSF_4mas_20181203.fits"
+        scao = "C:/Work/irdb/_PSFs/AnisoCADO_SCAO_FVPSF_4mas_1024_20190321.fits"
+        cmd["SCOPE_PSF_FILE"] = scao
+        cmd["FPA_CHIP_LAYOUT"] = "full"
+        cmd["OBS_SCAO_NGS_OFFSET_X"] = 0
+        cmd["OBS_SCAO_NGS_OFFSET_Y"] = 0
 
         opt = sim.OpticalTrain(cmd)
         fpa = sim.Detector(cmd, small_fov=False)
 
-        src = sim.source.star_grid(900, 15, 15.1, separation=2)
+        # src = sim.source.star_grid(900, 15, 15.1, separation=2)
+        src = sim.source.cluster(mass=1E4, distance=20000, half_light_radius=2)
+
         src.apply_optical_train(opt, fpa)
         hdu = fpa.read_out()
-        hdu.writeto("E:/test_psf_aniso.fits", clobber=True)
+        hdu.writeto("E:/test_psf_aniso_Ks.fits", clobber=True)
 
         end = time.time()
         print("Time elapsed: {} sec".format(end - start))
 
+        # import matplotlib.pyplot as plt
+        # from matplotlib.colors import LogNorm
+        # plt.imshow(hdu[0].data.T, norm=LogNorm())
+        # plt.show()

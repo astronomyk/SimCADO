@@ -332,10 +332,14 @@ def resize_array(image, scale_factor, order=1):
     return image
 
 
-def round_edges(kernel, edge_width=32):
+def round_edges(kernel, edge_width=32, rounding_function="linear"):
     n = edge_width
-    falloff = np.cos(3.1415926 * np.arange(n) / (n-1)).reshape([1, n])
-    # falloff = np.linspace(1, 0, n).reshape([1, n])
+    if "cos" in rounding_function:
+        falloff = (np.cos(np.pi * np.arange(n) / (n-1)).reshape([1, n]) + 1) / 2
+    elif "lin" in rounding_function:
+        falloff = np.linspace(1, 0, n).reshape([1, n])
+    elif "log" in rounding_function:
+        falloff = np.logspace(0, -5, n).reshape([1, n])
 
     kernel[:n, :] *= falloff.T[::-1, :]
     kernel[-n:, :] *= falloff.T
