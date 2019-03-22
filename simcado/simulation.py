@@ -73,10 +73,12 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         cmds = UserCommands(sim_data_dir=sim_data_dir)
         cmds["INST_FILTER_TC"] = "Ks"
 
-        if detector_layout.lower() in ("tiny", "small", "centre", "center"):
+        if detector_layout.lower() in ("tiny", "small", "centre", "center",
+                                       "full", "no_gaps"):
             cmds["FPA_CHIP_LAYOUT"] = detector_layout
         else:
-            cmds["FPA_CHIP_LAYOUT"] = 'full'
+            raise ValueError("detector_layout was not recognised: {}"
+                             "".format(detector_layout))
 
         if mode == "wide":
             cmds["SIM_DETECTOR_PIX_SCALE"] = 0.004
@@ -85,7 +87,8 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
             cmds["SIM_DETECTOR_PIX_SCALE"] = 0.0015
             cmds["INST_NUM_MIRRORS"] = 13
         else:
-            raise ValueError("'mode' must be either 'wide' or ' zoom', not " + mode)
+            raise ValueError("'mode' must be either 'wide' or ' zoom', not {}"
+                             "".format(mode))
 
     if filter_name is not None:
         cmds["INST_FILTER_TC"] = filter_name

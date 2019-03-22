@@ -475,6 +475,9 @@ class UserCommands(object):
         if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "full"):
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 find_file("FPA_chip_layout.dat")
+        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "no_gaps":
+            self.cmds["FPA_CHIP_LAYOUT"] = \
+                find_file("FPA_chip_layout_no_gaps.dat")
         elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
             self.cmds["FPA_CHIP_LAYOUT"] = \
                 find_file("FPA_chip_layout_small.dat")
