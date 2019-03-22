@@ -990,8 +990,10 @@ class Chip(object):
 
         """
         image2 = image * dit
-        ## does not seem to be necessary in numpy version 1.12.1 any more
-        image2[image2 > 2.14E9] = 2.14E9
+
+        # Check for windows systems. np.poisson is limited to 32-bit
+        if os.name == "nt":
+            image2[image2 > 2.147E9] = 2.147E9      # 2**31 = 2147483648
 
         im_st = np.zeros(np.shape(image))
         for _ in range(ndit):
