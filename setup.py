@@ -2,7 +2,7 @@
 """
 SimCADO: A python package to simulate MICADO
 """
-
+from sys import version_info
 from datetime import datetime
 import setuptools
 import pytest  # not needed, but stops setup being included by sphinx.apidoc
@@ -25,8 +25,10 @@ date    = '{}'
 """
     timestamp = datetime.utcnow().strftime('%Y-%m-%d %T GMT')
     with open(filename, 'w', encoding='utf-8') as fd:
-        fd.write(cnt.format(VERSION, timestamp).decode('utf-8'))
-
+        if version_info.major == 2
+            fd.write(cnt.format(VERSION, timestamp).decode('utf-8'))
+        else:
+            fd.write(cnt.format(VERSION, timestamp))
 
 with open("readme.md", "r", encoding='utf-8') as fh:
     long_description = fh.read()
