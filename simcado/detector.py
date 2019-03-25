@@ -1045,15 +1045,13 @@ class Chip(object):
             noise_cube = np.zeros((self.naxis1, self.naxis2, n_frames))
 
         if n_frames == 1:
-            return noise_cube[0,:,:]
+            return noise_cube[0, :, :]
         else:
             return noise_cube
-
 
     def _get_readout_times(self, scheme="double_corr"):
         """
         Expect that scheme = cmds["FPA_READ_OUT_SCHEME"]
-
         """
 
         if "double_corr" in scheme:

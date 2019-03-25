@@ -34,6 +34,7 @@ from .utils import __pkg_dir__, find_file
 
 __all__ = ["OpticalTrain", "get_filter_curve", "get_filter_set"]
 
+
 class OpticalTrain(object):
     """
     The OpticalTrain object reads in or generates the information necessary to
@@ -686,7 +687,6 @@ class OpticalTrain(object):
         return jitter_psf
 
 
-## note: 'filter' redefines a built-in and should not be used
 def get_filter_curve(filter_name):
     """
     Return a Vis/NIR broadband filter TransmissionCurve object

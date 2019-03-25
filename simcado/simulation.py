@@ -2,13 +2,8 @@
 simulation.py
 """
 
-# from astropy.io import ascii as ioascii ## unused (OC)
-#import warnings
-#import logging
-
 import numpy as np
 
-#import simmetis as sim
 from . import source
 from .commands import UserCommands
 from .optics import OpticalTrain
@@ -103,6 +98,8 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         opt_train = OpticalTrain(cmds)
     if fpa is None:
         fpa = Detector(cmds, small_fov=False)
+
+
 
     print("Detector layout")
     print(fpa.layout)
@@ -710,6 +707,7 @@ def plot_snr_rainbow(exptimes, mags, snr_array, snr_levels=None,
 
     """
     from matplotlib import pyplot as plt
+    from matplotlib.colors import LogNorm
 
     # Set defaults
     if snr_levels is None:

@@ -1520,13 +1520,13 @@ def _get_refstar_curve(filename=None,mag=0):
     """
     ## TODO: Can we pre-select a star based on the instrument we're simulating?
     data = ioascii.read(find_file("vega.dat"))
-    #data = ioascii.read(find_file("sirius_downsampled.txt"))
+    # data = ioascii.read(find_file("sirius_downsampled.txt"))
 
     mag_scale_factor = 10**(-mag/2.5)
 
-    ##
-    ## this function is expected to return the number of photons of a 0th mag star
-    ## for a star brighter than 0th mag, the number of photons needs to be reduced to match a 0th mag star
+    # this function is expected to return the number of photons of a 0 mag star
+    # for a star brighter than 0th mag, the number of photons needs to be
+    # reduced to match a 0th mag star
     lam, spec = data[data.colnames[0]], data[data.colnames[1]]/mag_scale_factor
     return lam, spec
 
@@ -1535,8 +1535,10 @@ def _get_refstar_curve(filename=None,mag=0):
 
 def get_vega_spectrum():
     """
-    Retrieve the Vega spectrum from stsci and return it to the user in synphot format
+    Retrieve the Vega spectrum from stsci and return it in synphot format
+
     TODO: Should it be in get_extras?
+
     Parameters
     ---------
     location: a valid location for the alpha_lyr file_obj
@@ -1546,15 +1548,20 @@ def get_vega_spectrum():
 
     Notes
     -----
-    To access wavelength and fluxes use: wave, flux = vega_sp._get_arrays(wavelengths=None)
+    To access wavelength and fluxes use::
+
+        wave, flux = vega_sp._get_arrays(wavelengths=None)
+
     """
     location = "http://ssb.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits"
     remote = synphot.specio.read_remote_spec(location, cache=True)
     header = remote[0]
     wave = remote[1]
     flux = remote[2]
-    meta = {'header': header, 'expr': 'Vega from ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits'  }
-    vega_sp = synphot.SourceSpectrum(synphot.models.Empirical1D, points=wave, lookup_table=flux, meta=meta)
+    url = 'Vega from ftp://ftp.stsci.edu/cdbs/calspec/alpha_lyr_stis_008.fits'
+    meta = {'header': header, 'expr': url}
+    vega_sp = synphot.SourceSpectrum(synphot.models.Empirical1D, points=wave,
+                                     lookup_table=flux, meta=meta)
     return vega_sp
 
 
@@ -1573,14 +1580,15 @@ def synphot_to_simcado(spectrum):
     """
 
     wave, flux = spectrum._get_arrays(wavelengths=None)
-    new_flux  = synphot.units.convert_flux(wave, flux, area=1, out_flux_unit="photlam")
+    new_flux  = synphot.units.convert_flux(wave, flux, area=1,
+                                           out_flux_unit="photlam")
     lam = wave.to_value(u.um)
     val = new_flux.value * 1e4 * 1e4   # <- to convert to /um/m2
     return lam, val
 
 
 def synphot_to_EC(spectrum):
-    '''
+    """
     Convert a synphot spectrum to a SimCADO Emission Curve
 
     Parameters
@@ -1589,10 +1597,9 @@ def synphot_to_EC(spectrum):
 
     Returns
     -------
-
     A SimCADO Emission Curve object
 
-    '''
+    """
 
     lam, val = synphot_to_simcado(spectrum)
     from .spectral import EmissionCurve
@@ -1602,7 +1609,7 @@ def synphot_to_EC(spectrum):
 
 def zero_magnitude_photon_flux(filter_name):
     """
-    Return the number of photons for a m=0 star for a certain filter using synphot
+    Return the number of photons for a m=0 star for a filter with synphot
 
     Parameters
     ----------
@@ -1631,13 +1638,13 @@ def zero_magnitude_photon_flux(filter_name):
         vval = vraw[vraw.colnames[1]]
 
     vega_sp = get_vega_spectrum()
-    bp = synphot.SpectralElement(synphot.models.Empirical1D, points=vlam*u.um, lookup_table=vval)
+    bp = synphot.SpectralElement(synphot.models.Empirical1D, points=vlam*u.um,
+                                 lookup_table=vval)
     obs = synphot.Observation(vega_sp, bp)
-    area = 100 * 100 # 1m^2
+    area = 1E4  # 1m^2
     syn_nph = obs.countrate(area=area)
     return syn_nph.value
 
-#
 
 def value_at_lambda(lam_i, lam, val, return_index=False):
     """
@@ -1711,8 +1718,6 @@ def get_SED_names(path=None):
 
     sed_names += ["All stellar spectral types (e.g. G2V, K0III)"]
     return sed_names
-
-
 
 
 def SED(spec_type, filter_name="V", magnitude=0.):

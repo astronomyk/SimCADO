@@ -320,7 +320,7 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
     f.close()
 
 
-############# Check the server for data extras
+# ############ Check the server for data extras
 def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     """
     Download the extra data that aren't in the SimCADO package
@@ -625,7 +625,8 @@ def bug_report():
 
 
 def find_file(filename, path=None, silent=False):
-    '''Find a file in search path
+    """
+    Find a file in search path
 
     Parameters
     ----------
@@ -639,7 +640,8 @@ def find_file(filename, path=None, silent=False):
     Returns
     -------
     Absolute path of the file
-    '''
+    """
+
     import simcado as sim
 
     if path is None:

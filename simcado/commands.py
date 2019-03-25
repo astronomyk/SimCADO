@@ -246,8 +246,7 @@ class UserCommands(object):
         # If we have no SIM_DATA_DIR from config or parameter, exit.
         if self.cmds['SIM_DATA_DIR'] == 'None' \
            or self.cmds['SIM_DATA_DIR'] is None:
-            raise ValueError("""Please specify config file and/or sim_data_dir!""")
-
+            raise ValueError("Please specify config file and/or sim_data_dir!")
 
         # add the instrument-specific data directory to the package
         # search path
@@ -283,8 +282,6 @@ class UserCommands(object):
         if self.verbose and filename is not None:
             print("Read in parameters from " + filename)
             logging.debug("Read in parameters from " + filename)
-
-
 
     def update(self, new_dict):
         """
@@ -354,20 +351,17 @@ class UserCommands(object):
         self._default_data()
         self._update_attributes()
 
-
     def keys(self):
         """
         Return the keys in the `UserCommands.cmds` dictionary
         """
         return self.cmds.keys()
 
-
     def values(self):
         """
         Return the values in the `UserCommands.cmds` dictionary
         """
         return self.cmds.values()
-
 
     def writeto(self, filename="commands.config"):
         """
@@ -391,7 +385,6 @@ class UserCommands(object):
         with open(filename, "w") as fd1:
             fd1.write(outstr)
 
-
     def _convert_none(self):
         """
         Turn all string "none" or "None" values into python ``None`` values
@@ -400,7 +393,6 @@ class UserCommands(object):
             value = self.cmds[key]
             if isinstance(value, str) and value.lower() == "none":
                 self.cmds[key] = None
-
 
     def _find_files(self):
         """
@@ -432,7 +424,6 @@ class UserCommands(object):
                                   + keyval)
                 else:
                     self.cmds[key] = fname
-
 
     def _default_data(self):
         """
@@ -555,8 +546,8 @@ class UserCommands(object):
         self.lam_res = self.cmds["SIM_LAM_TC_BIN_WIDTH"]
         self.lam = np.arange(lam_min, lam_max + 1E-7, self.lam_res)
 
-        #self.lam_psf_res = self.cmds["SIM_LAM_PSF_BIN_WIDTH"]
-        #self.lam_bin_edges = np.arange(lam_min,
+        # self.lam_psf_res = self.cmds["SIM_LAM_PSF_BIN_WIDTH"]
+        # self.lam_bin_edges = np.arange(lam_min,
         #                               lam_max + self.lam_psf_res + 1E-7,
         #                               self.lam_psf_res)
         # make lam_bin_edges according to how great the ADC offsets are
@@ -566,7 +557,6 @@ class UserCommands(object):
 
         self.exptime = self.cmds["OBS_EXPTIME"]
 
-
         # replace 'none', 'None' with None
         self._convert_none()
 
@@ -574,7 +564,6 @@ class UserCommands(object):
         self._get_total_wfe()
 
         self._split_categories()
-
 
     def _get_total_wfe(self):
         """
@@ -594,7 +583,6 @@ class UserCommands(object):
             tot_wfe = 0
 
         self.cmds["INST_TOTAL_WFE"] = tot_wfe
-
 
     def _get_lam_bin_edges(self, lam_min, lam_max):
         """
@@ -624,13 +612,13 @@ class UserCommands(object):
         effectiveness = self.cmds["INST_ADC_PERFORMANCE"] / 100.
 
         # This is redundant because also need to look at the PSF width
-        #if effectiveness == 1.:
+        # if effectiveness == 1.:
         #    lam_bin_edges = np.array([lam_min, lam_max])
         #    return lam_bin_edges
 
         shift_threshold = self.cmds["SIM_ADC_SHIFT_THRESHOLD"]
 
-        ## get the angle shift for each slice
+        # get the angle shift for each slice
         lam = np.arange(lam_min, lam_max + 1E-7, 0.001)
         zenith_distance = sim.utils.airmass2zendist(self.cmds["ATMO_AIRMASS"])
         angle_shift = atmospheric_refraction(lam,
@@ -641,14 +629,14 @@ class UserCommands(object):
                                              self.cmds["SCOPE_LATITUDE"],
                                              self.cmds["SCOPE_ALTITUDE"])
 
-        ## convert angle shift into number of pixels
-        ## pixel shifts are defined with respect to last slice
+        # convert angle shift into number of pixels
+        # pixel shifts are defined with respect to last slice
         rel_shift = (angle_shift - angle_shift[-1]) / self.pix_res
         rel_shift *= (1. - effectiveness)
         if np.max(np.abs(rel_shift)) > 1000:
             raise ValueError("Pixel shifts too great (>1000), check units")
 
-        ## Rotate by the paralytic angle
+        # Rotate by the paralytic angle
         int_shift = np.array(rel_shift / shift_threshold, dtype=np.int)
         idx = [np.where(int_shift == i)[0][0]
                for i in np.unique(int_shift)[::-1]]
@@ -683,7 +671,6 @@ class UserCommands(object):
 
         return lam_bin_edges
 
-
     def _split_categories(self):
         """
         Generate smaller category-specific dictionaries
@@ -695,7 +682,6 @@ class UserCommands(object):
         self.inst = {i:self.cmds[i] for i in self.cmds.keys() if "INST" in i}
         self.fpa = {i:self.cmds[i] for i in self.cmds.keys() if "FPA" in i}
         self.hxrg = {i:self.cmds[i] for i in self.cmds.keys() if "HXRG" in i}
-
 
     def __str__(self):
         if self.cmds["CONFIG_USER"] is not None:
@@ -713,19 +699,22 @@ class UserCommands(object):
         if key not in self.cmds.keys():
             raise ValueError(key+" not in UserCommands.keys()")
 
+        if isinstance(val, str) and key == "INST_FILTER_TC" \
+                and "TC_filter" not in val:
+            val = "TC_filter_{}.dat".format(val)
+
         self.cmds[key] = val
         self._find_files()
         self._default_data()
         self._update_attributes()
 
-
-    ### Add to the update that all the cmds.variable are updated when
-    ### the dicts are updated
+    # Add to the update that all the cmds.variable are updated when
+    # the dicts are updated
 
 
 def dump_defaults(filename=None, selection="freq"):
-    ## OC, 2016-08-11: changed parameter from 'type' to 'selection' as
-    ##    'type' redefines built-in
+    # OC, 2016-08-11: changed parameter from 'type' to 'selection' as
+    #    'type' redefines built-in
     """
     Dump the frequent.config file to a path specified by the user
 
@@ -760,7 +749,7 @@ def dump_defaults(filename=None, selection="freq"):
 
 
 def dump_chip_layout(path=None):
-    ## OC, 2016-08-11: changed parameter from 'dir' (redefines built-in)
+    # OC, 2016-08-11: changed parameter from 'dir' (redefines built-in)
     """
     Dump the FPA_chip_layout.dat file to a path specified by the user
 
