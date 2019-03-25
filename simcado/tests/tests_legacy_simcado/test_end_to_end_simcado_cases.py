@@ -12,12 +12,12 @@ FVPSF_PATH = "C:/Work/Legacy_SimCADO_data/MAORY_SCAO_FVPSF_4mas_20181203.fits"
 
 
 class TestSimDataDir:
-    def test_user_commands_defaults_to_installation_directory(self):
+    def user_commands_defaults_to_installation_directory(self):
         assert len(simcado.rc.__search_path__) > 1
 
 
 class TestNormalSimcadoUse:
-    def test_basic_cluster_example(self):
+    def basic_cluster_example(self):
         src = sim.source.cluster(mass=1e4, distance=50e3)
         hdu = sim.run(src, sim_data_dir=PKG_MICADO)
         if PLOTS:
@@ -26,13 +26,13 @@ class TestNormalSimcadoUse:
 
 
 class TestFVPSFsWithSimCADO:
-    def test_see_what_happens(self):
+    def see_what_happens(self):
         cmd = sim.UserCommands(sim_data_dir=PKG_MICADO)
         cmd["SCOPE_PSF_FILE"] = FVPSF_PATH
         opt = sim.OpticalTrain(cmd)
         assert isinstance(opt.psf, sim.psf.FieldVaryingPSF)
 
-    def test_reading_in_fv_psf_with_legacy_functions(self):
+    def reading_in_fv_psf_with_legacy_functions(self):
         cmd = sim.UserCommands(sim_data_dir=PKG_MICADO)
         cmd["SCOPE_PSF_FILE"] = FVPSF_PATH
 
