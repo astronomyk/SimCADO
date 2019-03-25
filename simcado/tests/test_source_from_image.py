@@ -23,6 +23,7 @@ def mock_dir():
 
 
 MOCK_DIR = mock_dir()
+sim.rc.__search_path__ += [MOCK_DIR]
 
 #sim.get_extras()
 #cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))

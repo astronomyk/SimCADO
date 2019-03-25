@@ -7,32 +7,35 @@ import simcado as sim
 import simcado.rc
 
 PLOTS = False
+PKG_MICADO = "C:/Work/irdb/_Legacy_packages/MICADO/"
+FVPSF_PATH = "C:/Work/Legacy_SimCADO_data/MAORY_SCAO_FVPSF_4mas_20181203.fits"
 
 
 class TestSimDataDir:
-    def user_commands_defaults_to_installation_directory(self):
-        print(simcado.rc.__data_dir__)
+    def test_user_commands_defaults_to_installation_directory(self):
+        assert len(simcado.rc.__search_path__) > 1
 
 
 class TestNormalSimcadoUse:
-    def basic_cluster_example(self):
+    def test_basic_cluster_example(self):
         src = sim.source.cluster(mass=1e4, distance=50e3)
-        hdu = sim.run(src, sim_data_dir="C:/Work/irdb/_Legacy_packages/MICADO/")
+        hdu = sim.run(src, sim_data_dir=PKG_MICADO)
         if PLOTS:
             plt.imshow(hdu[0].data, norm=LogNorm())
             plt.show()
 
 
 class TestFVPSFsWithSimCADO:
-    def see_what_happens(self):
-        cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
-        cmd["SCOPE_PSF_FILE"] = "MAORY_SCAO_FVPSF_4mas_20181203.fits"
+    def test_see_what_happens(self):
+        cmd = sim.UserCommands(sim_data_dir=PKG_MICADO)
+        cmd["SCOPE_PSF_FILE"] = FVPSF_PATH
         opt = sim.OpticalTrain(cmd)
-        print(opt.psf)
+        assert isinstance(opt.psf, sim.psf.FieldVaryingPSF)
 
-    def reading_in_fv_psf_with_legacy_functions(self):
-        cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
-        cmd["SCOPE_PSF_FILE"] = "MAORY_SCAO_FVPSF_4mas_20181203.fits"
+    def test_reading_in_fv_psf_with_legacy_functions(self):
+        cmd = sim.UserCommands(sim_data_dir=PKG_MICADO)
+        cmd["SCOPE_PSF_FILE"] = FVPSF_PATH
+
         from simcado.psf import FieldVaryingPSF
         psf = FieldVaryingPSF(filename=cmd["SCOPE_PSF_FILE"])
         print(psf.info)
@@ -62,15 +65,16 @@ class TestFVPSFsWithSimCADO:
         hdu = fpa.read_out()
         hdu.writeto("E:/fv_psf.fits", clobber=True)
 
-        plt.imshow(hdu[0].data.T, origin="l")
-        plt.show()
+        if PLOTS:
+            plt.imshow(hdu[0].data.T, origin="l")
+            plt.show()
 
 
 class TestPoorMansFOV:
     def initialised_with_a_chip(self):
         from simcado.fv_psf import PoorMansFOV
 
-        cmd = sim.UserCommands(sim_data_dir="C:/Work/Legacy_SimCADO_data/")
+        cmd = sim.UserCommands(sim_data_dir=PKG_MICADO)
         cmd["FPA_CHIP_LAYOUT"] = "center"
         fpa = sim.Detector(cmd, small_fov=False)
         fov = PoorMansFOV(fpa.chips[0], cmd.lam_bin_edges[0],

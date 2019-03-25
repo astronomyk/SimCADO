@@ -32,7 +32,7 @@ def create_vega_table():
     """
 
     filters = astropy.table.Column(name="filters",
-                                   data=["U", "B", "V",	"R", "I", "J", "H", "K"])
+                                   data=["U", "B", "V", "R", "I", "J", "H", "K"])
     lambda_eff = astropy.table.Column(name="lambda_eff",
                                       data=[0.36, 0.438, 0.545, 0.641, 0.798, 1.22, 1.63, 2.19],
                                       unit=u.um)

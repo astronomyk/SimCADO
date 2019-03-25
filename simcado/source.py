@@ -114,7 +114,7 @@ from .spectral import TransmissionCurve, EmissionCurve,\
 from . import psf as sim_psf
 from . import utils
 from .utils import find_file
-from .rc import __data_dir__
+from .rc import __data_dir__, __search_path__
 
 import synphot
 
@@ -1713,9 +1713,14 @@ def get_SED_names(path=None):
 
     """
     if path is None:
-        path = __data_dir__
-    sed_names = [i.replace(".dat", "").split("SED_")[-1]
-                 for i in glob(os.path.join(path, "SED_*.dat"))]
+        paths = __search_path__
+    else:
+        paths = [path]
+
+    sed_names = []
+    for path in paths:
+        sed_names += [i.replace(".dat", "").split("SED_")[-1]
+                      for i in glob(os.path.join(path, "SED_*.dat"))]
 
     sed_names += ["All stellar spectral types (e.g. G2V, K0III)"]
     return sed_names
