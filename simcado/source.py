@@ -113,7 +113,8 @@ from .spectral import TransmissionCurve, EmissionCurve,\
     UnityCurve, BlackbodyCurve
 from . import psf as sim_psf
 from . import utils
-from .utils import __pkg_dir__, find_file
+from .utils import find_file
+from .rc import __data_dir__
 
 import synphot
 
@@ -1513,26 +1514,26 @@ def photons_to_mag(filter_name, photons=1):
     return mag
 
 
+def _get_refstar_curve(filename=None, mag=0):
+    pass
 
-def _get_refstar_curve(filename=None,mag=0):
-    """
-    TODO: Obsolete? We now use synphot
-    """
-    ## TODO: Can we pre-select a star based on the instrument we're simulating?
-    data = ioascii.read(find_file("vega.dat"))
-    # data = ioascii.read(find_file("sirius_downsampled.txt"))
-
-    mag_scale_factor = 10**(-mag/2.5)
-
-    # this function is expected to return the number of photons of a 0 mag star
-    # for a star brighter than 0th mag, the number of photons needs to be
-    # reduced to match a 0th mag star
-    lam, spec = data[data.colnames[0]], data[data.colnames[1]]/mag_scale_factor
-    return lam, spec
+    # """
+    # TODO: Obsolete? We now use synphot
+    # """
+    # # TODO: Can we pre-select a star based on the instrument we're simulating?
+    # data = ioascii.read(find_file("vega.dat"))
+    # # data = ioascii.read(find_file("sirius_downsampled.txt"))
+    #
+    # mag_scale_factor = 10**(-mag/2.5)
+    #
+    # #this function is expected to return the number of photons of a 0 mag star
+    # # for a star brighter than 0th mag, the number of photons needs to be
+    # # reduced to match a 0th mag star
+    # lam, spec =data[data.colnames[0]], data[data.colnames[1]]/mag_scale_factor
+    # return lam, spec
 
 
 # Using synphot to get the vega spectrum
-
 def get_vega_spectrum():
     """
     Retrieve the Vega spectrum from stsci and return it in synphot format
@@ -1712,9 +1713,9 @@ def get_SED_names(path=None):
 
     """
     if path is None:
-        path = os.path.join(__pkg_dir__, "data")
-    sed_names = [i.replace(".dat", "").split("SED_")[-1] \
-                                for i in glob(os.path.join(path, "SED_*.dat"))]
+        path = __data_dir__
+    sed_names = [i.replace(".dat", "").split("SED_")[-1]
+                 for i in glob(os.path.join(path, "SED_*.dat"))]
 
     sed_names += ["All stellar spectral types (e.g. G2V, K0III)"]
     return sed_names
@@ -1803,7 +1804,7 @@ def SED(spec_type, filter_name="V", magnitude=0.):
     if np.any([i in gal_seds for i in spec_type]):
         galflux = []
         for gal in spec_type:
-            data = ioascii.read(find_file("data/SED_"+gal+".dat"))
+            data = ioascii.read(find_file("SED_"+gal+".dat"))
             galflux += [data[data.colnames[1]]]
             galflux = np.asarray(galflux)
         lam = data[data.colnames[0]]

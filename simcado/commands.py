@@ -37,8 +37,8 @@
 #
 # Examples
 # --------
-# By default ``UserCommands`` contains the parameters needed to generate the MICADO
-# optical train:
+# By default ``UserCommands`` contains the parameters needed to generate the
+# MICADO optical train:
 #
 #     >>> my_cmds = simcado.UserCommands()
 #
@@ -48,8 +48,8 @@
 #     ...
 #
 #
-# The UserCommands object also contains smaller dictionaries for each category of
-# keywords - e.g. for the keywords for the instrument:
+# The UserCommands object also contains smaller dictionaries for each category
+# of keywords - e.g. for the keywords for the instrument:
 #
 #     >>> my_cmds.inst
 #     ...
@@ -66,14 +66,12 @@ from collections import OrderedDict
 
 import numpy as np
 import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
-#from astropy.io import fits  # unused
 
 import simcado as sim
 from . import spectral as sc
-from .utils import __pkg_dir__, atmospheric_refraction, find_file
-from .psf import PSFCube
+from .utils import atmospheric_refraction, find_file
+from .rc import __pkg_dir__, __data_dir__, __search_path__
 
-#__all__ = []
 __all__ = ["UserCommands", "dump_defaults", "dump_chip_layout",
            "dump_mirror_config", "read_config", "update_config"]
 
@@ -236,8 +234,11 @@ class UserCommands(object):
         self.cmds = read_config(default)
 
         # read in the users wishes
+        user_cmds_dict = None
         if filename is not None:
-            self.cmds.update(read_config(filename))
+            user_cmds_dict = read_config(filename)
+            if "SIM_DATA_DIR" in user_cmds_dict:
+                self.cmds["SIM_DATA_DIR"] = user_cmds_dict["SIM_DATA_DIR"]
 
         # option sim_data_dir overrides values in config files
         if sim_data_dir is not None:
@@ -245,13 +246,21 @@ class UserCommands(object):
 
         # If we have no SIM_DATA_DIR from config or parameter, exit.
         if self.cmds['SIM_DATA_DIR'] == 'None' \
-           or self.cmds['SIM_DATA_DIR'] is None:
+                or self.cmds['SIM_DATA_DIR'] is None:
             raise ValueError("Please specify config file and/or sim_data_dir!")
 
         # add the instrument-specific data directory to the package
         # search path
-        if sim.__search_path__[1] != self.cmds['SIM_DATA_DIR']:
-            sim.__search_path__.insert(1, self.cmds['SIM_DATA_DIR'])
+        if __search_path__[1] != self.cmds['SIM_DATA_DIR']:
+            __search_path__.insert(1, self.cmds['SIM_DATA_DIR'])
+
+        inst_pkg_cfg = os.path.join(self.cmds['SIM_DATA_DIR'], "default.config")
+        if not os.path.exists(inst_pkg_cfg):
+            raise ValueError("sim_data_dir must contain a default.config file")
+
+        self.cmds.update(read_config(inst_pkg_cfg))
+        if user_cmds_dict is not None:
+            self.cmds.update(user_cmds_dict)
 
         # into python None values
         self._convert_none()
@@ -430,55 +439,19 @@ class UserCommands(object):
         Input system-specific path names for the default package data files
         """
 
-        if isinstance(self.cmds["SCOPE_PSF_FILE"], str):
-            if self.cmds["SCOPE_PSF_FILE"].lower() in ["ltao"]:
-                self.cmds["SCOPE_PSF_FILE"] = find_file("PSF_LTAO.fits")
-            elif self.cmds["SCOPE_PSF_FILE"].lower() in ("default", "scao"):
-                self.cmds["SCOPE_PSF_FILE"] = find_file("PSF_SCAO.fits")
-                self.cmds["INST_USE_AO_MIRROR_BG"] = "no"
-            elif self.cmds["SCOPE_PSF_FILE"].lower() in ("mcao", "maory"):
-                print("Unfortunately SimCADO doesn't yet have a MCAO PSF")
-                print("Using the SCAO PSF instead")
-                self.cmds["SCOPE_PSF_FILE"] = find_file("PSF_SCAO.fits")
-            elif self.cmds["SCOPE_PSF_FILE"].lower() in ("poppy", "ideal"):
-                self.cmds["SCOPE_PSF_FILE"] = find_file("PSF_POPPY.fits")
-            elif find_file(self.cmds["SCOPE_PSF_FILE"]) is None:
-                raise ValueError("Cannot recognise PSF file name: " +
-                                 self.cmds["SCOPE_PSF_FILE"])
-        elif isinstance(self.cmds["SCOPE_PSF_FILE"], PSFCube):
-            pass
-
-        elif self.cmds["SCOPE_PSF_FILE"] is None:
-            warnings.warn("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
-            logging.debug("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
-
-        else:
-            raise ValueError("Cannot recognise SCOPE_PSF_FILE: " +
-                             self.cmds["SCOPE_PSF_FILE"])
-
         if self.cmds["INST_MIRROR_TC"] == "default":
             self.cmds["INST_MIRROR_TC"] = self.cmds["SCOPE_M1_TC"]
 
         if self.cmds["INST_MIRROR_AO_TC"] == "default":
             self.cmds["INST_MIRROR_AO_TC"] = self.cmds["INST_MIRROR_TC"]
 
-        # which detector chip to use
-        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "full"):
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "no_gaps":
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_no_gaps.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_small.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "tiny":
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_tiny.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("centre", "central",
-                                                      "middle", "center"):
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_centre.dat")
+        if "cen" in self.cmds["FPA_CHIP_LAYOUT"]:
+            self.cmds["FPA_CHIP_LAYOUT"] = "centre"
+
+        if self.cmds["FPA_CHIP_LAYOUT"] in ("full", "centre", "small", "tiny"):
+            layout_str = self.cmds["FPA_CHIP_LAYOUT"]
+            self.cmds["FPA_CHIP_LAYOUT"] = "FPA_chip_layout_{}.dat" \
+                                           "".format(layout_str)
 
     def _update_attributes(self):
         """
@@ -733,7 +706,7 @@ def dump_defaults(filename=None, selection="freq"):
         fname = "default.config"
 
     if filename is None:
-        gname = os.path.join(__pkg_dir__, "data", fname)
+        gname = os.path.join(__data_dir__, fname)
         with open(gname, "r") as fd1:
             print(fd1.read())
         return None
@@ -744,7 +717,7 @@ def dump_defaults(filename=None, selection="freq"):
 
         if gname == "":
             gname = fname
-        shutil.copy(os.path.join(__pkg_dir__, "data", fname),
+        shutil.copy(os.path.join(__data_dir__, fname),
                     os.path.join(path, gname))
 
 

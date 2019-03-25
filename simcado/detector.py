@@ -842,10 +842,10 @@ class Chip(object):
             ro_cube = np.array(ro_cube)
             mask = ro_cube > cmds["FPA_FULL_WELL_DEPTH"]
             masked_ro_cube = ma.array(ro_cube, mask=mask)
-            masked_ro_cube[1:,:,:] -= masked_ro_cube[0,:,:]
-            ro_times.resize((len(ro_times),1,1))
-            masked_ro_cube[1:,:,:] /= ro_times[1:,:,:]
-            av_ro_cube = np.average(masked_ro_cube[1:,:,:], axis=0)
+            masked_ro_cube[1:, :, :] -= masked_ro_cube[0, :, :]
+            ro_times.resize((len(ro_times), 1, 1))
+            masked_ro_cube[1:, :, :] /= ro_times[1:, :, :]
+            av_ro_cube = np.average(masked_ro_cube[1:, :, :], axis=0)
 
             out_array += av_ro_cube * dit
 
@@ -1063,7 +1063,6 @@ class Chip(object):
             scheme = np.arange(0, self.dit, self.min_dit + 1E-3).tolist()
             scheme = scheme[:fowl_pair] + scheme[-fowl_pair:]
 
-
         if isinstance(scheme, str):
             if os.path.exists(scheme):
                 data = ioascii.read(scheme)
@@ -1072,7 +1071,6 @@ class Chip(object):
             times = np.array(scheme)
 
         return times.astype(np.float32)
-
 
     def _apply_linearity(self, in_array, curve, return_curve=False):
         """

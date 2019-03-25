@@ -6,8 +6,6 @@ End-to-end simulator for MICADO on the E-ELT
 import warnings
 import logging
 
-from os.path import join
-
 from astropy.utils.exceptions import AstropyWarning
 
 # Import all the modules to go under simcado
@@ -31,7 +29,7 @@ except ImportError:
 
 # import specific Classes from the modules to be accessible in the global
 # namespace
-from .utils    import __pkg_dir__, bug_report
+from .utils    import bug_report
 from .detector import Detector, Chip
 from .source   import Source
 from .optics   import OpticalTrain
@@ -42,17 +40,13 @@ from .simulation import run
 from .utils import get_extras
 from .detector import install_noise_cube
 
-__data_dir__ = join(__pkg_dir__, "data")
-
-# Search path for finding files
-__search_path__ = ['./', __pkg_dir__, __data_dir__]
-
 
 logging.basicConfig(filename='simcado.log', filemode='w', level=logging.DEBUG,
-                    format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+                    format='%(asctime)s %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.info("SimCADO imported")
 
-#warnings.simplefilter('ignore', UserWarning)   # user should see UserWarnings
+# warnings.simplefilter('ignore', UserWarning)   # user should see UserWarnings
 warnings.simplefilter('ignore', FutureWarning)
 warnings.simplefilter('ignore', RuntimeWarning)  # warnings for the developer
 warnings.simplefilter('ignore', category=AstropyWarning)

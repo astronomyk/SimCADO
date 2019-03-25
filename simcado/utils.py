@@ -21,7 +21,8 @@ Helper functions for SimCADO
 #
 import os
 import sys
-import inspect
+
+from .rc import __data_dir__, __search_path__
 
 try:
     import wget
@@ -32,12 +33,6 @@ import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii as ioascii
-
-__pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))
-
-#__all__ = []
-#__all__ = ["unify", "parallactic_angle", "poissonify",
-#           "atmospheric_refraction", "nearest", "add_keyword"]
 
 
 def msg(cmds, message, level=3):
@@ -321,7 +316,7 @@ def add_keyword(filename, keyword, value, comment="", ext=0):
 
 
 # ############ Check the server for data extras
-def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
+def download_file(url, save_dir):
     """
     Download the extra data that aren't in the SimCADO package
     """
@@ -342,12 +337,11 @@ def download_file(url, save_dir=os.path.join(__pkg_dir__, "data")):
     return local_filename
 
 
-def get_extras():
+def get_extras(save_dir):
     """
     Downloads large files that SimCADO needs to simulate MICADO
     """
 
-    save_dir = os.path.join(__pkg_dir__, "data")
     fname = os.path.join(save_dir, "extras.dat")
 
     # check_replace = 0  ## unused (OC)
@@ -361,13 +355,13 @@ def get_extras():
         """)
 
     url = "http://www.univie.ac.at/simcado/data_ext/"
-    new_extras = ioascii.read(download_file(url + "extras.dat"))
+    new_extras = ioascii.read(download_file(url + "extras.dat", save_dir))
 
     for name, vers, size, group in new_extras:
         check_download = 1
 
         # does the file exist on the users disk?
-        fname = os.path.join(__pkg_dir__, "data", name)
+        fname = os.path.join(save_dir, name)
         if os.path.exists(fname):
 
             # is the new name in the old list of filenames
@@ -382,7 +376,7 @@ def get_extras():
         if check_download:
             print("Downloading: " + name + "  Version: " + vers +
                   "  Size: " + size)
-            download_file(url + name)
+            download_file(url + name, save_dir)
         else:
             print(name + " is already the latest version: " + vers)
 
@@ -399,8 +393,9 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
         path to the SED file. Can be either FITS or ASCII format with 2 columns
         Column 1 is the wavelength, column 2 is the flux
     file_out : str, optional
-        Default is None. The file path to save the ASCII file. If ``None``, the SED
-        is saved to the SimCADO data directory i.e. to ``<utils.__pkg_dir__>/data/``
+        Default is None. The file path to save the ASCII file. If ``None``,
+        the SED is saved to the SimCADO data directory i.e. to
+        ``<utils.__pkg_dir__>/data/``
     lam_units : str, astropy.Units
         Units for the wavelength column, either as a string or as astropy units
         Default is [um]
@@ -411,8 +406,9 @@ def add_SED_to_simcado(file_in, file_out=None, lam_units="um"):
 
     if file_out is None:
         if "SED_" not in file_name:
-            file_out = __pkg_dir__+"/data/SED_"+file_name+".dat"
-        else: file_out = __pkg_dir__+"/data/"+file_name+".dat"
+            file_out = __data_dir__ + "/SED_" + file_name + ".dat"
+        else:
+            file_out = __data_dir__ + "/" + file_name + ".dat"
 
     if file_ext.lower() in "fits":
         data = fits.getdata(file_in)
@@ -645,7 +641,7 @@ def find_file(filename, path=None, silent=False):
     import simcado as sim
 
     if path is None:
-        path = sim.__search_path__
+        path = __search_path__
 
     if os.path.isabs(filename):
         # absolute path: only path to try

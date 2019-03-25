@@ -4,19 +4,20 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 
 import simcado as sim
+import simcado.rc
 
 PLOTS = False
 
 
 class TestSimDataDir:
     def user_commands_defaults_to_installation_directory(self):
-        print(sim.__data_dir__)
+        print(simcado.rc.__data_dir__)
 
 
 class TestNormalSimcadoUse:
     def basic_cluster_example(self):
         src = sim.source.cluster(mass=1e4, distance=50e3)
-        hdu = sim.run(src, sim_data_dir="C:/Work/Legacy_SimCADO_data/")
+        hdu = sim.run(src, sim_data_dir="C:/Work/irdb/_Legacy_packages/MICADO/")
         if PLOTS:
             plt.imshow(hdu[0].data, norm=LogNorm())
             plt.show()

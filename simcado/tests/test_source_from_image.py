@@ -12,10 +12,9 @@ import simcado as sim
 import os
 import inspect
 import pytest
-from simcado import __data_dir__
+
 
 # Helper functions ---
-
 
 def mock_dir():
     cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -27,7 +26,8 @@ MOCK_DIR = mock_dir()
 
 #sim.get_extras()
 #cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
-cmds = sim.UserCommands(sim_data_dir=MOCK_DIR, filename=os.path.join(MOCK_DIR, "default.conf"))
+cmds = sim.UserCommands(sim_data_dir=MOCK_DIR,
+                        filename=os.path.join(MOCK_DIR, "default.conf"))
 cmds["SIM_DATA_DIR"] = MOCK_DIR
 print(cmds["SIM_DATA_DIR"])
 
@@ -134,8 +134,9 @@ def test_source_from_image(factor1, factor2):
     """
     test source from image
 
-    Two images are created scaled by different factors. The images are supposed to be scaled
-    to the specified magnitude by source_from_image() according to the information provided by source.SED()
+    Two images are created scaled by different factors. The images are supposed
+    to be scaled to the specified magnitude by source_from_image() according to
+    the information provided by source.SED()
 
     Test the counts are consistent after a simulation.
 
@@ -153,13 +154,20 @@ def test_source_from_image(factor1, factor2):
     image1 = create_image_scaled_by_factor(factor1)
     image2 = create_image_scaled_by_factor(factor2)
     lam, spec = sim.source.SED("spiral", filter_name=filter_file, magnitude=15)
-    galaxy_src1 = sim.source.source_from_image(image1, lam, spec, plate_scale=0.004,
-                                               pix_res=0.004, flux_threshold=0, conserve_flux=True)
-    galaxy_src2 = sim.source.source_from_image(image2, lam, spec, plate_scale=0.004,
-                                               pix_res=0.004, flux_threshold=0, conserve_flux=True)
+    galaxy_src1 = sim.source.source_from_image(image1, lam, spec,
+                                               plate_scale=0.004, pix_res=0.004,
+                                               flux_threshold=0,
+                                               conserve_flux=True)
+    galaxy_src2 = sim.source.source_from_image(image2, lam, spec,
+                                               plate_scale=0.004, pix_res=0.004,
+                                               flux_threshold=0,
+                                               conserve_flux=True)
 
-    sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
-    sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1, OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+    sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1,
+                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+
+    sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1,
+                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
     print(factor1, factor2)

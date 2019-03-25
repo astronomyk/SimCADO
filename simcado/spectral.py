@@ -151,16 +151,13 @@ class TransmissionCurve(object):
             self.resample(self.params["lam_res"], action="average",
                           use_default_lam=self.params["use_default_lam"])
 
-
     def __str__(self):
         return "Spectral curve:\n" + str(self.info)
-
 
     def __repr__(self):
         mask = [0, 1, 2], [-3, -2, -1]
         return self.info["Type"]+"Curve \n"+str(self.val[mask[0]])[:-1] \
                                     +" ..."+str(self.val[mask[1]])[1:]
-
 
     def _get_data(self):
         """
@@ -179,22 +176,23 @@ class TransmissionCurve(object):
         elif self.params["filename"] is not None:
             filename = find_file(self.params["filename"])
 
-            if ".fits" in filename:
-                hdr = fits.getheader(filename)
-                if any(["SKYCALC" in hdr[i] for i in range(len(hdr)) \
-                        if isinstance(hdr[i], str)]):
-                    if self.params["Type"] == "Emission":
-                        lam = fits.getdata(filename)["lam"]
-                        val = fits.getdata(filename)["flux"]
-                    else:
-                        lam = fits.getdata(filename)["lam"]
-                        val = fits.getdata(filename)["trans"]
-                else:
-                    data = fits.getdata("../data/skytable.fits")
-                    lam = data[data.columns[0].name]
-                    val = data[data.columns[1].name]
-
-            elif self.params["airmass"] is not None:
+            # if ".fits" in filename:
+            #     hdr = fits.getheader(filename)
+            #     if any(["SKYCALC" in hdr[i] for i in range(len(hdr)) \
+            #             if isinstance(hdr[i], str)]):
+            #         if self.params["Type"] == "Emission":
+            #             lam = fits.getdata(filename)["lam"]
+            #             val = fits.getdata(filename)["flux"]
+            #         else:
+            #             lam = fits.getdata(filename)["lam"]
+            #             val = fits.getdata(filename)["trans"]
+            #     else:
+            #         data = fits.getdata("../data/skytable.fits")
+            #         lam = data[data.columns[0].name]
+            #         val = data[data.columns[1].name]
+            #
+            # elif self.params["airmass"] is not None:
+            if self.params["airmass"] is not None:
                 lam, val = get_sky_spectrum(filename,
                                             airmass=self.params["airmass"])
 
@@ -206,7 +204,6 @@ class TransmissionCurve(object):
             raise ValueError("Please pass either filename or lam/val keywords")
 
         return lam, val
-
 
     def resample(self, bins, action="average", use_edges=False, min_step=None,
                  use_default_lam=False):

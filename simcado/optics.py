@@ -22,15 +22,14 @@ import numpy as np
 
 from astropy.io import fits
 import astropy.units as u
-import astropy.table
 
 from . import psf as psf
 from . import spectral as sc
 from . import spatial as pe
 from .source import flat_spectrum_sb, scale_spectrum_sb
 from .commands import UserCommands
-from .utils import __pkg_dir__, find_file
-
+from .utils import find_file
+from .rc import __data_dir__
 
 __all__ = ["OpticalTrain", "get_filter_curve", "get_filter_set"]
 
@@ -142,7 +141,6 @@ class OpticalTrain(object):
 
             self._make()
 
-
     def _make(self, cmds=None):
         """
         To make an optical system, cmds must contain all the keywords from the
@@ -184,16 +182,14 @@ class OpticalTrain(object):
 
         # Get the ADC shifts, telescope shake and field rotation angle
         self.adc_shifts = self._gen_adc_shifts()
-        self.jitter_psf = self._gen_telescope_shake()
-        #self.field_rot = self._gen_field_rotation_angle()
-
+        # self.jitter_psf = self._gen_telescope_shake()
+        # self.field_rot = self._gen_field_rotation_angle()
 
     def replace_psf(self, new_psf, lam_bin_centers):
         """
         Change the PSF of the optical train
         """
         pass
-
 
     def update_filter(self, trans=None, lam=None, filter_name=None):
         """
@@ -203,8 +199,8 @@ class OpticalTrain(object):
         ----------
         trans : TransmissionCurve, np.array, list, optional
             [0 .. 1] the transmission coefficients. Either a TransmissionCurve
-            object can be passed (in which case omit ``lam``) or an array/list can
-            be passed (in which case specify ``lam``)
+            object can be passed (in which case omit ``lam``) or an array/list
+            can be passed (in which case specify ``lam``)
         lam : np.array, list, optional
             [um] an array for the spectral bin centres, if ``trans`` is not a
             TransmissionCurve object
@@ -665,7 +661,6 @@ class OpticalTrain(object):
 
         return psf_m1
 
-
     def _gen_adc_shifts(self):
         """
         Keywords:
@@ -673,17 +668,20 @@ class OpticalTrain(object):
         adc_shifts = pe.adc_shift(self.cmds)
         return adc_shifts
 
-
     def _gen_field_rotation_angle(self):
         return 0
-
 
     def _gen_telescope_shake(self):
         """
         Keywords:
         """
-        jitter_psf = psf.GaussianPSF(fwhm=self.cmds["SCOPE_JITTER_FWHM"],
-                                     pix_res=self.cmds.pix_res)
+
+        jitter_psf = None
+        if self.cmds["SCOPE_JITTER_FWHM"] is not None and \
+            self.cmds["SCOPE_JITTER_FWHM"] > 0:
+            jitter_psf = psf.GaussianPSF(fwhm=self.cmds["SCOPE_JITTER_FWHM"],
+                                         pix_res=self.cmds.pix_res)
+
         return jitter_psf
 
 
@@ -722,7 +720,7 @@ def get_filter_set(path=None):
     Return a list of the filters installed in the package directory
     """
     if path is None:
-        path = os.path.join(__pkg_dir__, "data")
+        path = __data_dir__
     lst = [i.replace(".dat", "").split("TC_filter_")[-1] \
                     for i in glob.glob(os.path.join(path, "TC_filter*.dat"))]
     return lst
@@ -761,7 +759,7 @@ def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
         >>> plot_filter_set()
         >>> plot_filter_set(cmap="viridis")
         >>> plot_filter_set(filters="Ks")
-        >>> plot_filter_set(filters=("U","PaBeta","Ks"),savefig="filters.png")
+        >>> plot_filter_set(filters=("U","PaBeta","Ks"), savefig="filters.png")
 
     """
     import matplotlib.pyplot as plt
@@ -824,11 +822,11 @@ def get_filter_table(path=None, filters="all"):
     Parameters
     ----------
     path : str
-        the location of the filters, set to None to use the default one, passed to get_filter_set
+        the location of the filters, set to None to use the default one, passed
+        to get_filter_set
     filters : str or list
-        a filter or a list of filters to be plotted, acceptable filters can be found calling
-        get_filter_set()
-
+        a filter or a list of filters to be plotted, acceptable filters can be
+        found calling get_filter_set()
 
     Returns
     -------
@@ -836,31 +834,30 @@ def get_filter_table(path=None, filters="all"):
 
     Notes
     -----
-
     It will ONLY return values for filters that follow SimCADO format
-
 
     Examples
     --------
 
     Obtaining table for a set of filters::
 
-        >>> table = sim.optics.get_filter_table(filters=["J", "Ks", "PaBeta", "U", "Br-gamma"])
-        >>> filter_centers = table["center].data
+        >>> table = sim.optics.get_filter_table(filters=["J", "Ks", "PaBeta",
+                                                         "U", "Br-gamma"])
+        >>> filter_centers = table["center"].data
         >>> print(filter_centers)
-
         [1.24794438 2.14487698 2.16986118]
 
-    Notice that only three values are printed as the U filter does not follow (yet) the SimCADO format
+    Notice that only three values are printed as the U filter does not follow
+    (yet) the SimCADO format
 
     """
 
-    #Obtaining format of the table
+    # Obtaining format of the table
     filter_table = get_filter_curve("Ks").filter_table()
     filter_table.remove_row(0)
 
     if np.size(filters) == 1:
-        filter_names = [filters,]
+        filter_names = [filters, ]
     if np.size(filters) > 1:
         filter_names = filters
     if filters == "all":

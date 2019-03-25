@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 
 import simcado as sim
+import simcado.rc
 from simcado.utils import parallactic_angle, deriv_polynomial2d
 from simcado.utils import find_file
 from simcado.utils import airmass2zendist
@@ -17,15 +18,15 @@ class TestFindFile:
         # python 3.6: TypeError
         # python 3.4, 3.5: AttributeError (change in os.path.isabs)
         with pytest.raises((TypeError, AttributeError)):
-            find_file(1.2, sim.__search_path__)
+            find_file(1.2, simcado.rc.__search_path__)
 
     def test_passes_if_file_exists(self):
         filename = 'utils.py'
-        assert find_file(filename, sim.__search_path__)
+        assert find_file(filename, simcado.rc.__search_path__)
 
     def test_fails_if_file_doesnt_exist(self):
         filename = 'utils987654.pz'
-        assert find_file(filename, sim.__search_path__) is None
+        assert find_file(filename, simcado.rc.__search_path__) is None
 
 
 class TestAirmassZendist:
