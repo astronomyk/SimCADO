@@ -180,6 +180,7 @@ Using SimCADO
    user_docs/4_Updates
    user_docs/5_Gallery
    user_docs/6_Notebooks
+   user_docs/9_PSFs
 
    user_docs/A_DeepStuff
    user_docs/B_UserCommands
