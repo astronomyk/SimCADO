@@ -14,9 +14,11 @@ import simcado as sim
 
 class TestTravisDownloadsGetExtras:
     def test_find_psf_file_with_find_file(self):
-        dirpath = "C:\Work\irdb\_Legacy_packages\MICADO"
         filename = "PSF_SCAO.fits"
-        filepath = sim.utils.find_file(filename, path=[dirpath])
-        print(filepath, os.path.join(dirpath, filename))
-
+        filepath = sim.utils.find_file(filename)
+        print(filepath, sim.__search_path__)
         assert os.path.exists(filepath) is not None
+
+        dirpath = "C:\Work\irdb\_Legacy_packages\MICADO"
+        # filepath = sim.utils.find_file(filename, path=[dirpath])
+
