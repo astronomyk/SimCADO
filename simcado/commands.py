@@ -449,8 +449,9 @@ class UserCommands(object):
             pass
 
         elif self.cmds["SCOPE_PSF_FILE"] is None:
-            warnings.warn("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
-            logging.debug("SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING")
+            msg = "SCOPE_PSF_FILE is None - Generating PSF from OBS_SEEING"
+            warnings.warn(msg)
+            logging.debug(msg)
 
         else:
             raise ValueError("Cannot recognise SCOPE_PSF_FILE: " +
