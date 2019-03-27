@@ -463,22 +463,20 @@ class UserCommands(object):
             self.cmds["INST_MIRROR_AO_TC"] = self.cmds["INST_MIRROR_TC"]
 
         # which detector chip to use
-        if self.cmds["FPA_CHIP_LAYOUT"] in (None, "none", "default", "full"):
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "no_gaps":
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_no_gaps.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "small":
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_small.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() == "tiny":
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_tiny.dat")
-        elif self.cmds["FPA_CHIP_LAYOUT"].lower() in ("centre", "central",
-                                                      "middle", "center"):
-            self.cmds["FPA_CHIP_LAYOUT"] = \
-                find_file("FPA_chip_layout_centre.dat")
+        layout_dict = {"tiny" : "_tiny",
+                       "small" : "_small",
+                       "none": "_small",
+                       "centre" : "_centre",
+                       "center" : "_centre",
+                       "full" : "",
+                       "all" : ""}
+
+        if self.cmds["FPA_CHIP_LAYOUT"] in layout_dict:
+            layout = layout_dict[self.cmds["FPA_CHIP_LAYOUT"]]
+            fname = "FPA_chip_layout" + layout + ".dat"
+            self.cmds["FPA_CHIP_LAYOUT"] = fname
+
+        self.cmds["FPA_CHIP_LAYOUT"] = find_file(self.cmds["FPA_CHIP_LAYOUT"])
 
     def _update_attributes(self):
         """

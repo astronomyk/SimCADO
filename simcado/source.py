@@ -1631,7 +1631,7 @@ def zero_magnitude_photon_flux(filter_name):
             fname = find_file("TC_filter_" + filter_name + ".dat",
                               silent=True)
             if fname is None:
-                raise ValueError("Filter " + filter_name + "cannot be found")
+                raise ValueError("Filter " + filter_name + " cannot be found")
 
         vraw = ioascii.read(fname)
         vlam = vraw[vraw.colnames[0]]
