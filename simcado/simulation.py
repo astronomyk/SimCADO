@@ -187,6 +187,7 @@ def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
     :class:`~simcado.commands.UserCommands`
 
     """
+
     if filter_names is None:
         filter_names = ["J", "H", "Ks"]
 
@@ -209,7 +210,8 @@ def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
 
         star_sep = cmd["SIM_DETECTOR_PIX_SCALE"] * 100
 
-        grid = source.star_grid(100, mmin, mmax, filter_name=filt, separation=star_sep)
+        grid = source.star_grid(100, mmin, mmax, filter_name=filt,
+                                separation=star_sep)
         grids += [grid]
 
         hdus, (cmd, opt, fpa) = run(grid, filter_name=filt, cmds=cmd,
@@ -221,8 +223,8 @@ def _make_snr_grid_fpas(filter_names=None, mmin=22, mmax=32,
 
 def _get_limiting_mags(fpas, grid, exptimes, filter_names=None,
                        mmin=22, mmax=32, AB_corrs=None, limiting_sigma=5):
-    """Return the limiting magnitude(s) for filter(s) and exposure time(s)
-
+    """
+    Return the limiting magnitude(s) for filter(s) and exposure time(s)
 
     Parameters
     ----------
@@ -341,8 +343,9 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags,
         [s] Exposure times corresponding to the signal-to-noise values
 
     limiting_mags : array, list of array
-        [mag] Limiting magnitudes for one, or more, filters for the given exposure times
-        Dimensions are (1, n) for a single filter, or (m, n) for m filters
+        [mag] Limiting magnitudes for one, or more, filters for the given
+        exposure times. Dimensions are (1, n) for a single filter, or (m, n)
+        for m filters
 
     filter_names : list
         A list of m filters. See :func:`simcado.optics.get_filter_set`
@@ -414,15 +417,14 @@ def plot_exptime_vs_limiting_mag(exptimes, limiting_mags,
     plt.xlabel("Exposure time [sec]")
 
 
-
 def limiting_mags(exptimes=None, filter_names=None,
                   AB_corrs=None, limiting_sigma=5,
                   return_mags=True, make_graph=False,
                   mmin=22, mmax=31,
                   cmds=None, **kwargs):
+
     """
     Return or plot a graph of the limiting magnitudes for MICADO
-
 
     Parameters
     ----------
@@ -498,15 +500,14 @@ def limiting_mags(exptimes=None, filter_names=None,
         return limiting_mags
 
 
-
 def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
               aperture_radius=4, cmds=None, **kwargs):
     """
     Get the signal to noise ratios for a series of magnitudes and exposure times
 
-    This function "observes" a grid of 100 stars equally spaced in the range [``mmin``, ``mmax``]
-    The stars are observed for all times given in ``exptime`` and the SNR for each star is returned
-    for each exposure time.
+    This function "observes" a grid of 100 stars equally spaced in the range
+    [``mmin``, ``mmax``]. The stars are observed for all times given in
+    ``exptime`` and the SNR for each star is returned for each exposure time.
 
     Parameters
     ----------
@@ -517,7 +518,8 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
         [mag] minimum and maximum magnitudes tor the SNR curve
 
     filter_name : str
-        The name of a filter installed in SimCADO - see ``:func:~simcado.optics.get_filter_set()``
+        The name of a filter installed in SimCADO - see `
+        `:func:~simcado.optics.get_filter_set()``
 
     aperture_radius : int
         [pixels] The radius of the aperture places around each star
@@ -591,6 +593,7 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
             bg_ap = np.copy(data[y-r_out:y+r_out+1, x-r_out:x+r_out+1])
             bg_ap[r_width:-r_width, r_width:-r_width] = 0
 
+            from astropy.stats import sigma_clipped_stats
             av, med, std = sigma_clipped_stats(bg_ap[bg_ap != 0])
             bg_stats += [[av, med, std]]
 
@@ -610,7 +613,7 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
         tot_err = np.sqrt(sig_shot**2 + bg_shot**2 + e_shot**2)
 
         snr_val = sig / tot_err
-        mask = snr > 10
+        mask = snr_val > 10
 
         log_snr = np.log10(snr_val[mask])
         p = np.polyfit(mags[mask], log_snr, 2)
@@ -619,7 +622,6 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
         snr_array += [snr_fit]
 
     return snr_array, mags
-
 
 
 def plot_snr_curve(snr_array, mags, snr_markers=None):
