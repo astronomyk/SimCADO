@@ -1,11 +1,16 @@
-numpy
-scipy
-astropy
-matplotlib
-wget
-requests
-pyyaml
-synphot
+dist: xenial
+language: python
+python:
+    - 2.7
+    - 3.6
+    
+install:
+    - pip install -r requirements.travis.txt
+    - pip install .
 
-# Just so that readthedocs doesn't include the tests module - yes it's hacky
-skycalc_cli
+before_script:
+    - python travis_call_get_extras.py
+
+script: 
+- pytest
+
