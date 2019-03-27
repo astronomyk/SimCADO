@@ -18,7 +18,6 @@ Helper functions for SimCADO
 #  parallactic_angle_2(ha, de, lat=-24.589167)
 #  moffat(r, alpha, beta)
 #
-#
 import os
 import sys
 import inspect

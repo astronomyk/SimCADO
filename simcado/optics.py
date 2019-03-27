@@ -350,13 +350,13 @@ class OpticalTrain(object):
 
         return n_ph_thermal, total_flux
 
-
     def _gen_all_tc(self):
 
-        ############## AO INSTRUMENT PHOTONS #########################
+        # ############# AO INSTRUMENT PHOTONS #########################
+        msg = "Generating AO module mirror emission photons"
         if self.cmds.verbose:
-            print("Generating AO module mirror emission photons")
-        logging.debug("[_gen_all_tc] Generating AO module mirror emission photons")
+            print(msg)
+        logging.debug("[gen_all_tc] "+msg)
 
         # get the total area of mirrors in the telescope
         # !!!!!! Bad practice, this is E-ELT specific hard-coding !!!!!!
@@ -386,7 +386,6 @@ class OpticalTrain(object):
             self.n_ph_ao = 0.
 
 
-
         ############## TELESCOPE PHOTONS #########################
         if self.cmds.verbose:
             print("Generating telescope mirror emission photons")
@@ -397,7 +396,6 @@ class OpticalTrain(object):
         mirr_list = self.cmds.mirrors_telescope
         scope_area = np.pi / 4 * np.sum(mirr_list["Outer"]**2 - \
                                         mirr_list["Inner"]**2)
-
 
         # Make the transmission curve for the blackbody photons from the mirror
         self.tc_mirror = self._gen_master_tc(preset="mirror")
@@ -792,7 +790,6 @@ def plot_filter_set(path=None, filters="All", cmap="rainbow", filename=None,
         peaks[i] = lam_peak[0]
         i += 1
 
-
     ordered_names = [x for _, x in sorted(zip(peaks, filter_names))]
 
     for filter_name in ordered_names:
@@ -845,13 +842,15 @@ def get_filter_table(path=None, filters="all"):
 
     Obtaining table for a set of filters::
 
-        >>> table = sim.optics.get_filter_table(filters=["J", "Ks", "PaBeta", "U", "Br-gamma"])
-        >>> filter_centers = table["center].data
+        >>> table = sim.optics.get_filter_table(filters=["J", "Ks", "PaBeta",
+                                                         "U", "Br-gamma"])
+        >>> filter_centers = table["center"].data
         >>> print(filter_centers)
 
         [1.24794438 2.14487698 2.16986118]
 
-    Notice that only three values are printed as the U filter does not follow (yet) the SimCADO format
+    Notice that only three values are printed as the U filter does not follow
+    (yet) the SimCADO format
 
     """
 
