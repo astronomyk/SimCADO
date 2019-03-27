@@ -11,7 +11,7 @@ import pytest
 
 
 @pytest.mark.parametrize("sed", ["A0V", "spiral", "elliptical"])
-@pytest.mark.parametrize("filter_name", ["TC_filter_J.dat", "TC_filter_Ks.dat"])
+@pytest.mark.parametrize("filter_name", ["J", "Ks"])
 @pytest.mark.parametrize("magnitude", np.linspace(10, 20, 5))
 def test_point_source_inputs(sed, filter_name, magnitude):
     """
@@ -34,7 +34,7 @@ def test_point_source_inputs(sed, filter_name, magnitude):
 
 
 @pytest.mark.parametrize("spec_type", ["A0V", "G2V", "K0III"])
-@pytest.mark.parametrize("filter_name", ["TC_filter_J.dat", "TC_filter_Ks.dat"])
+@pytest.mark.parametrize("filter_name", ["J", "Ks"])
 @pytest.mark.parametrize("mag", np.linspace(10, 20, 5))
 def test_vs_source_star(spec_type,  mag, filter_name):
     """
@@ -52,7 +52,7 @@ def test_vs_source_star(spec_type,  mag, filter_name):
 @pytest.mark.parametrize("z", [1, 2])
 @pytest.mark.parametrize("spectrum", ["A0V", "elliptical"])
 @pytest.mark.parametrize("mag", np.linspace(10, 20, 4))
-@pytest.mark.parametrize("filter_name", ["TC_filter_J.dat", "TC_filter_Ks.dat"])
+@pytest.mark.parametrize("filter_name", ["J", "Ks"])
 def test_redshift_inputs(z, spectrum, mag, filter_name):
     """
     Testing that inputs with strings (filenames, SEDs) return the same values
