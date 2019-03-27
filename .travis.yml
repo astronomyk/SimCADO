@@ -10,7 +10,9 @@ python:
 install:
     - pip install -r requirements.travis.txt
     - pip install .
-    
+
+before_script:
+    - python travis_call_get_extras.py
+
 script: 
     - pytest
-    # - pytest --doctest-modules
