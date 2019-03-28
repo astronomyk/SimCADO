@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 import numpy as np
 from scipy.signal import convolve
 from scipy.ndimage import zoom
@@ -11,9 +9,10 @@ from astropy.table import Table
 
 from astropy import units as u
 
-
 from . import utils
 from . import image_plane_utils as imp_utils
+
+__metaclass__ = type
 
 
 class DataContainer:

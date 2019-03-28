@@ -15,8 +15,6 @@ if "USERNAME" in os.environ and os.environ["USERNAME"] == "Kieran":
     sim.__search_path__.insert(0, "C:/Work/irdb/_Legacy_packages/MICADO")
     sim.__search_path__.insert(1, "C:/Work/Legacy_SimCADO_data/")
 
-# To run the test, add "test_" back into the names of the functions
-
 
 class TestConstantPSFs:
     def test_basic_cluster_example_1024_px_window(self):

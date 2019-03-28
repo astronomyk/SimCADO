@@ -116,9 +116,11 @@ def test_mag_to_photons_to_mag(filter_name="TC_filter_K.dat", magnitude=0):
     mag = simcado.source.photons_to_mag(filter_file, nph)
     assert magnitude == mag
 
+
 def test_create_vega_table():
     table = create_vega_table()
     assert isinstance(table,astropy.table.Table)
+
 
 def test_photon_flux_in_filter(filter_name="K"):
     """
