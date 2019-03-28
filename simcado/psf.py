@@ -138,13 +138,6 @@ __all__ = ["PSF", "PSFCube",
            ]
 
 
-def poppy_warning():
-    try:
-        import poppy
-    except:
-        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
-                      will not work. See http://pythonhosted.org/poppy/""")
-
 
 ###############################################################################
 #                            PSF and PSF subclasses                           #
@@ -1638,7 +1631,11 @@ def poppy_ao_psf(strehl, mode="wide", plan="A", size=1024, filename=None,
     :func:`.get_eelt_segments`
 
     """
-    poppy_warning()
+    try:
+        import poppy
+    except:
+        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
+                      will not work. See http://pythonhosted.org/poppy/""")
 
     params = {"strehl"               : strehl,
               "mode"                 : mode,
@@ -1844,7 +1841,11 @@ def poppy_eelt_psf(plan="A", wavelength=2.2, mode="wide", size=1024,
     :func:`.get_eelt_segments`
 
     """
-    poppy_warning()
+    try:
+        import poppy
+    except:
+        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
+                      will not work. See http://pythonhosted.org/poppy/""")
 
     params = {"flattoflat"           : 1.256,
               "gap"                  : 0.004,
@@ -1951,7 +1952,11 @@ def get_eelt_segments(plan="A", missing=None, return_missing_segs=False,
         for the segments which are missing.
 
     """
-    poppy_warning()
+    try:
+        import poppy
+    except:
+        warnings.warn("""Poppy is not installed. Functions beginning with "poppy_"
+                      will not work. See http://pythonhosted.org/poppy/""")
 
     if plan.lower() == "b":
         #inner_diam = 21.9

@@ -118,10 +118,10 @@ from .utils import __pkg_dir__, find_file
 import synphot
 
 __all__ = ["Source",
-           "star", "stars", "cluster",
+           "star", "stars", "cluster", "point_source",
            "spiral", "spiral_profile", "elliptical", "sersic_profile",
            "source_from_image",
-           "star_grid", "empty_sky", "SED",
+           "star_grid", "empty_sky", "SED", "redshift_SED",
            "sie_grad", "apply_grav_lens",
            "get_SED_names",
            "scale_spectrum", "scale_spectrum_sb",
@@ -1820,6 +1820,62 @@ def SED(spec_type, filter_name="V", magnitude=0.):
         return lam, starflux
 
 
+def redshift_SED(z, spectrum, mag, filter_name='TC_filter_Ks.dat'):
+    """
+    Redshift a SimCADO SED and scale it to a magnitude in a user specified filter
+
+    Parameters
+    ----------
+    z: redshift of the source
+    spectrum: str, EmissionCurve, optional
+            The spectrum to be associated with the  source. Values can either be:
+            - the name of a SimCADO SED spectrum : see get_SED_names()
+            - an EmissionCurve with a user defined spectrum
+
+    mag: magnitude to scale the the SED after redshifting the spectrum
+    filter_name: filter in which the magnitude is given
+
+
+    Returns
+    -------
+    ec: EmissionCurve object
+
+    Notes
+    -----
+    wavelength and flux of the redshifted spectrum can be accessed with ec.lam and ec.val
+
+    the returned object can directly be used in any source function that accepts an
+    EmissionCurve object (source.elliptical, source.spiral, source.point_source)
+
+    See Also
+    --------
+    source.get_SED_names
+    source.SED
+    source.scale_spectrum
+
+    """
+    if z <= -1:
+        raise ValueError('blueshift value <=-1 does not make sense')
+
+    if isinstance(spectrum, EmissionCurve):
+        lam, flux = spectrum.lam, spectrum.val
+    elif spectrum in get_SED_names():
+        lam, flux = SED(spec_type=spectrum, filter_name=filter_name,
+                        magnitude=mag)
+    else:
+        try:
+            lam, flux = SED(spectrum, filter_name=filter_name, magnitude=mag)
+        except ValueError:
+            print(spectrum, "Cannot understand ``spectrum``")
+
+
+    lam = lam * (1 + z)
+    ec = scale_spectrum(lam, flux, mag=mag, filter_name=filter_name,
+                        return_ec=True)
+
+    return ec
+
+
 def empty_sky():
     """
     Returns an empty source so that instrumental fluxes can be simulated
@@ -2965,6 +3021,72 @@ def apply_grav_lens(image, x_cen=0, y_cen=0, r_einstein=None, eccentricity=1,
                                  i.flatten()].reshape(shifted_image.shape)
 
     return lensed_image
+
+
+def point_source(spectrum="AOV", mag=0, filter_name="TC_filter_Ks.dat", x=0, y=0, **kwargs):
+    """
+    Creates a simcado.Source object for a point source with a given magnitude
+
+    This is a variant for ``simcado.source.star()`` but can accept any SED as well as
+    an user provided EmissionCurve object
+
+    Parameters
+    ----------
+    spectrum : str, EmissionCurve, optional
+        The spectrum to be associated with the point source. Values can either be:
+        - the name of a SimCADO SED spectrum : see get_SED_names()
+        - an EmissionCurve with a user defined spectrum
+    mag : float
+        magnitude of object
+    filter_name :  filter_name : str, TransmissionCurve, optional
+        Default is "Ks". Values can be either:
+        - the name of a SimCADO filter : see optics.get_filter_set()
+        - or a TransmissionCurve containing a user-defined filter
+    x, y : float, int, optional
+        [arcsec] the x,y position of the point source on the focal plane
+
+
+    Keyword arguments
+    -----------------
+    Passed to the ``simcado.Source`` object. See the docstring for this object.
+
+    pix_unit : str
+        Default is "arcsec". Acceptable are "arcsec", "arcmin", "deg", "pixel"
+    pix_res : float
+        [arcsec] The pixel resolution of the detector. Useful for surface
+        brightness calculations
+
+    Returns
+    -------
+    source : ``simcado.Source``
+
+    See Also
+    --------
+    .star()
+
+    """
+
+    if isinstance(spectrum, EmissionCurve):
+        lam, spec = spectrum.lam, spectrum.val
+        lam, spec = scale_spectrum(lam=lam, spec=spec, mag=mag,
+                                   filter_name=filter_name)
+    elif spectrum in get_SED_names():
+        lam, spec = SED(spec_type=spectrum, filter_name=filter_name,
+                        magnitude=mag)
+    else:
+        try:
+            lam, spec = SED(spectrum, filter_name=filter_name, magnitude=mag)
+        except ValueError:
+            print(spectrum, "Cannot understand ``spectrum``")
+
+    units = "ph/s/m2"
+    src = Source(lam=lam, spectra=spec,
+                 x=[x, ], y=[y, ],
+                 ref=[0, ], units=units,
+                 **kwargs)
+
+    return src
+
 
 
 def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
