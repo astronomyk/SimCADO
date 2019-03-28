@@ -64,7 +64,7 @@ def test_zeropoint(filter_name, mag, pixel_size, fwhm):
     zp = 2.5 * np.log10(counts) + input_mag
     zp = np.round(zp, 3)
 
-    assert np.isclose(zp, 29.491, 1e-3)  # Comparing to tabulated ZP
+    assert np.isclose(zp, 29.491, 1e-2)  # Comparing to tabulated ZP
 
 
 @pytest.mark.parametrize("filter_name", ["TC_filter_J.dat", "TC_filter_Ks.dat"])
@@ -94,7 +94,7 @@ def test_input_magnitudes(filter_name, mag_in, texp):
 
     mag_out = -2.5*np.log10(counts/texp) + simcado.simulation.zeropoint(filter_name)
 
-    assert np.isclose(mag_in, mag_out, 1e-3)
+    assert np.isclose(mag_in, mag_out, 1e-2)
 
 
 
