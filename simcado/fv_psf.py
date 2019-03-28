@@ -12,10 +12,8 @@ from astropy import units as u
 from . import utils
 from . import image_plane_utils as imp_utils
 
-__metaclass__ = type
 
-
-class DataContainer:
+class DataContainer(object):
     def __init__(self, filename=None, table=None, array_dict=None, **kwargs):
 
         if filename is None and "file_name" in kwargs:
