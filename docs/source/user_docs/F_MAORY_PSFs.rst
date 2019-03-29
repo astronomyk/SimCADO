@@ -1,5 +1,5 @@
-MAORY PSFs
-==========
+PSFs from the MAORY Consortium
+==============================
 
 Here you find links to the October 2017 release of MAORY PSFs for both the SCAO
 and MCAO modes, formatted for use by the new SimCADO v1.0 package.
@@ -10,11 +10,17 @@ and MCAO modes, formatted for use by the new SimCADO v1.0 package.
     consortium. If you wish to publish anything using these PSFs, please
     **contact the MAORY team** regarding their publication policy.
 
-.. note:: These PSFs are NOT formatted for legacy SimCADO (v0.5).
+    A short version of the MAORY publication policy is given below
 
-    These were put together for use with the **new SimCADO v1.0** code.
-    Below you will find code to extracting the PSF kernels to be used with
-    SimCADO v0.5.
+
+.. important:: MAORY PSFs follow a new file format (FV-PSFs)
+
+    **Only SimCADO v0.6 and above can read the FV-PSF files.**
+
+    The field-varying PSF FITS format was developed for the revamped SimCADO
+    v1.0 release, and hence is not backwards compatible with versions of SimCADO
+    below v0.6. SimCADO v0.6 (latest) contains a back-ported version of the
+    field-varying PSF code and **can** read the FV-PSF format.
 
 
 MCAO PSFs
@@ -68,7 +74,25 @@ belongs at this coordinate.
   `<http://www.univie.ac.at/simcado/InstPkgSvr/psfs/MAORY_SCAO_FVPSF_1.5mas_20181203.fits>`_
 
 
-Using these PSFs with legacy SimCADO (v0.5)
--------------------------------------------
+MAORY Publication policy
+------------------------
 
-.. todo:: Add some code here
+.. important:: MAORY publication policy
+
+    As of 29. March 2019. Source: MAORY PSF website
+
+    "Publication making use of these PSF are welcome. However, all the
+    publications are subject to the following MAORY publication policy:
+
+    * For referred publications the Editorial Board will indicate the names of
+      the co-authors from the MAORY team.
+
+    * For conference proceedings the Editorial Board shall be informed of any
+      submitted abstract and publication.
+
+    * The Editorial Board may suggest additional names of co-authors to be added
+      in the final publication.
+
+    By default a core of names shall be added to the list of authors: this core
+    shall include the PI (as representative of the Consortium and of the Lead
+    Institute), the PM, the co-I representative of INSU-IPAG.“

@@ -22,7 +22,3 @@ class TestBasicUseCases:
         hdu = sim.run(src, OBS_EXPTIME=3600, SCOPE_PSF_FILE="PSF_MCAO.fits",
                       filter_name="J", mode="zoom")
         assert isinstance(hdu, fits.HDUList)
-
-
-
-

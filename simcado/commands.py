@@ -65,8 +65,7 @@ import logging
 from collections import OrderedDict
 
 import numpy as np
-import astropy.io.ascii as ioascii    # ascii redefines builtin ascii().
-#from astropy.io import fits  # unused
+import astropy.io.ascii as ioascii
 
 import simcado as sim
 from . import spectral as sc
@@ -171,18 +170,9 @@ class UserCommands(object):
     values()
         returns the values in the ``UserCommands.cmds`` dictionary
 
-    Raises
-    ------
-
     See Also
     --------
     Detector, OpticalTrain
-
-    Notes
-    -----
-
-    References
-    ----------
 
     Examples
     --------

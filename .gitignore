@@ -28,6 +28,7 @@ version.py
 # Documentation etc: Sphinx and ReadTheDocs
 reference/
 *.ipynb_checkpoints
+docs/source/api/
 
 
 # other stuff
