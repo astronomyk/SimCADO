@@ -62,6 +62,12 @@ Science Cases
 
 .. _StarDestroyer.ipynb:  https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/StarDestroyer.ipynb
    
+-  `Examples_Galaxies.ipynb`_
+
+   A quick look to some of the cababilities of SimCADO to work with extended sources
+
+.. _Examples_Galaxies.ipynb:  https://nbviewer.jupyter.org/github/astronomyk/SimCADO/blob/master/docs/source/_static/python_notebooks/Examples_Galaxies.ipynb
+
    
 PSF experiments
 ------------------
