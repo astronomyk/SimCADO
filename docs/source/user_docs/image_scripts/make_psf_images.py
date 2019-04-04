@@ -75,7 +75,6 @@ def plot_psf_summary(filename, ext, layer, **kwargs):
         else:
             data = hdu.data
 
-
         data /= np.sum(data)
 
         prihdu = fits.PrimaryHDU(header=hdu.header, data=data)
@@ -143,4 +142,5 @@ for psf_file in psf_list:
             title = plot_psf_summary(psf_file, ext, layer)
             if title is None:
                 continue
-            plt.savefig("C:/Work/irdb/_PSFs/images/psf_summary/{}.png".format(title))
+            plt.savefig("C:/Work/irdb/_PSFs/images/psf_summary/{}.png"
+                        "".format(title))

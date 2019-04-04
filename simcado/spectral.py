@@ -139,11 +139,11 @@ class TransmissionCurve(object):
         self.lam = self.lam_orig
         self.val = self.val_orig
 
-        ## Resample to a default regular grid.
-        ## Not all of the filter curve .dat files have regular bin spacing and
-        ## so it is impossible to define a "lam_res" for those curves.
-        ## This is needed for the EmissionCurve method
-        ## "photons_in_range(lam_min, lam_max)"
+        # Resample to a default regular grid.
+        # Not all of the filter curve .dat files have regular bin spacing and
+        # so it is impossible to define a "lam_res" for those curves.
+        # This is needed for the EmissionCurve method
+        # "photons_in_range(lam_min, lam_max)"
         if self.params["Type"] == "Emission":
             self.resample(self.params["lam_res"], action="sum",
                           use_default_lam=self.params["use_default_lam"])

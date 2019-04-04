@@ -96,6 +96,10 @@ wavelength and off-axis guide star position. To generate custom FV-PSF kernels,
 see AnisoCADO_'s documentation for how to make SimCADO-readable FV-PSF FITS
 files.
 
+Images and profiles of the central PSF from each of these files can be found
+here:
+
+
 To use these PSF files we simply pass the filename to SimCADO (as with the other
 PSF), and SimCADO (! >=v0.6) does the rest::
 
@@ -110,4 +114,6 @@ PSF), and SimCADO (! >=v0.6) does the rest::
     detector chip, then this region will be convolved 9 times with different
     PSFs (and masked accordingly 9 times). Hence simulating the central chip
     will take 9 times as long as when using a field-constant PSF.
+
+
 

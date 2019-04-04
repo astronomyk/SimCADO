@@ -568,7 +568,8 @@ class OpticalTrain(object):
                                                sc.BlackbodyCurve)):
                     tc_dict[key] = self.cmds[key]
                 else:
-                    airmass = self.cmds["ATMO_AIRMASS"] if key == "ATMO_TC" else None
+                    airmass = self.cmds["ATMO_AIRMASS"] \
+                        if key == "ATMO_TC" else None
                     tc_dict[key] = sc.TransmissionCurve(filename=self.cmds[key],
                                                         lam_res=self.lam_res,
                                                         airmass=airmass)
@@ -584,7 +585,6 @@ class OpticalTrain(object):
         self.tc_dict = tc_dict
 
         return tc_master
-
 
     def _gen_master_psf(self):
         """
