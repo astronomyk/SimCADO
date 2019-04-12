@@ -650,8 +650,9 @@ class Source(object):
             # The following is faster than a loop
             ij = i * naxis1 + j   # naxis1 or naxis2?
             iju = np.unique(ij)
-            slice_array.flat[iju] += ndisum(slice_photons[mask].flat,
-                                            ij, iju)
+            if sum(mask) > 0:
+                slice_array.flat[iju] += ndisum(slice_photons[mask].flat,
+                                                ij, iju)
 
             try:
                 # slice_array = convolve_fft(slice_array, psf.array,
