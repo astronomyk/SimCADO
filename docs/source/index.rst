@@ -200,7 +200,7 @@ make SimCADO better if we don't know about things.
 The preferable option is to open an issue on our Github page:
 `astronomyk/SimCADO/issues`_, or you can contact one of us directly.
 
-.. _astronomyk/SimCADO/issues: https://github.com/astronomyk/SimCADO/issues,
+.. _astronomyk/SimCADO/issues: https://github.com/astronomyk/SimCADO/issues
 
 Contact
 -------
