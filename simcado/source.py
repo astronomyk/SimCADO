@@ -3179,8 +3179,8 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
                         normalization=normalization,
                         width        =params["width"] /plate_scale,
                         height       =params["height"]/plate_scale,
-                        x_offset     =params["x_offset"]/plate_scale,
-                        y_offset     =params["y_offset"]/plate_scale)
+                        x_offset     =0,
+                        y_offset     =0)
 
     if isinstance(spectrum, EmissionCurve):
         lam, spec = spectrum.lam, spectrum.val
@@ -3193,8 +3193,10 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
         print(spectrum)
         raise ValueError("Cannot understand ``spectrum``")
 
+    center_offset = (params["x_offset"], params["y_offset"])
     galaxy_src = source_from_image(images=im, lam=lam, spectra=spec,
-                                   plate_scale=plate_scale)
+                                   plate_scale=plate_scale,
+                                   center_offset=center_offset)
 
     return galaxy_src
 
@@ -3472,6 +3474,10 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
     width, height : int
         [arcsec] Dimensions of the image. Default: 512*plate_scale
 
+    x_offset, y_offset : float
+        [arcsec] The distance between the centre of the profile and the centre
+        of the image. Default: (dx,dy) = (0,0)
+
 
     Returns
     -------
@@ -3496,7 +3502,11 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
               "n_arms"      : 2,
               "tightness"   : 4.,
               "arms_width"  : 0.1,
-              "central_brightness" : 10}
+              "central_brightness" : 10,
+              "x_offset": 0,
+              "y_offset": 0
+              }
+
     params.update(kwargs)
 
 
@@ -3536,8 +3546,10 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
 
     gal_img = (spiral + disk).T
 
+    center_offset = (params["x_offset"], params["y_offset"])
     galaxy_src = source_from_image(images=gal_img, lam=lam, spectra=spec,
-                                   plate_scale=plate_scale)
+                                   plate_scale=plate_scale,
+                                   center_offset=center_offset)
 
     return galaxy_src
 
