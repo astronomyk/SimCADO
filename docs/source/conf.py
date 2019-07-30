@@ -23,10 +23,10 @@ print(sys.path)
 
 project = 'SimCADO'
 copyright = '2018, Kieran Leschinski and Oliver Czoske'
-author = 'Kieran Leschinski and Oliver Czoske'
+author = 'Kieran Leschinski,  Oliver Czoske and Miguel Verdugo'
 
 # The short X.Y version
-version = '0.5dev1'
+version = '0.5dev3'
 # The full version, including alpha/beta/rc tags
 release = '0.5'
 
@@ -48,8 +48,9 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'numpydoc',
-    'sphinx.apidoc',
+  #  'numpydoc',            # MV: droping numpydoc because it complains too much
+    'sphinx.ext.napoleon',  # MV : napoleon should be able to do the same
+    'sphinxcontrib.apidoc',
     'matplotlib.sphinxext.plot_directive',
     'sphinx_automodapi.automodapi',
 ]

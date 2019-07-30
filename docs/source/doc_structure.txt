@@ -1,0 +1,47 @@
+- Index
+    - installation
+    - running in 3 lines
+    - table of contents
+
+- Getting started
+    - intro to running a simulation
+    - installation
+    - instrument package / PSF library
+    - using different filters
+    - using PSFs
+
+- Instrument data / PSF library
+    - description of filters
+    - description of PSFs
+
+- Simulations and Keywords
+    - run
+    - full simulation with OpticalTrain and Detector
+    - list of keywords
+
+- Example / Tutorials
+    - Notebooks
+        - Point sources
+        - Extended sources
+        - Astrometric sources
+
+- Results
+    - Gallery
+    - Sensitivity graphs
+    - Zero points
+    - Package report
+
+- Help
+    - FAQs
+    - Contact
+    - Reference material
+    - Background to SimCADO
+    - Details on how Simulation is run
+    - Updates
+    - New features
+    - Upcoming features
+    - Affliiated packages
+        - AnisoCADO
+        - skycalc_ipy
+
+- API
