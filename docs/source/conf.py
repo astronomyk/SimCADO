@@ -48,8 +48,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-  #  'numpydoc',            # MV: droping numpydoc because it complains too much
-    'sphinx.ext.napoleon',  # MV : napoleon should be able to do the same
+    'numpydoc',            # MV: droping numpydoc because it complains too much
+ #   'sphinx.ext.napoleon',  # MV : napoleon should be able to do the same
     'sphinxcontrib.apidoc',
     'matplotlib.sphinxext.plot_directive',
     'sphinx_automodapi.automodapi',
