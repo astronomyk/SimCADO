@@ -219,5 +219,5 @@ the read-out electronics. The table should look like this::
 
     Yes, this shouldn't be, but we haven't got around to fixing that yet. Hence
     to model long exposure observations (i.e. >1 min), it's best just to set
-    ``FPA_LINEARITY_CURVE = False``
+    ``FPA_LINEARITY_CURVE = "none"``
 
