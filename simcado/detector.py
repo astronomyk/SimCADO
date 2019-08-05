@@ -881,7 +881,7 @@ class Chip(object):
 
         print("NOTE - 'up the ramp' readout only reads a single DIT")
 
-        image = self.array
+        image = self.array + self.dark
         tro   = self.min_dit
 
         nx, ny = image.shape
@@ -945,7 +945,7 @@ class Chip(object):
         Superfast read-out
         """
 
-        signal = self._read_out_poisson(self.array, dit, ndit)
+        signal = self._read_out_poisson(self.array + self.dark, dit, ndit)
 
         # apply the linearity curve
         lin_curve = cmds["FPA_LINEARITY_CURVE"]
