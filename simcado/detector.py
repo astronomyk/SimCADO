@@ -774,8 +774,9 @@ class Chip(object):
         """
 
         # set up the read out
-        self.dit      = cmds["OBS_EXPTIME"] / cmds["OBS_NDIT"]
+        self.dit      = cmds["OBS_EXPTIME"]
         self.ndit     = int(cmds["OBS_NDIT"])
+        self.exptime  = self.dit * self.ndit
         self.dark     = cmds["FPA_DARK_MEDIAN"]
         self.min_dit  = cmds["FPA_PIXEL_READ_TIME"] * \
                         (self.naxis1 * self.naxis1 / cmds["HXRG_NUM_OUTPUTS"])
@@ -989,16 +990,23 @@ class Chip(object):
             average of ndit exposures of length dit
 
         """
+        # image2 holds the number of photons expected over a single
+        # exposure
         image2 = image * dit
 
         # Check for windows systems. np.poisson is limited to 32-bit
         if os.name == "nt":
             image2[image2 > 2.147E9] = 2.147E9      # 2**31 = 2147483648
 
+        # Each DIT is read out individually. This helps prevent overflows
+        # due to too large expected photon numbers, at the expense of increased
+        # execution time.
         im_st = np.zeros(np.shape(image))
         for _ in range(ndit):
             im_st += np.random.poisson(image2)
 
+        # Return the average image, corresponding to one DIT
+        im_st /= ndit
         return im_st.astype(np.float32)
 
 
