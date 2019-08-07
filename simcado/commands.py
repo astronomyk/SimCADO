@@ -313,12 +313,12 @@ class UserCommands(object):
 
         Change a single command
 
-            >>> my_cmds["OBS_EXPTIME"] = 60
+            >>> my_cmds["OBS_DIT"] = 60
 
 
         Change a series of commands at once
 
-            >>> new_cmds = {"OBS_EXPTIME" : 60 , "OBS_NDIT" : 10}
+            >>> new_cmds = {"OBS_DIT" : 60 , "OBS_NDIT" : 10}
             >>> my_cmds.update(new_cmds)
 
 
@@ -544,7 +544,8 @@ class UserCommands(object):
         self.lam_bin_centers = 0.5 * (self.lam_bin_edges[1:] + \
                                       self.lam_bin_edges[:-1])
 
-        self.exptime = self.cmds["OBS_EXPTIME"]
+        # total integration time. TODO necessary?
+        self.exptime = self.cmds['OBS_DIT'] * self.cmds['OBS_NDIT']
 
         # replace 'none', 'None' with None
         self._convert_none()

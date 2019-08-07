@@ -139,9 +139,9 @@ def test_source_from_image(factor1, factor2):
                                                conserve_flux=True)
 
     sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+                       OBS_DIT=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+                       OBS_DIT=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
     print(factor1, factor2)
@@ -173,9 +173,9 @@ def test_source_elliptical(mag):
                                         spectrum="spiral", ellipticity=0,
                                         angle=0)
     sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+                       OBS_DIT=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+                       OBS_DIT=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
     print(mag)
