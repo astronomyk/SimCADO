@@ -57,7 +57,8 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         Analogous to passing INST_FILTER_TC as a keyword argument
 
     exptime : int, float
-        [s] Analogous to passing OBS_EXPTIME as a keyword argument
+        [s] Total integration time. Currently, this is observed in one DIT
+            (i.e. NDIT=1). Use OBS_DIT and OBS_NDIT for more general setup.
 
     sim_data_dir : str
         Path to where the data is kept
@@ -89,7 +90,10 @@ def run(src, mode="wide", cmds=None, opt_train=None, fpa=None,
         cmds["INST_FILTER_TC"] = filter_name
 
     if exptime is not None:
-        cmds["OBS_EXPTIME"] = exptime
+        # exptime is assigned to a single DIT
+        # TODO: replace with optimised computation of DIT and NDIT
+        cmds["OBS_DIT"] = exptime
+        cmds["OBS_NDIT"] = 1
 
     # update any remaining keywords
     cmds.update(kwargs)
@@ -286,7 +290,7 @@ def _get_limiting_mags(fpas, grid, exptimes, filter_names=None,
         lim_mags = []
         for exptime in exptimes:
 
-            hdus = fpa.read_out(OBS_EXPTIME=exptime)
+            hdus = fpa.read_out(OBS_DIT=exptime, OBS_NDIT=1)
             im = hdus[0].data
 
             im_width = hdus[0].data.shape[0]
@@ -578,7 +582,7 @@ def snr_curve(exptimes, mmin=20, mmax=30, filter_name="Ks",
     snr_array = []
     for exptime in exptimes:
 
-        hdu = fpa.read_out(OBS_EXPTIME=exptime)
+        hdu = fpa.read_out(OBS_DIT=exptime, OBS_NDIT=1)
         data = hdu[0].data
 
         sq_aps = []
@@ -875,7 +879,7 @@ def zeropoint(filter_name="TC_filter_Ks.dat"):
     seeing = fwhm * pixel_size
     texp = 1
     star = source.star(spec_type="A0V", mag=input_mag, filter_name=filter_name, x=0, y=0)
-    hdu = run(star, OBS_EXPTIME=texp,
+    hdu = run(star, OBS_DIT=texp, OBS_NDIT=1,
               INST_FILTER_TC=filter_name, SIM_DETECTOR_PIX_SCALE=pixel_size,
               SCOPE_PSF_FILE=None, OBS_SEEING=seeing,
               FPA_LINEARITY_CURVE=None, FPA_CHIP_LAYOUT="small", FPA_USE_NOISE="no",
@@ -935,7 +939,7 @@ def zeropoint(filter_name="TC_filter_Ks.dat"):
         # cmd = sim.UserCommands()
     # else:
         # cmd = cmds
-    # cmd["OBS_EXPTIME"] = total_exptime / ndit
+    # cmd["OBS_DIT"] = total_exptime / ndit
     # cmd["OBS_NDIT"] = ndit
     # cmd["INST_FILTER_TC"] = filter_name
 
