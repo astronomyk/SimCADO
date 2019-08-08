@@ -961,7 +961,7 @@ class Chip(object):
 
         # superfast hack to get an approximation of the readout noise
         # in the image
-        ro = self._read_noise_frame(cmds, n_frames=1) * np.sqrt(ndit)
+        ro = self._read_noise_frame(cmds, n_frames=1) / np.sqrt(ndit)
 
         ########## Could work, but it's too slow for ndit > 10 ##############
         # add 1 to the ndits, because there will always be a readout at
