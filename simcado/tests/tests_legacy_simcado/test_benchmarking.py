@@ -69,7 +69,7 @@ class TestCaseFVPSFs:
         cmd["INST_FILTER_TC"] = "TC_filter_J.dat"
         cmd["SIM_LAM_MIN"] = 1.0
         cmd["SIM_LAM_MAX"] = 1.25
-        cmd["OBS_EXPTIME"] = 3600
+        cmd["OBS_DIT"] = 3600
         cmd["SCOPE_PSF_FILE"] = "MAORY_MCAO_FVPSF_4mas_20181203.fits"
         cmd["FPA_CHIP_LAYOUT"] = "small"
 
@@ -103,5 +103,3 @@ class TestCaseFVPSFs:
 
         end = time.time()
         print("Time elapsed: {} sec".format(end - start))
-
-

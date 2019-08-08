@@ -52,9 +52,9 @@ view the images:
 3. Use the SimCADO function ``.plot_detector()`` from the ``.detector``
    module: ::
 
-       >>> im, (cmd, opt, fpa) = simcado.run(src, filename="full_detector.fits", 
+       >>> im, (cmd, opt, fpa) = simcado.run(src, filename="full_detector.fits",
                                              return_internals=True)
-       >>> simcado.detector.plot_detector(fpa)   
+       >>> simcado.detector.plot_detector(fpa)
 
 The 3rd option is probably the least favourable as there are no options
 available, but it allows you to see what the readout will look like in a
@@ -86,7 +86,7 @@ and less-common keywords to a file with command
     # >>>  sim.commands.dump_defaults(filename, type="all") #
     #-------------------------------------------------------#
 
-    OBS_EXPTIME             60          # [sec] simulated exposure time
+    OBS_DIT                 60          # [sec] integration time for one exposure
     OBS_NDIT                1           # [#] number of exposures taken
     INST_FILTER_TC          Ks          # [<filename>, string(filter name)] List acceptable filters with >>> simcado.optics.get_filter_set()
 
@@ -95,7 +95,7 @@ and less-common keywords to a file with command
     INST_USE_AO_MIRROR_BG   yes         # [yes/no]
     FPA_USE_NOISE           yes         # [yes/no]
 
-    FPA_CHIP_LAYOUT         small       # [small/centre/full] description of the chip layout on the detector array. 
+    FPA_CHIP_LAYOUT         small       # [small/centre/full] description of the chip layout on the detector array.
     SCOPE_PSF_FILE          scao        # ["scao" (default), <filename>, "ltao", "mcao", "poppy"] import a PSF from a file. Default is <pkg_dir>/data/PSF_SCAO.fits
 
     SIM_DETECTOR_PIX_SCALE  0.004       # [arcsec] plate scale of the detector
@@ -113,7 +113,7 @@ For example if we wanted to observe in J-band for 60 minutes, we would
 pass: ::
 
     src = sim.source.source_1E4_Msun_cluster()
-    im = sim.run(src, OBS_EXPTIME=3600, INST_FILTER_TC="J")
+    im = sim.run(src, OBS_DIT=3600, INST_FILTER_TC="J")
 
 The jupyter notebook `my\_first\_sim.ipynb <my_first_sim.ipynb>`__ has
 more exmples of this.
@@ -161,12 +161,12 @@ A ``UserCommands`` object can be used as a dictionary itself, although
 technically all that happens is that it references the general
 dictionary ``cmd.cmds``. For example ::
 
-    >>> cmd["OBS_EXPTIME"] = 60
+    >>> cmd["OBS_DIT"] = 60
 
 is exactly the same as either of the following two expressions ::
 
-    >>> cmd.cmds["OBS_EXPTIME"] = 60
-    >>> cmd.obs["OBS_EXPTIME"] = 60
+    >>> cmd.cmds["OBS_DIT"] = 60
+    >>> cmd.obs["OBS_DIT"] = 60
 
 Therefore for the sake of ease, we recommoned treating the ``UserCommands``
 object as a dictionary and just using the default syntax: ``cmd["..."] = xxx``
@@ -237,7 +237,7 @@ the plate scale and the positions of the detector chips: ::
         6  -17.084   17.084    4096    4096
         7        0   17.084    4096    4096
         8   17.084   17.084    4096    4096
-        
+
 
 This small file can be saved to disk by passing a filename to the
 ``path=`` parameters ::
@@ -254,7 +254,7 @@ HAWAII-2RG) would look like this: ::
         1       116     -116    2048    2048
         2      -116      116    2048    2048
         3       116      116    2048    2048
-        
+
 
 To pass a detector array description to SimCADO, use the
 ``FPA_CHIP_LAYOUT`` keyword: ::
@@ -275,11 +275,11 @@ by using: ::
 
     >>> dump_mirror_config(path=None, what="scope")
     #Mirror     Outer   Inner   Temp
-    M1          37.3    11.1    0.  
-    M2          4.2     0.545   0.  
-    M3          3.8     0.14    0.  
-    M4          2.4     0.      0.  
-    M5          2.4     0.      0.  
+    M1          37.3    11.1    0.
+    M2          4.2     0.545   0.
+    M3          3.8     0.14    0.
+    M4          2.4     0.      0.
+    M5          2.4     0.      0.
 
 If ``path=None`` the contents of the default file are printed to the
 screen. The parameter ``what`` is for the section of the optical train
