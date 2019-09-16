@@ -12,7 +12,7 @@ import pytest
 @pytest.mark.parametrize("filter_name", ["TC_filter_Ks.dat"])
 @pytest.mark.parametrize("mag", np.linspace(10, 20, 3))
 @pytest.mark.parametrize("pixel_size", [0.004, 0.0015])
-@pytest.mark.parametrize("fwhm", np.linspace(3, 20, 3))
+@pytest.mark.parametrize("fwhm", np.linspace(3, 13, 3))
 def test_zeropoint(filter_name, mag, pixel_size, fwhm):
     """
     Modified version of source.zeropoint:
