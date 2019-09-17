@@ -50,7 +50,7 @@ def test_zeropoint(filter_name, mag, pixel_size, fwhm):
     seeing = fwhm * pixel_size
     texp = 1
     star = simcado.source.star(spec_type="A0V", mag=input_mag, filter_name=filter_name, x=0, y=0)
-    hdu = simcado.run(star, OBS_DIT=texp, OBS_NDIT=1,
+    hdu = simcado.run(star, OBS_DIT=texp,
                       INST_FILTER_TC=filter_name, SIM_DETECTOR_PIX_SCALE=pixel_size,
                       SCOPE_PSF_FILE=None, OBS_SEEING=seeing,
                       FPA_LINEARITY_CURVE=None, FPA_CHIP_LAYOUT="small", FPA_USE_NOISE="no",
@@ -80,7 +80,7 @@ def test_input_magnitudes(filter_name, mag_in, texp):
     pixel_size = 0.004
     fwhm = 3.6
     seeing = fwhm * pixel_size
-    hdu = simcado.run(star, OBS_DIT=texp, OBS_NDIT=1,
+    hdu = simcado.run(star, OBS_DIT=texp,
                       INST_FILTER_TC=filter_name, SIM_DETECTOR_PIX_SCALE=pixel_size,
                       SCOPE_PSF_FILE=None, OBS_SEEING=seeing,
                       FPA_LINEARITY_CURVE=None, FPA_CHIP_LAYOUT="small", FPA_USE_NOISE="no",
@@ -95,3 +95,6 @@ def test_input_magnitudes(filter_name, mag_in, texp):
     mag_out = -2.5*np.log10(counts/texp) + simcado.simulation.zeropoint(filter_name)
 
     assert np.isclose(mag_in, mag_out, 1e-2)
+
+
+
