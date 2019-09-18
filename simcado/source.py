@@ -1850,9 +1850,9 @@ def redshift_SED(z, spectrum, mag, filter_name='TC_filter_Ks.dat'):
 
     See Also
     --------
-    source.get_SED_names
-    source.SED
-    source.scale_spectrum
+    get_SED_names:
+    SED:
+    scale_spectrum:
 
     """
     if z <= -1:
@@ -1993,7 +1993,7 @@ def star(spec_type="A0V", mag=0, filter_name="Ks", x=0, y=0, **kwargs):
 
     See Also
     --------
-    .stars()
+    stars:
 
     """
 
@@ -2135,7 +2135,7 @@ def source_1E4_Msun_cluster(distance=50000, half_light_radius=1):
 
     See Also
     --------
-    .cluster()
+    cluster:
 
     """
     # IMF is a realisation of stellar masses drawn from an initial mass
@@ -3063,7 +3063,7 @@ def point_source(spectrum="AOV", mag=0, filter_name="TC_filter_Ks.dat", x=0, y=0
 
     See Also
     --------
-    .star()
+    star:
 
     """
 
@@ -3155,9 +3155,11 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
 
     See Also
     --------
-    source.sersic_profile()
-    optics.get_filter_set(), source.get_SED_names()
-    spectral.TransmissionCurve, spectral.EmissionCurve
+    :func:`simcado.source.sersic_profile`,
+    :func:`simcado.optics.get_filter_set`,
+    :func:`simcado.source.get_SED_names`,
+    :class:`simcado.spectral.TransmissionCurve`,
+    :class:`simcado.spectral.EmissionCurve`
 
     """
 
@@ -3365,7 +3367,7 @@ def spiral_profile(r_eff, ellipticity=0.5, angle=45,
 
     See Also
     --------
-    sersic_profile()
+    sersic_profile:
 
 
     """
@@ -3486,9 +3488,12 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
 
     See Also
     --------
-    sersic_profile(), spiral_profile()
-    optics.get_filter_set(), source.get_SED_names()
-    spectral.TransmissionCurve, spectral.EmissionCurve
+    sersic_profile:
+    spiral_profile:
+    optics.get_filter_set:
+    source.get_SED_names:
+    spectral.TransmissionCurve:
+    spectral.EmissionCurve:
 
     """
 

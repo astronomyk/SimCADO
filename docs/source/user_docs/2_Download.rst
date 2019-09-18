@@ -1,9 +1,19 @@
-Download
-========
+Installation
+============
 
-The latest stable version of SimCADO can be downloaded from this link
+The latest stable version of SimCADO can be installed from PyPI_ with
 
-`<http://www.univie.ac.at/simcado/SimCADO.tar.gz>`_
+    ``pip install simcado``
+
+If you have SimCADO already installed and you want to install the latest version, please type
+
+    ``pip install --upgrade simcado``
+
+Please do not forget to obtain the latest data file package as explained in the `section`_ below
+
+.. _section:  _`Getting up-to-date data for SimCADO`
+
+.. _PyPI: https://pypi.org/project/SimCADO/
 
 The latest development version of SimCADO can be found on GitHub:
 
@@ -31,19 +41,6 @@ for single images.
     We are running under the assumption that SimCADO will (hopefully) still be
     around after 2020, hence why we have concentrated our efforts on developing
     in Python 3.
-
-Installation
-------------
-
-To install it, download SimCADO from the link above and use the standard
-``pip`` call to install it: ::
-
-    $ pip install SimCADO
-
-
-.. Alternatively give the full URL to pip and let it do the downloading for you: ::
-
-..    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
 
 
 .. Note::

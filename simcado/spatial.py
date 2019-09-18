@@ -356,8 +356,9 @@ def get_distorion_offsets(x, y, dist_map_hdus, corners):
 
     See Also
     --------
-    make_distortion_maps()
-    astropy.io.fits.HDUList, astropy.io.fits.PrimaryHDU
+    make_distortion_maps:
+    astropy.io.fits.HDUList:
+    astropy.io.fits.PrimaryHDU:
 
     """
 
