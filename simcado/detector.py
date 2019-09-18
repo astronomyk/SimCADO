@@ -148,7 +148,7 @@ class Detector(object):
         factor between the internal angular resolution and the pixel FOV
     fpa_res : float
         [mas] field of view of a single pixel
-    exptime : float
+    dit : float
         [s] exposure time of a single DIT
     tro : float
         [s] time between consecutive non-destructive readouts in up-the-ramp mode
@@ -254,8 +254,9 @@ class Detector(object):
 
         self.oversample = self.cmds["SIM_OVERSAMPLING"]
         self.fpa_res = self.cmds["SIM_DETECTOR_PIX_SCALE"]
-        self.exptime = self.cmds["OBS_EXPTIME"]
+        self.dit = self.cmds["OBS_DIT"]
         self.ndit    = self.cmds["OBS_NDIT"]
+        self.exptime = self.dit * self.ndit
         self._n_ph_atmo   = 0
         self._n_ph_mirror = 0
         self._n_ph_ao     = 0
@@ -301,7 +302,7 @@ class Detector(object):
         ----------------------------
         **kwargs are used to update the ``UserCommands`` object that controls
         the ``Detector``. Therefore any dictionary keywords can be passed in the
-        form of a dictionary, i.e. {"OBS_EXPTIME" : 60, "OBS_OUTPUT_DIR" : "./"}
+        form of a dictionary, i.e. {"OBS_DIT" : 60, "OBS_OUTPUT_DIR" : "./"}
 
         """
 
@@ -364,6 +365,7 @@ class Detector(object):
             ######
             print("Reading out chip", self.chips[i].id, "using",
                   read_out_type)
+            print("DIT =", self.dit, "   NDIT =", self.ndit)
 
             array = self.chips[i].read_out(self.cmds,
                                            read_out_type=read_out_type)
@@ -389,8 +391,10 @@ class Detector(object):
                 pass
 
             thishdu.header["BUNIT"] = ("ADU", "")
-            thishdu.header["EXPTIME"] = (self.exptime, "[s] Exposure time")
+            thishdu.header["EXPTIME"] = (self.dit, "[s] Exposure time")
             thishdu.header["NDIT"] = (self.ndit, "Number of exposures")
+            thishdu.header["INTTIME"] = (self.exptime,
+                                         "[s] Total integration time")
             #thishdu.header["TRO"] = (self.tro,
             #                         "[s] Time between non-destructive readouts")
             thishdu.header["GAIN"] = (self.chips[i].gain, "[e-/ADU]")
@@ -455,7 +459,7 @@ class Detector(object):
 
         hdu = fits.PrimaryHDU(self.array)
         hdu.header["PIX_RES"] = self.pix_res
-        hdu.header["EXPTIME"] = self.exptime
+        hdu.header["EXPTIME"] = self.dit
         hdu.header["GAIN"]    = self.params["FPA_GAIN"]
         hdu.header["SIMCADO"] = "FPA_NOISE"
 
@@ -481,7 +485,7 @@ class Chip(object):
     plane array. The method ``<Source>.apply_optical_train()`` passes an image of
     the on-sky object to each ``Chip``. This image is resampled to the ``Chip``
     pixel scale. Each ``Chip`` holds the "ideal" image as an array of expectation
-    values for the level of photons arriving during an EXPTIME. The ``Chip`` then
+    values for number of photons arriving per second. The ``Chip`` then
     adds detector noise and other characteristics to the image when
     <Detector>.readout() is called.
 
@@ -774,7 +778,7 @@ class Chip(object):
         """
 
         # set up the read out
-        self.dit      = cmds["OBS_EXPTIME"]
+        self.dit      = cmds["OBS_DIT"]
         self.ndit     = int(cmds["OBS_NDIT"])
         self.exptime  = self.dit * self.ndit
         self.dark     = cmds["FPA_DARK_MEDIAN"]
@@ -957,7 +961,7 @@ class Chip(object):
 
         # superfast hack to get an approximation of the readout noise
         # in the image
-        ro = self._read_noise_frame(cmds, n_frames=1) * np.sqrt(ndit)
+        ro = self._read_noise_frame(cmds, n_frames=1) / np.sqrt(ndit)
 
         ########## Could work, but it's too slow for ndit > 10 ##############
         # add 1 to the ndits, because there will always be a readout at

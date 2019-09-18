@@ -5,19 +5,44 @@
 #   according to the information provided by source.SED
 # 3) Perform aperture photometry to check that number counts are consistent
 #
-# Source is a n=1 (exponential profile) with Reff = 20 pixels and zero
-# ellipticity
+# Source is a n=1 (exponential profile) with Reff = 20 pixels and zero ellipticity
 
-import os
-import pytest
 import numpy as np
 import simcado as sim
-
-
-if "USERNAME" in os.environ and os.environ["USERNAME"] == "Kieran":
-    sim.__search_path__.insert(0, "C:\Work\irdb\_Legacy_packages\MICADO")
+import os
+import inspect
+import pytest
+from simcado import __data_dir__
 
 # Helper functions ---
+
+
+def mock_dir():
+    cur_dirname = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    rel_dirname = "mocks"
+    return os.path.abspath(os.path.join(cur_dirname, rel_dirname))
+
+
+MOCK_DIR = mock_dir()
+
+#sim.get_extras()
+#cmds = sim.UserCommands(os.path.join(MOCK_DIR, "default.conf"))
+cmds = sim.UserCommands(sim_data_dir=MOCK_DIR, filename=os.path.join(MOCK_DIR, "default.conf"))
+cmds["SIM_DATA_DIR"] = MOCK_DIR
+print(cmds["SIM_DATA_DIR"])
+
+cmds["INST_ENTR_WINDOW_TC"] = os.path.join(MOCK_DIR, "TC_window.dat")
+cmds["ATMO_TC"] = os.path.join(MOCK_DIR, "TC_sky_25.tbl")
+cmds["SCOPE_M1_TC"] = os.path.join(MOCK_DIR, "TC_mirror_EELT.dat")
+cmds["INST_MIRROR_AO_TC"] = os.path.join(MOCK_DIR, "TC_mirror_gold.dat")
+cmds["INST_ENTR_WINDOW_TC"] = os.path.join(MOCK_DIR, "TC_window.dat")
+cmds["INST_DICHROIC_TC"] = os.path.join(MOCK_DIR, "TC_dichroic.dat")
+cmds["INST_MIRROR_TC"] = os.path.join(MOCK_DIR, "TC_mirror_gold.dat")
+cmds["INST_ADC_TC"] = os.path.join(MOCK_DIR, "TC_ADC.dat")
+cmds["INST_PUPIL_TC"] = os.path.join(MOCK_DIR, "TC_pupil.dat")
+cmds["INST_FILTER_TC"] = os.path.join(MOCK_DIR, "TC_filter_K.dat")
+cmds["FPA_QE"] = os.path.join(MOCK_DIR, "TC_detector_H2RG.dat")
+cmds["SCOPE_MIRROR_LIST"] = os.path.join(MOCK_DIR, "EC_mirrors_EELT_SCAO.tbl")
 
 
 def create_image_scaled_by_factor(factor=1):
@@ -26,8 +51,7 @@ def create_image_scaled_by_factor(factor=1):
     to simulate a random input source
 
 
-    NOTE: n=1 to make the light profile decline fast and so the rough photometry
-    function works
+    NOTE: n=1 to make the light profile decline fast and so the rough photometry function works
 
     Parameters
     ----------
@@ -38,8 +62,7 @@ def create_image_scaled_by_factor(factor=1):
     image * factor
     """
     image = sim.source.sersic_profile(r_eff=20, n=1, ellipticity=0., angle=0,
-                                      normalization="total", width=1024,
-                                      height=1024, x_offset=0, y_offset=0,
+                                      normalization="total", width=1024, height=1024, x_offset=0, y_offset=0,
                                       oversample=1)
     image = image * factor
     return image
@@ -111,9 +134,8 @@ def test_source_from_image(factor1, factor2):
     """
     test source from image
 
-    Two images are created scaled by different factors. The images are supposed
-    to be scaled to the specified magnitude by source_from_image() according to
-    the information provided by source.SED()
+    Two images are created scaled by different factors. The images are supposed to be scaled
+    to the specified magnitude by source_from_image() according to the information provided by source.SED()
 
     Test the counts are consistent after a simulation.
 
@@ -122,26 +144,24 @@ def test_source_from_image(factor1, factor2):
     factor1: factor to create image1
     factor2: factor to create image2
 
+    Returns
+    -------
+
     """
 
-    cmds = sim.UserCommands()
-    filter_file = 'TC_filter_Ks.dat'
+    filter_file = os.path.join(MOCK_DIR, 'TC_filter_K.dat')
     image1 = create_image_scaled_by_factor(factor1)
     image2 = create_image_scaled_by_factor(factor2)
     lam, spec = sim.source.SED("spiral", filter_name=filter_file, magnitude=15)
-    galaxy_src1 = sim.source.source_from_image(image1, lam, spec,
-                                               plate_scale=0.004, pix_res=0.004,
-                                               flux_threshold=0,
-                                               conserve_flux=True)
-    galaxy_src2 = sim.source.source_from_image(image2, lam, spec,
-                                               plate_scale=0.004, pix_res=0.004,
-                                               flux_threshold=0,
-                                               conserve_flux=True)
+    galaxy_src1 = sim.source.source_from_image(image1, lam, spec, plate_scale=0.004,
+                                               pix_res=0.004, flux_threshold=0, conserve_flux=True)
+    galaxy_src2 = sim.source.source_from_image(image2, lam, spec, plate_scale=0.004,
+                                               pix_res=0.004, flux_threshold=0, conserve_flux=True)
 
-    sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
-    sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+    sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1, OBS_DIT=300,
+                       SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+    sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1, OBS_DIT=300,
+                       SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
     print(factor1, factor2)
@@ -151,32 +171,30 @@ def test_source_from_image(factor1, factor2):
 @pytest.mark.parametrize("mag", np.arange(11, 16, 1))
 def test_source_elliptical(mag):
     """
-    Test whether source.elliptical produces consistent results in comparison
-    with source from image
+    Test whether source.elliptical produces consistent results in comparison with source from image
 
     Returns
     -------
 
     """
-    # filter_file = os.path.join(MOCK_DIR, 'TC_filter_K.dat')
-    cmds = sim.UserCommands()
-    filter_file = 'TC_filter_Ks.dat'
+    filter_file = os.path.join(MOCK_DIR, 'TC_filter_K.dat')
     image1 = create_image_scaled_by_factor(1)
     lam, spec = sim.source.SED("spiral", filter_name=filter_file, magnitude=mag)
-    galaxy_src1 = sim.source.source_from_image(image1, lam, spec,
-                                               plate_scale=0.004, pix_res=0.004,
-                                               flux_threshold=0,
-                                               conserve_flux=True)
+    galaxy_src1 = sim.source.source_from_image(image1, lam, spec, plate_scale=0.004,
+                                               pix_res=0.004, flux_threshold=0, conserve_flux=True)
     galaxy_src2 = sim.source.elliptical(20 * 0.004, 0.004, magnitude=mag, n=1,
-                                        filter_name=filter_file,
-                                        normalization="total",
-                                        spectrum="spiral", ellipticity=0,
-                                        angle=0)
-    sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
-    sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1,
-                       OBS_EXPTIME=300, SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+                                        filter_name=filter_file, normalization="total",
+                                        spectrum="spiral", ellipticity=0, angle=0)
+    sim_img1 = sim.run(galaxy_src1, detector_layout="small", OBS_NDIT=1, OBS_DIT=300,
+                       SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
+    sim_img2 = sim.run(galaxy_src2, detector_layout="small", OBS_NDIT=1, OBS_DIT=300,
+                       SIM_DETECTOR_PIX_SCALE=0.004, cmds=cmds)
     counts1 = photometry(sim_img1[0].data)
     counts2 = photometry(sim_img2[0].data)
     print(mag)
     assert np.abs(counts1 / counts2 - 1) < 0.1
+
+
+
+#
+#
