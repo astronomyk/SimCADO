@@ -9,13 +9,15 @@ SimCADO Package
 ===========================
 
 .. automodapi:: simcado.commands
+   :include-all-objects:
    :no-inheritance-diagram:
-  
+
 
 ``simcado.detector module``
 ============================
 
 .. automodapi:: simcado.detector
+   :include-all-objects:
    :no-inheritance-diagram:
 
 
@@ -23,6 +25,7 @@ SimCADO Package
 =========================
 
 .. automodapi:: simcado.nghxrg
+   :include-all-objects:
    :no-inheritance-diagram:
 
 
@@ -30,6 +33,7 @@ SimCADO Package
 =========================
 
 .. automodapi:: simcado.optics
+   :include-all-objects:
    :no-inheritance-diagram:
 
 
@@ -38,6 +42,7 @@ SimCADO Package
 ======================
 
 .. automodapi:: simcado.psf
+   :include-all-objects:
    :no-inheritance-diagram:
 
 
@@ -46,6 +51,7 @@ SimCADO Package
 =============================
 
 .. automodapi:: simcado.simulation
+   :include-all-objects:
    :no-inheritance-diagram:
 
 
@@ -61,6 +67,7 @@ SimCADO Package
 ==========================
 
 .. automodapi:: simcado.spatial
+   :include-all-objects:
    :no-inheritance-diagram:
 
 
@@ -69,6 +76,7 @@ SimCADO Package
 ===========================
 
 .. automodapi:: simcado.spectral
+   :include-all-objects:
    :no-inheritance-diagram:
 
 
@@ -77,4 +85,5 @@ SimCADO Package
 ========================
 
 .. automodapi:: simcado.utils
+   :include-all-objects:
    :no-inheritance-diagram:

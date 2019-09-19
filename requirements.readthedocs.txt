@@ -5,8 +5,8 @@ astropy
 pyyaml
 wget
 sphinxcontrib-apidoc
-numpydoc ==0.6.0
-sphinx ==1.6.7
+numpydoc ==0.9.1
+sphinx ==2.2.0
 synphot
 poppy
 pytest

@@ -6,7 +6,7 @@
 
 Documentation for SimCADO can be found here:
 
-[https://www.univie.ac.at/simcado/](https://www.univie.ac.at/simcado/)
+[https://readthedocs.org/projects/simcado/](https://readthedocs.org/projects/simcado/)
 
 ## SimCADO in a nutshell
 SimCADO is a python package designed to simulate the effects of the Atmosphere, E-ELT, and MICADO instrument on incoming light. The current version (v0.2) can simulate the MICADO imaging modi (4mas and 1.5mas per pixel in the wavelength range 0.7µm to 2.5µm).
@@ -27,7 +27,7 @@ It is highly recommended to use Python 3, however the basics of generating image
 
 The quick way:
 
-    $ pip3 install --user http://www.univie.ac.at/simcado/SimCADO.tar.gz
+    $ pip install simcado
 
 The **first time** in python 
 
@@ -46,6 +46,8 @@ As MICADO developes, the data files that SimCADO uses will also be updated. Ther
 
 ## Running a simulation in 3 lines
 
+**the keyword OBS_EXPTIME has been replaced by OBS_DIT in the latest version of SimCADO**
+
 The easiest way to run a simulation is to create, or load, a Source object and then call the `.run()` command. If you specify a filename, the resulting image will be output to a FITS file under that name. If you do not specify a filename, the output will be returned to the console/notebook as an `astropy.io.fits.HDUList` object.
 
 To begin, we will import the simcado module (assuming it is already installed).
@@ -62,9 +64,9 @@ We now pass the `source` object through SimCADO. This is as easy as calling `.ru
 
 ### Changing simulation parameters
 
-The `sim.run()` also takes any [configuration keywords](Keywords.md) as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
+The `sim.run()` also takes any [configuration keywords](Keywords.md) as parameters for running the simulation. For example, the default exposure time for the simulation is 60 seconds, however this can be increased of decreased by using the keyword `OBS_DIT` (and/or combining it with `OBS_NDIT`). A stacked 6x 10 minute observation sequence would look like:
 
-    >>> simcado.run(src, filename="my_first_sim.fits", OBS_EXPTIME=600, OBS_NDIT=6)
+    >>> simcado.run(src, filename="my_first_sim.fits", OBS_DIT=600, OBS_NDIT=6)
     
 That's it. Of course SimCADO can also go in the other direction, providing many more levels of complexity, but for that the reader is directed to the examples pages and/or the [API](API/_build/index.html) documentation
 
@@ -75,7 +77,7 @@ For a brief explanation of how SimCADO works and which classes are relevant, ple
 
 We freely admit that there may still be several bugs that we have not found. If you come across an buggy part of SimCADO, *please please* tell us. We can't make SimCADO better if we don't know about things.
 
-The preferable option is to open an issue on our Github page: [gastronomyk/SimCADO/issues](https://github.com/gastronomyk/SimCADO/issues), or you can contact either one of us directly.
+The preferable option is to open an issue on our Github page: [astronomyk/SimCADO/issues](https://github.com/astronomyk/SimCADO/issues), or you can contact either one of us directly.
 
 Please always include the output of
  
@@ -88,8 +90,9 @@ For questions and complaints alike, please contact the authors:
 
 * [kieran.leschinski@univie.ac.at]()
 * [oliver.czoske@univie.ac.at]()
+* [miguel.verdugo@univie.ac.at]()
 
-**Developers (Vienna):** Kieran Leschinski, Oliver Czoske
+**Developers (Vienna):** Kieran Leschinski, Oliver Czoske, Miguel Verdugo
 
 **Data Flow Team Leader (Gronigen):** Gijs Verdoes Kleijn
 

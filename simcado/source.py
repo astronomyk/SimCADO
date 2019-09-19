@@ -1772,7 +1772,7 @@ def SED(spec_type, filter_name="V", magnitude=0.):
         from simcado.source import SED
 
         lam, spec = SED(spec_type=["A0V", "G2V"],
-                            filter_name="PaBeta",
+                            filter_name="Pa-beta",
                             magnitude=[15, 20])
 
         plt.plot(lam, spec[0], "blue", label="Vega")
@@ -2533,11 +2533,13 @@ def scale_spectrum(lam, spec, mag, filter_name="Ks", return_ec=False):
         >>>
         >>> import simcado.optics as sim_op
         >>> print(sim_op.get_filter_set())
-        ['B', 'BrGamma', 'CH4_169', 'CH4_227', 'FeII_166', 'H', 'H2O_204',
-            'H2_212', 'Hcont_158', 'I', 'J', 'K', 'Ks', 'NH3_153', 'PaBeta',
-            'R', 'U', 'V', 'Y', 'z']
+        ['xH1', 'xY2', 'Spec_IJ', 'K-cont', 'I', 'xI2', 'Ks2', 'xY1', 'R',
+        'Y', 'Br-gamma', 'J-long', 'Pa-beta', 'H', 'I-long', 'H2_1-0S1',
+        'H-short', 'H-long', 'He-I', 'K-short', 'xJ2', 'J', 'xJ1', 'V', 'FeII',
+        'xI1', 'xK2', 'K-long', 'K-mid', 'J-short', 'H-cont', 'xK1', 'B', 'U',
+        'Ks', 'xH2', 'Spec_HK']
         >>>
-        >>> lam, spec = scale_spectrum(lam, spec, magnitudes, "PaBeta")
+        >>> lam, spec = scale_spectrum(lam, spec, magnitudes, "Pa-beta")
 
     """
     # The following was part of docstring. The example does not work, because
@@ -3120,10 +3122,9 @@ def elliptical(half_light_radius, plate_scale, magnitude=10, n=4,
     normalization : str, optional
         ["half-light", "centre", "total"] Where the profile equals unity
         If normalization equals:
-        - "half-light" : the pixels at the half-light radius have a surface
-                         brightness of ``magnitude`` [mag/arcsec2]
-        - "centre" : the maximum pixels have a surface brightness of
-                     ``magnitude`` [mag/arcsec2]
+
+        - "half-light" : the pixels at the half-light radius have a surface brightness of ``magnitude`` [mag/arcsec2]
+        - "centre" : the maximum pixels have a surface brightness of ``magnitude`` [mag/arcsec2]
         - "total" : the whole image has a brightness of ``magnitude`` [mag]
 
     spectrum : str, EmissionCurve, optional
@@ -3428,18 +3429,16 @@ def spiral(half_light_radius, plate_scale, magnitude=10,
     magnitude : float
         [mag, mag/arcsec2]
 
-    filter_name : str, TransmissionCurve, optional
-        Default is "Ks". Values can be either:
+    filter_name : str, TransmissionCurve, optional.  Default is "Ks". Values can be either:
         - the name of a SimCADO filter : see optics.get_filter_set()
         - or a TransmissionCurve containing a user-defined filter
 
     normalization : str, optional
         ["half-light", "centre", "total"] Where in the profile equals unityy
         If normalization equals:
-        - "half-light" : the pixels at the half-light radius have a surface
-                         brightness of ``magnitude`` [mag/arcsec2]
-        - "centre" : the maximum pixels have a surface brightness of
-                     ``magnitude`` [mag/arcsec2]
+
+        - "half-light" : the pixels at the half-light radius have a surface brightness of ``magnitude`` [mag/arcsec2]
+        - "centre" : the maximum pixels have a surface brightness of ``magnitude`` [mag/arcsec2]
         - "total" : the whole image has a brightness of ``magnitude`` [mag]
 
     spectrum : str, EmissionCurve, optional
