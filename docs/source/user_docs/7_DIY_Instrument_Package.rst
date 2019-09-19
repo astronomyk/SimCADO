@@ -1,7 +1,7 @@
 Custom instrument packages for SimCADO
 ======================================
 
-.. warning:: This format will only work with SimCADO v0.4, v0.5, and v0.6
+.. warning:: This format will only work with SimCADO v0.4 and later versions
 
     This way of specifying files and parameters has been depreciated for newer
     versions of SimCADO. A new API description will be available by June 2019.
@@ -219,5 +219,5 @@ the read-out electronics. The table should look like this::
 
     Yes, this shouldn't be, but we haven't got around to fixing that yet. Hence
     to model long exposure observations (i.e. >1 min), it's best just to set
-    ``FPA_LINEARITY_CURVE = "none"``
+    ``FPA_LINEARITY_CURVE = False``
 

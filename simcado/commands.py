@@ -81,8 +81,8 @@ class UserCommands(object):
     """
     An extended dictionary with the parameters needed for running a simulation
 
-    Summary
-    -------
+    Extended Summary
+    ----------------
     A :class:`.UserCommands` object contains a dictionary which holds all the keywords
     from the ``default.config`` file. It also has attributes which represent the
     frequently used variables, i.e. ``pix_res``, ``lam_bin_edges``, ``exptime``,
@@ -172,7 +172,8 @@ class UserCommands(object):
 
     See Also
     --------
-    Detector, OpticalTrain
+    :class:`simcado.detector.Detector`,
+    :class:`simcado.optics.OpticalTrain`
 
     Examples
     --------

@@ -54,7 +54,8 @@ class OpticalTrain(object):
 
     See Also
     --------
-    .commands.dump_defaults(), .commands.UserCommands
+    :class:`simcado.commands.UserCommands`
+    :func:`simcado.commands.dump_defaults`
 
 
     General Attributes
@@ -214,7 +215,7 @@ class OpticalTrain(object):
 
         See also
         --------
-        :class:`simcado.spectral.TransmissionCurve`
+        :class:`simcado.spectral.TransmissionCurve`,
         :func:`simcado.optics.get_filter_set`
 
         """

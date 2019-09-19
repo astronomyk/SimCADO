@@ -12,7 +12,7 @@ code yet to find the problem
 
 Generate a noise cube in Python 3. First install python3::
 
-    $ pip3 install <path-to-simcado.tar.gz>
+    $ pip install simcado
     $ python3
     
 Then create the noise cube::

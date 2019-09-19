@@ -4,19 +4,19 @@ Getting Started with SimCADO
 SimCADO can be super easy to use, or super complicated. The level of
 complexity is completely up to the user. A basic simulation involves
 only 1 thing: a :class:`.Source` object to describe the observable object.
-Once the user has created this object, the function
-:func:`.simcado.simulation.run()` is all that needs to be called. Controlling
-the parameters of the simulation can be done either by passing keyword-value
+Once the user has created this object, the function 
+:func:`.simcado.simulation.run()` is all that needs to be called. Controlling 
+the parameters of the simulation can be done either by passing keyword-value 
 pairs, or my using a :class:`.UserCommands` dictionary.
 
 .. contents::
 
 
-.. note::
-    Even though this documentation is not yet complete (it is a very big job),
-    lots **more information is included in the docstrings** of every SimCADO
-    function and class. These can be easily viewed in the interactive python
-    interface (iPython, or Jupyter Notebook) with either the question mark
+.. note:: 
+    Even though this documentation is not yet complete (it is a very big job), 
+    lots **more information is included in the docstrings** of every SimCADO 
+    function and class. These can be easily viewed in the interactive python 
+    interface (iPython, or Jupyter Notebook) with either the question mark 
     operator or by using ``SHIFT+TAB`` with the cursor over the function name.
 
 Doing this in iPython will call up the docstring: ::
@@ -36,14 +36,14 @@ with SimCADO. :class:`~.Source` objects can be created from scratch, with
 functions provided by SimCADO, or by loading in a pre-existing
 :class:`~.Source`-FITS file.
 
-.. note::
+.. note:: 
     **SimCADO is CaSe SensITIVe!** SimCADO has the class ``simcado.Source()``
-    and the module :mod:`simcado.source`. These should not be confused.
-    :mod:`simcado.source` is the module which contains the class :class:`.Source`
-    and all the helper functions for creating various types of :class:`.Source`
+    and the module :mod:`simcado.source`. These should not be confused. 
+    :mod:`simcado.source` is the module which contains the class :class:`.Source` 
+    and all the helper functions for creating various types of :class:`.Source` 
     objects. The source code for the  class :class:`.Source` is actually in
     :class:`simcado.source.Source`, however to make things easy, :class:`.Source`
-    is available directly as ``simcado.Source()``. Be careful and remember
+    is available directly as ``simcado.Source()``. Be careful and remember 
     ``simcado.Source != simcado.source``.
 
 For a description of the :class:`~.Source` object, and the :mod:`.source` module,
@@ -90,7 +90,7 @@ Two useful functions here are :func:`.stars()` and :func:`.source_from_image()`
         >>> mags, spec_types = [25,21,28], ["K0V", "A0III", "G2V"]
         >>> filt = "H"
         >>>
-        >>> my_src = sim.source.stars(mags=mags, x=x, y=y, filter_name=filt,
+        >>> my_src = sim.source.stars(mags=mags, x=x, y=y, filter_name=filt, 
                                                         spec_types=spec_types)
 
 -  :func:`.source_from_image` creates a :class:`.Source` based on a 2D numpy
@@ -103,9 +103,9 @@ Two useful functions here are :func:`.stars()` and :func:`.source_from_image()`
    pixel coordinates. The spectrum provided is then connected to these
    pixel, and scaled by the pixel value. ::
 
-        >>> # ... Create an image - a circle with a radius of 20 pixels on a
+        >>> # ... Create an image - a circle with a radius of 20 pixels on a 
         >>> # ... grid 200 pixel wide
-        >>> XX = np.array([np.arange(-100,101)]*201)
+        >>> XX = np.array([np.arange(-100,101)]*201) 
         >>> im = np.sqrt(XX**2 + XX.transpose()**2)
         >>> im[im>20] = 0; im[im>0] = 1
         >>>
@@ -133,18 +133,18 @@ lines of code: ::
 
     >>> import simcado
     >>> src = simcado.Source(filename="my_source.fits")
-    >>> simcado.run(src, filename="my_image.fits")
+    >>> simcado.run(src, filename="my_image.fits")   
 
 The :func:`.run` function is quite powerful. Many users may find that they
 don’t need anything else to run the simulations they need. The full
 function call looks like this: ::
 
-    simcado.run(src, filename=None,
-                mode="wide", detector_layout="small",
-                cmds=None, opt_train=None, fpa=None,
+    simcado.run(src, filename=None, 
+                mode="wide", detector_layout="small",  
+                cmds=None, opt_train=None, fpa=None, 
                 return_internals=False,
                 **kwargs)
-
+               
 
 Lets pull this function call apart in order of importance to the
 simulation:
@@ -227,8 +227,8 @@ list the SimCADO filter set here. Instead the user can find out which
 filters are available by calling the function (as of Nov 2016): ::
 
     >>> print(sim.optics.get_filter_set())
-    ['B', 'BrGamma', 'CH4_169', 'CH4_227', 'FeII_166', 'H', 'H2O_204', 'H2_212',
-     'Hcont_158', 'I', 'J', 'K', 'Ks', 'NH3_153', 'PaBeta', 'R', 'U', 'V', 'Y',
+    ['B', 'BrGamma', 'CH4_169', 'CH4_227', 'FeII_166', 'H', 'H2O_204', 'H2_212', 
+     'Hcont_158', 'I', 'J', 'K', 'Ks', 'NH3_153', 'PaBeta', 'R', 'U', 'V', 'Y', 
      'z']
 
 If you’d like to use your own filter curve, note that the ASCII file
@@ -244,14 +244,9 @@ The important keywords here are: ``OBS_DIT``, ``OBS_NDIT``
    The default setting is for a 60s exposure
 -  ``OBS_NDIT`` sets how many exposures are taken. The default is 1.
 
-The resulting image is the average over ``OBS_NDIT`` exposures. The
-header keyword ``EXPTIME`` gives the effective exposure time of the
-image, i.e. ``OBS_DIT``. The keyword ``INTTIME`` gives the total
-integration time, i.e. ``OBS_DIT * OBS_NDIT``.
-
 Depending on what your intended use for SimCADO is, the keyword
 ``OBS_SAVE_ALL_FRAMES=["no", "yes"]`` could also be useful. The default
-is to **not** save all the individual exposzures, but stack them and
+is to **not** save all the individual exposures, but stack them and
 return a single HDU object (or save to a single FITS file). If
 ``OBS_SAVE_ALL_FRAMES="yes"``, then a ``filename`` must also be given so
 that each and every DIT can be saved to disk.
@@ -281,19 +276,19 @@ Where each of the strings means:
 PSF utilities in SimCADO
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-In SimCADO we have pre-packaged some simulated PSFs which match the expectations of the
-different AO modes of MICADO. As new simulations of the AO capabilities become available we
+In SimCADO we have pre-packaged some simulated PSFs which match the expectations of the 
+different AO modes of MICADO. As new simulations of the AO capabilities become available we 
 will include these new PSFs in SimCADO. The available PSFs are
 
 - PSF_SCAO.fits
 - PSF_MCAO.fits
 
-which are the AO modes available. Additionally we provide a LTAO PSF (PSF_LTAO.fits) and a EELT diffraction limited PSF (PSF_POPPY.fits) calculated with `poppy <https://webbpsf.readthedocs.io/en/stable/poppy.html>`_
+which are the AO modes available. Additionally we provide a LTAO PSF (PSF_LTAO.fits) and a EELT diffraction limited PSF (PSF_POPPY.fits) calculated with `poppy <https://webbpsf.readthedocs.io/en/stable/poppy.html>`_ 
 
 For the moment, the PSF is assumed constant accross the field. The new (refractored) version will
-be capable to deal with field varying PSFs in a realistic manner.
+be capable to deal with field varying PSFs in a realistic manner. 
 
-SimCADO also provides utility functions that are able to produce analytic PSFs to be used in the simulation in adition to the pre-calculated PSFs. Please check the :mod:`simcado.psf` module. The
+SimCADO also provides utility functions that are able to produce analytic PSFs to be used in the simulation in adition to the pre-calculated PSFs. Please check the :mod:`simcado.psf` module. The 
 most important functions are the following:
 
 - :func:`simcado.psf.poppy_eelt_psf` creates a diffraction limited PSF based with mirror segments provided by :func:`simcado.psf.get_eelt_segments`
@@ -304,7 +299,7 @@ most important functions are the following:
 
 All these functions can save the computed PSFs in fits format by specifying a filename. That file can be later used in the simulations as a parameter in :func:`simcado.simulation.run` using the ``SCOPE_PSF_FILE=filename`` keyword.
 
-In the :doc:`notebook <6_Notebooks>` section you can find a few detailed examples how to create and work with these PSFs.
+In the :doc:`notebook <6_Notebooks>` section you can find a few detailed examples how to create and work with these PSFs. 
 
 
 Saving and reusing commands

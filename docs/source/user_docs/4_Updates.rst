@@ -10,6 +10,30 @@ the newest information coming from the MICADO work packages.
 To update your version of SimCADO, use the ``simcado.get_extras()``
 command.
 
+2019-09-18
+~~~~~~~~~~
+
+- SimCADO can now correctly perform DITs and NDITS
+- Accordingly, OBS_EXPTIME keyword in now OBS_DIT
+- Documents updated
+
+
+2019-07-30
+~~~~~~~~~~
+
+- Several examples added to the notebooks
+- Bug fixes to source.elliptical
+
+2019-03-26
+~~~~~~~~~~
+
+- SimCADO can now simulate a field varying PSF. See updated docs
+
+2019-03-14
+~~~~~~~~~~
+
+- pip friendly setup.py
+
 2019-02-19
 ~~~~~~~~~~
 

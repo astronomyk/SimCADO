@@ -10,10 +10,15 @@ The (slowly expanding) documentation base for SimCADO, the instrument data
 simulation package for MICADO at the ELT.
 
 .. Important::
-    SimCADO is currently under active development. A new version is expected to be released in ~2 months,
-    which will incorporate the spectrocopic mode as well as many other features and improvements.
-    The current version of SimCADO (dubbed v0.5) is however capable to answer many questions about the future performance
-    of MICADO imaging mode and your favorite science case. For the spectroscopic mode, please consult SpecCADO_.
+    SimCADO is currently under active development. The current version of SimCADO (dubbed v0.7) is
+    however capable to answer many questions about the future performance
+    of MICADO imaging mode and your favorite science case.
+    For the spectroscopic mode, please consult SpecCADO_.
+
+    In this latest version SimCADO is able to correctly simulate DIT and NDITs. Accordingly, the
+    keyword ``OBS_EXPTIME`` has been replaced by ``OBS_DIT``, with total observing time given by
+    ``OBS_DIT*OBS_NDIT``.
+    Please update your scripts and configuration files after downloading the latest version.
 
     .. _SpecCADO: https://github.com/oczoske/SpecCADO
 
@@ -24,7 +29,7 @@ SimCADO in a nutshell
 
 SimCADO is a python package designed to simulate the effects of the
 Atmosphere, E-ELT, and MICADO instrument on incoming light. The current
-version (v0.5) can simulate the MICADO imaging mode (4mas and 1.5mas per
+version (v0.7) can simulate the MICADO imaging mode (4mas and 1.5mas per
 pixel in the wavelength range 0.7µm to 2.5µm).
 
 .. figure:: ./_static/images/simcado_in_30_secs.gif
@@ -153,7 +158,7 @@ Changing simulation parameters
 The :func:`.run` also takes any :doc:`configuration keywords <user_docs/Z_Keywords>` as
 parameters for running the simulation. For example, the default exposure time
 for the simulation is 60 seconds, however this can be increased of decreased by
-using the keyword `OBS_DIT` (and/or combining it with `OBS_NDIT`). A stacked
+using the keyword `OBS_EXPTIME` (and/or combining it with `OBS_NDIT`). A stacked
 6x 10 minute observation sequence would look like::
 
     >>> simcado.run(src, filename="my_first_sim.fits", OBS_DIT=600, OBS_NDIT=6)

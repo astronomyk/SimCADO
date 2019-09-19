@@ -30,7 +30,8 @@ Chip
 
 See Also
 --------
-OpticalTrain, Source
+:class:`simcado.optics.OpticalTrain`,
+:class:`simcado.source.Source`
 
 Notes
 -----
@@ -120,8 +121,8 @@ class Detector(object):
     Generate a series of :class:`.Chip` objects for a focal plane array
 
 
-    Summary
-    -------
+    Extended Summary
+    ----------------
     The :class:`.Detector` is a holder for the series of :class:`.Chip`
     objects which make up the detector array. The main advantage of the
     :class:`.Detector` object is that the  user can read out all chips in the
@@ -427,8 +428,8 @@ class Detector(object):
         Write a ``Detector`` object out to a FITS file
 
 
-        Summary
-        -------
+        Extended Summary
+        ----------------
         Writes the important information contained in a ``Detector`` object into
         FITS file for later use. The main information written out includes: the
         layout of the detector chips, any pixel maps associated with the
@@ -479,8 +480,8 @@ class Chip(object):
     Holds the "image" as seen by a single chip in the focal plane
 
 
-    Summary
-    -------
+    Extended Summary
+    ----------------
     The ``Chip`` object contains information on where it is located in the focal
     plane array. The method ``<Source>.apply_optical_train()`` passes an image of
     the on-sky object to each ``Chip``. This image is resampled to the ``Chip``
@@ -548,7 +549,10 @@ class Chip(object):
 
     See Also
     --------
-    Detector, Source, UserCommands, OpticalTrain
+    Detector,
+    :class:`simcado.source.Source`,
+    :class:`simcado.commands.UserCommands`,
+    :class:`simcado.optics.OpticalTrain`
 
     Examples
     --------
@@ -648,8 +652,6 @@ class Chip(object):
         """
         Add a 2D array of photon signal to the Chip
 
-        Summary
-        -------
         Add some signal photons to the detector array. Input units are expected
         to be [ph/s/pixel]
 
@@ -682,8 +684,6 @@ class Chip(object):
         """
         Add a uniform background
 
-        Summary
-        -------
         Take an EmissionCurve and some wavelength boundaries, lam_min and lam_max,
         and sum up the photons in between. Add those to the source array.
 
@@ -718,8 +718,8 @@ class Chip(object):
         """
         Adds "hot" and "dead" pixels to the array
 
-        Summary
-        -------
+        Extended Summary
+        ----------------
         applies a mask to ``.array`` representing the positions of the current
         "hot" and "dead" pixels / lines. The method either reads in a FITS file
         with locations of these pixels, or generates a series of random
@@ -1175,9 +1175,6 @@ def open(self, filename):
     """
     Opens a saved ``Detector`` file.
 
-
-    Summary
-    -------
     ** Not yet implemented **
     ** Should be moved outside of ``Detector`` and called with
     ``detector.open()`` **
