@@ -26,16 +26,16 @@ copyright = '2018, Kieran Leschinski and Oliver Czoske'
 author = 'Kieran Leschinski,  Oliver Czoske and Miguel Verdugo'
 
 # The short X.Y version
-version = '0.5dev3'
+version = '0.7dev1'
 # The full version, including alpha/beta/rc tags
-release = '0.5'
+release = '0.7'
 
 
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-# needs_sphinx = '1.0'
+needs_sphinx = '2.2.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -53,7 +53,7 @@ extensions = [
     'sphinxcontrib.apidoc',
     'matplotlib.sphinxext.plot_directive',
     'sphinx_automodapi.automodapi',
-]
+    'sphinx_automodapi.smart_resolver']
 
 numpydoc_show_class_members = False
 apidoc_module_dir = os.path.abspath('../../')
