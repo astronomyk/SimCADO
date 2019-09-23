@@ -11,7 +11,7 @@ from io import open     # in py3 just an alias to builtin 'open'.
 
 # Version number
 MAJOR = 0
-MINOR = 6
+MINOR = 7
 ATTR = 'dev0'
 
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
@@ -49,7 +49,7 @@ def setup_package():
         author_email = """kieran.leschinski@unive.ac.at,
                         oliver.czoske@univie.ac.at,
                         miguel.verdugo@univie.ac.at""",
-        url = "http://homepage.univie.ac.at/kieran.leschinski/",
+        url = "https://simcado.readthedocs.io/en/latest/",
         license = "MIT",
         package_dir = {'simcado': 'simcado'},
         packages = ['simcado'],
