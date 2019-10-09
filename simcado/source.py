@@ -369,6 +369,7 @@ class Source(object):
                 lam_min, lam_max = opt_train.lam_bin_edges[i:i + 2]
 
                 if opt_train.psf.info["Type"] == "FVPSF":
+
                     ########################
                     # Added for FV-PSFs
 
@@ -650,7 +651,7 @@ class Source(object):
             # The following is faster than a loop
             ij = i * naxis1 + j   # naxis1 or naxis2?
             iju = np.unique(ij)
-            if sum(mask) > 0:
+            if np.sum(mask) > 0:
                 slice_array.flat[iju] += ndisum(slice_photons[mask].flat,
                                                 ij, iju)
 
@@ -1201,13 +1202,13 @@ def _get_stellar_properties(spec_type, cat=None, verbose=False):
                 if cls > 9:
                     cls = 0
                     spt = "OBAFGKMLT"["OBAFGKMLT".index(spt)+1]
-    
+
                 startype = spt+str(cls)+lum # was 'star', redefined function star()
                 cls += 1
-    
+
                 if startype in cat["Stellar_Type"]:
                     break
-    
+
             else:   # for loop did not find anything
                 raise ValueError(spec_type+" doesn't exist in the database")
         else:
@@ -1310,7 +1311,7 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
             # cat does not contain lum=VI, but does have IV
             elif "VI" in lum.upper():
                 lum = "V"
-    
+
             # this for loop is actually necessary here because this cat does not contain all spectral types
             for _ in range(10):  # TODO: What does this loop do? (OC)
                 if cls > 9:
@@ -1318,7 +1319,7 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
                     spt = "OBAFGKML"["OBAFGKML".index(spt)+1]
                 startype = spt + str(cls) + lum
                 cls += 1
-                
+
                 if startype in cat.columns.names:
                     break
                 elif "L" in startype:
@@ -1335,7 +1336,7 @@ def _get_pickles_curve(spec_type, cat=None, verbose=False):
             lam, spec = cat["lam"], cat[startype]
         except KeyError:      # Correct? This shouldn't use error handling.
             lam, spec = cat["lam"], cat["M9III"]
-            
+
         spec = spec.astype(np.float64)      # when using these numbers as float32, infinite values occur
         return lam, spec
 
