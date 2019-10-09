@@ -109,7 +109,7 @@ import scipy.ndimage.interpolation as spi
 from scipy.signal import fftconvolve
 
 from astropy.io import fits
-#from astropy import units as u   # unused (OC)
+from astropy import units as u
 from astropy.convolution import Moffat2DKernel, Gaussian2DKernel
 #from astropy.convolution import convolve_fft   # unused
 from astropy.convolution import Kernel2D
@@ -1180,11 +1180,19 @@ class UserPSFCube(PSFCube):
             elif 'CD1_1' in hdr.keys():
                 pix_res = hdr['CD1_1']
             elif 'PIXSCALE' in hdr.keys():
+                # PIXSCALE *must* be in arcsec !!!
                 pix_res = hdr['PIXSCALE']
             else:
                 raise KeyError("Could not get pixel scale from " +
                                filename)
 
+            # Make sure that the pixel scale is in arcsec
+            if 'CUNIT1' in hdr.keys():
+                pix_res = (pix_res *
+                           u.Unit(hdr['CUNIT1'])).to(u.arcsec).value
+
+            # TODO: Is this dangerous? Prob'ly not needed if FITS file
+            # is standard.
             if pix_res > 1:
                 warnings.warn("CDELT > 1. Assuming the scale to be [mas]")
                 pix_res *= 1E-3
