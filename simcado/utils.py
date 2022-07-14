@@ -359,7 +359,7 @@ def get_extras():
         PSF_POPPY.fits          20151103a       48MB    typical
         """)
 
-    url = "http://www.univie.ac.at/simcado/data_ext/"
+    url = "http://scopesim.univie.ac.at/simcado/data_ext/"
     new_extras = ioascii.read(download_file(url + "extras.dat"))
 
     for name, vers, size, group in new_extras:

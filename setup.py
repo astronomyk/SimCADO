@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """
 SimCADO: A python package to simulate MICADO
+============================================
+
+    $ pip install wheel twine
+
+How to compile and put these on pip::
+
+    $ python setup.py sdist bdist_wheel
+    $ twine upload dist/*
+
 """
 from sys import version_info
 from datetime import datetime
@@ -12,7 +21,7 @@ from io import open     # in py3 just an alias to builtin 'open'.
 # Version number
 MAJOR = 0
 MINOR = 7
-ATTR = 'dev0'
+ATTR = ''
 
 VERSION = '%d.%d%s' % (MAJOR, MINOR, ATTR)
 
